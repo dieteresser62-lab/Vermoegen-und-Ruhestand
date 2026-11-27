@@ -46,7 +46,7 @@ for (const [source, entry, expectations] of [
 }
 const find = header => PROTOCOL_COLUMNS.find(column => column.legacyHeader === header);
 for (const [header, value, expected] of [
-    ['Entn.', 12345.67, '12.346\u00a0€'], ['Handl.A', -1234, 'gekauft 1.234\u00a0€'], ['Pf.Akt%', -.125, '-12,5\u00a0%'],
+    ['Entn.', 12345.67, '12.346\u00a0€'], ['Handl.A', -1234, 'gekauft 1.234\u00a0€'], ['Pf.Akt%', -.125, '−12,5\u00a0%'],
     ['Quote%', 3.25, '3,3\u00a0%'], ['VPW%', .0345, '3,5\u00a0%'], ['Runway', 30, '2,5\u00a0Jahre'],
     ['Runway', 0, '0\u00a0Jahre'], ['Runway', null, '—'], ['Runway', undefined, '—'],
     ['Entn.', 0, '0\u00a0€'], ['Entn.', null, ''], ['Runway%', 0, '0\u00a0%'], ['Runway%', null, '']
@@ -156,7 +156,7 @@ const expectedExportOnly = [
 assertEqual(EXPORT_ONLY_PROTOCOL_IDS.length, 64, '58 Rechenspuren und sechs Personen-Einzelwerte');
 assertEqual([...EXPORT_ONLY_PROTOCOL_IDS].sort().join(','), expectedExportOnly.sort().join(','), 'Exakte exportexklusive Vertragsmenge');
 const expectedHeaders = {
-    "floor-aus-depot": "Floor aus Depot",
+    "floor-aus-depot": "Grundbedarf aus Depot",
     "minflexratepct": "Mindest-Flex-Rate",
     "wealthredf": "Vermögenskürzung",
     "wealthquoteusedpct": "Vermögensquote",
@@ -196,8 +196,8 @@ const expectedHeaders = {
     "row-safety-real-drawdown-pct": "Rückgang real",
     "row-safety-runway-pre-months": "Reichweite vorher",
     "row-safety-runway-post-months": "Reichweite nachher",
-    "runwaycoveragepct": "Runway-Deckung",
-    "runwaytargetsmoothedmonths": "Runway-Ziel",
+    "runwaycoveragepct": "Reichweitendeckung",
+    "runwaytargetsmoothedmonths": "Zielreichweite",
     "runwaytargetseveritypct": "Runway-Zielschwere",
     "runwaytargetrawmonths": "Runway-Ziel roh",
     "runwaytargethardminmonths": "Runway-Minimum",
@@ -214,7 +214,7 @@ const expectedHeaders = {
     "liq-after-payout": "Liquidität nach Entnahme",
     "liq-after-interest": "Liquidität nach Zinsen",
     "liqstart": "Liquidität vor Zinsen",
-    "liqend": "Liquidität nach Zinsen",
+    "liqend": "Liquidität Jahresende",
     "cashinterestearned": "Liquiditätszinsen",
     "zielliquiditaet": "Ziel-Liquidität",
     "needliq": "Auffüllbedarf",
@@ -244,15 +244,15 @@ const expectedHeaders = {
     "carep2-grade": "Pflegegrad Person 2",
     "carep1-cost": "Pflegekosten Person 1",
     "carep2-cost": "Pflegekosten Person 2",
-    "health-bucket-start": "Pflegebucket Beginn",
-    "health-bucket-used": "Pflegebucket genutzt",
+    "health-bucket-start": "Pflegereserve Beginn",
+    "health-bucket-used": "Pflegereserve genutzt",
     "health-bucket-interest": "Pflegebucket Zinsen",
-    "health-bucket-end": "Pflegebucket Ende",
+    "health-bucket-end": "Pflegereserve Ende",
     "health-bucket-target-inflation-adjusted": "Pflegebucket-Ziel",
     "health-bucket-real-coverage-pct": "Pflegebucket-Deckung",
     "health-bucket-target-gap": "Pflegebucket-Lücke",
     "health-bucket-triggered": "Pflegebucket ausgelöst",
-    "health-bucket-warning": "Pflegebucket-Warnung",
+    "health-bucket-warning": "Pflegereserve-Warnung",
     "pflege-floor-anchor": "Floor bei Pflegebeginn",
     "pflege-maxfloor-anchor": "Pflege-Floor maximal",
     "pflege-cap-zusatz": "Pflegezusatz-Grenze",

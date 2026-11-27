@@ -5,7 +5,6 @@ import { refreshBalanceExpensesHistory } from '../balance/balance-expenses-histo
 import { projectExpenses, readExpensesBudget, expensesDueMonth, hasExpenseImport } from './expenses-model.js';
 import { collectExpensesDom, createExpensesMessages, renderExpensesPage } from './expenses-renderer.js';
 import { bindExpensesClose } from './expenses-close.js';
-import { createOverviewExpensesWealthCapture } from '../overview/overview-example-expenses.js';
 import { loadProfileRegistry, getCurrentProfileId } from '../profile/profile-registry.js';
 import { overviewScope } from '../overview/overview-storage.js';
 import { memberPlanScope } from '../profile/household-plan.js';
@@ -34,9 +33,7 @@ export function createExpensesController({ doc, win, storage = persistenceStorag
     };
     const people = () => {
         const profiles = registry().profiles;
-        const members = Object.entries(profiles).filter(([, person]) => person.meta.belongsToHousehold !== false);
-        const selected = members.length ? members : Object.entries(profiles).filter(([id]) => id === getCurrentProfileId(storage));
-        return selected.map(([id, person]) => ({ id, profileId: id, name: person.meta.name }));
+        return Object.entries(profiles).map(([id, person]) => ({ id, profileId: id, name: person.meta.name }));
     };
     const visible = () => people().filter(person => !personId || person.id === personId);
     const history = { chart: doc.getElementById('expensesHistoryChart'), table: doc.getElementById('expensesHistoryTable'),
@@ -49,7 +46,7 @@ export function createExpensesController({ doc, win, storage = persistenceStorag
         const scope = overviewScope(personId || persons.length === 1 ? 'single' : 'household', ids);
         const loaded = registry();
         const receiptScope = personId ? overviewScope('single', ids)
-            : memberPlanScope(ids, storage, persons.some(person => loaded.profiles[person.id].meta.belongsToHousehold !== false));
+            : memberPlanScope(ids, storage);
         const budget = readExpensesBudget({ year, scope, receiptScope, registry: loaded, activeId: getCurrentProfileId(storage), storage });
         const result = loadExpensesStoreResult(storage);
         const date = now(), currentYear = date.getFullYear();
@@ -78,7 +75,6 @@ export function createExpensesController({ doc, win, storage = persistenceStorag
         }
         close?.sync();
     };
-    const capture = createOverviewExpensesWealthCapture({ doc, win, storage, refresh: () => refresh(), report: text => messages.toast(text) });
     // Auch der gemeinsame Spielbereich-Observer kann die Matrix ersetzen.
     // Identität vor dem Entfernen merken; Nutzerfokus außerhalb beendet den Auftrag.
     let matrixFocus = null, arrivalFocus = null, matrixUpdates = 0;
@@ -168,8 +164,8 @@ export function createExpensesController({ doc, win, storage = persistenceStorag
     initExpensesTab(refs, { ...actions, storage, now, messages, initialYear: now().getFullYear(), readOnlySelection: true, transactionalActions: true, deleteInDetails: true,
         getProfiles: visible, renderSummary: () => render(), preserveMatrixFocus, missingLabel: 'fehlt',
         dueMonth: year => expensesDueMonth(year, now(), close?.read()?.firstPlanningYear),
-        onChange: render, onImportOperation: trackImport, onImportSuccess: () => capture.afterImport() });
-    close = bindExpensesClose({ doc, win, storage, refresh, wealthCapture: capture, pageImports, options: closeOptions });
+        onChange: render, onImportOperation: trackImport });
+    close = bindExpensesClose({ doc, win, storage, refresh, pageImports, options: closeOptions });
     const segments = doc.getElementById('expensesPersonSegments');
     for (const choice of [{ id: null, name: 'Haushalt' }, ...people()]) {
         const button = doc.createElement('button'); button.type = 'button'; button.className = 'ds-button ds-button-secondary';
@@ -218,5 +214,5 @@ export function createExpensesController({ doc, win, storage = persistenceStorag
         return true;
     };
     return { refresh, applyTarget, cancelTarget: () => { arrivalFocus = null; },
-        selectYear: year => preserveMatrixFocus(() => selectExpensesYear(year)), get view() { return view; }, close, capture };
+        selectYear: year => preserveMatrixFocus(() => selectExpensesYear(year)), get view() { return view; }, close };
 }

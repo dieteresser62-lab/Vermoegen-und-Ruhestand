@@ -2,7 +2,7 @@ import { PersistenceFacade as P } from '../app/shared/persistence-facade.js';
 import { SnapshotArchive } from '../app/shared/snapshot-archive.js';
 import { MemoryWebStorage, fakeAreaIndexedDB, fakeAreaTauri } from './helpers/persistence-area-backends.mjs';
 
-// DS-2: Spielbereich „Kopie meiner Daten“ schreibt und bestätigt die Punkte in der Windows-App mit je einem Dateizugriff.
+// DS-2/SV-1: Spielbereich „Kopie meiner Daten“ übernimmt keine Wiederherstellungspunkte.
 
 const local = new MemoryWebStorage(), session = new MemoryWebStorage(), tauri = fakeAreaTauri();
 const window = { localStorage: local, sessionStorage: session, name: '', __TAURI__: {} };
@@ -19,38 +19,17 @@ for (let index = 0; index < 8; index++) {
 await restart();
 const realBefore = tauri.files.get('snapshots');
 
-// 1. Start mit Kopie: ein Schreiben, höchstens zwei Lesevorgänge der Spiel-Punktedatei; alle Punkte gleich.
+// SV-1: Der Spielbereich bekommt keine Punkte, auch nicht als Kopie; die echte Punktedatei bleibt bytegleich.
 {
-    const snapshots = await P.readRealSnapshots();
-    const writes = calls('save_app_state', 'spielsnapshots'), reads = calls('load_app_state', 'spielsnapshots');
-    await P.activatePlayArea({ source: 'copy', records: await P.readRealRecords(), snapshots });
-    assertEqual(calls('save_app_state', 'spielsnapshots') - writes, 1, 'Spiel-Punktedatei wird einmal geschrieben');
-    assert(calls('load_app_state', 'spielsnapshots') - reads <= 2, 'Spiel-Punktedatei wird höchstens zweimal gelesen');
+    const writes = calls('save_app_state', 'spielsnapshots');
+    await P.activatePlayArea({ source: 'copy', records: await P.readRealRecords() });
+    assertEqual(calls('save_app_state', 'spielsnapshots') - writes, 0, 'Spielbereich schreibt keine Punktedatei');
     await restart();
-    const play = await P.listSnapshots();
-    assertEqual(play.length, 8, 'Spielbereich hat alle Punkte');
-    assertEqual(JSON.stringify(JSON.parse(tauri.files.get('spielsnapshots')).snapshots), JSON.stringify(snapshots), 'Spielpunkte gleich den echten Punkten');
+    assertEqual((await P.listSnapshots()).length, 0, 'Spielbereich zeigt keine Punkte');
     assertEqual(tauri.files.get('snapshots'), realBefore, 'Echte Punktedatei bleibt bytegleich');
     await P.discardPlayArea();
     await restart();
-}
-// 2. Ohne Punkte entsteht wie bisher keine Spiel-Punktedatei.
-{
-    const writes = calls('save_app_state', 'spielsnapshots');
-    await P.activatePlayArea({ source: 'copy', records: await P.readRealRecords(), snapshots: [] });
-    assertEqual(calls('save_app_state', 'spielsnapshots') - writes, 0, 'Ohne Punkte kein Schreiben der Spiel-Punktedatei');
-    await restart();
-    await P.discardPlayArea();
-    await restart();
-}
-// 3. Doppelte Kennung wird abgewiesen, der Spielbereich bleibt aus.
-{
-    const [point] = await P.readRealSnapshots();
-    let rejected = false;
-    try { await P.activatePlayArea({ source: 'copy', records: await P.readRealRecords(), snapshots: [point, point] }); } catch { rejected = true; }
-    assert(rejected, 'Doppelte Punktkennung wird abgewiesen');
-    await restart();
-    assertEqual(P.getPersistenceStatus().storageArea, 'echt', 'Nach Abweisung bleibt der echte Bereich offen');
+    assertEqual((await P.listSnapshots()).length, 8, 'Nach dem Spielbereich sind die echten Punkte unverändert da');
 }
 P.resetPersistenceRuntimeForTests();
 P.resetPersistenceForTests();

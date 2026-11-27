@@ -6,7 +6,7 @@ import { PersistenceFacade as P, persistenceStorage as storage } from '../app/sh
 import { initExpensesPage } from '../app/expenses/expenses-main.js';
 import { getAppTestDate, setAppTestDate } from '../app/shared/app-clock.js';
 import { CONFIG } from '../app/balance/balance-config.js';
-import { readWealthHistory, createManualWealthHistoryEntry } from '../types/wealth-history-contract.js';
+import { readWealthHistory } from '../types/wealth-history-contract.js';
 import { requestExpensesPreview } from '../app/balance/balance-expenses-import.js';
 import { getPageNavigationGuard } from '../app/shared/navigation-guard-dialog.js';
 import { projectExpenses } from '../app/expenses/expenses-model.js';
@@ -341,11 +341,11 @@ try {
     assertEqual(confirmations, 1, 'Zellimport erreicht D5-Vorschauvertrag');
     assertEqual(previews[0].year, 2025, 'Vorschau erhält ausgewähltes Jahr');
     accept = true;
-    const expectedWealth = createManualWealthHistoryEntry(controller.capture.update({ mode: 'preview' }).inputData, '2026-10-10');
+    const capturesBefore = storage.getItem('rs_household_wealth_captures_v1');
     await importMonth(2);
     const captured = readWealthHistory(JSON.parse(storage.getItem(CONFIG.STORAGE.LS_KEY))).entries.filter(entry => entry.asOf === '2026-10-10');
-    assertEqual(captured.length, 1, 'Bestätigter Seitenimport erfasst genau einen Tagespunkt');
-    assertEqual(JSON.stringify(captured[0]), JSON.stringify(expectedWealth), 'Automatische Erfassung sichert exakt den bestehenden Vermögensstand');
+    assertEqual(captured.length, 0, 'VS-2: Bestätigter Seitenimport erfasst keinen Tagespunkt');
+    assertEqual(storage.getItem('rs_household_wealth_captures_v1'), capturesBefore, 'VS-2: Bestätigter Seitenimport schreibt keine Erfassung');
     assertEqual(controller.view.stats.annualUsed, 160, 'Bestätigter echter Import aktualisiert Kacheln und Modell');
     assert(doc.getElementById('expensesCategories').textContent.includes('Erstattung'), 'Import aktualisiert Kategorien');
     const committed = storage.getItem('balance_expenses_v1');

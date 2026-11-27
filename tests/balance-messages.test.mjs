@@ -1,8 +1,6 @@
 import fs from 'node:fs';
 import { initUIRenderer, UIRenderer } from '../app/balance/balance-renderer.js';
 import { AppError, ValidationError } from '../app/balance/balance-config.js';
-import { createBalanceExportDocument, createImportExportHandlers } from '../app/balance/balance-binder-imports.js';
-import { StorageManager } from '../app/balance/balance-storage.js';
 import { getTestExecutionPolicy, getTestFiles } from './run-tests.mjs';
 
 // Nur benötigte DOM-Operationen; textContent folgt der echten Kindknoten-Semantik.
@@ -343,31 +341,6 @@ try {
     UIRenderer.toast('Kein Fallback');
     assert(noToast.containers.error.textContent.includes('Erhalten'), 'Fehlender Toastbereich überschreibt keinen Fehler');
     assertEqual(clock.pending.size, 0, 'Fehlender Toastbereich erzeugt keinen Timer');
-
-    // Tatsächlicher Exporthandler: Warnung ist Hinweis, bestätigter Export bleibt Erfolg.
-    const loadState = StorageManager.loadState;
-    try {
-        const exportDom = refs();
-        initUIRenderer(exportDom, null);
-        const handlers = createImportExportHandlers({ dom: exportDom, update: () => {}, debouncedUpdate: () => {} });
-        const validState = {
-            inputs: { aktuellesAlter: 67, floorBedarf: 24000, flexBedarf: 12000, minimumFlexAnnual: 2000, tagesgeld: 50000 },
-            lastState: { cumulativeInflationFactor: 1, lastInflationAppliedAtAge: 66, taxState: { lossCarry: 0 } }
-        };
-        for (const state of [validState, { ...validState, wealthHistory: { schemaVersion: 2, entries: [] } }]) {
-            StorageManager.loadState = () => state;
-            const warning = createBalanceExportDocument(state).validationWarnings?.[0];
-            assertEqual(Boolean(warning), Boolean(state.wealthHistory), 'Exportfixture deckt Erfolg und Validierungswarnung ab');
-            handlers.handleExport();
-            assertEqual(toastText(exportDom), warning
-                ? `Export erstellt mit Validierungshinweis [${warning.code}]: ${warning.message}`
-                : 'Export erstellt.', 'Exporttext bleibt unverändert');
-            assertEqual(exportDom.containers.toast.className, warning ? 'toast-info' : 'toast-success',
-                'Export mit Warnung ist Hinweis; bestätigter Export bleibt Erfolg');
-        }
-    } finally {
-        StorageManager.loadState = loadState;
-    }
 } finally {
     initUIRenderer(null, null);
     for (const [key, descriptor] of Object.entries(savedGlobals)) {

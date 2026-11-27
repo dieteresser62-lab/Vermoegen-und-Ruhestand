@@ -15,6 +15,9 @@ export const PROBELAUF_BACKUP_MESSAGE = 'Vollsicherung und Import sind während 
 
 export const PROBELAUF_BACKUP_STATE_UNAVAILABLE_MESSAGE = 'Vollsicherung und Import gesperrt: Spielbereich-Zustand konnte nicht sicher gelesen werden. Bitte neu laden.';
 
+// HL-1 (H-04): Hinweis der Schreibsperre nach dem Einspielen, gleich gebaut wie beim Zurückholen eines Punkts.
+export const FULL_BACKUP_RELOAD_MESSAGE = 'Sicherung eingespielt; die Seite wurde nicht neu geladen. Bitte die Seite jetzt neu laden. Eingaben werden bis dahin nicht gespeichert.';
+
 // Nur der lokale Bestandsvergleich darf diesen Hinweis auslösen, keine Backendmeldung.
 export class FullBackupLiveChangedError extends Error {
     constructor() {

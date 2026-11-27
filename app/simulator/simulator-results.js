@@ -1,33 +1,26 @@
 /** @import {BindInfoPopovers, BindScenarioLogView, PrepareMonteCarloViewModel} from '../../typcheck/simulator-ui.js' */
-import { cloneWorkshopInputsForDisplay } from './simulator-overview-summary.js';
 import { freezePersonDataContext, personDataContextFor } from './simulator-person-overrides.js';
 import { renderPersonDataNotice } from './protocol-renderer.js';
 import { bindScenarioLogView, disposeScenarioLogView } from './scenario-log-view.js';
 import { buildComparisonContext } from './scenario-comparison.js';
 import { renderScenarioAnalysis } from './scenario-log-analysis.js';
 import { buildWealthDistribution, renderWealthDistribution } from './wealth-distribution.js';
-import { formatChartEuro } from './results-formatting.js';
 import { renderWealthFanChart } from './wealth-fan-chart.js';
 import { getEuroMode, resetEuroMode, euroBasisLabel } from './euro-display.js';
 import { scenarioEndWealth, scenarioDisplayLabel } from './scenario-wealth-chart.js';
-import { formatWholeEuro } from './results-formatting.js';
 import { initializePortfolio } from './simulator-portfolio-init.js';
 import { getProtocolColumns, createProtocolPersonContext } from './protocol-columns.js';
 import { escapeProtocolHtml, renderProtocolSummary, renderProtocolTable } from './protocol-renderer.js';
 import { bindInfoPopovers } from '../shared/designsystem-info-popover.js';
+import { renderMonteCarloPersonOutcomes } from './mc-person-outcomes-view.js';
 "use strict";
 
 
-import { formatCurrency, quantile } from './simulator-utils.js';
+import { formatCurrency } from './simulator-utils.js';
 import { prepareMonteCarloViewModel, buildMonteCarloAnswers } from './results-metrics.js';
 import { renderMonteCarloAnswers, renderSummary, renderKpiDashboard, renderStressSection, renderHeatmap, renderCareSection, renderRiskKeyFigures } from './results-renderers.js';
-import { showToast } from './simulator-main-helpers.js';
-import { buildBinaryProportionEstimate } from './monte-carlo-statistics.js';
-import {
-    SWEEP_COMPARISON_DIAGNOSTICS_VERSION,
-    SWEEP_METRIC_METADATA,
-    SWEEP_METRICS_VERSION
-} from './sweep-metrics-contract.js';
+import { showToast, triggerDownload } from './simulator-main-helpers.js';
+import { lockWhileSaving } from '../shared/save-file.js';
 import { STRATEGY_OPTIONS } from '../../types/strategy-options.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import {
@@ -35,17 +28,13 @@ import {
     serializeScenarioLogCsvV2,
     serializeScenarioLogExportV2
 } from './monte-carlo-export.js';
-import {
-    publishStressReplayMonteCarloContext,
-    selectStressReplayScenario
-} from './stress-replay-ui.js';
 
 // SE-2: Kopfzeile des zugeklappten Szenario-Protokolls (Pfad, Jahre, Ruin, Eurobasis).
 function setScenarioProtocolHead(head) {
     const heading = document.getElementById('scenarioProtocolHeading');
     const line = document.getElementById('scenarioProtocolLine');
     if (heading) heading.textContent = head ? `Szenario-Protokoll · ${head.label}` : 'Szenario-Protokoll';
-    if (line) line.textContent = head ? [`${head.years} Jahreszeilen`, head.failed ? 'mit Ruin' : head.failed === false ? 'ohne Ruin' : '',
+    if (line) line.textContent = head ? [`${head.years} Jahreszeilen`, head.failed ? 'Vermögen aufgebraucht' : head.failed === false ? 'Vermögen reicht' : '',
         `Geldbeträge · ${euroBasisLabel(head.moneyBasis)}`, 'Jahr für Jahr mit allen Buchungen'].filter(Boolean).join(' · ')
         : 'Jahr für Jahr mit allen Buchungen';
 }
@@ -61,34 +50,6 @@ function replaceScenarioChangeListener(element, handler) {
     } else scenarioChangeListeners.delete(element);
 }
 
-function projectStressReplayScenario(scenario, moneyBasis = getEuroMode(), realByRun) {
-    const empty = document.getElementById('stressReplaySelectedScenarioEmpty');
-    const details = document.getElementById('stressReplaySelectedScenarioDetails');
-    const label = document.getElementById('stressReplaySelectedScenarioLabel');
-    const wealth = document.getElementById('stressReplaySelectedScenarioWealth');
-    const care = document.getElementById('stressReplaySelectedScenarioCare');
-    if (!empty || !details || !label || !wealth || !care) return;
-
-    if (!scenario) {
-        empty.hidden = false;
-        details.hidden = true;
-        label.textContent = '—';
-        wealth.textContent = '—';
-        care.textContent = '—';
-        return;
-    }
-
-    label.textContent = scenarioDisplayLabel(scenario);
-    const endWealth = scenarioEndWealth(scenario, moneyBasis, realByRun);
-    wealth.textContent = scenario.failed ? 'Ruin' : formatChartEuro(endWealth);
-    wealth.title = scenario.failed ? 'Ruin' : formatWholeEuro(endWealth);
-    const basis = document.getElementById('stressReplaySelectedScenarioBasis');
-    if (basis) basis.textContent = `Geldendvermögen · ${euroBasisLabel(moneyBasis)} · Pfade nach Geldvermögen oder Aktienrendite ausgewählt`;
-    care.textContent = scenario.careEverActive ? 'Pflegefall enthalten' : 'Nicht als Pflegefall markiert';
-    empty.hidden = true;
-    details.hidden = false;
-}
-
 /**
  * Storage keys for log detail preferences.
  * Separate keys prevent the backtest log checkbox from leaking into the
@@ -98,15 +59,6 @@ function projectStressReplayScenario(scenario, moneyBasis = getEuroMode(), realB
 export const LEGACY_LOG_DETAIL_KEY = 'logDetailLevel';
 export const WORST_LOG_DETAIL_KEY = 'worstLogDetailLevel';
 export const BACKTEST_LOG_DETAIL_KEY = 'backtestLogDetailLevel';
-export {
-    SWEEP_COMPARISON_DIAGNOSTICS_VERSION,
-    SWEEP_DECISION_METRIC_KEYS,
-    SWEEP_DRAWDOWN_DEFINITION_VERSION,
-    SWEEP_METRIC_METADATA,
-    SWEEP_METRIC_METADATA_VERSION,
-    SWEEP_METRICS_VERSION,
-    readSweepMetricValue
-} from './sweep-metrics-contract.js';
 
 /**
  * Reads the persisted detail level with a defensive fallback.
@@ -167,7 +119,7 @@ export function persistDetailLevel(storageKey, level) {
 export function displayMonteCarloResults(results, anzahl, failCount, worstRun, resultsMitPflege, resultsOhnePflege, pflegefallEingetretenCount, inputs, worstRunCare, scenarioLogs = null, displayContext = {}) {
 
     const personDataContext = freezePersonDataContext(displayContext.personDataContext ?? personDataContextFor(inputs));
-    inputs = cloneWorkshopInputsForDisplay(inputs);
+    inputs = structuredClone(inputs || {});
     displayContext = { ...displayContext };
     const personDisplayContext = createProtocolPersonContext(inputs, displayContext.personDisplayContext?.persons);
     disposeScenarioLogView(document);
@@ -192,8 +144,6 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
     // scenario surface. Hostless callers may already have published their state.
     if (scenarioContainer) {
         renderScenarioAnalysis(document, null);
-        projectStressReplayScenario(null);
-        selectStressReplayScenario(null);
         window.globalCurrentScenarioData = null;
         for (const id of ['toggle-care-details', 'toggle-log-detail']) replaceScenarioChangeListener(document.getElementById(id), null);
         for (const id of ['exportScenarioLogJson', 'exportScenarioLogCsv']) {
@@ -211,6 +161,7 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
     const viewModel = /** @type {PrepareMonteCarloViewModel} */ (prepareMonteCarloViewModel)({ results, totalRuns: anzahl, failCount, inputs, moneyBasis });
     const personNotice = document.getElementById('monteCarloPersonNotice');
     if (personNotice) personNotice.innerHTML = renderPersonDataNotice(personDataContext);
+    renderMonteCarloPersonOutcomes(document.getElementById('mcPersonOutcomes'), results?.personOutcomeRows, personDisplayContext.persons);
 
     const dashboard = document.getElementById('unifiedKpiDashboard');
     const riskDashboard = document.getElementById('riskKpiDashboard');
@@ -243,7 +194,6 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
         window.globalScenarioLogs = scenarioLogs;
         window.globalScenarioCarThreshold = caR;
         window.globalCurrentScenarioData = null;
-        publishStressReplayMonteCarloContext({ inputs, scenarioLogs, personDataContext });
 
         scenarioContainer.style.display = 'block';
         let currentId = '', currentScenario = null;
@@ -265,8 +215,6 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
             const summary = document.getElementById('scenarioProtocolSummary');
             if (summary) summary.innerHTML = '';
             setScenarioProtocolHead(null);
-            projectStressReplayScenario(null);
-            selectStressReplayScenario(null);
             try {
                 if (!val) return;
 
@@ -291,8 +239,6 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
                     });
                     setScenarioProtocolHead({ label: scenarioLabel ? `Frühester Pflegeeintritt ${scenarioLabel}` : scenarioDisplayLabel(scenario),
                         years: scenario.logDataRows.length, failed: scenario.failed, moneyBasis });
-                    projectStressReplayScenario(scenario, moneyBasis, results?.wealthView?.realByRun);
-                    selectStressReplayScenario(scenario);
                     output.style.display = 'block';
                     /** @type {BindInfoPopovers} */ (bindInfoPopovers)(document, { root: output });
                     window.globalCurrentScenarioData = {
@@ -303,8 +249,6 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
                     exportButtons.style.display = 'flex';
                     renderScenarioAnalysis(document, scenario, { ...analysisOptions, moneyBasis });
                 } else {
-                    projectStressReplayScenario(null);
-                    selectStressReplayScenario(null);
                     output.innerHTML = '<p class="ds-note" style="color: var(--text-muted); padding: 10px;">Keine Log-Daten für dieses Szenario verfügbar.</p>';
                     output.style.display = 'block';
                 }
@@ -312,8 +256,6 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
                 window.globalCurrentScenarioData = null;
                 renderScenarioAnalysis(document, null);
                 exportButtons.style.display = 'none';
-                projectStressReplayScenario(null);
-                selectStressReplayScenario(null);
                 if (summary) summary.innerHTML = '';
                 output.innerHTML = '<p class="ds-note ds-note-error" role="alert">Das Szenarioprotokoll konnte nicht angezeigt werden. Wähle ein anderes Szenario.</p>';
                 output.style.display = 'block';
@@ -352,6 +294,8 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
             const rows = window.globalCurrentScenarioData?.rows;
             return Array.isArray(rows) ? projectScenarioLogV2(rows, { personDataContext: window.globalCurrentScenarioData.personDataContext }) : null;
         };
+        // SD-1: Beide Knöpfe bleiben gesperrt, solange „Speichern unter“ offen ist.
+        const saveScenarioExport = (filename, content, mimeType) => lockWhileSaving([jsonBtn, csvBtn], triggerDownload(filename, content, mimeType));
         const reportScenarioExportError = error => {
             console.error('Szenario-Export fehlgeschlagen:', error);
             showToast('Szenario-Export nicht möglich: Die Logdaten verletzen den V2-Vertrag.', { duration: 5000 });
@@ -362,16 +306,7 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
                 try {
                     const exportDocument = projectCurrentScenarioForExport();
                     if (!exportDocument) return;
-                    const blob = new Blob([
-                        serializeScenarioLogExportV2(exportDocument)
-                    ], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'scenario-log-v2.json';
-                    a.click();
-                    URL.revokeObjectURL(url);
-                    showToast('Export gespeichert: scenario-log-v2.json');
+                    void saveScenarioExport('scenario-log-v2.json', serializeScenarioLogExportV2(exportDocument), 'application/json');
                 } catch (error) {
                     reportScenarioExportError(error);
                 }
@@ -383,15 +318,7 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
                 try {
                     const exportDocument = projectCurrentScenarioForExport();
                     if (!exportDocument) return;
-                    const csvContent = serializeScenarioLogCsvV2(exportDocument);
-                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'scenario-log-v2.csv';
-                    a.click();
-                    URL.revokeObjectURL(url);
-                    showToast('Export gespeichert: scenario-log-v2.csv');
+                    void saveScenarioExport('scenario-log-v2.csv', serializeScenarioLogCsvV2(exportDocument), 'text/csv;charset=utf-8;');
                 } catch (error) {
                     reportScenarioExportError(error);
                 }
@@ -409,9 +336,6 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
     } else if (scenarioContainer) {
         window.globalScenarioLogs = null;
         window.globalScenarioCarThreshold = null;
-        publishStressReplayMonteCarloContext({});
-        projectStressReplayScenario(null);
-        selectStressReplayScenario(null);
         scenarioContainer.style.display = 'none';
     }
     if (!scenarioLogs || !scenarioContainer) /** @type {BindScenarioLogView} */ (bindScenarioLogView)({ document, logs: null, onSelect: () => {}, onMode: renderMoney });
@@ -451,131 +375,9 @@ export function portfolioTotal(p) {
     const sumTr = (arr) => Array.isArray(arr)
         ? arr.reduce((s, t) => s + (Number(t?.marketValue) || 0), 0)
         : 0;
-    return sumTr(p?.depotTranchesAktien) + sumTr(p?.depotTranchesGold) + (Number(p?.liquiditaet) || 0)
+    const total = sumTr(p?.depotTranchesAktien) + sumTr(p?.depotTranchesGold) + (Number(p?.liquiditaet) || 0)
         + (Number(p?.healthBucketGeldmarkt) || 0);
-}
-
-function buildSweepComparisonDiagnostics(runOutcomes, values, successCount, options = {}) {
-    const runCount = runOutcomes.length;
-    const terminalRuinRuns = runOutcomes.filter(outcome => outcome?.failed === true).length;
-    const terminalRuinSharePct = runCount > 0 ? (terminalRuinRuns / runCount) * 100 : 0;
-    const worst5Drawdown = Number(values?.worst5Drawdown);
-    const quantileInTerminalRuinBlock = terminalRuinRuns > 0
-        && Number.isFinite(worst5Drawdown)
-        && Math.abs(worst5Drawdown - 100) <= 1e-12;
-    return {
-        schemaVersion: SWEEP_COMPARISON_DIAGNOSTICS_VERSION,
-        runCount,
-        successfulRuns: successCount,
-        failedRuns: runCount - successCount,
-        commonRandomNumbers: options.commonRandomNumbers === true,
-        randomPolicyVersion: options.randomPolicyVersion ?? null,
-        successProbability: buildBinaryProportionEstimate({
-            successes: successCount,
-            trials: runCount
-        }),
-        quantileUncertainty: {
-            confidenceInterval: null,
-            reason: 'quantile_confidence_interval_not_estimated'
-        },
-        drawdownQuantile: {
-            metricKey: 'worst5Drawdown',
-            quantile: 0.95,
-            terminalRuinLossPct: 100,
-            terminalRuinRuns,
-            terminalRuinSharePct,
-            upperTailSharePct: 5,
-            quantileInTerminalRuinBlock,
-            status: quantileInTerminalRuinBlock
-                ? 'saturated_by_terminal_ruin'
-                : 'not_saturated_by_terminal_ruin',
-            warning: quantileInTerminalRuinBlock
-                ? 'Der Drawdown-P95 liegt im Block terminaler Ruine und unterscheidet Strategien mit derselben gesaettigten Kennzahl nicht.'
-                : null
-        },
-        ranking: {
-            status: 'experimental_point_estimate',
-            warning: 'Quantilrankings sind experimentelle Punktschätzer; CRN reduziert Vergleichsrauschen, ersetzt aber kein Quantil-Konfidenzintervall und kein Modellrisiko.'
-        }
-    };
-}
-
-function buildSweepMetricsEnvelope(runOutcomes, values, successCount, options = {}) {
-    return {
-        schemaVersion: SWEEP_METRICS_VERSION,
-        metricMetadata: SWEEP_METRIC_METADATA,
-        comparison: buildSweepComparisonDiagnostics(runOutcomes, values, successCount, options),
-        ...values
-    };
-}
-
-/**
- * Aggregiert Metriken für eine Reihe von Monte-Carlo-Läufen.
- *
- * @param {Array} runOutcomes - Array mit Ergebnissen einzelner Läufe
- * @param {Object} options - Vergleichs-/Seedvertrag des aufrufenden Runners
- * @returns {Object} Versionierte aggregierte Sweep-Metriken
- */
-export function aggregateSweepMetrics(runOutcomes, options = {}) {
-    const outcomes = Array.isArray(runOutcomes) ? runOutcomes : [];
-    if (outcomes.length === 0) {
-        return buildSweepMetricsEnvelope(outcomes, {
-            successProbFloor: 0,
-            p10EndWealth: 0,
-            p25EndWealth: 0,
-            medianEndWealth: 0,
-            p75EndWealth: 0,
-            meanEndWealth: 0,
-            maxEndWealth: 0,
-            worst5Drawdown: 0,
-            minRunwayObserved: null
-        }, 0, options);
-    }
-
-    const successCount = outcomes.filter(r => !r.failed).length;
-    const successProbFloor = (successCount / outcomes.length) * 100;
-
-    // End wealth quantiles use the same canonical interpolated method as D-06.
-    const endWealths = outcomes.map(r => Number.isFinite(Number(r?.finalVermoegen))
-        ? Number(r.finalVermoegen)
-        : 0);
-
-    const p10EndWealth = quantile(endWealths, 0.10);
-    const p25EndWealth = quantile(endWealths, 0.25);
-    const medianEndWealth = quantile(endWealths, 0.50);
-    const p75EndWealth = quantile(endWealths, 0.75);
-
-    // Mittelwert
-    const meanEndWealth = endWealths.reduce((sum, val) => sum + val, 0) / endWealths.length;
-
-    // Maximum
-    const maxEndWealth = Math.max(...endWealths);
-
-    // D-06: Verlustmass aufsteigend lesen; der schlechte Tail liegt oben.
-    // Die kanonische Quantilfunktion interpoliert auf (n - 1) * q.
-    const drawdowns = outcomes.map(r => {
-        const value = Number(r?.maxDrawdown);
-        if (!Number.isFinite(value) || value < 0 || value > 100) {
-            throw new RangeError(`Sweep-Drawdown ausserhalb des gueltigen Bereichs 0..100: ${String(r?.maxDrawdown)}`);
-        }
-        return value;
-    });
-    const worst5Drawdown = quantile(drawdowns, 0.95);
-
-    const runways = outcomes
-        .map(r => r?.minRunway)
-        .filter(value => typeof value === 'number' && Number.isFinite(value));
-    const minRunwayObserved = runways.length > 0 ? Math.min(...runways) : null;
-
-    return buildSweepMetricsEnvelope(outcomes, {
-        successProbFloor,
-        p10EndWealth,
-        p25EndWealth,
-        medianEndWealth,
-        p75EndWealth,
-        meanEndWealth,
-        maxEndWealth,
-        worst5Drawdown,
-        minRunwayObserved
-    }, successCount, options);
+    // NK-2 (FR-84 Punkt 17): Nettovermögen; eine offene Steuerschuld mindert es höchstens bis null (ohne Schuld unverändert).
+    const debt = Array.isArray(p?.personAccounts) ? p.personAccounts.reduce((sum, account) => sum + (account?.openTax > 0 ? account.openTax : 0), 0) : 0;
+    return debt > 0 ? Math.max(0, total - debt) : total;
 }

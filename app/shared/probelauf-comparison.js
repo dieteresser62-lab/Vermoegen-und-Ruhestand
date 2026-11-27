@@ -1,5 +1,5 @@
 import { overviewScope } from '../overview/overview-storage.js';
-import { readSimulationRecord, simulationEntryKey, OVERVIEW_SIMULATION_KEY, fingerprint } from '../overview/overview-simulation-summary.js';
+import { readSimulationRecord, simulationEntryKey, isSimulationSummaryStale, OVERVIEW_SIMULATION_KEY, fingerprint } from '../overview/overview-simulation-summary.js';
 import { memberPlanScope } from '../profile/household-plan.js';
 import { readAnnualPlanRecord } from '../profile/annual-plan-record.js';
 import { annualEngineLoader } from './annual-engine-loader.js';
@@ -54,7 +54,7 @@ export const probelaufEndNeedsComparison = state => state?.source !== 'demo' && 
  */
 export function projectProbelaufComparison(records, { now = new Date(), state = null, play = false, engineApi, balance, calculationError } = {}) {
     const context = probelaufRecordContext(records), { registry, activeId, liveData } = context;
-    const ids = Object.keys(registry.profiles).filter(id => registry.profiles[id].meta?.belongsToHousehold !== false);
+    const ids = Object.keys(registry.profiles);
     if (!ids.length && registry.profiles[activeId]) ids.push(activeId);
     const scope = overviewScope(ids.length === 1 && ids[0] === activeId ? 'single' : 'household', ids);
     const data = id => id === activeId ? liveData : registry.profiles[id]?.data || {};
@@ -63,16 +63,17 @@ export function projectProbelaufComparison(records, { now = new Date(), state = 
     // deshalb auch dort überlagern, ausschließlich in dieser privaten Kopie.
     const sources = { ...records, ...(records.rs_profiles_v1 ? { rs_profiles_v1: JSON.stringify(registry) } : {}) };
     const storage = { getItem: key => sources[key] ?? null };
-    const receiptScope = scope && memberPlanScope(ids, storage, ids.some(id => registry.profiles[id].meta?.belongsToHousehold !== false));
+    const receiptScope = scope && memberPlanScope(ids, storage);
     const receipt = receiptScope ? /** @type {import("../../typcheck/profile-ui.js").ReadAnnualPlan} */ (readAnnualPlanRecord)({ year, scope: receiptScope, storage }) : null;
     const runs = scope ? ids.map(id => readSimulationRecord(data(id)[OVERVIEW_SIMULATION_KEY]).entries[simulationEntryKey(scope, 'montecarlo')]) : [];
     let monteCarlo = runs.length && runs.every(entry => entry && fingerprint(entry) === fingerprint(runs[0])) ? runs[0] : null;
     // Ein mitkopierter Lauf ist kein Lauf innerhalb dieser Spielsitzung.
     if (play && monteCarlo && (!state?.initialMonteCarloRuns || state.initialMonteCarloRuns.includes(fingerprint(monteCarlo)))) monteCarlo = null;
+    const monteCarloStale = play && isSimulationSummaryStale(monteCarlo, { registry, activeId, liveData, scope, kind: 'montecarlo' });
     const result = { year, scope, monthlyBudget: null, action: null, liquidity: null, calculatedAt: null,
         status: 'pending', error: null,
         fixedPlan: receipt?.adopted ? { ...structuredClone(receipt.adopted), committedAt: receipt.committedAt } : null,
-        monteCarlo: monteCarlo ? { successPct: monteCarlo.metrics.successPct, completedAt: monteCarlo.completedAt } : null };
+        monteCarloStale, monteCarlo: monteCarlo && !monteCarloStale ? { successPct: monteCarlo.metrics.successPct, completedAt: monteCarlo.completedAt } : null };
     if (!engineApi && !calculationError) return result;
     try {
         if (calculationError) throw calculationError;

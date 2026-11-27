@@ -37,7 +37,8 @@ for (const source of ['mc', 'backtest']) for (const moneyBasis of ['nominal', 'r
     const entry = row => source === 'mc' ? row : { jahr: 2025 + row.jahr, row, inflationVJ: row.inflation };
     const options = { source, moneyBasis, strategyMode: 'standard' };
     const money = (amount, row) => {
-        const factor = moneyBasis === 'nominal' ? 1 : row.inflation_factor_cum * (source === 'backtest' ? 1 + row.inflation / 100 : 1);
+        // ST7-A: Verkäufe sind Zahlungen des Jahres, real in beiden Quellen mit dem Faktor am Jahresanfang.
+        const factor = moneyBasis === 'nominal' ? 1 : row.inflation_factor_cum;
         return `${Math.round(amount / factor).toLocaleString('de-DE')} €`;
     };
     const p25Text = plain(protocolActionShortText(entry(p25), options));

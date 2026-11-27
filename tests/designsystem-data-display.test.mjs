@@ -3,9 +3,7 @@ import { formatPercentValue, formatPercentRatio } from '../app/shared/shared-for
 import { formatDisplayPercentValue, formatDisplayPercentRatio } from '../app/shared/shared-formatting.js';
 import { SummaryRenderer } from '../app/balance/balance-renderer-summary.js';
 import { buildTranchenTableHtml, buildTranchenStatsHtml, renderManagerQuoteContext } from '../app/tranches/tranchen-manager-renderer.js';
-import { renderBalanceWealthHistory } from '../app/balance/balance-wealth-history-renderer.js';
 import { renderBalanceExpensesHistory } from '../app/balance/balance-expenses-history-renderer.js';
-import { createManualWealthHistoryEntry } from '../types/wealth-history-contract.js';
 import { createPresentationTestDocument, readSources } from './designsystem-source-contract.mjs';
 
 for (const [value, options, expected] of [
@@ -68,18 +66,8 @@ try {
     else process.env.TZ = previousManagerZone;
 }
 
-const state = { wealthHistory: { schemaVersion: 1, entries: Array.from({ length: 20 }, (_, i) =>
-    createManualWealthHistoryEntry({ tagesgeld: 1000 + i, geldmarktEtf: 2000, depotwertAlt: 3000, depotwertNeu: 4000 }, `${2026 + i}-01-02`)) } };
-const beforeState = JSON.stringify(state);
-let active = false;
-const wealth = { panel: { classList: { contains: () => active } }, chart: { innerHTML: '' }, table: { innerHTML: '' }, hint: { textContent: '' } };
-renderBalanceWealthHistory(wealth, state);
-assertEqual(wealth.chart.innerHTML, '', 'Inaktiver Verlauf erzeugt keine Diagrammdetails');
-active = true;
-renderBalanceWealthHistory(wealth, state);
-assert(wealth.chart.innerHTML.includes('min-width:2110px'), 'Gefüllter Verlauf behält die datenabhängige Diagrammbreite');
-assert(wealth.table.innerHTML.includes('Erfasste Vermögensstände') && wealth.table.innerHTML.includes('nominale Euro'), 'Vermögensdaten nennen gespeicherten Kontext und Einheit');
-assertEqual(JSON.stringify(state), beforeState, 'Verlaufsanzeige verändert keine gespeicherten Stände');
+// VS-3a: Der alte Balance-Verlaufsrenderer ist entfernt; die Ausgabenanzeige bleibt geprüft.
+const active = true;
 const expenses = { panel: { classList: { contains: () => active } }, chart: { innerHTML: '' }, table: { innerHTML: '' }, hint: { textContent: '' } };
 const store = { version: 1, years: { '2026': { months: { '1': { profiles: { a: { categories: { Test: -100 } }, b: { categories: { Test: -50 } } } } } } } };
 const beforeStore = JSON.stringify(store);
@@ -106,7 +94,7 @@ const columns = getWorstRunColumnDefinitions({ logDetailLevel: 'detailed' });
 for (const [key, value, expected] of [
     ['QuoteEndPct', 12.3, '12,3\u00a0%'], ['NominalReturnEquityPct', .123, '12,3\u00a0%'],
     ['vpw.vpwRate', .0345, '3,5\u00a0%'], ['vpw.capeRatioUsed', 25.15, '25,1'],
-    ['vpw.expectedRealReturn', -.015, '-1,5\u00a0%'], ['RunwayCoveragePct', 0, '0\u00a0%'],
+    ['vpw.expectedRealReturn', -.015, '−1,5\u00a0%'], ['RunwayCoveragePct', 0, '0\u00a0%'],
     ['RunwayCoveragePct', null, ''], ['vpw.expectedRealReturn', null, '']
 ]) assertEqual(columns.find(column => column.key === key).fmt(value), expected, `Logdarstellung erhält Skalierung/Verfügbarkeit: ${key}`);
 const logRows = [{ QuoteEndPct: 12.3, NominalReturnEquityPct: .123, jahresentnahme_real: 1234.56 }];

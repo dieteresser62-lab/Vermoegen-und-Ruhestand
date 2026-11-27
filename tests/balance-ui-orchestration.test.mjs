@@ -1,31 +1,16 @@
-import { annualServiceFixture, readyAnnualFixture, installAnnualLocks } from './helpers/balance-storage-fixtures.mjs';
-import { verifySamePageAnnualArchive, verifyAnnualFinalReadGuards } from './overview-annual-close.test.mjs?fixture';
+import { annualServiceFixture, readyAnnualFixture } from './helpers/balance-storage-fixtures.mjs';
 import { getPageNavigationGuard } from '../app/shared/navigation-guard-dialog.js';
 import { RESET_RELOAD_REQUIRED_MESSAGE } from '../app/shared/navigation-guard.js';
 import { bindProfileNavigationHandoff, installProfilePersistenceHooks } from '../app/profile/profile-navigation.js';
-import { readWealthHistory } from '../types/wealth-history-contract.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { UIBinder, initUIBinder, trackBalanceInputSave } from '../app/balance/balance-binder.js';
-import { createSnapshotHandlers } from '../app/balance/balance-binder-snapshots.js';
 import { bindBalanceInfoPopups } from '../app/balance/balance-renderer-diagnosis.js';
-import {
-    BALANCE_IMPORT_INPUT_SCHEMA_VERSION,
-    BALANCE_EXPORT_APP_ID,
-    BALANCE_EXPORT_SCHEMA,
-    BALANCE_EXPORT_SCHEMA_VERSION,
-    BalanceImportError,
-    createBalanceExportDocument,
-    createImportExportHandlers,
-    createManualMarketCsvImportPlan,
-    parseMarketDataCsv,
-    normalizeBalanceImportDocument
-} from '../app/balance/balance-binder-imports.js';
 import { createProfilverbundHandlers } from '../app/balance/balance-main-profilverbund.js';
-import { CONFIG, ValidationError, StorageError } from '../app/balance/balance-config.js';
+import { CONFIG, ValidationError } from '../app/balance/balance-config.js';
 import { UIReader, initUIReader } from '../app/balance/balance-reader.js';
 import { UIRenderer, initUIRenderer } from '../app/balance/balance-renderer.js';
-import { initStorageManager, StorageManager } from '../app/balance/balance-storage.js';
+import { StorageManager } from '../app/balance/balance-storage.js';
 import {
     BALANCE_UPDATE_MODE,
     BALANCE_UPDATE_STATUS,
@@ -258,14 +243,6 @@ function createDomRefs(documentRef) {
     const tabPanel = documentRef.register(new MockElement('tab-overview'));
     tabPanel.classList.add('active');
 
-    const modal = documentRef.register(new MockElement('updateResultModal'));
-    const closeX = new MockElement('modalCloseX', 'button');
-    closeX.classList.add('modal-close');
-    const overlay = new MockElement('modalOverlay');
-    overlay.classList.add('modal-overlay');
-    modal.appendChild(closeX);
-    modal.appendChild(overlay);
-
     const form = documentRef.register(new MockElement('input-form-container'));
     const currencyInput = documentRef.register(new MockElement('currencyInput', 'input'));
     currencyInput.classList.add('currency');
@@ -273,15 +250,11 @@ function createDomRefs(documentRef) {
     const controls = {
         copyAction: documentRef.register(new MockElement('copyAction', 'button')),
         btnJahresUpdate: documentRef.register(new MockElement('btnJahresUpdate', 'button')),
-        btnJahresUpdateLog: documentRef.register(new MockElement('btnJahresUpdateLog', 'button')),
         btnNachruecken: documentRef.register(new MockElement('btnNachruecken', 'button')),
         btnUndoNachruecken: documentRef.register(new MockElement('btnUndoNachruecken', 'button')),
-        importBtn: documentRef.register(new MockElement('importBtn', 'button')),
-        importFile: documentRef.register(new MockElement('importFile', 'input')),
         btnCsvImport: documentRef.register(new MockElement('btnCsvImport', 'button')),
         csvFileInput: documentRef.register(new MockElement('csvFileInput', 'input')),
         annualTestOpener: documentRef.register(new MockElement('annualTestOpener', 'button')),
-        connectFolderBtn: documentRef.register(new MockElement('connectFolderBtn', 'button')),
         snapshotStatus: documentRef.register(new MockElement('snapshotStatus'))
     };
 
@@ -293,11 +266,6 @@ function createDomRefs(documentRef) {
     };
 
     documentRef.register(new MockElement('handlungContent')).innerText = 'Aktion';
-    documentRef.register(new MockElement('modalTitle'));
-    documentRef.register(new MockElement('modalResults'));
-    documentRef.register(new MockElement('modalDuration'));
-    const modalCloseBtn = documentRef.register(new MockElement('modalCloseBtn', 'button'));
-    modal.appendChild(modalCloseBtn);
 
     return {
         inputs: {
@@ -378,16 +346,10 @@ const prevHandleError = UIRenderer.handleActionError;
 const prevLoadState = StorageManager.loadState;
 const prevSaveState = StorageManager.saveState;
 const prevResetState = StorageManager.resetState;
-const prevConnectFolder = StorageManager.connectFolder;
-const prevReplaceStateFromImport = StorageManager.replaceStateFromImport;
-const prevRollbackImportReplace = StorageManager.rollbackImportReplace;
 const prevApplyStoredInputs = UIReader.applyStoredInputs;
 
 async function runBalanceUiOrchestrationTests() {
     console.log('--- Balance UI Orchestration Tests ---');
-    await verifySamePageAnnualArchive('balance');
-    await verifyAnnualFinalReadGuards('balance');
-
     {
         const documentRef = new MockDocument();
         installBrowserGlobals(documentRef, createLocalStorageMock());
@@ -396,13 +358,12 @@ async function runBalanceUiOrchestrationTests() {
         refs.expenses = { yearSelect: new MockElement('expensesYearSelect', 'select'), table: new MockElement('expensesTable') };
         refs.expenses.yearSelect.value = '2026';
         initUIBinder(refs, {}, () => ({ ok: true }), () => {});
-        const savedOpenYear = UIBinder.openExpensesYear, savedSelect = UIBinder.selectTab, savedPreparation = UIBinder.openAnnualOverview;
+        const savedSelect = UIBinder.selectTab, savedPreparation = UIBinder.openAnnualOverview;
         let selections = 0, preparations = 0, focused = 0;
         const importButton = new MockElement('monthImport', 'button');
         importButton.dataset.month = '9'; importButton.focus = () => { focused++; };
         refs.expenses.table.querySelectorAll = () => [importButton];
         try {
-            UIBinder.openExpensesYear = year => { selections++; refs.expenses.yearSelect.value = String(year); };
             UIBinder.selectTab = () => {};
             UIBinder.openAnnualOverview = () => { preparations++; return true; };
             assertEqual(UIBinder.openOverviewTarget({ hash: '#ausgaben', search: '?year=2026' }), false, 'Sprungziel wartet auf bestätigte Bereitschaft');
@@ -437,7 +398,7 @@ async function runBalanceUiOrchestrationTests() {
             assertEqual(UIBinder.openOverviewTarget({ hash: '#ausgaben' }, { ready: true }), false, 'Commitbesitzer blockiert Sprungaktion');
             owner.unregister();
         } finally {
-            UIBinder.openExpensesYear = savedOpenYear; UIBinder.selectTab = savedSelect; UIBinder.openAnnualOverview = savedPreparation;
+            UIBinder.selectTab = savedSelect; UIBinder.openAnnualOverview = savedPreparation;
         }
         const savedError = UIRenderer.handleActionError, savedClear = UIRenderer.clearActionError;
         try {
@@ -482,7 +443,7 @@ async function runBalanceUiOrchestrationTests() {
         const updatePanel = documentRef.register(new MockElement('tab-overview'));
         updatePanel.classList.add('active');
         const evaluationPanel = documentRef.register(new MockElement('tab-history'));
-        const expensesPanel = documentRef.register(new MockElement('tab-expenses'));
+        documentRef.register(new MockElement('tab-expenses'));
         dom.containers.tabPanels = [updatePanel, evaluationPanel];
         const updateButton = dom.containers.tabButtons.children[0];
         updateButton.classList.add('tab-btn');
@@ -494,22 +455,7 @@ async function runBalanceUiOrchestrationTests() {
         const expensesButton = new MockElement('expenses-button', 'button');
         expensesButton.classList.add('tab-btn'); expensesButton.dataset.tab = 'expenses';
         // Die Ausgabenansicht besitzt ihren eigenen Seitencontroller.
-        let generated = 0;
-        for (const section of ['wealthHistory']) {
-            dom[section] = { panel: section === 'wealthHistory' ? evaluationPanel : expensesPanel, hint: { textContent: '' }, date: { textContent: '' } };
-            for (const key of ['chart', 'table']) {
-                let markup = '';
-                dom[section][key] = { get innerHTML() { return markup; }, set innerHTML(value) {
-                    assert((section === 'wealthHistory' ? evaluationPanel : expensesPanel).classList.contains('active') || value === '', 'Inaktiv keine Markuperzeugung durch Binder');
-                    if (value) generated++;
-                    markup = value;
-                } };
-            }
-        }
-        const entry = { id: 'manual:2026-10-03', asOf: '2026-10-03', reason: 'manual', periodId: null,
-            tagesgeld: 12, geldmarktEtf: 23, depotwertAlt: 34, depotwertNeu: 45, aktienEtf: 79, total: 114 };
-        let currentState = { inputs: {}, wealthHistory: { schemaVersion: 1, entries: [entry] } };
-        StorageManager.loadState = () => currentState;
+        StorageManager.loadState = () => ({ inputs: {} });
         localStorageRef.setItem('balance_expenses_v1', JSON.stringify({ version: 1, years: {
             '2025': { months: { '1': { profiles: { A: { categories: { Ausgabe: -100 } } } } } }
         } }));
@@ -523,14 +469,12 @@ async function runBalanceUiOrchestrationTests() {
             UIBinder.bindUI();
             assert(updatePanel.classList.contains('active') && !evaluationPanel.classList.contains('active'), 'Initialisierung erhält Jahres-Update');
             const click = dom.containers.tabButtons.listeners.click[0];
+            // VS-3a: Der alte Balance-Verlaufsrenderer ist entfernt; ein Tabwechsel zeichnet keinen Vermögensverlauf mehr.
             click({ target: evaluationButton });
-            assertEqual(generated, 2, 'Verlauf zeichnet ausschließlich Vermögen');
+            assert(evaluationPanel.classList.contains('active'), 'Tabwechsel aktiviert das gewählte Panel');
             click({ target: updateButton });
-            assertEqual(generated, 2, 'Verlassen erzeugt keine dynamischen Inhalte');
-            assertEqual(dom.wealthHistory.chart.innerHTML + dom.wealthHistory.table.innerHTML, '', 'Vermögenscontainer nach Verlassen leer');
-            currentState = { inputs: {} };
+            assert(updatePanel.classList.contains('active') && !evaluationPanel.classList.contains('active'), 'Rückwechsel aktiviert wieder das Jahres-Update');
             click({ target: evaluationButton });
-            assertEqual(dom.wealthHistory.chart.innerHTML, '', 'Wiederöffnung liest frische Vermögensdaten');
             assertEqual(dom.expensesHistory, undefined, 'Balance hat keinen Ausgabenhistorienhost');
             assertEqual(updates + writes + clears, 0, 'Tablistener berechnet, erfasst, schreibt und bereinigt keine Fehler');
         } finally {
@@ -737,74 +681,10 @@ async function runBalanceUiOrchestrationTests() {
 
     }
 
-    console.log('Ausgabenimport: Binder erhält Tab und aktualisiert beide Abschnitte aus bestätigten Daten');
-    for (const open of [false, true]) {
-        for (const outcome of ['fresh', 'old', 'unknown', 'none', 'error']) {
-            const documentRef = new MockDocument();
-            installBrowserGlobals(documentRef, createLocalStorageMock());
-            const key = CONFIG.STORAGE.LS_KEY;
-            const annual = { id: 'annual:2026', asOf: '2026-12-31', reason: 'annual_close', periodId: 'calendar-year:2026',
-                tagesgeld: 1, geldmarktEtf: 0, depotwertAlt: 0, depotwertNeu: 0, aktienEtf: 0, total: 1 };
-            const raw = JSON.stringify({ inputs: {}, lastState: { cumulativeInflationFactor: 1, taxState: { lossCarry: 0 } },
-                wealthHistory: { schemaVersion: 1, entries: [annual] } });
-            const backend = new Map([[key, raw], ['rs_current_profile', 'a'], ['rs_active_profile', 'a'],
-                ['rs_profiles_v1', JSON.stringify({ version: 1, profiles: { a: { meta: { id: 'a' }, data: { [key]: raw } } } })],
-                ['balance_expenses_v1', JSON.stringify({ version: 1, years: { '2025': { months: {
-                    '1': { profiles: { a: { categories: { Ausgabe: -250 } } } }
-                } } } })]]);
-            const adapter = { name: 'binder-capture-memory', async open() {}, async loadAll() { return Object.fromEntries(backend); },
-                async saveBatch({ upserts, deletes }) { deletes.forEach(k => backend.delete(k)); upserts.forEach(([k, v]) => backend.set(k, v)); } };
-            PersistenceFacade.resetPersistenceForTests(adapter); await PersistenceFacade.init();
-            StorageManager.loadState = prevLoadState;
-            const dom = createDomRefs(documentRef);
-            const panel = new MockElement('tab-wealth'); if (open) panel.classList.add('active');
-            for (const section of ['wealthHistory']) {
-                dom[section] = { panel, date: { textContent: '' }, count: { textContent: '' },
-                    chart: { innerHTML: '' }, table: { innerHTML: '' }, hint: { textContent: '' }, status: { textContent: '' } };
-            }
-            const source = { tagesgeld: 123, geldmarktEtf: 0, depotwertAlt: 0, depotwertNeu: outcome === 'none' ? 0 : 200 };
-            const asOf = outcome === 'unknown' ? undefined : Math.floor(Date.now() / 1000) - (outcome === 'old' ? 604801 : 10);
-            const inputData = { ...source, detailledTranches: outcome === 'none' ? [] : [{
-                schemaVersion: 2, trancheId: 'muster-aktien', name: 'Muster Aktien', purchasePrice: 90, purchaseDate: '2026-01-02', tqf: 0.3, taxExempt: false,
-                category: 'equity', type: 'aktien_neu', shares: 2, currentPrice: 100, marketValue: 200, asOf
-            }] };
-            let previews = 0; const messages = [], errors = [];
-            const savedToast = UIRenderer.toast, savedActionError = UIRenderer.handleActionError;
-            UIRenderer.toast = (text, type) => messages.push({ text, type });
-            UIRenderer.handleActionError = (error, scope) => errors.push({ error, scope });
-            try {
-                initUIBinder(dom, {}, options => {
-                    previews++; assertEqual(options.mode, 'preview', 'Binder fordert PREVIEW an');
-                    if (outcome === 'error') throw new Error('Vorschaufehler');
-                    return { ok: true, inputData };
-                }, () => {});
-                const result = await UIBinder.handleExpensesImported();
-                assertEqual(previews, 1, 'Genau eine Vorschau pro Binder-Import');
-                assertEqual(panel.classList.contains('active'), open, 'Erfolg, Hinweis und Fehler erhalten Tabaktivität');
-                assertEqual(dom.wealthHistory.date.textContent, 'Zuletzt erfasst am 31.12.2026', 'Maximaler bestätigter Stichtag bleibt maßgeblich');
-                if (open) {
-                    assertEqual(dom.expensesHistory, undefined, 'Ausgabenübersicht gehört zur eigenständigen Seite');
-                    assert(dom.wealthHistory.table.innerHTML.includes('Jahresabschluss'), 'Aktiver Verlauf wird frisch gezeichnet');
-                } else {
-                    assertEqual(dom.wealthHistory.chart.innerHTML + dom.wealthHistory.table.innerHTML, '', 'Inaktive Container bleiben ungezeichnet');
-                }
-                if (['fresh', 'none'].includes(outcome)) {
-                    assertEqual(result.status, 'saved', 'Binder bestätigt frische und kursfreie Erfassung');
-                    assertEqual(messages[0].type, true, 'Bestätigte Erfassung als Erfolg');
-                    assertEqual(JSON.parse(backend.get(key)).wealthHistory.entries.length, 2, 'Genau ein neuer unterjähriger Stand');
-                } else {
-                    assertEqual(JSON.parse(backend.get(key)).wealthHistory.entries.length, 1, 'Hinweis oder Fehler schreibt keinen Stand');
-                    if (outcome === 'error') assertEqual(errors[0].scope, 'expenses-wealth', 'Fehler bleibt im Ausgabenaktionsbereich');
-                    else assertEqual(messages[0].type, 'info', 'Alte und unbekannte Kurse sind Hinweise');
-                }
-            } finally {
-                UIRenderer.toast = savedToast; UIRenderer.handleActionError = savedActionError;
-                PersistenceFacade.resetPersistenceForTests();
-            }
-        }
-    }
+    console.log('VS-2: Balance-Binder erfasst nach einem Ausgabenimport keinen Vermögensstand');
+    assertEqual(typeof UIBinder.handleExpensesImported, 'undefined', 'Kein Erfassungsanschluss nach Ausgabenimport');
 
-    console.log('Test 1: UIBinder binds controls only once and tolerates optional import/export controls');
+    console.log('Test 1: UIBinder binds controls only once');
     {
         const documentRef = new MockDocument();
         const localStorageRef = createLocalStorageMock();
@@ -817,20 +697,17 @@ async function runBalanceUiOrchestrationTests() {
         StorageManager.loadState = () => ({ inputs: {} });
         StorageManager.saveState = () => { saveCalls += 1; };
         StorageManager.resetState = () => {};
-        StorageManager.connectFolder = () => {};
 
         const dom = createDomRefs(documentRef);
-        delete dom.controls.exportBtn;
-        const binderState = { snapshotHandle: null, pendingInputMetadata: { profile_person_schema_version: '1', profile_aktuelles_alter: '67' } };
+        const binderState = { pendingInputMetadata: { profile_person_schema_version: '1', profile_aktuelles_alter: '67' } };
         initUIBinder(dom, binderState, () => { updateCalls += 1; }, () => { debouncedCalls += 1; });
 
         UIBinder.bindUI();
         UIBinder.bindUI();
 
-        assertEqual((documentRef.listeners.keydown || []).length, 1, 'Keyboard shortcut listener wird nur einmal gebunden');
+        assertEqual((documentRef.listeners.keydown || []).length, 0, 'AK-1: Balance bindet keine Tastenkürzel mehr');
         assertEqual((dom.containers.form.listeners.input || []).length, 1, 'Form-Input listener wird nur einmal gebunden');
         assertEqual((dom.controls.btnJahresUpdate.listeners.click || []).length, 0, 'Entfernter Jahresupdateknopf hat keinen Listener');
-        assertEqual((dom.controls.importBtn.listeners.click || []).length, 1, 'Import-Button listener bleibt trotz optionalem Export eindeutig');
 
         // Bestehender Bindungsfall benutzt nun den echten Renderer-/Clipboardpfad.
         const actionHost = documentRef.register(new MockElement('handlungsanweisung'));
@@ -875,7 +752,7 @@ async function runBalanceUiOrchestrationTests() {
 
         const debounceCallsBeforeFileChange = debouncedCalls;
         const metadataBefore = JSON.stringify(binderState.pendingInputMetadata);
-        for (const id of ['importFile', 'csvFileInput', 'expensesCsvInput', 'depotwertDatei']) {
+        for (const id of ['csvFileInput', 'expensesCsvInput', 'depotwertDatei']) {
             for (const type of ['input', 'change']) {
                 dom.containers.form.listeners[type][0]({ target: { id, type: 'file' } });
             }
@@ -937,15 +814,6 @@ async function runBalanceUiOrchestrationTests() {
             },
             lastState: { guardrailMarker: 'partner-keep', taxState: { lossCarry: 222 } }
         };
-        const excludedState = {
-            inputs: {
-                tagesgeld: 900000,
-                depotwertAlt: 900000,
-                costBasisAlt: 100000,
-                renteAktiv: true,
-                renteMonatlich: 5000
-            }
-        };
         const createdAt = '2026-01-01T00:00:00.000Z';
         localStorageRef.setItem('rs_profiles_v1', JSON.stringify({
             version: 1,
@@ -956,10 +824,6 @@ async function runBalanceUiOrchestrationTests() {
                 },
                 partner: {
                     meta: { id: 'partner', name: 'Partner', createdAt, updatedAt: createdAt, belongsToHousehold: true },
-                    data: { profile_person_schema_version: '1', profile_aktuelles_alter: '67' }
-                },
-                excluded: {
-                    meta: { id: 'excluded', name: 'Ausgeschlossen', createdAt, updatedAt: createdAt, belongsToHousehold: false },
                     data: { profile_person_schema_version: '1', profile_aktuelles_alter: '67' }
                 }
             }
@@ -996,13 +860,10 @@ async function runBalanceUiOrchestrationTests() {
         assertEqual(UIReader.readAllInputs().floorBedarf, 1200,
             'Initialisierung verwendet einen echten Leser mit gültigem Formularbedarf');
         for (const profile of Object.values(registryAfterReload.profiles)) Object.assign(profile.data, { profile_person_schema_version: '1', profile_aktuelles_alter: '67', profile_rente_monatlich: '0' });
-        assertEqual(registryAfterReload.profiles.excluded.meta.belongsToHousehold, false,
-            'Initialisierung erhaelt den gespeicherten Opt-out-Zustand');
         assertEqual(profileList.children.length, 0, 'Balance rendert keine Haushaltscheckboxen');
 
         registryAfterReload.profiles.included.data[CONFIG.STORAGE.LS_KEY] = JSON.stringify(includedState);
         registryAfterReload.profiles.partner.data[CONFIG.STORAGE.LS_KEY] = JSON.stringify(partnerState);
-        registryAfterReload.profiles.excluded.data[CONFIG.STORAGE.LS_KEY] = JSON.stringify(excludedState);
         localStorageRef.setItem('rs_profiles_v1', JSON.stringify(registryAfterReload));
         localStorageRef.setItem(CONFIG.STORAGE.LS_KEY, JSON.stringify({
             ...includedState,
@@ -1018,8 +879,8 @@ async function runBalanceUiOrchestrationTests() {
         }));
 
         const selectedProfiles = loadProfilverbundProfiles();
-        assertEqual(selectedProfiles.length, 2, 'Nur ausgewaehlte Profile werden fuer den Profilverbund geladen');
-        assertEqual(selectedProfiles[0].profileId, 'included', 'Opt-out-Profil wird nicht in Aggregate uebernommen');
+        assertEqual(selectedProfiles.length, 2, 'Beide Haushaltsprofile werden fuer den Profilverbund geladen');
+        assertEqual(selectedProfiles[0].profileId, 'included', 'Erstes Haushaltsprofil steht vorn');
         assertEqual(selectedProfiles[1].profileId, 'partner', 'Zweites Haushaltsprofil bleibt im Profilverbund');
 
         const aggregateInput = {
@@ -1031,8 +892,8 @@ async function runBalanceUiOrchestrationTests() {
             depotLastUpdate: 123456
         };
         handlers.updateProfilverbundGlobals(selectedProfiles, aggregateInput);
-        assertEqual(aggregateInput.tagesgeld, 30000, 'Opt-out-Vermoegen beeinflusst das Haushaltsaggregat nicht');
-        assertEqual(aggregateInput.renteMonatlich, 0, 'Opt-out-Einkommen beeinflusst das Haushaltsaggregat nicht');
+        assertEqual(aggregateInput.tagesgeld, 30000, 'Haushaltsaggregat summiert das Vermoegen beider Profile');
+        assertEqual(aggregateInput.renteMonatlich, 0, 'Haushaltsaggregat summiert das Einkommen beider Profile');
 
         const engineCalls = [];
         window.EngineAPI = {
@@ -1058,11 +919,9 @@ async function runBalanceUiOrchestrationTests() {
         const mergedAction = handlers.mergeProfilverbundActions(runs);
 
         assertEqual(engineCalls.length, 1, 'Engine laeuft im Profilverbund ausschliesslich fuer den Haushalt');
-        assertEqual(runs.length, 2, 'Opt-out-Profil erzeugt keinen Profil-Run');
+        assertEqual(runs.length, 2, 'Je Haushaltsprofil genau ein Profil-Run');
         assertEqual(mergedAction.quellen.length, 0, 'Haushalt ohne Handlungsbedarf erhaelt keine erfundene Profilquelle');
         assertEqual(engineCalls[0].detailledTranches.length, 2, 'Haushaltslauf erhaelt synthetische Tranchen der zwei ausgewaehlten Profile');
-        assert(engineCalls[0].detailledTranches.every(tranche => tranche.sourceProfileId !== 'excluded'),
-            'Opt-out-Profil gelangt nicht in den Haushaltstranchenpool');
         assert(engineCalls[0].detailledTranches.some(tranche => tranche.sourceProfileId === 'included'),
             'Erstes ausgewaehltes Profil besitzt eindeutige Quellenprovenienz');
         assert(engineCalls[0].detailledTranches.some(tranche => tranche.sourceProfileId === 'partner'),
@@ -1171,548 +1030,36 @@ async function runBalanceUiOrchestrationTests() {
             'Auch der zweite reale Write haelt Haushaltsmetadaten aus dem Profil-State heraus');
     }
 
-    console.log('Test 3: Balance import schema, legacy migration and fail-safe orchestration');
+    // Geprüft bleibt die sichtbare Provenienz eines gespeicherten Markt-CSV-Imports.
+    console.log('Test 3: gespeicherte Markt-CSV-Provenienz sichtbar');
     {
-        const validState = {
-            inputs: {
-                aktuellesAlter: 67,
-                floorBedarf: 24000,
-                flexBedarf: 12000,
-                minimumFlexAnnual: 2000,
-                tagesgeld: 50000
-            },
-            lastState: {
-                cumulativeInflationFactor: 1.08,
-                lastInflationAppliedAtAge: 66,
-                taxState: { lossCarry: 500 }
-            }
-        };
-        const currentDocument = createBalanceExportDocument(validState);
-        assertEqual(currentDocument.appId, BALANCE_EXPORT_APP_ID, 'Export nutzt die stabile Balance-App-ID');
-        assertEqual(currentDocument.schema, BALANCE_EXPORT_SCHEMA, 'Export benennt das Balance-State-Schema');
-        assertEqual(currentDocument.schemaVersion, BALANCE_EXPORT_SCHEMA_VERSION, 'Export nutzt die aktuelle Schema-Version');
-        assert(Number.isFinite(new Date(currentDocument.exportedAt).getTime()), 'Export enthaelt einen gueltigen ISO-Zeitpunkt');
-
-        const normalizedCurrent = normalizeBalanceImportDocument(currentDocument);
-        assertEqual(normalizedCurrent.sourceFormat, 'balance-state-v2', 'Aktuelles Exportformat wird eindeutig erkannt');
-        assertEqual(normalizedCurrent.migrated, false, 'Aktuelles Exportformat wird nicht als Legacy markiert');
-        assertEqual(normalizedCurrent.payload.inputs.floorBedarf, 24000, 'Validierung erhaelt gueltige Kernwerte');
-        assertEqual(Object.hasOwn(normalizedCurrent.payload.inputs, 'dynamicFlex'), false,
-            'Ein fehlendes optionales Booleanfeld bleibt fehlend und wird nicht aktiviert');
-        assertEqual(BALANCE_IMPORT_INPUT_SCHEMA_VERSION, 2, 'Der vollständige Eingabevertrag ist explizit versioniert');
-
-        const versionOneDocument = {
-            ...currentDocument,
-            schemaVersion: 1,
-            inputSchemaVersion: 1,
-            payload: {
-                ...validState,
-                inputs: {
-                    ...validState.inputs,
-                    aktuellesAlter: 0,
-                    targetEq: 0,
-                    runwayTargetMonths: 42,
-                    runwayMinMonths: 24,
-                    rebalBand: 0,
-                    tqfAlt: 30,
-                    kirchensteuerSatz: 0.08
-                }
-            }
-        };
-        const normalizedVersionOne = normalizeBalanceImportDocument(versionOneDocument);
-        assertEqual(normalizedVersionOne.sourceFormat, 'balance-state-v1',
-            'Bestehende Version-1-Sicherungen laufen über den benannten Aufwärtsmigrator');
-        assertEqual(normalizedVersionOne.migrated, true, 'Version-1-Sicherungen werden sichtbar als migriert markiert');
-        assertEqual(normalizedVersionOne.payload.inputs.liquidityRunwayYears, 3.5,
-            'Der Version-1-Migrator übernimmt das frühere Runway-Ziel in Jahre');
-        assertEqual(Object.hasOwn(normalizedVersionOne.payload.inputs, 'targetEq'), false,
-            'Der Version-1-Migrator entfernt die nicht mehr wirksame Aktien-Zielquote');
-        assertEqual(Object.hasOwn(normalizedVersionOne.payload.inputs, 'runwayTargetMonths'), false,
-            'Der Version-1-Migrator emittiert kein altes Runway-Zielfeld');
-        assertEqual(Object.hasOwn(normalizedVersionOne.payload.inputs, 'rebalBand'), false,
-            'Der Version-1-Migrator entfernt das mehrdeutige alte Aktien-Rebalancing-Band');
-        assertEqual(normalizedVersionOne.payload.inputs.tqfAlt, 0.3,
-            'Eindeutige historische Prozentschreibweise wird symmetrisch in die Dezimalrate migriert');
-        assertEqual(normalizedVersionOne.payload.inputs.kirchensteuerSatz, 0.08,
-            'Der bereits versionierte Kirchensteuer-Enum bleibt ohne unbelegte Prozentheuristik erhalten');
-        const normalizedOffGridVersionOne = normalizeBalanceImportDocument({
-            ...versionOneDocument,
-            payload: {
-                ...versionOneDocument.payload,
-                inputs: {
-                    ...versionOneDocument.payload.inputs,
-                    runwayTargetMonths: 25
-                }
-            }
-        });
-        assertEqual(normalizedOffGridVersionOne.payload.inputs.liquidityRunwayYears, 2.5,
-            'Ein alter 25-Monats-Wert bleibt importierbar und wird sicherheitsorientiert auf das naechste Halbjahr aufgerundet');
-
-        [
-            { field: 'rebalancingBand', value: 0, expectsWarning: false },
-            { field: 'aktuellesAlter', value: 0, expectsWarning: false },
-            { field: 'inflation', value: 60, expectsWarning: true },
-            { field: 'horizonYears', value: 30.5, expectsWarning: true },
-            { field: 'profilName', value: 'P'.repeat(250), expectsWarning: true },
-            { field: 'flexBudgetYears', value: 12, expectsWarning: true },
-            { field: 'tqfAlt', value: 30, expectsWarning: true },
-            { field: 'liquidityRunwayYears', value: 5000, expectsWarning: true },
-            { field: 'liquidityRunwayYears', value: 1.25, expectsWarning: true }
-        ].forEach(({ field, value, expectsWarning }) => {
-            const exportWithReachableValue = createBalanceExportDocument({
-                ...validState,
-                inputs: { ...validState.inputs, [field]: value }
-            });
-            assertEqual(exportWithReachableValue.schemaVersion, 2,
-                `Erreichbarer Livewert ${field} verhindert den Recovery-Export nicht`);
-            assertEqual(Boolean(exportWithReachableValue.validationWarnings?.length), expectsWarning,
-                `${field} wird entsprechend dem aktuellen Importvertrag als Hinweis inventarisiert`);
-            if (expectsWarning) {
-                assert(exportWithReachableValue.validationWarnings[0].message.includes(field),
-                    `${field} bleibt im Exporthinweis konkret benannt`);
-            }
-        });
-        const zeroBoundaryDocument = createBalanceExportDocument({
-            ...validState,
-            inputs: { ...validState.inputs, targetEq: 0, rebalBand: 0, rebalancingBand: 0 }
-        });
-        const normalizedZeroBoundary = normalizeBalanceImportDocument(zeroBoundaryDocument);
-        assertEqual(Object.hasOwn(normalizedZeroBoundary.payload.inputs, 'targetEq'), false,
-            'Aktueller Export-/Import-Roundtrip entfernt die wirkungslose Aktien-Zielquote');
-        assertEqual(normalizedZeroBoundary.payload.inputs.liquidityRunwayYears, 5,
-            'Aktueller Export-/Import-Roundtrip materialisiert den kanonischen Runway-Default');
-        assertEqual(Object.hasOwn(normalizedZeroBoundary.payload.inputs, 'rebalBand'), false,
-            'Aktueller Export-/Import-Roundtrip entfernt das alte Rebalancing-Feld');
-        assertEqual(normalizedZeroBoundary.payload.inputs.rebalancingBand, 0,
-            'Aktueller Export-/Import-Roundtrip erhält das kanonische Gold-Rebalancing-Band 0');
-        for (const inflationBoundary of [-10, 50]) {
-            const boundaryDocument = createBalanceExportDocument({
-                ...validState,
-                inputs: { ...validState.inputs, inflation: inflationBoundary }
-            });
-            assertEqual(boundaryDocument.validationWarnings?.length || 0, 0,
-                `Inflationsgrenze ${inflationBoundary} bleibt im Export-/Importvertrag inklusive`);
-            const normalizedBoundary = normalizeBalanceImportDocument(boundaryDocument);
-            assertEqual(normalizedBoundary.payload.inputs.inflation, inflationBoundary,
-                `Inflationsgrenze ${inflationBoundary} bleibt im Roundtrip erhalten`);
-        }
-        const rejectedHistoricalInflationDocument = createBalanceExportDocument({
-            ...validState,
-            inputs: { ...validState.inputs, inflation: -10.1 }
-        });
-        assertEqual(rejectedHistoricalInflationDocument.validationWarnings?.[0]?.code, 'invalid_input_bounds',
-            'Balance export marks an inflation value below the live application boundary');
-        let rejectedHistoricalInflation = null;
-        try {
-            normalizeBalanceImportDocument(rejectedHistoricalInflationDocument);
-        } catch (error) {
-            rejectedHistoricalInflation = error;
-        }
-        assertEqual(rejectedHistoricalInflation?.code, 'invalid_input_bounds',
-            'Balance import rejects values that the annual live application path cannot consume');
-        assert(rejectedHistoricalInflation?.message?.includes('Untergrenze -10'),
-            'Balance import names the same lower boundary as the annual live application path');
-        const goldDiagnosticInputs = {
-            ...validState.inputs,
-            goldBasisVermoegen: 100000,
-            goldZielBetrag: 7500,
-            goldFloorBetrag: 1000,
-            goldStrategyDiagnostics: [{
-                profileId: 'default',
-                name: 'Standard',
-                assetBase: 120000,
-                operativeLiquidity: 30000,
-                excludedHealthBucket: 20000,
-                freeAssetBase: 100000,
-                goldAktiv: true,
-                goldZielProzent: 7.5,
-                goldFloorProzent: 1,
-                goldZielBetrag: 7500,
-                goldFloorBetrag: 1000,
-                rebalancingBand: 25,
-                goldSteuerfrei: true
-            }]
-        };
-        const normalizedGoldDiagnostics = normalizeBalanceImportDocument(
-            createBalanceExportDocument({ ...validState, inputs: goldDiagnosticInputs })
-        );
-        assertEqual(normalizedGoldDiagnostics.payload.inputs.goldStrategyDiagnostics.length, 1,
-            'Profilverbund-Golddiagnostik ist Teil des vollständigen persistierten Inputvertrags');
-        const invalidGoldDiagnosticDocument = createBalanceExportDocument({
-            ...validState,
-            inputs: {
-                ...goldDiagnosticInputs,
-                goldStrategyDiagnostics: [{
-                    ...goldDiagnosticInputs.goldStrategyDiagnostics[0],
-                    freeAssetBase: 99999
-                }]
-            }
-        });
-        let invalidGoldDiagnosticError = null;
-        try {
-            normalizeBalanceImportDocument(invalidGoldDiagnosticDocument);
-        } catch (error) {
-            invalidGoldDiagnosticError = error;
-        }
-        assertEqual(invalidGoldDiagnosticError?.code, 'invalid_core_value',
-            'Inkonsistente Profilverbund-Golddiagnostik wird vor DOM und Persistenz blockiert');
-
-        const legacyDocument = {
-            app: CONFIG.APP.NAME,
-            version: 'v21.1 Refactored (Engine v31)',
-            payload: {
-                ...validState,
-                lastState: {
-                    cumulativeInflationFactor: 2.9,
-                    lastInflationAppliedAtAge: null,
-                    taxState: { lossCarry: -1 }
-                }
-            }
-        };
-        const normalizedLegacy = normalizeBalanceImportDocument(legacyDocument);
-        assertEqual(normalizedLegacy.sourceFormat, 'legacy-balance-export-v0', 'Unterstuetztes Legacy-Format laeuft ueber explizite Migration');
-        assertEqual(normalizedLegacy.migrated, true, 'Legacy-Import wird als migriert markiert');
-        assertEqual(normalizedLegacy.payload.lastState.cumulativeInflationFactor, 2.9,
-            'Legacy-Migration erhaelt einen plausiblen kumulierten Inflationsfaktor');
-        assertEqual(normalizedLegacy.payload.lastState.lastInflationAppliedAtAge, 0, 'Legacy-Migration repariert das historische Inflationsalter');
-        assertEqual(normalizedLegacy.payload.lastState.taxState.lossCarry, 0, 'Legacy-Migration repariert den historischen Verlustvortrag');
-
-        const captureImportError = document => {
-            try {
-                normalizeBalanceImportDocument(document);
-                return null;
-            } catch (error) {
-                return error;
-            }
-        };
-        const wealthEntry = { id: 'manual:2026-12-31', asOf: '2026-12-31', reason: 'manual', periodId: null,
-            tagesgeld: 12000, geldmarktEtf: 23000, depotwertAlt: 34000, depotwertNeu: 45000, aktienEtf: 79000, total: 114000 };
-        const wealthHistory = { schemaVersion: 1, entries: [wealthEntry,
-            { ...wealthEntry, id: 'annual:2026', reason: 'annual_close', periodId: 'calendar-year:2026' }] };
-        const wealthDocument = createBalanceExportDocument({ ...validState, wealthHistory });
-        assertEqual(wealthDocument.schemaVersion, 2, 'Das optionale Feld erhöht die äußere Balance-Version nicht');
-        assertEqual(JSON.stringify(normalizeBalanceImportDocument(wealthDocument).payload.wealthHistory), JSON.stringify(wealthHistory), 'Balance-V2-Export und Import erhalten alle Verlauffelder');
-        for (const supported of [currentDocument, versionOneDocument, legacyDocument]) {
-            assertEqual(readWealthHistory(normalizeBalanceImportDocument(supported).payload).entries.length, 0, 'Unterstützte Exporte ohne Feld besitzen einen leeren Verlauf');
-            for (const invalid of [null, undefined, { schemaVersion: 2, entries: [] }, { schemaVersion: 1, entries: [wealthEntry, wealthEntry] },
-                { schemaVersion: 1, entries: [{ ...wealthEntry, total: -1 }] }]) {
-                const error = captureImportError({ ...supported, payload: { ...supported.payload, wealthHistory: invalid } });
-                assert(error instanceof BalanceImportError, 'Auch Legacy-Import prüft ein vorhandenes Verlauffeld strikt');
-                assertEqual(error.code, 'invalid_wealth_history', 'Der Import meldet einen gezielten Verlauffehler');
-            }
-        }
-        const warningExport = createBalanceExportDocument({ ...validState, wealthHistory: { schemaVersion: 1, entries: [{ ...wealthEntry, total: 1 }] } });
-        assertEqual(warningExport.validationWarnings[0].code, 'invalid_wealth_history', 'Der bestehende Recovery-Export kann einen Validierungshinweis transportieren');
-        assertEqual(warningExport.payload.wealthHistory.entries[0].total, 1, 'Der Warnungsexport repariert keine beschädigten Werte');
-
-        const createVersionOneProbe = inputOverrides => ({
-            ...currentDocument,
-            schemaVersion: 1,
-            inputSchemaVersion: 1,
-            payload: {
-                ...validState,
-                inputs: {
-                    ...validState.inputs,
-                    ...inputOverrides
-                }
-            }
-        });
-        [
-            {
-                label: 'unbekannte Zusatzfelder',
-                overrides: { unbekanntesFeld: 1 },
-                code: 'unknown_input_field'
-            },
-            {
-                label: 'Bereichsverletzungen',
-                overrides: { liquidityRunwayYears: 5000 },
-                code: 'invalid_input_bounds'
-            },
-            {
-                label: 'freie Enums',
-                overrides: { horizonMethod: 'wuerfeln' },
-                code: 'invalid_input_value'
-            },
-            {
-                label: 'ueberlange Strings',
-                overrides: { profilName: 'P'.repeat(5000) },
-                code: 'invalid_input_type'
-            },
-            {
-                label: 'unbelegte Kirchensteuer-Prozentschreibweisen',
-                overrides: { kirchensteuerSatz: 8 },
-                code: 'invalid_input_bounds'
-            }
-        ].forEach(({ label, overrides, code }) => {
-            const error = captureImportError(createVersionOneProbe(overrides));
-            assertEqual(error?.code, code,
-                `Version-1-Import blockiert ${label} nach der Migration am vollständigen V2-Vertrag`);
-        });
-        const wrongAppError = captureImportError({ ...currentDocument, appId: 'fremde-app' });
-        assert(wrongAppError instanceof BalanceImportError, 'Falsche App-ID liefert einen kontrollierten Importfehler');
-        assertEqual(wrongAppError.code, 'wrong_app', 'Falsche App-ID ist maschinenlesbar');
-        const wrongVersionError = captureImportError({ ...currentDocument, schemaVersion: 99 });
-        assertEqual(wrongVersionError?.code, 'unsupported_version', 'Nicht unterstuetzte Schema-Version wird blockiert');
-        const wrongInputSchemaError = captureImportError({ ...currentDocument, inputSchemaVersion: 99 });
-        assertEqual(wrongInputSchemaError?.code, 'unsupported_input_schema_version',
-            'Nicht unterstuetzte Eingabevertragsversion wird blockiert');
-        const wrongShapeError = captureImportError({ inputs: validState.inputs });
-        assertEqual(wrongShapeError?.code, 'unknown_shape', 'Unversionierter Rohzustand wird nicht als Legacy erraten');
-        const invalidCoreError = captureImportError({
-            ...currentDocument,
-            payload: { ...validState, inputs: { ...validState.inputs, floorBedarf: -1 } }
-        });
-        assertEqual(invalidCoreError?.code, 'invalid_input_bounds', 'Ungueltige finanzielle Kernwerte werden vor der Mutation blockiert');
-        [0, -1, 20.0001, 99, Number.NaN, Number.POSITIVE_INFINITY].forEach(invalidFactor => {
-            const invalidInflationError = captureImportError({
-                ...currentDocument,
-                payload: {
-                    ...validState,
-                    lastState: { cumulativeInflationFactor: invalidFactor }
-                }
-            });
-            assertEqual(
-                invalidInflationError?.code,
-                'invalid_last_state',
-                `Ungueltiger kumulierter Inflationsfaktor ${String(invalidFactor)} wird vor der Mutation blockiert`
-            );
-        });
-        ['false', '0', 0, 1, null].forEach(value => {
-            const invalidBooleanError = captureImportError({
-                ...currentDocument,
-                payload: {
-                    ...validState,
-                    inputs: { ...validState.inputs, dynamicFlex: value }
-                }
-            });
-            assertEqual(invalidBooleanError?.code, 'invalid_boolean',
-                `Aktuelles Schema blockiert den Nicht-Boolean ${JSON.stringify(value)}`);
-        });
-        const unknownInputError = captureImportError({
-            ...currentDocument,
-            payload: {
-                ...validState,
-                inputs: { ...validState.inputs, unbekanntesFeld: 1 }
-            }
-        });
-        assertEqual(unknownInputError?.code, 'unknown_input_field', 'Nicht inventarisierte Eingabefelder werden fail-closed blockiert');
-        const invalidTrancheError = captureImportError({
-            ...currentDocument,
-            payload: {
-                ...validState,
-                inputs: {
-                    ...validState.inputs,
-                    detailledTranches: [{ schemaVersion: 1, trancheId: 'broken' }]
-                }
-            }
-        });
-        assertEqual(invalidTrancheError?.code, 'invalid_input_value',
-            'Komplexe Eingabefelder werden gegen ihren kanonischen Detailvertrag validiert');
-        const unsupportedLegacyError = captureImportError({ ...legacyDocument, version: 'v20.0' });
-        assertEqual(unsupportedLegacyError?.code, 'unsupported_legacy_version', 'Nicht explizit migrierbare Legacy-Version wird blockiert');
-        const invalidLegacyFieldError = captureImportError({
-            ...legacyDocument,
-            payload: {
-                ...validState,
-                inputs: {
-                    ...validState.inputs,
-                    unbekanntesFeld: 1
-                }
-            }
-        });
-        assertEqual(invalidLegacyFieldError?.code, 'unknown_input_field',
-            'Auch der Legacy-V0-Pfad endet nach der Migration am vollständigen Eingabevertrag');
-
-        const legacyBooleanDocument = {
-            ...legacyDocument,
-            payload: {
-                ...validState,
-                inputs: {
-                    ...validState.inputs,
-                    renteAktiv: 'false',
-                    goldAktiv: '0',
-                    goldSteuerfrei: 0,
-                    dynamicFlex: 'true',
-                    goGoActive: '1',
-                    healthBucketEnabled: 'ja',
-                    decumulation: {
-                        mode: '3_bucket_jilge',
-                        bondTargetFactor: 5,
-                        drawdownTrigger: 15,
-                        bondRefillThresholdPct: 8
-                    }
-                }
-            }
-        };
-        const normalizedLegacyBooleans = normalizeBalanceImportDocument(legacyBooleanDocument);
-        assertEqual(normalizedLegacyBooleans.payload.inputs.renteAktiv, false, 'Legacy-String false wird explizit migriert');
-        assertEqual(normalizedLegacyBooleans.payload.inputs.goldAktiv, false, 'Legacy-String 0 wird explizit migriert');
-        assertEqual(normalizedLegacyBooleans.payload.inputs.goldSteuerfrei, false, 'Legacy-Zahl 0 wird explizit migriert');
-        assertEqual(normalizedLegacyBooleans.payload.inputs.dynamicFlex, true, 'Legacy-String true wird explizit migriert');
-        assertEqual(normalizedLegacyBooleans.payload.inputs.goGoActive, true, 'Legacy-String 1 wird explizit migriert');
-        assertEqual(normalizedLegacyBooleans.payload.inputs.healthBucketEnabled, true, 'Legacy-String ja wird explizit migriert');
-        assertEqual(normalizedLegacyBooleans.payload.inputs.decumulation.bondRefillThreshold, 8,
-            'Legacy-Refill-Alias wird im benannten Legacy-Pfad kanonisiert');
-        assertEqual(Object.hasOwn(normalizedLegacyBooleans.payload.inputs.decumulation, 'bondRefillThresholdPct'), false,
-            'Legacy-Refill-Alias bleibt nicht parallel zum kanonischen Feld erhalten');
-        let invalidExportError = null;
-        try {
-            createBalanceExportDocument({});
-        } catch (error) {
-            invalidExportError = error;
-        }
-        assertEqual(invalidExportError?.code, 'invalid_inputs', 'Export erzeugt keine formal aktuelle, aber fachlich ungueltige Datei');
-
         const documentRef = new MockDocument();
         const localStorageRef = createLocalStorageMock();
         installBrowserGlobals(documentRef, localStorageRef);
         PersistenceFacade.resetPersistenceForTests();
-
-        const errors = [];
-        const errorScopes = [];
-        const toasts = [];
-        UIRenderer.handleActionError = (error, scope) => { errors.push(error); errorScopes.push(scope); };
-        UIRenderer.toast = message => { toasts.push(message); };
-        StorageManager.saveState = () => {};
-        StorageManager.loadState = () => ({ inputs: {} });
-        let replaceCalls = 0;
-        let rollbackCalls = 0;
-        StorageManager.replaceStateFromImport = async payload => {
-            replaceCalls += 1;
-            assertEqual(payload.inputs.floorBedarf, 24000, 'Replace erhaelt nur den validierten Payload');
-            return { ok: true, recoverySnapshotId: 'import-recovery-test' };
-        };
-        StorageManager.rollbackImportReplace = async receipt => {
-            rollbackCalls += 1;
-            assertEqual(receipt.recoverySnapshotId, 'import-recovery-test', 'Rollback nutzt den bestaetigten Recovery-Receipt');
-            return { ok: true };
-        };
-
         const dom = createDomRefs(documentRef);
         initUIReader(dom);
-        dom.inputs.aktuellesAlter.value = '66';
-        UIReader.applyStoredInputs = inputs => {
-            dom.inputs.aktuellesAlter.value = String(inputs.aktuellesAlter);
-            dom.inputs.tagesgeld.value = String(inputs.tagesgeld || 0);
-        };
-        let updateCalls = 0;
-        const handlers = createImportExportHandlers({
-            dom,
-            update: () => { updateCalls += 1; return { ok: true, status: 'success' }; },
-            debouncedUpdate: () => {}
-        });
-
-        StorageManager.loadState = () => ({});
-        handlers.handleExport();
-        assertEqual(errorScopes[0], 'balance-export', 'Exportfehler gehört zum Exportbereich');
-        assert(errors[0].message.includes('[invalid_inputs]'),
-            'Ein strukturell unmöglicher Export reicht den maschinenlesbaren Fehlercode durch');
-        assert(errors[0].message.includes('inputs'),
-            'Ein strukturell unmöglicher Export nennt den konkreten fehlenden Bereich');
-        errors.length = 0;
-        errorScopes.length = 0;
-        StorageManager.loadState = () => ({ inputs: {} });
-
-        let badJsonFileValue = 'C:\\fakepath\\invalid.json';
-        const badJsonTarget = {
-            type: 'file',
-            files: [{ text: async () => '{bad json' }],
-            get value() {
-                return badJsonFileValue;
-            },
-            set value(nextValue) {
-                if (nextValue !== '') {
-                    throw new Error('File inputs may only be cleared programmatically.');
-                }
-                badJsonFileValue = nextValue;
-            }
-        };
-        dom.inputs.importFile = badJsonTarget;
-        await handlers.handleImport({ target: badJsonTarget });
-
-        assertEqual(errors.length, 1, 'JSON-Importfehler wird über handleActionError gemeldet');
-        assertEqual(errorScopes.join(','), 'balance-import', 'JSON-Import behält seinen Fehlerbereich');
-        assert(errors[0].message.includes('kein gültiges JSON'), 'JSON-Import nennt sichere Ursache und Handlungsoption');
-        assertEqual(badJsonTarget.value, '', 'JSON-Dateiauswahl wird nach Fehler zurückgesetzt');
-        assertEqual(replaceCalls, 0, 'Syntaxfehler veraendern keine Live-Daten');
-        assertEqual(updateCalls, 1, 'Syntaxfehler führen nur Wiederherstellungsvorschauen aus');
-
-        errors.length = 0;
-        const wrongAppTarget = {
-            files: [{ text: async () => JSON.stringify({ ...currentDocument, appId: 'fremde-app' }) }],
-            value: 'selected'
-        };
-        await handlers.handleImport({ target: wrongAppTarget });
-        assertEqual(replaceCalls, 0, 'Falsche App-ID erreicht den Replace-Pfad nicht');
-        assertEqual(updateCalls, 2, 'Falsche App-ID führt nur eine weitere Wiederherstellungsvorschau aus');
-        assertEqual(dom.inputs.aktuellesAlter.value, '66', 'Abgewiesener Import laesst die sichtbaren Eingaben unveraendert');
-        assert(errors[0].message.includes('gehört nicht zur Balance-App'), 'App-ID-Fehler enthaelt Ursache ohne Payload-Leak');
-
-        errors.length = 0;
-        const dryRunOptions = [];
-        const dryRunFailHandlers = createImportExportHandlers({
-            dom,
-            update: options => {
-                dryRunOptions.push(options);
-                return { ok: dryRunOptions.length !== 1, status: 'engine_error' };
-            },
-            debouncedUpdate: () => {}
-        });
-        const dryRunFailTarget = {
-            files: [{ text: async () => JSON.stringify(currentDocument) }],
-            value: 'selected'
-        };
-        await dryRunFailHandlers.handleImport({ target: dryRunFailTarget });
-        assertEqual(dryRunOptions.length, 2, 'Fehlgeschlagener Dry-Run berechnet den wiederhergestellten Stand erneut');
-        assertEqual(dryRunOptions[1].mode, BALANCE_UPDATE_MODE.PREVIEW, 'Wiederherstellung bleibt ohne Persistenz');
-        assertEqual(dryRunOptions[0].mode, BALANCE_UPDATE_MODE.PREVIEW,
-            'Erste Engine-Pruefung ist explizit nicht persistent');
-        assertEqual(replaceCalls, 0, 'Fehlgeschlagener Dry-Run schreibt keine Live-Daten');
-        assertEqual(dom.inputs.aktuellesAlter.value, '66', 'Fehlgeschlagener Dry-Run stellt die sichtbaren Eingaben wieder her');
-        assert(errors[0].message.includes('Live-Daten wurden nicht verändert'), 'Dry-Run-Fehler nennt den unveraenderten Zustand');
-
-        errors.length = 0;
-        const successUpdateOptions = [];
-        const successHandlers = createImportExportHandlers({
-            dom,
-            update: options => {
-                successUpdateOptions.push(options);
-                return { ok: true, status: 'success' };
-            },
-            debouncedUpdate: () => {}
-        });
-        const successTarget = {
-            files: [{ text: async () => JSON.stringify(currentDocument) }],
-            value: 'selected'
-        };
-        await successHandlers.handleImport({ target: successTarget });
-        assertEqual(successUpdateOptions.length, 2, 'Gueltiger Import durchlaeuft Dry-Run und persistentes Abschluss-Update');
-        assertEqual(successUpdateOptions[0].mode, BALANCE_UPDATE_MODE.PREVIEW,
-            'Gueltiger Import prueft zuerst ohne Persistenz');
-        assertEqual(successUpdateOptions[1].mode, BALANCE_UPDATE_MODE.PERSIST_INPUTS,
-            'Erst nach Recovery und Replace folgt ein explizites persist_inputs-Update');
-        assertEqual(replaceCalls, 1, 'Gueltiger Import ersetzt den Balance-State genau einmal');
-        assertEqual(rollbackCalls, 0, 'Erfolgreicher Import benoetigt keinen Rollback');
-        assert(toasts.some(message => message.includes('Recovery-Snapshot')), 'Erfolgsmeldung bestaetigt den Recovery-Punkt');
-
-        const jsonLoadState = StorageManager.loadState;
-        const jsonReplaceStateFromImport = StorageManager.replaceStateFromImport;
-        const jsonRollbackImportReplace = StorageManager.rollbackImportReplace;
-        // Erhaltene Parser-/Exportverträge verwenden einen DOM-freien Plan,
+        // Der erhaltene Parservertrag verwendet einen DOM-freien Plan,
         // ohne die entfallene Markt-CSV-Bedienung nachzubilden.
         const csvTargetYear = new Date().getFullYear() - 1;
         const csvExpectedAsOf = `${csvTargetYear}-12-30`;
         const csvSourceFileName = `markt-${csvTargetYear}.csv`;
-        const csvRows = [
-            'Datum;Schluss',
-            `30.12.${csvTargetYear - 3};100`,
-            `30.12.${csvTargetYear - 2};110`,
-            `30.12.${csvTargetYear - 1};120`,
-            `30.12.${csvTargetYear};130`
-        ];
-        const csvPlan = createManualMarketCsvImportPlan(parseMarketDataCsv(csvRows.join('\n')), {
-            mode: 'current', targetYear: csvTargetYear, expectedAsOf: csvExpectedAsOf,
-            instrument: 'VWCE.DE', sourceFileName: csvSourceFileName, currentPeriodYear: csvTargetYear });
+        const csvPlan = {
+            engineValues: { endeVJ: 130, endeVJ_1: 110, endeVJ_2: 95, endeVJ_3: 80, ath: 0, jahreSeitAth: 0 },
+            provenance: {
+                schemaVersion: 1, acquisitionMode: 'manual_csv', periodMode: 'current',
+                periodId: `calendar-year:${csvTargetYear}`, targetYear: csvTargetYear, price: 130,
+                asOf: csvExpectedAsOf, ticker: 'VWCE.DE', instrument: 'VWCE.DE',
+                source: `Manuelle CSV: ${csvSourceFileName}`, sourceType: 'manual_csv',
+                sourceFileName: csvSourceFileName, importedAt: `${csvTargetYear + 1}-01-02T10:00:00.000Z`,
+                coverage: { start: `${csvTargetYear - 3}-12-30`, end: csvExpectedAsOf,
+                    calendarYears: [csvTargetYear - 3, csvTargetYear - 2, csvTargetYear - 1, csvTargetYear], rowCount: 4 },
+                highScope: 'windowHigh',
+                high: { scope: 'windowHigh', value: 130, asOf: csvExpectedAsOf, yearsSince: 0, verifiedAllTimeHighAvailable: false },
+                engineReference: { policy: 'window_high_as_conservative_ath_lower_bound', sourceScope: 'windowHigh', applied: false, value: null, yearsSince: null },
+                ath: { value: null, yearsSince: null, evaluatedAsOf: csvExpectedAsOf, lastHighAsOf: null, scope: 'unavailable_manual_window', engineAvailable: false }
+            }
+        };
         const csvStoredState = { inputs: { aktuellesAlter: 67, floorBedarf: 24000, flexBedarf: 12000, ...csvPlan.engineValues },
             [ANNUAL_MARKET_DATA_META_KEY]: csvPlan.provenance };
         UIReader.renderMarketDataProvenance(csvPlan.provenance);
@@ -1736,48 +1083,6 @@ async function runBalanceUiOrchestrationTests() {
             false,
             'Die steigende CSV dokumentiert, dass ihre Untergrenze nicht als Engine-ATH angewendet wurde'
         );
-        const csvExportDocument = createBalanceExportDocument(csvStoredState);
-        assertEqual(
-            csvExportDocument.payload[ANNUAL_MARKET_DATA_META_KEY].sourceFileName,
-            csvSourceFileName,
-            'JSON-Export erhält die persistierte CSV-Provenienz vollständig'
-        );
-        const versionOneCsvDocument = JSON.parse(JSON.stringify(csvExportDocument));
-        versionOneCsvDocument.schemaVersion = 1;
-        versionOneCsvDocument.inputSchemaVersion = 1;
-        versionOneCsvDocument.payload.inputs.ath = 0;
-        versionOneCsvDocument.payload.inputs.jahreSeitAth = 0;
-        const versionOneMarketMeta = versionOneCsvDocument.payload[ANNUAL_MARKET_DATA_META_KEY];
-        delete versionOneMarketMeta.engineReference;
-        delete versionOneMarketMeta.high.verifiedAllTimeHighAvailable;
-        versionOneMarketMeta.high.engineAthAvailable = false;
-        const migratedVersionOneCsv = normalizeBalanceImportDocument(versionOneCsvDocument);
-        assertEqual(migratedVersionOneCsv.payload.inputs.ath, 0,
-            'Version-1-CSV-Provenienz ohne positiven Fensterabstand bleibt nach Migration ATH-neutral');
-        assertEqual(
-            migratedVersionOneCsv.payload[ANNUAL_MARKET_DATA_META_KEY].engineReference.policy,
-            'window_high_as_conservative_ath_lower_bound',
-            'Der Version-1-Migrator ergänzt die neue Engine-Referenz nachvollziehbar'
-        );
-        assertEqual(
-            migratedVersionOneCsv.payload[ANNUAL_MARKET_DATA_META_KEY].engineReference.applied,
-            false,
-            'Der Version-1-Migrator leitet die gerichtete Anwendung aus Fensterhoch und Schlusskurs ab'
-        );
-        const correctedMarketState = JSON.parse(JSON.stringify(csvStoredState));
-        correctedMarketState.inputs.endeVJ = 131;
-        const correctedMarketExport = createBalanceExportDocument(correctedMarketState);
-        assertEqual(correctedMarketExport.schemaVersion, 2,
-            'Eine manuelle Marktdatenkorrektur verhindert den Recovery-Export nicht');
-        assertEqual(correctedMarketExport.validationWarnings?.[0]?.code, 'invalid_market_provenance',
-            'Eine manuelle Marktdatenkorrektur bleibt im Export als Provenienzabweichung sichtbar');
-        assert(correctedMarketExport.validationWarnings[0].message.includes('Provenienz'),
-            'Der Exporthinweis benennt die abweichende Provenienz statt den Zustand pauschal als beschädigt');
-        const tamperedCsvExport = JSON.parse(JSON.stringify(csvExportDocument));
-        tamperedCsvExport.payload[ANNUAL_MARKET_DATA_META_KEY].highScope = 'allTimeHigh';
-        const tamperedCsvError = captureImportError(tamperedCsvExport);
-        assertEqual(tamperedCsvError?.code, 'invalid_market_provenance',
-            'Ein Export kann windowHigh nicht durch manipulierte Metadaten zum ATH hochstufen');
         assertEqual(dom.outputs.marketDataProvenance.dataset.asOf, csvExpectedAsOf,
             'Erfolgreiche CSV rendert die persistierte Provenienz sichtbar');
         assertEqual(
@@ -1790,95 +1095,6 @@ async function runBalanceUiOrchestrationTests() {
             'false',
             'Die sichtbare Provenienz zeigt die nicht angewendete Engine-Referenz maschinenlesbar'
         );
-
-        StorageManager.loadState = jsonLoadState;
-        StorageManager.replaceStateFromImport = jsonReplaceStateFromImport;
-        StorageManager.rollbackImportReplace = jsonRollbackImportReplace;
-
-        dom.inputs.aktuellesAlter.value = '66';
-        errors.length = 0;
-        let finalUpdateCall = 0;
-        const finalFailureHandlers = createImportExportHandlers({
-            dom,
-            update: () => {
-                finalUpdateCall += 1;
-                return finalUpdateCall !== 2
-                    ? { ok: true, status: 'success' }
-                    : { ok: false, status: 'engine_error' };
-            },
-            debouncedUpdate: () => {}
-        });
-        const finalFailureTarget = {
-            files: [{ text: async () => JSON.stringify(currentDocument) }],
-            value: 'selected'
-        };
-        await finalFailureHandlers.handleImport({ target: finalFailureTarget });
-        assertEqual(replaceCalls, 2, 'Spaeter Fehler tritt nach genau einem weiteren Replace auf');
-        assertEqual(rollbackCalls, 1, 'Spaeter Abschlussfehler rollt den Import automatisch zurueck');
-        assertEqual(dom.inputs.aktuellesAlter.value, '66', 'Rollback stellt auch die sichtbaren Eingaben wieder her');
-        assert(errors[0].message.includes('automatisch wiederhergestellt'), 'Rollback-Erfolg nennt Ursache und Wiederherstellung');
-        assertEqual(finalUpdateCall, 3, 'Nach Finalfehler folgt die Wiederherstellungsvorschau');
-
-        // Echte JSON-Handler: erfolgreiche Vorschau, danach gezielte
-        // Snapshot-/Storage-, Replace-, Final- und Rollbackfehler.
-        for (const failure of ['snapshot', 'replace', 'final', 'rollback', 'preview']) {
-            const rollbackCause = new Error('Synthetischer Rollbackfehler');
-            dom.inputs.aktuellesAlter.value = '66';
-            dom.inputs.tagesgeld.value = '777';
-            const baseline = { age: '66', cash: '777' };
-            let rendered;
-            const modes = [];
-            const sequence = [];
-            let replacements = 0;
-            let rollbacks = 0;
-            let writes = 0;
-            StorageManager.saveState = () => { writes++; };
-            StorageManager.replaceStateFromImport = async () => {
-                replacements++;
-                sequence.push('replace');
-                if (failure === 'snapshot' || failure === 'preview') throw new StorageError('Synthetischer Snapshotfehler');
-                if (failure === 'replace') throw new Error('Synthetischer Replacefehler');
-                return { recoverySnapshotId: 'matrix-recovery' };
-            };
-            StorageManager.rollbackImportReplace = async () => {
-                rollbacks++;
-                sequence.push('rollback');
-                if (failure === 'rollback') throw rollbackCause;
-            };
-            let reported;
-            UIRenderer.handleActionError = (error, scope) => {
-                reported = error;
-                assertEqual(scope, 'balance-import', `${failure}: JSON-Bereich bleibt erhalten`);
-                sequence.push('error');
-                if (failure !== 'preview') assertEqual(JSON.stringify(rendered), JSON.stringify(baseline), `${failure}: Ergebnis ist vor dem Aktionsfehler wiederhergestellt`);
-            };
-            const matrixHandlers = createImportExportHandlers({ dom, update: async options => {
-                modes.push(options.mode);
-                sequence.push(options.mode);
-                await Promise.resolve();
-                if (options.mode === BALANCE_UPDATE_MODE.PERSIST_INPUTS) return { ok: false };
-                if (modes.length > 1 && failure === 'preview') throw new Error('Synthetischer Vorschaufehler');
-                rendered = { age: dom.inputs.aktuellesAlter.value, cash: dom.inputs.tagesgeld.value };
-                if (modes.length === 1) assert(JSON.stringify(rendered) !== JSON.stringify(baseline), `${failure}: Dry-Run zeigt andere Importdaten`);
-                return { ok: true };
-            }, debouncedUpdate: () => {} });
-            const target = { value: 'selected', files: [{ text: async () => JSON.stringify(currentDocument) }] };
-            await matrixHandlers.handleImport({ target });
-            assertEqual(modes.join(','), (failure === 'final' || failure === 'rollback') ? 'preview,persist_inputs,preview' : 'preview,preview', `${failure}: exakte Update-Modi`);
-            assertEqual(sequence.slice(-2).join(','), 'preview,error', `${failure}: abgewartete Vorschau vor Aktionsfehler`);
-            assertEqual(replacements, 1, `${failure}: genau ein Replaceversuch`);
-            assertEqual(rollbacks, (failure === 'final' || failure === 'rollback') ? 1 : 0, `${failure}: Rollbackvertrag bleibt erhalten`);
-            assertEqual(writes, 0, `${failure}: keine zusätzlichen Speicherwrites`);
-            assertEqual(dom.inputs.aktuellesAlter.value, '66', `${failure}: ursprüngliches Alter`);
-            assertEqual(dom.inputs.tagesgeld.value, '777', `${failure}: ursprüngliches Tagesgeld`);
-            assertEqual(target.value, '', `${failure}: Dateifeld wird auch bei Vorschaufehler geleert`);
-            assertEqual(reported.code, failure === 'rollback' ? 'rollback_failed' : failure === 'final' ? 'post_replace_validation_failed' : failure === 'replace' ? 'unexpected_import_error' : 'storage_failed', `${failure}: ursprünglicher Fehlercode`);
-            if (failure === 'rollback') {
-                assertEqual(reported.message, 'Import und Rollback fehlgeschlagen. Punkt „matrix-recovery“ unter Daten & Sicherung zurückholen.', 'Rollbackfehler behält die genaue Nutzermeldung');
-                assertEqual(reported.cause, rollbackCause, 'Der JSON-Import erhält die ursprüngliche Rollbackursache');
-            }
-        }
-
     }
 
     console.log('Test 4: Balance startup renders persistence migration warnings with backend and recovery guidance');
@@ -2222,255 +1438,6 @@ async function runBalanceUiOrchestrationTests() {
         assertEqual(successResult.ok, true, 'Success-Status bleibt mit bestehendem ok-Contract kompatibel');
     }
 
-    console.log('Ordnerknopf: echter Storage-Handler erhält Fehler bis zur bestätigten Verbindung');
-    {
-        const documentRef = new MockDocument();
-        installBrowserGlobals(documentRef, createLocalStorageMock());
-        const dom = createDomRefs(documentRef);
-        dom.outputs.snapshotList = null;
-        delete dom.controls.snapshotStatus;
-        const state = { snapshotHandle: { name: 'bisheriger-ordner' } };
-        const savedClear = UIRenderer.clearActionError;
-        const savedToast = UIRenderer.toast;
-        const savedError = UIRenderer.handleActionError;
-        const savedSet = StorageManager._idbHelper.set;
-        const savedConnect = StorageManager.connectFolder;
-        const deferred = () => {
-            let resolve, reject;
-            const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
-            return { promise, resolve, reject };
-        };
-        try {
-            StorageManager.connectFolder = prevConnectFolder;
-            initStorageManager(dom, state, UIRenderer);
-            const savedGet = StorageManager._idbHelper.get, savedPicker = window.showDirectoryPicker;
-            try {
-                const oldHandle = state.snapshotHandle;
-                delete window.showDirectoryPicker;
-                await StorageManager.initSnapshots();
-                assertEqual(state.snapshotHandle, oldHandle, 'Snapshotstart ohne Ordner-API benötigt keine Balance-Hosts');
-                assertEqual(dom.controls.connectFolderBtn.style.display, 'none',
-                    'Snapshotstart ohne Ordner-API blendet den vorhandenen Ordnerknopf auch ohne Statushost aus');
-                initStorageManager(null, state, UIRenderer);
-                await StorageManager.initSnapshots();
-                assertEqual(state.snapshotHandle, oldHandle, 'Snapshotstart toleriert auch einen fehlenden Ordnerknopf');
-                initStorageManager(dom, state, UIRenderer);
-                window.showDirectoryPicker = async () => {};
-                for (const permission of ['granted', 'denied']) {
-                    const handle = { queryPermission: async options => {
-                        assertEqual(options.mode, 'readwrite', 'Snapshotstart prüft bestehende Schreibberechtigung');
-                        return permission;
-                    } };
-                    StorageManager._idbHelper.get = async key => {
-                        assertEqual(key, 'snapshotDirHandle', 'Snapshotstart liest den bestehenden Handleschlüssel'); return handle;
-                    };
-                    const before = state.snapshotHandle;
-                    await StorageManager.initSnapshots();
-                    assertEqual(state.snapshotHandle, permission === 'granted' ? handle : before,
-                        permission + ': Snapshotstart übernimmt nur ein berechtigtes gespeichertes Handle');
-                }
-            } finally {
-                StorageManager._idbHelper.get = savedGet;
-                if (savedPicker === undefined) delete window.showDirectoryPicker; else window.showDirectoryPicker = savedPicker;
-            }
-            initUIBinder(dom, state, () => {}, () => {});
-            UIBinder.bindUI();
-            const click = dom.controls.connectFolderBtn.listeners.click[0];
-            for (const outcome of ['abort', 'denied', 'storage-error', 'success']) {
-                const oldHandle = state.snapshotHandle;
-                const oldError = { message: 'Bisheriger Snapshotfehler' };
-                const foreignError = { message: 'Fremder Importfehler' };
-                const errors = new Map([['snapshots', oldError], ['balance-import', foreignError]]);
-                const clears = [], toasts = [], writes = [];
-                const picker = deferred(), permission = deferred(), storage = deferred();
-                const permissionStarted = deferred(), storageStarted = deferred();
-                const handle = { requestPermission: options => {
-                    assertEqual(options.mode, 'readwrite', `${outcome}: bestehender Berechtigungsmodus`);
-                    permissionStarted.resolve();
-                    return permission.promise;
-                } };
-                window.showDirectoryPicker = () => picker.promise;
-                UIRenderer.clearActionError = scope => { clears.push(scope); errors.delete(scope); };
-                UIRenderer.toast = message => { toasts.push(message); };
-                UIRenderer.handleActionError = (error, scope) => { errors.set(scope, error); };
-                StorageManager._idbHelper.set = (key, value) => {
-                    writes.push({ key, value });
-                    storageStarted.resolve();
-                    return storage.promise;
-                };
-                const pending = click();
-                const assertPending = phase => {
-                    assertEqual(errors.get('snapshots'), oldError, `${outcome}/${phase}: Fehleridentität erhalten`);
-                    assertEqual(clears.length, 0, `${outcome}/${phase}: kein clearActionError`);
-                    assertEqual(toasts.length, 0, `${outcome}/${phase}: keine Erfolgsmeldung`);
-                    assertEqual(state.snapshotHandle, oldHandle, `${outcome}/${phase}: altes Handle erhalten`);
-                };
-                assertPending('Dialog offen');
-                if (outcome === 'abort') {
-                    picker.reject(Object.assign(new Error('Auswahl abgebrochen'), { name: 'AbortError' }));
-                } else {
-                    picker.resolve(handle);
-                    await permissionStarted.promise;
-                    assertPending('Berechtigung offen');
-                    permission.resolve(outcome === 'denied' ? 'denied' : 'granted');
-                    if (outcome !== 'denied') {
-                        await storageStarted.promise;
-                        assertPending('Speicherung offen');
-                        if (outcome === 'storage-error') storage.reject(new Error('Handle-Speicherfehler'));
-                        else storage.resolve();
-                    }
-                }
-                assertEqual(await pending, undefined, `${outcome}: Knopfbindung behält void-Rückgabe`);
-                assertEqual(errors.get('balance-import'), foreignError, `${outcome}: fremder Bereich bleibt erhalten`);
-                if (outcome === 'success') {
-                    assertEqual(errors.has('snapshots'), false, 'Bestätigte Verbindung entfernt Snapshotfehler');
-                    assertEqual(clears.join(','), 'snapshots', 'Erfolg bereinigt ausschließlich Snapshotbereich');
-                    assertEqual(toasts.join(','), 'Snapshot-Ordner erfolgreich verbunden.', 'Bestehender Erfolgstext erhalten');
-                    assertEqual(state.snapshotHandle, handle, 'Bestätigtes Handle im State');
-                } else {
-                    assertEqual(clears.length, 0, `${outcome}: kein vorzeitiges Bereinigen`);
-                    assertEqual(toasts.length, 0, `${outcome}: kein Erfolg`);
-                    assertEqual(state.snapshotHandle, oldHandle, `${outcome}: Handle unverändert`);
-                    if (outcome === 'abort') assertEqual(errors.get('snapshots'), oldError, 'AbortError erhält identischen Fehler');
-                    else {
-                        assert(errors.get('snapshots') instanceof StorageError, `${outcome}: bestehender StorageError-Vertrag`);
-                        assertEqual(errors.get('snapshots').message, 'Ordner konnte nicht verbunden werden.', `${outcome}: bestehender Fehlertext`);
-                        assertEqual(errors.get('snapshots').context.originalError.message,
-                            outcome === 'denied' ? 'Zugriff auf den Ordner wurde nicht gewährt.' : 'Handle-Speicherfehler',
-                            `${outcome}: ursprüngliche Ursache erhalten`);
-                    }
-                }
-                assertEqual(writes.length, ['success', 'storage-error'].includes(outcome) ? 1 : 0, `${outcome}: bestehender Speicherablauf`);
-                if (writes.length) {
-                    assertEqual(writes[0].key, 'snapshotDirHandle', `${outcome}: bestehender Persistenzschlüssel`);
-                    assertEqual(writes[0].value, handle, `${outcome}: unverändertes Handle gespeichert`);
-                }
-            }
-            assertEqual(await StorageManager.connectFolder(), undefined, 'Echtes connectFolder behält Promise<void> bei Erfolg');
-            window.showDirectoryPicker = async () => { throw Object.assign(new Error('Abbruch'), { name: 'AbortError' }); };
-            assertEqual(await StorageManager.connectFolder(), undefined, 'Echtes connectFolder behält Promise<void> bei Abbruch');
-        } finally {
-            UIRenderer.clearActionError = savedClear;
-            UIRenderer.toast = savedToast;
-            UIRenderer.handleActionError = savedError;
-            StorageManager._idbHelper.set = savedSet;
-            StorageManager.connectFolder = savedConnect;
-            initStorageManager(null, null, null);
-        }
-    }
-
-    console.log('Recovery-Folgeaktion: echter Binder meldet Fehler und navigiert erst nach Aktivierung und bestätigtem Flush');
-    {
-        const { preserveUIBinderStateForTests } = await import('../app/balance/balance-binder.js');
-        const { SnapshotArchive } = await import('../app/shared/snapshot-archive.js');
-        const { getAppTestDate, setAppTestDate } = await import('../app/shared/app-clock.js');
-        const saved = { restoreBinder: preserveUIBinderStateForTests(), date: getAppTestDate(),
-            create: StorageManager.createSnapshot, list: SnapshotArchive.listSnapshots, read: SnapshotArchive.readSnapshot,
-            load: StorageManager.loadState, save: StorageManager.saveState, clear: UIRenderer.clearActionError,
-            error: UIRenderer.handleActionError, toast: UIRenderer.toast, url: global.URL };
-        const restoreAnnualLocks = installAnnualLocks();
-        try {
-            setAppTestDate('2027-01-15');
-            for (const scenario of ['write-failure', 'pending', 'pending-no-id']) {
-                const doc = new MockDocument();
-                installBrowserGlobals(doc, createLocalStorageMock());
-                global.URL = prevURL;
-                const win = window;
-                Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { locks: (await import('./helpers/balance-storage-fixtures.mjs')).createAtomicLockProvider().page() } });
-                win.EngineAPI = EngineAPI;
-                win.location = { href: 'http://localhost/Balance.html' }; win.name = '';
-                doc.defaultView = win; doc.body = new MockElement('body');
-                doc.contains = node => Boolean(node.parentNode);
-                const jobs = [], reports = [];
-                const create = doc.createElement.bind(doc);
-                doc.createElement = tag => {
-                    const node = create(tag);
-                    if (tag === 'a') {
-                        node.dataset.profileHandoffExport = 'false';
-                        Object.defineProperty(node, 'isConnected', { get: () => Boolean(node.parentNode) });
-                        node.closest = () => node;
-                        node.hasAttribute = name => node.getAttribute(name) !== null;
-                        node.click = () => {
-                            assert(node.hasAttribute('data-profile-handoff'), scenario + ': Recovery verwendet den produktiven Handoff');
-                            assertEqual(node.getAttribute('data-profile-handoff-export'), 'false', scenario + ': Recovery exportiert keinen Profilbundle');
-                            for (const click of doc.listeners.click || []) jobs.push(click({ target: node, button: 0,
-                                preventDefault() { this.defaultPrevented = true; } }));
-                        };
-                    }
-                    return node;
-                };
-                const id = scenario === 'pending-no-id' ? undefined : 'synthetic / ä & point';
-                const raw = JSON.stringify({ inputs: { aktuellesAlter: 67 }, lastState: { cumulativeInflationFactor: 1 },
-                    annualPeriodMetadata: { schemaVersion: 1, lastCommittedPeriod: 'calendar-year:2025',
-                        pendingCommit: scenario === 'write-failure' ? null : { periodId: 'calendar-year:2026', phase: 'writes_started', snapshotId: id } } });
-                const sample = readyAnnualFixture();
-                sample.records[CONFIG.STORAGE.LS_KEY] = raw;
-                const records = new Map(Object.entries(sample.records)), points = new Map();
-                let fail = scenario === 'write-failure';
-                PersistenceFacade.resetPersistenceForTests({ name: 'binder-recovery-memory', async open() {},
-                    async loadAll() { return Object.fromEntries(records); },
-                    async listSnapshots() { return [...points.values()]; }, async readSnapshot(id) { return points.get(id); },
-                    async writeSnapshot(point) { points.set(point.id, point); },
-                    async saveBatch({ upserts, deletes }) {
-                        if (fail && upserts.some(([key, value]) => key === CONFIG.STORAGE.LS_KEY && JSON.parse(value).annualPeriodMetadata?.pendingCommit)) {
-                            fail = false; throw new Error('SYNTHETIC_ANNUAL_METADATA_WRITE_FAILED');
-                        }
-                        deletes.forEach(key => records.delete(key)); upserts.forEach(([key, value]) => records.set(key, value));
-                    } });
-                await PersistenceFacade.init({ installLifecycleHooks: false, installTauriCloseHook: false });
-                StorageManager.loadState = prevLoadState;
-                StorageManager.saveState = prevSaveState;
-                const archiveList = saved.list, archiveRead = saved.read;
-                SnapshotArchive.listSnapshots = archiveList; SnapshotArchive.readSnapshot = archiveRead;
-                UIRenderer.clearActionError = () => {}; UIRenderer.toast = () => {};
-                UIRenderer.handleActionError = (error, scope, action) => reports.push({ error, scope, action });
-                const refs = createDomRefs(doc);
-                refs.inputs.profilName.value = 'A'; refs.inputs.aktuellesAlter.value = '67';
-                refs.expenses = { yearSelect: { value: '2026' } };
-                initUIBinder(refs, {}, () => ({ ok: true }), () => {});
-                // Die Vorbereitung ist bestätigt; Recoverycallback und Jahreshandler
-                // stammen vollständig aus der produktiven Binderverdrahtung.
-                const bound = preserveUIBinderStateForTests().handlers;
-                bound.closeCoordinator.prepare = async () => ({});
-                bound.annual.showUpdateResultModal = result => {
-                    assert(!result.confirmed, scenario + ': Recovery täuscht keine Jahresbestätigung vor');
-                    assert(result.recovery, scenario + ': auch ohne Marktergebnisse bleibt der Wiederherstellungsweg sichtbar');
-                };
-                const result = await UIBinder.handleJahresabschluss({ confirmedPreparation: {} });
-                assertEqual(result.status, scenario === 'pending-no-id' ? 'invalid' : 'incomplete_recovery', scenario + ': Periodenvertrag bleibt erhalten');
-                assertEqual(bound.getAnnualModel().occasion.annualState, 'recovery', scenario + ': abschließende Lesung erhält Recoveryvorrang');
-                assertEqual(points.size, scenario === 'write-failure' ? 1 : 0, scenario + ': bestehende Recovery erzeugt keinen zweiten Snapshot');
-                assertEqual(reports.length, 1, scenario + ': genau eine Jahresfehlermeldung');
-                assertEqual(reports[0].scope, 'annual', scenario + ': produktiver Jahresreporter');
-                assertEqual(reports[0].action.label, 'Daten & Sicherung → Wiederherstellungspunkte', scenario + ': konkrete Folgeaktion');
-                const recoveryId = scenario === 'write-failure' ? [...points.keys()][0] : id;
-                if (scenario === 'write-failure') assert(reports[0].error.message.includes('SYNTHETIC_ANNUAL_METADATA_WRITE_FAILED'), 'Ursprünglicher Writefehler bleibt in der Recoverymeldung');
-                let release, started;
-                const gate = new Promise(resolve => { release = resolve; });
-                const flushStarted = new Promise(resolve => { started = resolve; });
-                bindProfileNavigationHandoff({ root: doc, win, guard: getPageNavigationGuard(), ready: async () => true,
-                    exporter: () => { throw new Error('UNEXPECTED_PROFILE_EXPORT'); },
-                    flusher: async () => { started(); await gate; return PersistenceFacade.flush(); } });
-                const before = win.location.href;
-                assertEqual(jobs.length, 0, scenario + ': Jahresfehler löst keine automatische Navigation aus');
-                assertEqual(win.location.href, before, scenario + ': vor Aktivierung bleibt Balance geöffnet');
-                reports[0].action.onActivate();
-                await flushStarted;
-                assertEqual(win.location.href, before, scenario + ': aktivierte Recovery wartet auf bestätigten Flush');
-                release(); await Promise.all(jobs);
-                assertEqual(win.location.href, 'Daten-Sicherung.html' + (recoveryId ? '?punkt=' + encodeURIComponent(recoveryId) : '') + '#wiederherstellung',
-                    scenario + ': echte Binderfolgeaktion erreicht das bestätigte Recoveryziel');
-                assertEqual(doc.body.children.length, 0, scenario + ': temporärer Navigationslink entfernt');
-            }
-        } finally {
-            restoreAnnualLocks(); saved.restoreBinder(); setAppTestDate(saved.date); global.URL = saved.url;
-            StorageManager.createSnapshot = saved.create; SnapshotArchive.listSnapshots = saved.list; SnapshotArchive.readSnapshot = saved.read;
-            StorageManager.loadState = saved.load; StorageManager.saveState = saved.save;
-            UIRenderer.clearActionError = saved.clear; UIRenderer.handleActionError = saved.error; UIRenderer.toast = saved.toast;
-            PersistenceFacade.resetPersistenceForTests();
-        }
-    }
-
     console.log('Balance UI orchestration tests passed');
     console.log('--- Balance UI Orchestration Tests Completed ---');
 }
@@ -2491,9 +1458,6 @@ if (runRequested) {
         if (prevLoadState === undefined) delete StorageManager.loadState; else StorageManager.loadState = prevLoadState;
         if (prevSaveState === undefined) delete StorageManager.saveState; else StorageManager.saveState = prevSaveState;
         if (prevResetState === undefined) delete StorageManager.resetState; else StorageManager.resetState = prevResetState;
-        if (prevConnectFolder === undefined) delete StorageManager.connectFolder; else StorageManager.connectFolder = prevConnectFolder;
-        if (prevReplaceStateFromImport === undefined) delete StorageManager.replaceStateFromImport; else StorageManager.replaceStateFromImport = prevReplaceStateFromImport;
-        if (prevRollbackImportReplace === undefined) delete StorageManager.rollbackImportReplace; else StorageManager.rollbackImportReplace = prevRollbackImportReplace;
         if (prevApplyStoredInputs === undefined) delete UIReader.applyStoredInputs; else UIReader.applyStoredInputs = prevApplyStoredInputs;
         UIRenderer.toast = prevToast;
         UIRenderer.handleActionError = prevHandleError;
@@ -2511,124 +1475,12 @@ if (runRequested) {
     }
 }
 
-// Produktiver Export-/Importvertrag des bereinigten zentralen Personenbestands.
-{
-    const { stripBalancePersonInputs } = await import('../app/profile/profile-person-data.js');
-    const state = stripBalancePersonInputs({ inputs: { aktuellesAlter: 67, renteMonatlich: 1234.567,
-        sonstigeEinkuenfte: 0, renteAktiv: true, kirchensteuerSatz: .09, sparerPauschbetrag: 0,
-        floorBedarf: 24000, flexBedarf: 6000, tagesgeld: 10000 }, lastState: { cumulativeInflationFactor: 1 } });
-    const document = createBalanceExportDocument(state);
-    assert(!document.validationWarnings?.length, 'Bereinigter Balance-Export erzeugt keine falsche Alterswarnung');
-    const restored = normalizeBalanceImportDocument(document).payload;
-    assert(!Object.hasOwn(restored.inputs, 'aktuellesAlter'), 'Zentraler Balance-Roundtrip erzeugt keine eigene Alterseingabe');
-    assertEqual(restored.personInputEvidence.renteMonatlich, 1234.567, 'Balance-Roundtrip erhält den alten Ergebnisbeleg präzise');
-    assertEqual(restored.inputs.floorBedarf, 24000, 'Zentraler Roundtrip erhält die bestehenden Fachinputs');
-}
-
-// Vor Profil-/Planbereitschaft und vor abgeschlossenem Start keine Sicherungsnavigation.
-{
-    const { functionSource } = await import('./designsystem-selection-dom.mjs');
-    const body = functionSource('app/balance/balance-main.js', 'init');
-    for (const outcome of ['ready', 'recovery', 'deferred']) {
-        const listeners = new Map(), targets = [];
-        const win = { location: { hash: '#snapshot-management' }, addEventListener: (name, fn) => listeners.set(name, fn) };
-        const doc = { getElementById: () => null, addEventListener() {} };
-        let release, releasePlan, profileStarted = false, planStarted = false;
-        const profileReady = new Promise(resolve => { release = resolve; });
-        const planReady = new Promise(resolve => { releasePlan = resolve; });
-        const boundary = new Error('Synthetische Grenze nach Profilbereitschaft');
-        const init = new Function('deps', `const { window, document, initPersistence, initializeProfilePage, initializeHouseholdPlanPage,
-            createBlockedUpdateResult, showPersonDataStatus, readBalancePersonStatus,
-            openBalanceDataTarget, consumeAnnualRetry, getPersistenceStatus, UIBinder } = deps;
-            async ${body}; return init;`)({
-            window: win, document: doc, initPersistence: async () => {}, UIBinder,
-            initializeProfilePage: () => { profileStarted = true; return profileReady; },
-            initializeHouseholdPlanPage: () => { planStarted = true; return planReady; },
-            createBlockedUpdateResult: reason => ({ reason }),
-            showPersonDataStatus: () => {}, readBalancePersonStatus: () => ({ ready: false }),
-            openBalanceDataTarget: target => targets.push(target), consumeAnnualRetry: () => null,
-            getPersistenceStatus: () => { throw boundary; }
-        });
-        const pending = init().catch(error => { if (error !== boundary) throw error; return { reason: 'past_profile_gate' }; });
-        await Promise.resolve();
-        assert(profileStarted, `${outcome}: Profilstart wurde erreicht`);
-        assertEqual(listeners.size, 0, `${outcome}: ausstehender Profilstart installiert keinen Hashlistener`);
-        assertEqual(targets.length, 0, `${outcome}: ausstehender Profilstart leitet keinen alten Sicherungshash weiter`);
-        if (outcome === 'deferred') win.__personMigrationDeferred = true;
-        release(outcome !== 'recovery');
-        for (let i = 0; i < 10; i++) await Promise.resolve();
-        assertEqual(planStarted, outcome === 'ready', `${outcome}: nur bestätigte Profilbereitschaft startet die Planumstellung`);
-        assertEqual(listeners.size, outcome === 'ready' ? 1 : 0, `${outcome}: Ausgabenweiterleitung steht vor der Planumstellung bereit`);
-        assertEqual(targets.length, 0, `${outcome}: ausstehende Planumstellung navigiert nicht`);
-        releasePlan({ status: 'unchanged' });
-        assertEqual((await pending).reason, outcome === 'ready' ? 'past_profile_gate' : outcome === 'recovery' ? 'profile_recovery' : 'person_data_deferred', `${outcome}: bestehende Startgrenze bleibt erhalten`);
-        assertEqual(listeners.size, outcome === 'ready' ? 1 : 0, `${outcome}: vor Ende des Starts bleibt nur der Ausgabenlistener`);
-        assertEqual(targets.length, 0, `${outcome}: vor Ende des Starts wird kein Sicherungshash weitergeleitet`);
-    }
-}
-
-// Direktaufruf wartet auf die echte Startfolge einschließlich asynchroner Startwrites.
-{
-    const { functionSource } = await import('./designsystem-selection-dom.mjs');
-    const body = functionSource('app/balance/balance-main.js', 'init');
-    for (const hash of ['#snapshot-management', '']) {
-        const listeners = [], targets = [], steps = [];
-        const win = { location: { hash }, addEventListener: (name, fn) => listeners.push([name, fn]) };
-        const doc = { getElementById: () => null, querySelectorAll: () => [], addEventListener() {} };
-        let releaseSummary, releaseFlush;
-        const overviewPersistence = new Promise(resolve => { releaseSummary = resolve; });
-        const flush = new Promise(resolve => { releaseFlush = resolve; });
-        const result = { ok: true, overviewPersistence };
-        const deps = {
-            window: win, document: doc, tranchenStorageBound: false,
-            initPersistence: async () => {}, initializeProfilePage: async () => true,
-            initializeHouseholdPlanPage: async () => {}, consumeAnnualRetry: () => null,
-            getPersistenceStatus: () => ({}), initVersionHandshake: () => ({ version: { api: '31.0' } }),
-            renderPersistenceStartupWarning() {}, initializeBalanceWealthHistory() {},
-            dom: { wealthHistory: {}, inputs: {}, outputs: { printFooter: { dataset: {} } } },
-            initUIReader() {}, initStorageManager() {}, initUIRenderer() {}, initUIBinder() {},
-            StorageManager: { loadState: () => ({ inputs: {} }), initSnapshots() {} },
-            UIReader: { applyStoredInputs() {}, applyHouseholdPlanInputs() {}, renderMarketDataProvenance() {} },
-            UIRenderer: {}, UIBinder: { bindUI() {} }, appState: {}, debouncedUpdate() {},
-            refreshBalanceWealthHistory() {}, profileSyncHandlers: { syncProfileDerivedInputs() {} },
-            syncTranchenToInputs() {}, initBalancePlanTrial() {}, initDynamicFlexControls() {},
-            ANNUAL_MARKET_DATA_META_KEY: 'annualMarketDataMeta', BALANCE_UPDATE_MODE: { PREVIEW: 'preview' },
-            update: () => { steps.push('preview'); return result; },
-            profilverbundHandlers: { initProfilverbundBalance: () => steps.push('household') },
-            parseOverviewTarget: () => null,
-            PersistenceFacade: { flush: () => { steps.push('flush'); return flush; } },
-            openBalanceDataTarget: target => { steps.push('handoff'); targets.push(target); }
-        };
-        const init = new Function(...Object.keys(deps), `async ${body}; return init;`)(...Object.values(deps));
-        const pending = init();
-        for (let i = 0; i < 20; i++) await Promise.resolve();
-        assertEqual(steps.join(','), 'preview,household', 'Startprojektion und Haushaltsanzeige sind vor der Weiterleitung fertig');
-        assertEqual(targets.length, 0, 'Ausstehender Summarywrite startet keine Sicherungsübergabe');
-        releaseSummary(true);
-        for (let i = 0; i < 20; i++) await Promise.resolve();
-        assertEqual(targets.length, 0, 'Ausstehender Startflush startet keine Sicherungsübergabe');
-        assertEqual(steps.includes('flush'), hash !== '', 'Nur der direkte Sicherungshash wartet zusätzlich auf den Startflush');
-        releaseFlush(true);
-        assertEqual(await pending, result, 'Weiterleitung erhält das Ergebnis der ersten Vorschau');
-        assertEqual(targets.join(','), hash ? '#wiederherstellung' : '', 'Direktaufruf leitet erst nach abgeschlossenem Start weiter');
-        assertEqual(steps.join(','), hash ? 'preview,household,flush,handoff' : 'preview,household', 'Startwrites sind vor der geschützten Übergabe bestätigt');
-        win.location.hash = '#snapshot-management';
-        for (const [name, listener] of listeners) if (name === 'hashchange') listener();
-        assertEqual(targets.at(-1), '#wiederherstellung', 'Späterer Sicherungshash nutzt weiterhin denselben geschützten Weg');
-        win.location.hash = '#anderes-ziel';
-        const count = targets.length;
-        for (const [name, listener] of listeners) if (name === 'hashchange') listener();
-        assertEqual(targets.length, count, 'Andere Hashziele starten keine Sicherungsweiterleitung');
-    }
-}
-
 // Zentrale Ziele durchlaufen den echten Handoff ohne alte Karten-/Knopfanker.
 {
-    const { openBalanceDataTarget } = await import('../app/balance/balance-binder.js');
     const { openOverviewBackupTarget } = await import('../app/overview/overview-renderer.js');
     const { createNavigationGuard } = await import('../app/shared/navigation-guard.js');
     const { createPresentationTestDocument } = await import('./designsystem-source-contract.mjs');
-    for (const source of ['balance', 'balance-no-id', 'overview']) for (const outcome of ['success', 'false', 'reject', 'blocked']) {
+    for (const source of ['overview']) for (const outcome of ['success', 'false', 'reject', 'blocked']) {
         const doc = createPresentationTestDocument(), events = new Map(), jobs = [];
         const win = { location: { href: 'http://localhost/' + (source.startsWith('balance') ? 'Balance.html' : 'index.html') }, name: '' };
         doc.addEventListener = (name, fn) => events.set(name, fn);
@@ -2653,14 +1505,12 @@ if (runRequested) {
             exporter: () => { exports++; }, onFailure: caught => error = caught,
             flusher: async () => { flushes++; await gate; if (outcome === 'reject') throw new Error('SYNTHETIC_FLUSH_FAILED'); return outcome !== 'false'; } });
         const before = win.location.href;
-        if (source.startsWith('balance')) openBalanceDataTarget('#wiederherstellung', source === 'balance' ? 'synthetic & point' : undefined, doc);
-        else openOverviewBackupTarget(doc, '#fullBackupImportBtn');
+        openOverviewBackupTarget(doc, '#fullBackupImportBtn');
         for (let i = 0; i < 30; i++) await Promise.resolve();
         assertEqual(win.location.href, before, 'Zentraler Balancezugang wartet auf den geschützten Flush');
         assertEqual(flushes, outcome === 'blocked' ? 0 : 1, source + '/' + outcome + ': Commit sperrt den Navigationsflush');
         release(); await Promise.all(jobs);
-        const expected = source === 'balance' ? 'Daten-Sicherung.html?punkt=synthetic%20%26%20point#wiederherstellung'
-            : source === 'balance-no-id' ? 'Daten-Sicherung.html#wiederherstellung' : 'Daten-Sicherung.html#fullBackupImportBtn';
+        const expected = 'Daten-Sicherung.html#fullBackupImportBtn';
         assertEqual(win.location.href, outcome === 'success' ? expected : before, source + '/' + outcome + ': nur bestätigte Navigation erreicht das konkrete Ziel');
         assertEqual(exports, 0, source + '/' + outcome + ': lokaler Sicherungszugang exportiert keinen Profilbundle');
         assertEqual(Boolean(error), ['false', 'reject'].includes(outcome), source + '/' + outcome + ': Flushfehler bleibt sichtbar');

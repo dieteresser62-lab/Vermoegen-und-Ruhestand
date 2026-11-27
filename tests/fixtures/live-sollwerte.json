@@ -1,0 +1,54 @@
+{
+  "beschreibung": "Ergebnis-Schnappschüsse des Live-Stands (Backtests bis zum Endjahr, Monte Carlo); neu erzeugt mit npm run jahresdaten:sollwerte",
+  "testdatum": "2026-10-28",
+  "datenstand": {
+    "endYear": 2025,
+    "revision": "2026-08-01.4",
+    "contentHash": "c79350c5abf2dee2feeaae65c88ed5e58487f878cb598fdffc132fbf48d01e79",
+    "manifestHash": "7ee83d2c04ece133903fb8617f9da4448979b602c3b03649eefe4cd0d2ff62fb"
+  },
+  "ergebnisse": {
+    "backtest-max-erika": {
+      "zeitraum": [
+        2000,
+        2025
+      ],
+      "letztesJahr": 2025,
+      "zeilen": 26,
+      "endvermoegen": 1709642.94,
+      "entnahmen": 429000,
+      "steuern": 29571.7,
+      "sha256": "b278d476405181fd44e675ecbd7b96eb61e3f0efe541d62302b29372cdab260f"
+    },
+    "monteCarlo-max-erika": {
+      "pfade": 40,
+      "saat": 12345,
+      "capeZiehung": false,
+      "sha256": "4816fa79907e56cb979d34167459fd7539689def05f0f39152e6290372ac9b03"
+    },
+    "monteCarlo-cape-max-erika": {
+      "pfade": 40,
+      "saat": 12345,
+      "capeZiehung": true,
+      "sha256": "4171f8488a52eb93093735c89d8072685906b96ec445eaf9c46fb07681dbd459"
+    },
+    "backtest-renate": {
+      "zeitraum": [
+        2000,
+        2025
+      ],
+      "letztesJahr": 2025,
+      "zeilen": 26,
+      "endvermoegen": 69540.2,
+      "entnahmen": 372974.44,
+      "steuern": 27051.03,
+      "sha256": "9ce4685c75c7a9fc5c8a93f3e1454950afd7d888f48cd7a2e70bcf8567853a61"
+    },
+    "monteCarlo-renate": {
+      "pfade": 40,
+      "saat": 12345,
+      "capeZiehung": false,
+      "sha256": "54f16fc4b571eb522d76ac08bec484af19b2b3c2579248b1b3a5f79b86eabe7f"
+    }
+  }
+}

@@ -24,10 +24,4 @@ export const MONTE_CARLO_SNAPSHOT_POLICY = Object.freeze({
     promotionRule: 'current-reference-remains-null-until-external-approval'
 });
 
-// The time-boxed V1 read-compatibility window ended with Slice 11. Keeping the
-// frozen registry as an empty public contract lets readers expose the same
-// compatibility shape without recognizing removed KPI aliases.
-/** @type {readonly {path:string;replacement:string;removalTarget:string}[]} */
-export const MONTE_CARLO_LEGACY_READ_ALIASES = Object.freeze([]);
-
 export const BATCH_STATUSES = new Set(['completed', 'technical_error']);

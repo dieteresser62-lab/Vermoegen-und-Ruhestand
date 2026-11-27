@@ -1,5 +1,14 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { fz1References } from './helpers/fz-1-expectations.mjs';
+import { readJA1References } from './helpers/ja-1-expectations.mjs';
+import { readHP4References } from './helpers/hp-4-expectations.mjs';
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import { readVB1References } from './helpers/vb-1-expectations.mjs';
+import { readRK1MergeReferences } from './helpers/rk-1-merge-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
 import { readLE1References } from './helpers/le-1-expectations.mjs';
 import { readEV1bReferences } from './helpers/ev-1b-expectations.mjs';
+const readFZ1Reference = fz1References(import.meta.url);
 const readZG1References = value => readEV1bReferences(readBeforeEV1bReferences(value));
 import { readZG1References as readBeforeEV1bReferences } from './helpers/zg-1-expectations.mjs';
 import { readEV1References as readBeforeZG1References } from './helpers/ev-1-expectations.mjs';
@@ -17,11 +26,12 @@ import { createHash } from 'node:crypto';
 import { inputs, runFixture } from './extended/parity-replay-fixture.mjs';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
 import { dynamicFlexPresetPatch } from '../app/shared/dynamic-flex-presets.js';
-import { normalizeWidowOptions } from '../app/simulator/simulator-sweep-utils.js';
+import { normalizeWidowOptions } from '../app/simulator/simulator-run-utils.js';
 import { annualData } from '../app/simulator/simulator-data.js';
 import { EngineAPI } from '../engine/index.mjs';
 
 import { readFI1References } from './helpers/fi-1-expectations.mjs';
+import { readKR1bReferences } from './helpers/kr-1b-expectations.mjs';
 // BK-2-Referenz mit FR-20/25/26 und korrigierten Protokollfeldern. Vollständige Jahreslogs,
 // keine Zeitmessungen/Herkunftshashes. MC enthält Todesfälle: ab FF-C gelten
 // dort FR-21–24/27; household-payout-regression prüft zusätzlich einen unbetroffenen Haushalt. Synthetischer Haushalt ohne Kirchensteuer/Pflege;
@@ -59,8 +69,8 @@ try {
             monteCarloParams: { anzahl: 1, maxDauer: 35, methode: 'regime_markov', seed: 12345 },
             runRange: { start: 0, count: 1 }, logIndices: [0], useCapeSampling: false, engine: EngineAPI });
         assertEqual(mc.financialMetricsValid, true, `${preset}: MC auswertbar`);
-        assertEqual(hash({ rows: backtest.rows, outcome: backtest.outcome }), readLE1References(readQSCReferences(readVF2BReferences(readGL1References(readAN1Hash(readJB2Hash(expected[preset].backtest)))))), `${preset}: Backtest entspricht BK-2-Referenz`);
-        assertEqual(hash(mc.runMeta[0].logDataRows), readFI1References(readLE1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readJB2Hash(expected[preset].mc)))))))))), `${preset}: MC-Pfad 0 mit FR-21–24/27`);
+        assertEqual(hash({ rows: backtest.rows, outcome: backtest.outcome }), readFZ1Reference(readKR1cReferences(readRK1MergeReferences(readVB1References(readKR1bReferences(readLE1References(readQSCReferences(readVF2BReferences(readGL1References(readAN1Hash(readJB2Hash(expected[preset].backtest))))))))))), `${preset}: Backtest entspricht BK-2-Referenz`);
+        assertEqual(hash(mc.runMeta[0].logDataRows), readFZ1Reference(readJA1References(readHP4References(readKR1cReferences(readRK1MergeReferences(readVB1References(readKR1bReferences(readFI1References(readLE1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readJB2Hash(expected[preset].mc))))))))))))))))), `${preset}: MC-Pfad 0 mit FR-21–24/27`);
     }
 } finally {
     annualData.splice(0, annualData.length, ...original);

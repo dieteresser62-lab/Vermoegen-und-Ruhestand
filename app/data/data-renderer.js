@@ -1,10 +1,9 @@
 import { storageBackendText } from './data-storage.js';
-import { snapshotOccasion } from '../shared/snapshot-retention.js';
-import { snapshotTitle, snapshotBlockReason, snapshotGroups, isArchivedTrialPoint } from './data-snapshot-presentation.js';
+import { isVisibleRestorePoint } from '../shared/snapshot-archive.js';
+import { snapshotTitle, snapshotTime } from './data-restoration.js';
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
 import { bindInfoPopovers } from '../shared/designsystem-info-popover.js';
 import { PROBELAUF_RESTORE_HINT } from '../shared/probelauf-runtime.js';
-import { snapshotDisplayPoints, snapshotPointRemoved, applySnapshotFeedback } from './data-snapshot-feedback.js';
 
 const date = raw => new Date(raw).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' });
 const bytes = value => value === null || value === undefined ? 'nicht verfügbar' : value > 0 && value < 100000 ? '< 0,1 MB' : formatDisplayNumber(value / 1000000, { fractionDigits: 1 }) + ' MB';
@@ -15,10 +14,9 @@ const list = (/** @type {string[]} */ items) => items.length > 1
     ? `${items.slice(0, -1).join(', ')} ${items.some(item => item.includes(' und ')) ? 'sowie' : 'und'} ${items.at(-1)}` : items[0] || '';
 const DATIVE = Object.freeze(/** @type {Record<string, string>} */ ({ 'Monatsabschlüsse': 'Monatsabschlüssen', 'Tagesgeld-Einträge': 'Tagesgeld-Einträgen', 'Einkünfte': 'Einkünften' }));
 
-/** GH-1 Punkt 5 (F-06): Änderungen seit der letzten Sicherung, auch an Haushalts- und Planwerten. Kennt die alte Sicherung (Version 1) diese
- * Bereiche nicht, heißt es „seit der letzten Sicherung nicht feststellbar“ statt einer Entwarnung.
- * @param {any} changes @returns {string} */
-export function backupChangesText(changes) {
+/** Gemeinsame Auswertung für Text und Überschrift: genannte Änderungen, geprüfte und nicht feststellbare Bereiche.
+ * @param {any} changes */
+function backupChangeParts(changes) {
     const names = { months: ['Monatsabschluss', 'Monatsabschlüsse'], cash: ['Tagesgeld-Eintrag', 'Tagesgeld-Einträge'], tranches: ['Tranche', 'Tranchen'] };
     const parts = [];
     for (const key of Object.keys(names)) {
@@ -33,9 +31,37 @@ export function backupChangesText(changes) {
     const unknownAreas = areas ? areaKeys.filter(key => areas[key] === 'unknown').map(key => AREA_NAMES[key]) : areaKeys.map(key => AREA_NAMES[key]);
     if (changedAreas.length) parts.push(`${list(changedAreas)} geändert`);
     const checked = ['Monatsabschlüsse', 'Tagesgeld-Einträge', 'Tranchen', ...areaKeys.filter(key => !unknownAreas.includes(AREA_NAMES[key])).map(key => AREA_NAMES[key])];
+    return { parts, checked, unknownAreas };
+}
+
+/** GH-1 Punkt 5 (F-06): Änderungen seit der letzten Sicherung, auch an Haushalts- und Planwerten. Kennt die alte Sicherung (Version 1) diese
+ * Bereiche nicht, heißt es „seit der letzten Sicherung nicht feststellbar“ statt einer Entwarnung.
+ * @param {any} changes @returns {string} */
+export function backupChangesText(changes) {
+    const { parts, checked, unknownAreas } = backupChangeParts(changes);
     const unknown = unknownAreas.length ? ` ${list(unknownAreas)}: seit der letzten Sicherung nicht feststellbar.` : '';
     return parts.length ? `${parts.join(', ')}. Geprüft: ${list(checked)}.${unknown}`
         : `Keine Änderungen in ${list(checked.map(name => DATIVE[name] || name))}.${unknown}`;
+}
+
+/** AK-1: Die Überschrift passt zum Text darunter. „geändert:“ nur, wenn der Text Änderungen nennt; „unverändert“ nur,
+ * wenn alle Bereiche geprüft sind. Ohne Sicherung oder mit nicht feststellbaren Bereichen bleibt die allgemeine Überschrift.
+ * @param {any} changes @returns {string} */
+export function backupChangesTitle(changes) {
+    if (!changes) return 'Vollsicherung als Datei';
+    const { parts, unknownAreas } = backupChangeParts(changes);
+    return parts.length ? 'Seit der letzten Sicherung geändert:'
+        : unknownAreas.length ? 'Vollsicherung als Datei' : 'Seit der letzten Sicherung unverändert';
+}
+
+/** ST7-FIX (Gutachten ST7 P2-1, Befund 1047): Der Kopf nennt, was eingespielt wurde. Nur eine Vollsicherung trägt ihr Dateidatum als
+ * Sicherungszeit. Bei einer Übergabe- oder Wiederherstellungsdatei folgt die letzte Vollsicherung wie auf der Karte.
+ * @param {import("../../typcheck/data-ui.js").DataModel} model @param {{at: string, importedAt: string}} imported @returns {string} */
+function backupImportText(model, imported) {
+    const when = `vom ${day(imported.at)} eingespielt am ${day(imported.importedAt)}`;
+    if (model.lastBackup && Date.parse(model.lastBackup) === Date.parse(imported.at)) return `Sicherung ${when}`;
+    return `Datei ${when} · ${model.lastBackup ? `letzte Vollsicherung: ${day(model.lastBackup)}`
+        : model.backupUnknown ? 'Sicherungszeit unbekannt' : 'noch keine Vollsicherung'}`;
 }
 
 /**
@@ -46,12 +72,13 @@ export function backupChangesText(changes) {
 export function renderDataPage(doc, model) {
     const set = (id, text) => { const host = doc.getElementById(id); if (host) host.textContent = text; };
     const warning = model.age.warning;
-    const backupState = model.backupUnknown ? 'unknown' : warning ? 'warning' : model.lastBackup ? 'ok' : 'unknown';
+    const backupState = model.trialActive || model.backupUnknown ? 'unknown' : warning ? 'warning' : model.lastBackup ? 'ok' : 'unknown';
     for (const id of ['dataBackupTile', 'dataBackupBox', 'dataBackupContextChip']) {
         const node = doc.getElementById(id); if (node) node.dataset.state = backupState;
     }
     const days = model.age.days === null ? null : Math.floor(model.age.days);
-    const ageText = days === null ? (model.backupUnknown ? 'Sicherungszeit unbekannt' : 'Noch keine Vollsicherung') : days === 0 ? 'heute' : `vor ${count(days, 'Tag', 'Tagen')}`;
+    const ageText = model.trialActive ? 'Im Spielbereich gesperrt'
+        : days === null ? (model.backupUnknown ? 'Sicherungszeit unbekannt' : 'Noch keine Vollsicherung') : days === 0 ? 'heute' : days === 1 ? 'gestern' : `vor ${days} Tagen`;
     set('dataBackupAge', ageText);
     for (const id of ['fullBackupBtn', 'fullBackupImportBtn']) {
         const button = /** @type {HTMLButtonElement} */ (doc.getElementById(id));
@@ -60,9 +87,13 @@ export function renderDataPage(doc, model) {
     }
     set('dataBackupReason', model.trialActive ? 'Im Spielbereich nicht möglich. Deine echten Daten bleiben unverändert.' : '');
     doc.getElementById('dataBackupReason').hidden = !model.trialActive;
-    set('dataBackupDate', model.trialActive ? 'Deine echten Daten bleiben unverändert.' : model.lastBackup ? date(model.lastBackup) : model.backupUnknown ? 'Sicherungsdatum nicht verlässlich lesbar.' : 'Sichere deine Daten als Datei.');
-    set('dataBackupTitle', model.changes ? 'Seit der letzten Sicherung geändert:' : 'Vollsicherung als Datei');
-    set('dataBackupContext', model.lastBackup ? 'Gesichert am ' + day(model.lastBackup) : ageText);
+    // Eine nur angestoßene Sicherung zählt, die Ablage hat aber niemand bestätigt.
+    const triggered = Boolean(model.lastBackup) && model.backupDelivery === 'angestossen';
+    set('dataBackupDate', model.trialActive ? 'Deine echten Daten bleiben unverändert.' : model.lastBackup ? date(model.lastBackup) + (triggered ? ' · Sicherung angestoßen – bitte Ablage prüfen' : '') : model.backupUnknown ? 'Sicherungsdatum nicht verlässlich lesbar.' : 'Sichere deine Daten als Datei.');
+    set('dataBackupTitle', backupChangesTitle(model.changes));
+    set('dataBackupContext', model.trialActive ? 'Vollsicherung im Spielbereich gesperrt'
+        : model.backupImport ? backupImportText(model, model.backupImport)
+        : model.lastBackup ? (triggered ? 'Sicherung angestoßen am ' : 'Gesichert am ') + day(model.lastBackup) : ageText);
     set('dataHouseholdContext', model.householdNames ? 'Haushalt: ' + (model.householdNames.join(' + ') || 'Noch keine Personen') : 'Haushalt: nicht verfügbar');
     set('dataBackupChanges', model.changes ? backupChangesText(model.changes) : '');
     const backupChanges = doc.getElementById('dataBackupChanges');
@@ -81,106 +112,8 @@ export function renderDataPage(doc, model) {
     } else content.textContent = 'Inhalt nicht verlässlich lesbar.';
     set('dataModelTechnical', model.error || '');
     set('dataTechnicalProfile', model.activeProfileId ? `Profil-Kennung: ${model.activeProfileId}` : 'Profil-Kennung nicht verfügbar');
-    const snapshotTile = doc.getElementById('dataSnapshotTile');
-    const archivedPoints = model.snapshots.filter(point => isArchivedTrialPoint(point, model)).length;
-    const blockedPoints = model.snapshots.filter(point => !isArchivedTrialPoint(point, model) && snapshotBlockReason(point, model)).length;
-    if (snapshotTile) snapshotTile.dataset.state = model.archiveError || !model.snapshots.length ? 'unknown' : blockedPoints ? 'warning' : 'ok';
-    set('dataSnapshotCount', model.archiveError ? 'Nicht verfügbar' : model.snapshots.length
-        ? `${model.snapshots.length - blockedPoints - archivedPoints} verfügbar · ${blockedPoints} gesperrt${archivedPoints ? ` · ${archivedPoints} nur Archiv` : ''}` : '0 Punkte');
-    const oldest = model.snapshots.reduce((old, point) => !old || Date.parse(point.createdAt) < Date.parse(old.createdAt) ? point : old, null);
-    set('dataSnapshotDetail', model.archiveError ? 'Frühere Stände nicht verlässlich lesbar.' : oldest ? 'Ältester Punkt: ' + day(oldest.createdAt) : 'Noch keine Wiederherstellungspunkte.');
-    const groups = snapshotGroups(snapshotDisplayPoints(doc, model.snapshots), model);
-    const newest = model.snapshots.reduce((latest, point) => !latest || Date.parse(point.createdAt) > Date.parse(latest.createdAt) ? point : latest, null);
-    set('dataSnapshotSummary', model.archiveError ? 'Wiederherstellungspunkte nicht verfügbar'
-        : count(model.snapshots.length, 'Wiederherstellungspunkt', 'Wiederherstellungspunkte')
-            + (newest ? ` · zuletzt: ${snapshotTitle(newest)}, ${day(newest.createdAt)}` : ''));
-    const preview = doc.getElementById('dataRestorePreview');
-    if (preview) { preview.hidden = true; doc.getElementById('dataRestorePreviewHome').appendChild(preview); }
-    const list = doc.getElementById('dataSnapshotList'); list.replaceChildren();
-    if (!model.snapshots.length && !model.archiveError) {
-        const empty = doc.createElement('li'); empty.className = 'data-muted';
-        empty.textContent = 'Noch keine Wiederherstellungspunkte.'; list.appendChild(empty);
-    }
-    doc.getElementById('dataRetentionPreview').disabled = Boolean(model.trialActive || model.archiveError);
-    set('dataRetentionReason', model.trialActive ? 'Im Spielbereich nicht möglich. Deine echten Daten und Sicherungspunkte bleiben unverändert.' : '');
-    if (model.archiveError) set('dataRestoreStatus', 'Frühere Stände sind nicht verlässlich lesbar. Zurückholen und Aufräumen bleiben gesperrt.');
-    set('dataRestoreTechnical', model.archiveError || '');
-    const renderPoint = (point, archive) => {
-        const item = doc.createElement('li'); item.className = 'data-timeline-row';
-        const title = doc.createElement('b'); title.textContent = snapshotTitle(point);
-        const detail = doc.createElement('span'); detail.className = 'data-muted';
-        const occasion = snapshotOccasion(point), permanent = occasion.includes('dauerhaft');
-        if (permanent) item.dataset.permanent = 'true';
-        const time = new Date(point.createdAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-        detail.textContent = `${day(point.createdAt)} · ${time} · ${occasion === 'Manuell' ? 'manuell' : 'automatisch'}`
-            + (model.profileIds?.length > 1 && point.activeProfileName?.trim() ? ' · ' + point.activeProfileName.trim() : '');
-        item.appendChild(title); item.appendChild(detail);
-        const feedback = doc.createElement('p'); feedback.className = 'data-muted data-point-status';
-        feedback.dataset.pointStatus = point.id; feedback.setAttribute('role', 'status');
-        if (snapshotPointRemoved(doc, point.id)) { item.appendChild(feedback); return item; }
-        const button = doc.createElement('button'); button.type = 'button'; button.className = 'data-text-action data-restore-action';
-        button.dataset.restorePreview = point.id; button.textContent = 'Zurückholen …'; button.setAttribute('aria-expanded', 'false');
-        const reason = snapshotBlockReason(point, model);
-        button.disabled = Boolean(reason);
-        if (!archive && reason && reason !== 'archive') {
-            const hint = doc.createElement('span'); hint.className = 'data-muted data-point-blocked';
-            hint.textContent = reason === 'trial-active' ? PROBELAUF_RESTORE_HINT
-                : reason === 'probelauf' ? 'Nur über „Spielbereich beenden“ zurückholbar.'
-                : reason === 'unassigned' ? 'Personenzuordnung fehlt. Hier nicht zurückholbar.' : 'Person nicht mehr im Bestand. Hier nicht zurückholbar.';
-            if (!['probelauf', 'trial-active'].includes(reason)) {
-                const info = doc.createElement('span'); info.className = 'ds-info';
-                const infoButton = doc.createElement('button'); infoButton.type = 'button'; infoButton.className = 'ds-info-button'; infoButton.textContent = 'ⓘ';
-                infoButton.setAttribute('aria-label', 'Warum ist dieser Punkt gesperrt?');
-                const explanation = doc.createElement('span'); explanation.className = 'ds-info-pop';
-                explanation.textContent = reason === 'unassigned'
-                    ? 'Bei diesem Punkt fehlt die Zuordnung zu einer Person. Du kannst diese Zuordnung hier nicht nachtragen und den Punkt deshalb nicht direkt zurückholen.'
-                    : 'Dieser Punkt gehört zu einer Person, die es im aktuellen Bestand nicht mehr gibt. Du kannst ihn hier nicht direkt zurückholen. Eine neu angelegte Person mit demselben Namen hat eine andere Zuordnung und hebt die Sperre nicht auf.';
-                info.appendChild(infoButton); info.appendChild(explanation); hint.appendChild(info);
-            }
-            item.appendChild(hint);
-        }
-        if (!archive) item.appendChild(button);
-        const individualRemove = model.retention?.individualRemove.some(entry => entry.id === point.id);
-        const cleanupRemove = model.retention?.remove.some(entry => entry.id === point.id);
-        const removable = individualRemove || cleanupRemove;
-        if (removable && !model.trialActive && !model.archiveError) {
-            const remove = doc.createElement('button'); remove.type = 'button'; remove.className = 'ds-button ds-button-secondary';
-            remove.dataset.deletePoint = point.id; remove.textContent = 'Punkt löschen …';
-            const more = doc.createElement('details'); more.className = 'data-point-more';
-            const summary = doc.createElement('summary'); summary.textContent = 'Weitere Aktionen';
-            more.appendChild(summary); more.appendChild(remove); item.appendChild(more);
-        }
-        const retentionReason = doc.createElement('span'); retentionReason.className = 'data-muted data-point-retention';
-        retentionReason.textContent = model.trialActive ? 'Löschen im Spielbereich gesperrt'
-            : model.archiveError ? 'Nicht verlässlich lesbar – bleibt erhalten'
-                : individualRemove ? 'Bleibt, bis du ihn selbst löschst'
-                    : cleanupRemove ? 'Fällt beim Aufräumen weg'
-                        : model.retention?.keep.find(entry => entry.id === point.id)?.reason || 'Löschplan nicht verfügbar – bleibt erhalten';
-        item.appendChild(retentionReason);
-        item.appendChild(feedback); return item;
-    };
-    for (const group of groups) {
-        const section = doc.createElement('li'); section.className = 'data-snapshot-group';
-        let host = /** @type {HTMLElement} */ (section);
-        const heading = doc.createElement(group.archive ? 'summary' : 'h3'); heading.textContent = group.title;
-        if (group.archive) {
-            host = doc.createElement('details'); section.appendChild(host);
-        }
-        host.appendChild(heading);
-        const latest = doc.createElement('ol'); latest.className = 'data-timeline';
-        latest.appendChild(renderPoint(group.points[0], group.archive)); host.appendChild(latest);
-        if (group.points.length > 1) {
-            const older = doc.createElement('details'); older.className = 'data-snapshot-older';
-            const summary = doc.createElement('summary'); summary.textContent = `Ältere anzeigen (${group.points.length - 1})`;
-            older.appendChild(summary);
-            const rows = doc.createElement('ol'); rows.className = 'data-timeline';
-            for (const point of group.points.slice(1)) rows.appendChild(renderPoint(point, group.archive));
-            older.appendChild(rows); host.appendChild(older);
-        }
-        list.appendChild(section);
-    }
+    renderRestorePoints(doc, model);
     bindInfoPopovers(doc);
-    applySnapshotFeedback(doc, true);
     const coverage = model.priceCoverage;
     const state = coverage?.state || 'unknown';
     const unusable = coverage?.unreadable || coverage?.missingHistory || coverage?.usableQuoteCount < coverage?.quoteCount;
@@ -248,5 +181,38 @@ export function renderDataPage(doc, model) {
     for (const [label, value] of [['Fachdaten', model.liveBytes], ['Tageskurse', model.priceBytes], ['Wiederherstellungspunkte', model.archiveBytes]]) {
         const entry = doc.createElement('span'); entry.className = 'data-storage-category';
         entry.textContent = `${label} ${bytes(/** @type {number|null} */ (value))}`; legend.appendChild(entry);
+    }
+}
+
+/** SV-1: Eine Liste ohne Gruppen und Zähler; jeder lesbare Punkt lässt sich zurückholen, beschädigte nicht.
+ * @param {Document} doc @param {import("../../typcheck/data-ui.js").DataModel} model */
+function renderRestorePoints(doc, model) {
+    const notice = doc.getElementById('dataRestorePointsNotice');
+    if (notice) notice.hidden = !model.restoreNotice;
+    const list = doc.getElementById('dataSnapshotList'); list.replaceChildren();
+    const empty = text => { const item = doc.createElement('li'); item.className = 'data-muted'; item.textContent = text; list.appendChild(item); };
+    if (model.trialActive) { empty(PROBELAUF_RESTORE_HINT); return; }
+    if (model.archiveError) {
+        doc.getElementById('dataRestoreStatus').textContent = 'Frühere Stände sind nicht verlässlich lesbar. Zurückholen bleibt gesperrt.';
+        doc.getElementById('dataRestoreTechnical').textContent = model.archiveError;
+        return;
+    }
+    const points = model.snapshots.filter(isVisibleRestorePoint)
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)) || String(b.id).localeCompare(String(a.id)));
+    if (!points.length) { empty('Noch keine Wiederherstellungspunkte.'); return; }
+    const damaged = new Set(model.damagedSnapshotIds || []);
+    for (const point of points) {
+        const item = doc.createElement('li'); item.className = 'data-timeline-row';
+        const title = doc.createElement('b'); title.textContent = snapshotTitle(point);
+        const detail = doc.createElement('span'); detail.className = 'data-muted'; detail.textContent = snapshotTime(point.createdAt);
+        const button = doc.createElement('button'); button.type = 'button'; button.className = 'data-text-action data-restore-action';
+        button.dataset.restorePoint = point.id; button.textContent = 'Zurückholen …';
+        item.append(title, detail);
+        if (damaged.has(point.id)) {
+            button.disabled = true;
+            const hint = doc.createElement('span'); hint.className = 'data-muted data-point-blocked'; hint.textContent = 'beschädigt – nicht zurückholbar';
+            item.appendChild(hint);
+        }
+        item.appendChild(button); list.appendChild(item);
     }
 }

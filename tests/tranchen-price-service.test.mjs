@@ -9,6 +9,7 @@ import {
     fetchProxySymbol,
     normalizeQuote,
     normalizeYahooSymbol,
+    probeSearchQuote,
     QUOTE_MAX_AGE_SECONDS
 } from '../app/tranches/tranchen-price-service.js';
 
@@ -220,12 +221,16 @@ try {
                 symbol: 'VWCE.DE',
                 regularMarketPrice: 123.45,
                 regularMarketTime: NOW - 60,
-                currency: 'EUR'
+                currency: 'EUR',
+                exchangeName: 'GER',
+                chartPreviousClose: 123
             }
         }] } });
         const proxyQuote = nodeProxy.normalizeProviderQuote('vwce.de', candidate, NOW);
         const browserQuote = normalizeQuote(proxyQuote, 'VWCE.DE', { nowSeconds: NOW });
-        assertEqual(JSON.stringify(browserQuote), JSON.stringify(proxyQuote), 'Node and browser success shapes should match');
+        assertEqual(proxyQuote.exchangeName, 'GER', 'Node-Proxy erhält Yahoo-Börsenkennung');
+        assertEqual(browserQuote.exchange, 'Xetra', 'Browser zeigt lesbaren Börsennamen');
+        assertEqual(browserQuote.previousClose, 123, 'Node-Proxy und Browser reichen den Vortag durch');
         assertEqual(nodeProxy.normalizeYahooSymbol('vwce.de'), 'VWCE.DE', 'Node proxy should use same symbol normalization');
 
         for (const currency of ['USD', 'GBP', 'GBX']) {
@@ -258,13 +263,13 @@ try {
             const u = new URL(url); requests.push(u.pathname + u.search);
             if (u.pathname === '/search') return jsonResponse({ quotes: [] });
             const symbol = u.searchParams.get('symbol');
-            return symbol === 'MISSING.DE' ? jsonResponse({ code: 'SYMBOL_NOT_FOUND' }, 404)
+            return symbol.startsWith('MISSING.') ? jsonResponse({ code: 'SYMBOL_NOT_FOUND' }, 404)
                 : jsonResponse(validQuote({ symbol, asOf: Math.floor(Date.now() / 1000) - 60 }));
         };
         const controller = new AbortController(), fetcher = createBatchQuoteFetcher(controller.signal);
         const result = await resolveTrancheQuote({ ticker: 'MISSING.DE', isin: 'IE00TEST00001' }, fetcher);
         assertEqual(result.status, 'updated', 'Manueller ISIN-Fallback bleibt erreichbar');
-        assertEqual(JSON.stringify(requests), JSON.stringify(['/quote?symbol=MISSING.DE', '/search?q=MISSING.DE', '/quote?symbol=IE00TEST00001']), 'Manueller Resolver behält die bisherige Reihenfolge');
+        assertEqual(JSON.stringify(requests), JSON.stringify(['/quote?symbol=MISSING.DE', '/quote?symbol=MISSING.SG&einmal=1', '/quote?symbol=MISSING.DU&einmal=1', '/quote?symbol=MISSING.MU&einmal=1', '/search?q=MISSING.DE', '/quote?symbol=IE00TEST00001']), 'Manueller Resolver nutzt die Suche nach allen Kurskandidaten');
         assertEqual(Object.keys(result.quote).sort().join(','), 'asOf,currency,price,source,symbol', 'Diagnose verändert keine öffentliche Quoteform');
         controller.abort(); const error = await captureError(() => resolveTrancheQuote({ ticker: 'NEXT.DE' }, fetcher));
         assertEqual(error.name, 'AbortError', 'Manuelles Abbruchende behält den bisherigen Fehlertyp');
@@ -276,6 +281,38 @@ try {
     global.setTimeout = previousSetTimeout;
     global.clearTimeout = previousClearTimeout;
     if (previousPerformance === undefined) delete global.performance; else global.performance = previousPerformance;
+}
+
+{
+    const nowSeconds = Date.parse('2026-11-23T21:30:00Z') / 1000;
+    const prices = {
+        'MUSTER.DE': { price: 100, asOf: nowSeconds - 4 * 3600, exchangeName: 'GER' },
+        'MUSTER.SG': { price: 103, asOf: nowSeconds - 120, exchangeName: 'STU' },
+        'MUSTER.DU': { price: 130, asOf: nowSeconds - 60, exchangeName: 'DUS' },
+        'MUSTER.MU': { price: 105, asOf: nowSeconds + 301, exchangeName: 'MUN' },
+        'MUSTER.L': { price: 90, asOf: nowSeconds - 45, exchangeName: 'LSE' }
+    };
+    const symbols = [];
+    const fetchImpl = async url => {
+        const symbol = new URL(url).searchParams.get('symbol');
+        symbols.push(symbol);
+        return prices[symbol] ? jsonResponse(validQuote({ ...prices[symbol], symbol })) : jsonResponse({ code: 'SYMBOL_NOT_FOUND' }, 404);
+    };
+    const options = { nowSeconds, fetchImpl };
+    let result = await probeSearchQuote('MUSTER.DE', null, options);
+    assertEqual(result.price, 103, 'Kauf-Kursprüfung wählt Stuttgart und verwirft Zukunft und Ausreißer');
+    assertEqual(result.quoteExchange, 'Stuttgart', 'Kauf-Kursprüfung nennt die tatsächlich gewählte Börse');
+    assertEqual(symbols.join(','), 'MUSTER.DE,MUSTER.SG,MUSTER.DU,MUSTER.MU', 'Genau vier deutsche Börsen werden geprüft');
+    prices['MUSTER.DE'].asOf -= 7 * 86400;
+    result = await probeSearchQuote('MUSTER.DE', null, options);
+    assertEqual(result.quoteExchange, 'Düsseldorf', 'Veraltetes Xetra erlaubt Ausweichen ohne Preisvergleich');
+    prices['MUSTER.DE'].asOf = nowSeconds + 30;
+    result = await probeSearchQuote('MUSTER.DE', null, options);
+    assertEqual(result.quoteExchange, 'Xetra', 'Eine halbe Minute Uhrabweichung verwirft den Xetra-Kurs nicht');
+    symbols.length = 0;
+    result = await probeSearchQuote('MUSTER.L', null, options);
+    assertEqual(result.price, 90, 'Ein Kürzel mit anderer Endung behält seinen Einzelkurs');
+    assertEqual(symbols.join(','), 'MUSTER.L', 'Keine Zusatzabfragen für andere Endungen');
 }
 
 console.log('--- Tranchen Price Service Tests Completed ---');

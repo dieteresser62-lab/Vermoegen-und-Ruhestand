@@ -7,7 +7,7 @@ import { readWealthHistory } from '../types/wealth-history-contract.js';
  * - Profil-Switching und Daten-Migration
  * - Export/Import von Profil-Bundles
  * - Slug-Generierung und Konflikte
- * - belongsToHousehold-Logik
+ * - Altfeld belongsToHousehold
  * - Profile-scoped Keys
  * - Fehlerbehandlung
  */
@@ -26,7 +26,6 @@ import {
     patchInactiveProfileQuotes,
     getProfileMeta,
     getProfileData,
-    setProfileVerbundMembership,
     getActiveProfileId,
     hasProfileScopedDataInLocalStorage,
     ensureProfileRegistry,
@@ -59,6 +58,7 @@ import {
 } from '../app/profile/profile-bundle-io.js';
 import {
     createProfile as createRegistryProfile,
+    renameProfile as renameRegistryProfile,
     ensureDefaultProfile as ensureRegistryDefaultProfile,
     getProfileRegistry,
     loadProfileRegistry,
@@ -172,7 +172,8 @@ try {
             localStorage.setItem('sim_mcAnzahl', '500'); localStorage.setItem('sim_mcDauer', '30');
         }
         if (path === 'bootstrap') assertEqual(bootstrapProfileContext({ preserveLiveProfileData: true }).action, 'saved', 'Seitenbootstrap verwendet den gewöhnlichen Saver');
-        else assertEqual(saveCurrentProfileFromLocalStorage(), true, `${path}: Snapshot wird sicher behandelt`);
+        // SP-1: Ohne Livewerte gibt es nichts zu schreiben; die Rückgabe sagt das, bleibt aber wahr (kein Fehler).
+        else assertEqual(saveCurrentProfileFromLocalStorage(), path === 'empty' ? 'unchanged' : true, `${path}: Snapshot wird sicher behandelt`);
         const registry = JSON.parse(localStorage.getItem('rs_profiles_v1'));
         const expected = path === 'empty' ? data : { ...data, sim_mcAnzahl: '500', sim_mcDauer: '30' };
         assertEqual(JSON.stringify(registry.profiles.a.data), JSON.stringify(expected), `${path}: vollständiger Datenbestand bleibt bis auf beide MC-Werte erhalten`);
@@ -208,6 +209,23 @@ try {
         replaceRegistryProfileData('a', { profile_person_schema_version: '1' });
         loadProfileIntoLocalStorage('a'); saveCurrentProfileFromLocalStorage();
         assertEqual(JSON.stringify(getProfileData('a')), '{"profile_person_schema_version":"1"}', 'Explizit gelöschte Felder bleiben nach Folgesnapshot gelöscht');
+    }
+
+    console.log('JW-1a (Neon P1-2): Beschädigter Live-Balance-Stand wird beim Profilwechsel nicht still überschrieben');
+    {
+        localStorage.clear();
+        localStorage.setItem('rs_profiles_v1', JSON.stringify({ version: 1, profiles: {
+            a: { meta: { id: 'a', name: 'Max' }, data: { profile_person_schema_version: '1' } },
+            b: { meta: { id: 'b', name: 'Erika' }, data: { profile_person_schema_version: '1' } } } }));
+        localStorage.setItem('rs_current_profile', 'a'); localStorage.setItem('rs_active_profile', 'a');
+        const corrupt = '{"annualPeriodMetadata":';
+        localStorage.setItem(CONFIG.STORAGE.LS_KEY, corrupt);
+        let failure = null;
+        try { loadProfileIntoLocalStorage('b'); } catch (error) { failure = error; }
+        assertEqual(failure?.code, 'PROFILE_LOAD_LIVE_BALANCE_CORRUPT', 'Profilwechsel bricht mit Wiederherstellungshinweis ab');
+        assert(/Daten & Sicherung/.test(failure?.message || ''), 'Meldung nennt den Weg zur Wiederherstellung');
+        assertEqual(localStorage.getItem(CONFIG.STORAGE.LS_KEY), corrupt, 'Beschädigter Live-Stand bleibt für die Wiederherstellung stehen');
+        assertEqual(localStorage.getItem('rs_active_profile'), 'a', 'Aktives Profil bleibt unverändert');
     }
 
     console.log('Teilbestand: unlesbare und ungültige Captures schreiben keine Registry');
@@ -448,15 +466,12 @@ try {
     {
         localStorage.clear();
         // Gleicher Anzeigename soll automatisch eindeutige Slugs erzeugen.
+        // Ein Haushalt hat höchstens zwei Personen; das Standardprofil macht deshalb Platz.
         const a = createProfile('Meine Familie');
-        setProfileVerbundMembership(a.id, false);
+        assert(deleteProfile('default'), 'Standardprofil macht Platz für die zweite Person');
         const b = createProfile('Meine Familie');
-        setProfileVerbundMembership(b.id, false);
-        const c = createProfile('Meine Familie');
 
-        assert(a.id !== b.id, 'Erste Konflikt-ID sollte unique sein');
-        assert(b.id !== c.id, 'Zweite Konflikt-ID sollte unique sein');
-        assert(a.id !== c.id, 'Dritte Konflikt-ID sollte unique sein');
+        assert(a.id !== b.id, 'Konflikt-ID sollte unique sein');
 
         // Prüfe Suffix-Pattern
         assert(b.id.includes('-1') || b.id.includes('-2'), 'Konflikt-IDs sollten Suffix haben');
@@ -511,6 +526,24 @@ try {
         assert(result === null, 'Umbenennen eines nicht-existierenden Profils sollte null zurückgeben');
     }
     console.log('✓ Rename non-existent profile OK');
+
+    // KL-4: A rejected registry write must never report a successful change.
+    {
+        const storage = createLocalStorageMock();
+        ensureRegistryDefaultProfile({ storage });
+        const before = serializeStorage(storage);
+        storage.setItem = () => { throw new Error('Test: Speicherfehler'); };
+        const failures = [
+            () => createRegistryProfile('Anna', { storage }),
+            () => renameRegistryProfile('default', 'Anna', { storage })
+        ].map(action => {
+            try { action(); } catch (error) { return error.message; }
+            return null;
+        });
+        assert(failures.every(message => message?.includes('konnte nicht gespeichert werden')),
+            'Anlegen und Umbenennen müssen einen Speicherfehler melden');
+        assert(serializeStorage(storage) === before, 'Ein fehlgeschlagener Schreibversuch ändert keine gespeicherten Personendaten');
+    }
 
     // ========== Delete Profile Tests ==========
 
@@ -813,6 +846,8 @@ try {
         registry.profiles.default.meta.updatedAt = '2025-01-01T00:00:00.000Z';
         const before = JSON.stringify(registry);
         localStorage.setItem('rs_profiles_v1', before);
+        // SP-1: Nur eine echte Änderung der Live-Daten macht aus dem Bootstrap einen Registry-Snapshot.
+        localStorage.setItem('profile_tagesgeld', '10000');
 
         const adapter = createLocalStorageAdapter(() => localStorage);
         const saveBatch = adapter.saveBatch.bind(adapter);
@@ -832,13 +867,15 @@ try {
             const after = persistenceStorage.getItem('rs_profiles_v1');
             const updatedRegistry = JSON.parse(after);
             assertEqual(result.action, 'saved', 'Echter Bootstrap bereitet bei aktiven Live-Daten einen Snapshot vor');
+            assertEqual(result.written, true, 'Bootstrap meldet den Registry-Snapshot');
             assert(updatedRegistry.profiles.default.meta.updatedAt > registry.profiles.default.meta.updatedAt,
-                'Bootstrap schreibt den bisherigen Snapshotzeitpunkt fort');
+                'Bootstrap mit geänderten Live-Daten schreibt den Snapshotzeitpunkt fort');
             registry.profiles.default.meta.updatedAt = updatedRegistry.profiles.default.meta.updatedAt;
-            assertEqual(after, JSON.stringify(registry), 'Vollständige Registry ändert ausschließlich meta.updatedAt');
-            assertEqual(persistenceStorage.getItem('profile_tagesgeld'), '9999', 'Bootstrap erhält die Live-Fachdaten');
-            assertEqual(JSON.stringify(getDirtyState().dirtyKeys), JSON.stringify(['rs_profiles_v1']),
-                'Nur der vollständige Registry-Snapshot wartet auf Persistenz');
+            registry.profiles.default.data.profile_tagesgeld = '10000';
+            assertEqual(after, JSON.stringify(registry), 'Vollständige Registry ändert ausschließlich die geänderten Live-Daten und meta.updatedAt');
+            assertEqual(persistenceStorage.getItem('profile_tagesgeld'), '10000', 'Bootstrap erhält die Live-Fachdaten');
+            assertEqual(JSON.stringify([...getDirtyState().dirtyKeys].sort()), JSON.stringify(['rs_profile_live_base_v1', 'rs_profiles_v1']),
+                'Nur der vollständige Registry-Snapshot und seine Ladebasis warten auf Persistenz');
             assertEqual(writes, 0, 'Bootstrap allein startet noch keinen Adapterwrite');
             assertEqual(localStorage.getItem('rs_profiles_v1'), before, 'Adapter enthält vor Flush noch den alten vollständigen Wert');
 
@@ -857,6 +894,10 @@ try {
             await flush();
             assertEqual(writes, 1, 'Ein zweiter Flush erzeugt keinen zusätzlichen Adapterwrite');
             assertEqual(localStorage.getItem('rs_profiles_v1'), after, 'Zweiter Flush erhält auch updatedAt bytegleich');
+            const unchanged = bootstrapProfileContext({ preserveLiveProfileData: true });
+            assertEqual(`${unchanged.action}/${unchanged.written}`, 'saved/false', 'SP-1: Bootstrap ohne Änderung schreibt nicht');
+            assertEqual(persistenceStorage.getItem('rs_profiles_v1'), after, 'SP-1: Registry und updatedAt bleiben bytegleich');
+            assertEqual(JSON.stringify(getDirtyState().dirtyKeys), '[]', 'SP-1: kein offener Write nach Bootstrap ohne Änderung');
         } finally {
             releaseWrite();
             try { await pendingFlush; } finally { resetPersistenceForTests(); }
@@ -906,10 +947,11 @@ try {
             type: 'aktien_neu',
             tqf: 0.3
         }]);
-        const legacyProfile = createProfile('Legacy Browserprofil');
-        setProfileVerbundMembership(legacyProfile.id, false);
+        // Das geöffnete Standardprofil trägt den Altbestand; ein Haushalt hat höchstens zwei Personen.
+        const legacyProfile = { id: getCurrentProfileId() };
         const corruptProfile = createProfile('Corrupt Browserprofil');
         updateProfileData(legacyProfile.id, { depot_tranchen: legacyRaw });
+        localStorage.setItem('depot_tranchen', legacyRaw);
         updateProfileData(corruptProfile.id, { depot_tranchen: corruptRaw });
 
         assert(switchProfile(legacyProfile.id) === true, 'Legacy-Profil sollte ladbar sein');
@@ -932,32 +974,10 @@ try {
     }
     console.log('✓ profile-bound raw-preserving migration OK');
 
-    // ========== belongsToHousehold Tests ==========
+    // ========== Altfeld belongsToHousehold ==========
 
-    // Test 18: setProfileVerbundMembership
-    console.log('Test 18: setProfileVerbundMembership');
-    {
-        localStorage.clear();
-        const profile = createProfile('Test');
-
-        // Default sollte true sein
-        let meta = getProfileMeta(profile.id);
-        assert(meta.belongsToHousehold === true, 'Default belongsToHousehold sollte true sein');
-
-        // Setze auf false
-        setProfileVerbundMembership(profile.id, false);
-        meta = getProfileMeta(profile.id);
-        assert(meta.belongsToHousehold === false, 'belongsToHousehold sollte false sein');
-
-        // Setze auf true
-        setProfileVerbundMembership(profile.id, true);
-        meta = getProfileMeta(profile.id);
-        assert(meta.belongsToHousehold === true, 'belongsToHousehold sollte wieder true sein');
-    }
-    console.log('✓ setProfileVerbundMembership OK');
-
-    // Test 18b: Legacy profiles without membership use the documented default
-    console.log('Test 18b: Legacy membership default');
+    // Test 18: Altprofil ohne Feld bleibt ohne Schreibmigration gültig; neue Profile speichern true als feste Konstante
+    console.log('Test 18: Legacy membership field');
     {
         localStorage.clear();
         localStorage.setItem('rs_profiles_v1', JSON.stringify({
@@ -975,41 +995,18 @@ try {
             }
         }));
         localStorage.setItem('rs_current_profile', 'legacy');
+        const raw = localStorage.getItem('rs_profiles_v1');
 
         const legacy = listProfiles().find(profile => profile.id === 'legacy');
-        assert(legacy?.belongsToHousehold === true,
-            'Legacy-Profil ohne Wert sollte beim Lesen den Default true erhalten');
-
-        const persistedRegistry = JSON.parse(localStorage.getItem('rs_profiles_v1'));
-        assert(!Object.prototype.hasOwnProperty.call(
-            persistedRegistry.profiles.legacy.meta,
-            'belongsToHousehold'
-        ), 'Legacy-Default sollte ohne pauschale Registry-Migration gelten');
+        assert(legacy && !Object.hasOwn(legacy, 'belongsToHousehold'), 'Fehlendes Feld bleibt beim Lesen fehlend und gilt als Haushaltsperson');
+        assertEqual(localStorage.getItem('rs_profiles_v1'), raw, 'Lesen migriert die Registry nicht');
 
         const newProfile = createProfile('Neues Haushaltsprofil');
         assert(newProfile.belongsToHousehold === true,
             'Neu angelegtes Profil sollte belongsToHousehold=true explizit speichern');
+        assertEqual(listProfiles().map(profile => profile.id).join(','), `legacy,${newProfile.id}`, 'Beide Profile sind Haushaltspersonen');
     }
-    console.log('✓ Legacy membership default OK');
-
-    // Test 19: listProfiles includes belongsToHousehold
-    console.log('Test 19: listProfiles includes belongsToHousehold');
-    {
-        localStorage.clear();
-        const profile1 = createProfile('Haushalt');
-        setProfileVerbundMembership('default', false);
-        const profile2 = createProfile('Extern');
-
-        setProfileVerbundMembership(profile2.id, false);
-
-        const profiles = listProfiles();
-        const p1 = profiles.find(p => p.id === profile1.id);
-        const p2 = profiles.find(p => p.id === profile2.id);
-
-        assert(p1.belongsToHousehold === true, 'Haushalt-Profil sollte belongsToHousehold=true haben');
-        assert(p2.belongsToHousehold === false, 'Extern-Profil sollte belongsToHousehold=false haben');
-    }
-    console.log('✓ listProfiles includes belongsToHousehold OK');
+    console.log('✓ Legacy membership field OK');
 
     // ========== Export/Import Tests ==========
 
@@ -1625,7 +1622,7 @@ try {
         saveCurrentProfileFromLocalStorage();
 
         // Profil B: Setze andere Daten
-        setProfileVerbundMembership('default', false);
+        assert(deleteProfile('default'), 'Standardprofil macht Platz für Profil B');
         const profileB = createProfile('Profil B');
         switchProfile(profileB.id);
         localStorage.setItem('sim_data', 'B-Daten');
@@ -1841,7 +1838,7 @@ try {
             purchasePrice: 80, currentPrice: 100, tqf: 1, ticker: 'OLD.DE', notes: '  Originalnotiz  ',
             purchaseDate: '', extension: { bytes: ' { "x": 1 } ' } };
         const failed = { ...legacy, id: 'failed-gold', ticker: 'FAIL.DE' };
-        const originalProfile = { meta: { name: 'Legacyprofil', updatedAt: 'nie verändern', belongsToHousehold: false, extra: 123 },
+        const originalProfile = { meta: { name: 'Legacyprofil', updatedAt: 'nie verändern', belongsToHousehold: true, extra: 123 },
             data: { depot_tranchen: JSON.stringify([legacy, failed]), sim_other: ' { "fremd": true } ' }, extra: ['original'] };
         const registry = { version: 1, profiles: { a: { meta: { id: 'a', name: 'Aktiv' }, data: {} }, b: originalProfile },
             trancheReconciliation: { schemaVersion: 1, actions: [], extra: 'Auditbytes' }, extra: { unberührt: true } };

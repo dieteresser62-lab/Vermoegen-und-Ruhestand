@@ -1,6 +1,14 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { fz1References } from './helpers/fz-1-expectations.mjs';
+import { readDM1References } from './helpers/dm-1-expectations.mjs';
+import { readJA1References } from './helpers/ja-1-expectations.mjs';
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
+import { readVS2References } from './helpers/vs-2-expectations.mjs';
 import { readLE1References } from './helpers/le-1-expectations.mjs';
 import { readGU1References } from './helpers/gu-1-expectations.mjs';
 import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
+const readFZ1Reference = fz1References(import.meta.url);
 const readHE4References = value => readPFA1References(beforePFA1References(value));
 import { readMD2References } from './helpers/md-2-expectations.mjs';
 import { readQSCReferences as readBeforeMD2References } from './helpers/qs-c-expectations.mjs';
@@ -41,7 +49,7 @@ import { overviewScope } from '../app/overview/overview-storage.js';
 
 import { readFI1References } from './helpers/fi-1-expectations.mjs';
 const control = JSON.parse(await fs.readFile(new URL('./fixtures/care-values-default-controls.json', import.meta.url)));
-assertEqual(JSON.stringify(await careValueControls(undefined, careValuesInputPatch(parseCareValues(JSON.stringify(DEFAULT_CARE_VALUES))))), readFI1References(readLE1References(readGU1References(JSON.stringify(readQSCReferences(readVF2BReferences(readGL1References(readAS1References(readEP1References(readRNG1References(control)))))))))),
+assertEqual(JSON.stringify(await careValueControls(undefined, careValuesInputPatch(parseCareValues(JSON.stringify(DEFAULT_CARE_VALUES))))), readFZ1Reference(readDM1References(readJA1References(readKR1cReferences(readVS2References(readFI1References(readLE1References(readGU1References(JSON.stringify(readQSCReferences(readVF2BReferences(readGL1References(readAS1References(readEP1References(readRNG1References(control))))))))))))))),
     'Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen');
 assertEqual(JSON.stringify(officialCareCosts()), JSON.stringify({ 1: 200, 2: 2300, 3: 7100, 4: 15000, 5: 18900 }), 'Amtliche Vorgabestaffel bytegleich');
 

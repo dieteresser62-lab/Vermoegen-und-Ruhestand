@@ -130,9 +130,19 @@ export function cancelledBuyDebit(records, buyStatuses, actionId) {
 export const DELETION_UNREADABLE = Object.freeze({ allowed: false, cancelBuy: null,
     reason: 'Löschen geht gerade nicht: Die eingetragenen Käufe und Verkäufe sind nicht lesbar. Bitte die Seite neu laden.' });
 
+/** Altbestandsgrenze der Abgeltungsteuer: Aktien mit Kaufdatum vor diesem Tag sind Altbestand. Einzige Stelle für die Grenze. */
+export const GRANDFATHERED_STOCK_CUTOFF_DATE = '2009-01-01';
+/** Erstes Kaufjahr des Neubestands, für Texte wie „gekauft vor 2009“. */
+export const GRANDFATHERED_STOCK_CUTOFF_YEAR = Number(GRANDFATHERED_STOCK_CUTOFF_DATE.slice(0, 4));
+
+/** Bestand aus einem Kaufdatum im Format JJJJ-MM-TT, ohne Prüfung des Formats. @param {string} date */
+export function stockFromValidPurchaseDate(date) {
+    return date < GRANDFATHERED_STOCK_CUTOFF_DATE ? 'aktien_alt' : 'aktien_neu';
+}
+
 /** FR-83: Ohne Kaufdatum bleibt die manuelle Wahl erhalten. @param {string} date @param {string} type */
 export function stockFromPurchaseDate(date, type) {
-    return /^\d{4}-\d{2}-\d{2}$/.test(date || '') ? (date < '2009-01-01' ? 'aktien_alt' : 'aktien_neu') : type;
+    return /^\d{4}-\d{2}-\d{2}$/.test(date || '') ? stockFromValidPurchaseDate(date) : type;
 }
 
 /** Bestehende Widersprüche anzeigen, erst bei geändertem Datum automatisch übernehmen.

@@ -1,6 +1,16 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { fz1References } from './helpers/fz-1-expectations.mjs';
+import { readDM1References } from './helpers/dm-1-expectations.mjs';
+import { readJA1References } from './helpers/ja-1-expectations.mjs';
+import { readHP4References } from './helpers/hp-4-expectations.mjs';
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import { readVB1References } from './helpers/vb-1-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
+import HISTORICAL_DATENSTAND from '../app/simulator/historical-datenstand.js';
 import { readTRG1References } from './helpers/trg-1-expectations.mjs';
 import { readLE1References as readBeforeGN2References } from './helpers/le-1-expectations.mjs';
 import { readGN2References } from './helpers/gn-2-expectations.mjs';
+const readFZ1Reference = fz1References(import.meta.url);
 const readLE1References = value => readGN2References(readBeforeGN2References(value));
 import { withPreviousRunEvidence } from './helpers/le-1b-expectations.mjs';
 const readQSCReferences = value => readPFA1References(beforePFA1QSCReferences(value));
@@ -45,10 +55,12 @@ import { readFI1References } from './helpers/fi-1-expectations.mjs';
 const readRNG1Hash = before => readQSCReferences(readAS1Hash(readEP1Hash(readBeforeEP1Hash(before))));
 const same = (actual, expected, label) => assertEqual(canonicalizeHistoricalContractValue(actual), canonicalizeHistoricalContractValue(expected), label);
 const rates = resolvePlanOverviewRates();
+// JD-2a: Mittel der letzten 25 Jahre des Datenstands (bis 2025: 2001–2025), jahresrobust.
+const mittelEnde = HISTORICAL_DATENSTAND.endYear, mittelStart = mittelEnde - 24;
 for (const [rate, series] of [[rates.inflation, GERMAN_CPI_INFLATION_RATES], [rates.wage, GERMAN_GROSS_WAGE_GROWTH_PCT]]) {
-    const expected = Array.from({ length: 25 }, (_, i) => series[2001 + i]).reduce((a, b) => a + b, 0) / 25;
-    assertClose(rate.value, expected, 1e-12, 'Fehlender Jahreswert verwendet das arithmetische Mittel 2001–2025');
-    assert(rate.origin.includes('2001–2025') && rate.origin.includes('kein eigener Wert'), 'Herkunft nennt Zeitraum und fehlende eigene Eingabe');
+    const expected = Array.from({ length: 25 }, (_, i) => series[mittelStart + i]).reduce((a, b) => a + b, 0) / 25;
+    assertClose(rate.value, expected, 1e-12, `Fehlender Jahreswert verwendet das arithmetische Mittel ${mittelStart}–${mittelEnde}`);
+    assert(rate.origin.includes(`${mittelStart}–${mittelEnde}`) && rate.origin.includes('kein eigener Wert'), 'Herkunft nennt Zeitraum und fehlende eigene Eingabe');
 }
 same([resolvePlanOverviewRates({ inflation: 0, lohnWachstum: '0' }).inflation.value,
     resolvePlanOverviewRates({ inflation: 0, lohnWachstum: '0' }).wage.value], [0, 0], 'Ausdrücklich eingegebene Null bleibt Null');
@@ -113,9 +125,9 @@ assert(serializeScenarioLogCsvV2(scenario).includes('36000'), 'CSV enthält die 
 
 const baseline = JSON.parse(fs.readFileSync(new URL('./fixtures/pv-1-parity.json', import.meta.url)));
 const { inputs: measuredInputs, historical, chunk } = await measure(baseline.salary, baseline.count, { historicalSurvivor: true });
-assertEqual(hash(measuredInputs), readLE1References(readGU1References(readQSCReferences(readVF2BReferences(readAN1Hash(baseline.inputsHash))))), 'Messinputs bytegleich zur Basis');
-assertEqual(hash(historical), readLE1References(readGU1References(readQSCReferences(readVF2BReferences(readAS1Hash(readAN1Hash(readNR1Hash(baseline.backtestHash))))))), 'Vollständiges Backtestergebnis mit belegten NR-1-Anzeigeänderungen');
-assertEqual(hash(withPreviousRunEvidence(chunk)), readFI1References(readTRG1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readRNG1Hash(readPG1bHash(readAN1Hash(readNR1Hash(baseline.monteCarloHash))))))))))), 'Vollständiger MC-Chunk mit festem Seed und belegten NR-1-Anzeigeänderungen');
+assertEqual(hash(measuredInputs), readDM1References(readVB1References(readLE1References(readGU1References(readQSCReferences(readVF2BReferences(readAN1Hash(baseline.inputsHash))))))), 'Messinputs mit belegtem Ehestatus');
+assertEqual(hash(historical), readFZ1Reference(readDM1References(readKR1cReferences(readVB1References(readLE1References(readGU1References(readQSCReferences(readVF2BReferences(readAS1Hash(readAN1Hash(readNR1Hash(baseline.backtestHash))))))))))), 'Vollständiges Backtestergebnis mit belegten NR-1-Anzeigeänderungen');
+assertEqual(hash(withPreviousRunEvidence(chunk)), readFZ1Reference(readDM1References(readJA1References(readHP4References(readKR1cReferences(readVB1References(readFI1References(readTRG1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readRNG1Hash(readPG1bHash(readAN1Hash(readNR1Hash(baseline.monteCarloHash))))))))))))))))), 'Vollständiger MC-Chunk mit festem Seed und belegten NR-1-Anzeigeänderungen');
 const forExport = { ...historical, request: { ...historical.request, engine: captureHistoricalBacktestEngineProvenance(EngineAPI,
     { schemaVersion: 'RuntimeBuildProvenanceV1', sourceCommit: 'a'.repeat(40), sourceTreeStatus: 'clean', provider: 'synthetic_fixture' }) } };
 const oldHistorical = { ...forExport, rows: historical.rows.map(entry => ({ ...entry, row: strip(entry.row) })) };

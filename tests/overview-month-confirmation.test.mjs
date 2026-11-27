@@ -1,5 +1,6 @@
 import { requestOverviewMonthConfirmation as requestMonth, projectOverviewMonthSteps, projectConfirmedMonthResult } from '../app/overview/overview-month-confirmation.js';
 import { dialogElements } from '../app/shared/close-dialog.js';
+import { createAnnualCloseDialog } from '../app/shared/annual-close-dialog.js';
 import { createDialogFixture, prepareCloseFixture } from './close-dialog.test.mjs?fixture';
 import { showNavigationGuardDialog } from '../app/shared/navigation-guard-dialog.js';
 // Derselbe native Seitenguard wie im Produkt, nur sein DOM ist gedoppelt.
@@ -32,7 +33,7 @@ for (const withBreakdown of [true, false]) {
     const model = { ...monthDialogModel, expenses: { ...monthDialogModel.expenses, complete: true, spent: 900 },
         expenseNeeds: { months: [{ month: 9, withBreakdown, floor: 650, flex: 250 }] } };
     const result = projectOverviewMonthSteps(model)[1].result.replaceAll('\u00a0', ' ');
-    assertEqual(result, '900,00 € · vollständig' + (withBreakdown ? ' · Floor 650,00 € · Flex 250,00 €' : ''), 'FL-2: Ausgabenzusammenfassung ergänzt nur lesbare Aufteilung');
+    assertEqual(result, '900,00 € · vollständig' + (withBreakdown ? ' · Grundbedarf 650,00 € · Flex 250,00 €' : ''), 'FL-2: Ausgabenzusammenfassung ergänzt nur lesbare Aufteilung');
 }
 assertEqual(projectOverviewMonthSteps({ ...monthDialogModel, quoteDate: '2026-09-01' })[0].done, false, 'Alte Kurse bleiben offen');
 assertEqual(projectOverviewMonthSteps({ ...monthDialogModel, priceReport: { results: [{ status: 'failed' }] } })[0].done, false, 'Teilkurse bleiben offen');
@@ -335,7 +336,7 @@ for (const [status, spent, budget, expected] of [
     assert(!result.budgetComparison.includes('Budget: —'), status + ': kein angehängter Scheinbetrag');
 }
 
-// Fortschritt benennt nur den Besuch; eine Überschreitung bleibt ein eigenes Ergebnis.
+// Die Budgetpille zeigt nach dem Besuch den Warnstand an.
 {
     const f = createDialogFixture(); let handle;
     const model = { ...monthDialogModel, expenseBudget: 5000,
@@ -346,14 +347,32 @@ for (const [status, spent, budget, expected] of [
     assertEqual(f.doc.querySelector('[data-close-dialog-activate="budget"]').querySelector('.close-dialog-step-symbol').textContent, '3', 'Unbesuchter Vergleich hat auch mit vollständigen Daten keinen Haken');
     assertEqual(f.doc.querySelector('[data-close-dialog-activate="budget"]').querySelector('.close-dialog-step-pill').textContent, 'offen', 'Vorhandener Vergleich behauptet keinen Besuch');
     handle.activate('budget');
-    assertEqual(f.doc.querySelector('[data-close-dialog-activate="budget"]').querySelector('.close-dialog-step-symbol').textContent, '✓', 'Besuchter Vergleich erhält Fortschrittshaken');
-    assertEqual(f.doc.querySelector('[data-close-dialog-activate="budget"]').querySelector('.close-dialog-step-pill').textContent, 'angesehen', 'Haken benennt den Besuch statt ein positives Budgetergebnis');
+    assertEqual(f.doc.querySelector('[data-close-dialog-activate="budget"]').querySelector('.close-dialog-step-symbol').textContent, '3', 'OP-3: Besuchter Vergleich behält seine Nummer; den Besuch nennt die Pille');
+    const tab = f.doc.querySelector('[data-close-dialog-activate="budget"]');
+    assertEqual(tab.querySelector('.close-dialog-step-pill').textContent, 'über Budget', 'Besuchte Überschreitung steht auf der Pille');
+    assertEqual(tab.dataset.tone, 'warning', 'Budgetpille ist orange');
+    assert(tab.getAttribute('aria-label').includes(' · über Budget'), 'Der Reiter nennt die Überschreitung auch im aria-label');
     const result = budget.querySelector('.close-dialog-result-warning');
     assert(result.textContent.includes('135,00') && result.textContent.includes('über Budget · 2,7 %'), 'Budgetüberschreitung steht getrennt als Warnung mit Euro und Prozent');
     const step = projectOverviewMonthSteps(model)[0];
     assert(step.result.includes('im Abruf bearbeitet') && !step.result.includes('geprüft'), 'Automatischer Kursabruf behauptet keine Prüfung durch den Nutzer');
     assert(!projectOverviewMonthSteps({ ...model, expenseBudget: 0 })[2].result.includes('%'), 'Nullbudget erzeugt keinen erfundenen Prozentvergleich');
     handle.close(false); await promise;
+}
+
+for (const [spent, label, tone] of [[5010, 'über Budget', 'warning'], [4990, 'angesehen', ''], [5000, 'angesehen', '']]) {
+    const f = createDialogFixture(); let handle;
+    const model = { ...monthDialogModel, occasion: { previousYear: 2026, previousMonth: 12 }, expenseBudget: 5000,
+        expenses: { ...monthDialogModel.expenses, year: 2026, month: 12, complete: true, spent, rows: [{ id: 'a', present: true, spent }] } };
+    const dialog = createAnnualCloseDialog({ document: f.doc, getModel: () => model, isCommitActive: () => false });
+    const pending = dialog.showAnnualPreparation({ targetYear: 2026, model, people: model.cashPeople, onReady: h => { handle = h; } });
+    const tab = f.doc.querySelector('[data-close-dialog-activate="budget"]');
+    assertEqual(tab.querySelector('.close-dialog-step-pill').textContent, 'offen', 'Jahresabschluss: Budgetvergleich wartet auf den Besuch');
+    handle.activate('budget');
+    assertEqual(tab.querySelector('.close-dialog-step-pill').textContent, label, 'Jahresabschluss: Budgetpille nach dem Besuch');
+    assertEqual(tab.dataset.tone, tone, 'Jahresabschluss: Ton der besuchten Budgetpille');
+    assert(tab.getAttribute('aria-label').includes(` · ${label}`), 'Jahresabschluss: Budgetstand im aria-label');
+    handle.close(false); await pending;
 }
 
 // Breite Ausgabenansicht: importierte Kategorien, geplante Zahlung und Budgetverbrauch bleiben unterscheidbar.

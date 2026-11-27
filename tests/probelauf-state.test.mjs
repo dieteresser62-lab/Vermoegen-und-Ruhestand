@@ -41,7 +41,7 @@ for (const kind of ['tauri', 'indexeddb', 'localstorage']) {
         assert(f.realBytes() === before, `${kind}/${source}: Start unverändert`);
         c = await f.boot();
         assertEqual(getAppTestDate(), '2026-12-15', 'Neustart setzt Testdatum');
-        if (source === 'copy') assertEqual((await A.readSnapshot('old')).records.profile_tagesgeld, ' 12000.00 ', 'Kopie erhält verfügbare Sicherungspunkte im Spielbereich');
+        assertEqual((await A.listSnapshots()).length, 0, 'SV-1: Spielbereich übernimmt keine Sicherungspunkte');
         assertEqual(P.getPersistenceStatus().activeArea, 'spiel', 'Neustart setzt Spielbereich');
         await reject(() => assertFullBackupAllowed(), 'Vollsicherung und Import auch ohne Koordinator gesperrt');
         await reject(() => P.importAll({ records: { profile_tagesgeld: '100' } }, { replace: true }), 'Import bleibt gesperrt');

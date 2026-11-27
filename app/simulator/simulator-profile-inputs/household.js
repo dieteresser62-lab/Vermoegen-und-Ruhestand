@@ -3,7 +3,7 @@ import { dropUnusedCareDrift } from '../../shared/care-cost-drift.js';
 import { HOUSEHOLD_CURRENT_LIMIT_MESSAGE } from '../../profile/profile-registry.js';
 import { readSimulatorHouseholdPlan, projectPlanToSimulatorProfile } from '../../profile/household-plan.js';
 import { buildProfileAssetRecord } from './tranches.js';
-import { aggregateProfileHealthBuckets } from '../../profile/profile-state.js';
+import { aggregateProfileHealthBuckets, normalizeProfileHealthBucket } from '../../profile/profile-state.js';
 import { sumNumbers, moneyToCents, weightedAverage, maxNumber, ensureValueMatch, stableStringify } from './aggregate-values.js';
 import { calculateProfileGoldStrategy } from '../../profile/profile-asset-values.js';
 import { resolveLiquidityRunwayYears } from '../../../types/liquidity-runway-contract.js';
@@ -59,8 +59,7 @@ export function combineSimulatorProfiles(profileInputs, primaryProfileId, { plan
             combined: null,
             errorCode: 'SIMULATOR_PROFILE_ASSET_PROVENANCE_MISSING',
             warnings: [
-                `Profil ${profileName} besitzt positive Depot- oder Geldmarkt-Aggregate ohne Detailtranchen. `
-                + 'Der Hybridhaushalt wurde blockiert, weil Cost Basis und TQF nicht verlustfrei ableitbar sind.'
+                `Bei ${profileName} fehlen die Tranchen zum Depot- oder Geldmarktbestand. Ergänze sie in „Personen & Vermögen“, damit der Simulator rechnen kann.`
             ]
         };
     }
@@ -186,7 +185,13 @@ export function combineSimulatorProfiles(profileInputs, primaryProfileId, { plan
             healthBucketTriggerMode: healthBucket.triggerMode,
             healthBucketCoverageMode: healthBucket.coverageMode,
             healthBucketReturnMode: healthBucket.returnMode,
-            healthBucketTargetMode: healthBucket.targetMode
+            healthBucketTargetMode: healthBucket.targetMode,
+            ...(profileInputs.length > 1 ? {
+                healthBucketOwners: profileInputs.flatMap(({ profileId, inputs }) => {
+                    const { enabled, initialAmount } = normalizeProfileHealthBucket(inputs.healthBucket);
+                    return enabled && initialAmount > 0 ? [{ profileId, amount: initialAmount }] : [];
+                })
+            } : {})
         } : {}),
         startVermoegen: totalAssets,
         depotwertAlt: sumDepotwertAlt,
@@ -259,7 +264,7 @@ export function combineSimulatorProfiles(profileInputs, primaryProfileId, { plan
         warnings.push('Rentenanpassung (Mode) unterscheidet sich zwischen Profilen. Es wird das Hauptprofil verwendet.');
     }
     if (!ensureValueMatch(inputsList, i => i.stressPreset)) {
-        warnings.push('Stress-Preset unterscheidet sich zwischen Profilen. Es wird das Hauptprofil verwendet.');
+        warnings.push('Stressszenario unterscheidet sich zwischen Profilen. Es wird das Hauptprofil verwendet.');
     }
     if (!ensureValueMatch(inputsList, i => i.pflegeModellTyp)) {
         warnings.push('Pflege-Modell unterscheidet sich zwischen Profilen. Es wird das Hauptprofil verwendet.');

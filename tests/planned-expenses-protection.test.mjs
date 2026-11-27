@@ -70,9 +70,10 @@ for (const bondValue of [200000, 2000, 0]) for (const amount of [100,35000]) {
     const inputs={...base,startVermoegen:20000,tagesgeld:20000,simulationPeople:[{...base.simulationPeople[0],tagesgeld:20000}],detailledTranches:[],
         plannedExpensesReferenceYear:2026,plannedExpenses:[{id:'auto',monat:'2026-04',betrag:15000,bezeichnung:'Auto'}]};
     const result=simulate(inputs,{rendite:0});
-    assertEqual(result.kind,'ruin','Vermögen unter Grundbedarf plus Ausgabe gilt als Ruin');
-    assert(result.reason.includes('Geplante Ausgaben ungedeckt'),'Bestehende Ausgaben-Ruinzeile nennt den Grund');
-    close(result.logData.geplante_ausgaben,15000,'Terminale Zeile behält den fälligen Betrag');
+    // FR-84 Punkt 13: Deckt das Geldvermögen den Grundbedarf, entfällt die unbezahlbare einmalige Ausgabe statt den Lauf zu beenden.
+    assertEqual(result.kind,'success','Vermögen unter Grundbedarf plus Ausgabe: kein Ruin, die Ausgabe entfällt');
+    close(result.logData.geplante_ausgaben,0,'Die Ausgabe wird nicht bezahlt');
+    close(result.logData.geplante_ausgaben_gekuerzt,15000,'Protokoll nennt die nicht bezahlte Ausgabe');
     const covered=simulate({...inputs,plannedExpenses:[{...inputs.plannedExpenses[0],betrag:5000}]},{rendite:0});
     assertEqual(covered.kind,'success','Genug für Grundbedarf und Ausgabe: Flex darf Zahlung nicht verdrängen');
     close(covered.logData.geplante_ausgaben,5000,'Geplante Ausgabe wird vor verfügbarem Flex reserviert');

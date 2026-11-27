@@ -1,0 +1,5 @@
+# Jahreslieferungen (JD-2a): lieferung.json trägt den SHA-256 jeder Rohantwort. Git darf diese Dateien nie
+# umschreiben, sonst stimmt der SHA nach dem Commit nicht mehr. Die Regel steht hier und nicht in der
+# .gitattributes der Wurzel, weil deren Bytes der Slice-16-Beleg festschreibt; diese Datei hat für
+# data/historical/ Vorrang.
+*/jahre/** -text

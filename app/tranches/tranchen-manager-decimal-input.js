@@ -3,7 +3,7 @@ const moneyInputs = new Set(['profileTagesgeld', 'profileRenteMonatlich',
     'profileSparerPauschbetrag', 'profileHealthBucketInitialAmount', 'purchasePrice', 'currentPrice',
     'reconcileGrossProceeds', 'reconcileFees', 'reconcileRecommendedGross', 'reconcileInitialCashBalance', 'cashPostingBalance']);
 /** @param {{id?: string}|null} field @returns {boolean} */
-export const isMoneyInput = field => /^(?:home-(?:wert|mieteNetto|ortsueblicheMiete)|inheritance-min-\d+|managerCare(?:Cost[1-5]|MaxFloor|OwnExpenses|Allowance[2-5]|Heim(?:Care|Board|Invest)))$/.test(field?.id || '') || moneyInputs.has(field?.id) || /^(?:plannedInflow-\d+-amount|(?:income|expense)-\d+-(?:betrag|betragMonat))$/.test(field?.id || '');
+export const isMoneyInput = field => /^(?:home-(?:wert|mieteNetto|ortsueblicheMiete)|inheritance-(?:min|monthly-rent|estate-costs)-\d+|managerCare(?:Cost[1-5]|MaxFloor|OwnExpenses|Allowance[2-5]|Heim(?:Care|Board|Invest)))$/.test(field?.id || '') || moneyInputs.has(field?.id) || /^(?:plannedInflow-\d+-amount|(?:income|expense)-\d+-(?:betrag|betragMonat))$/.test(field?.id || '');
 // Gruppierte Anzeige eindeutig vom weiterhin erlaubten Dezimalpunkt unterscheiden.
 const displays = new WeakMap();
 // UR-2b: Kursfelder behalten den Punkt als Dezimalzeichen (Kurse mit drei Nachkommastellen).

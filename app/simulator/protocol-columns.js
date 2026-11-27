@@ -5,7 +5,9 @@ import { STRATEGY_OPTIONS } from '../../types/strategy-options.js';
 import { formatDisplayNumber, formatDisplayFixed } from '../shared/designsystem-number-format.js';
 import { formatDisplayPercentValue, formatDisplayPercentRatio } from '../shared/shared-formatting.js';
 import { protocolAnnualTotals, CARE_COLUMN_EXPLANATIONS } from './protocol-cashflows.js';
-import { translateBufferActionText } from '../shared/transaction-display-text.js';
+import { translateBufferActionText, translateEngineTerms } from '../shared/transaction-display-text.js';
+import { residentialReasonText } from '../shared/care-benefits.js';
+import { minimumFlexBlockText, minimumFlexStatusText } from '../shared/minimum-flex-display.js';
 
 export const PROTOCOL_GROUPS = Object.freeze({ year: 'Jahr / Alter', persons: 'Personen',
     withdrawal: 'Einnahmen und Ausgaben', care: 'Pflege', strategy: 'Strategie', market: 'Marktphase',
@@ -22,7 +24,7 @@ const DEFINITIONS = [
     ["income-total","Einnahmen","withdrawal","money","einnahmen_gesamt","row.einnahmen_gesamt","Einnahmen","both",true],
     ["expense-total","Ausgaben","withdrawal","money","ausgaben_gesamt","row.ausgaben_gesamt","Ausgaben","both",true],
     ["withdrawal","Laufende Entnahme","withdrawal","money","entscheidung.jahresEntnahme","entscheidung.jahresEntnahme","Entn.","both",true],
-    ["floor-brutto","Floor-Bedarf","withdrawal","money","floor_brutto","row.floor_brutto","Floor","both",true],
+    ["floor-brutto","Grundbedarf","withdrawal","money","floor_brutto","row.floor_brutto","Floor","both",true],
     ["home-rent","Miete nach Notverkauf","withdrawal","money","wohnmiete","row.wohnmiete","Miete nach Notverkauf","both",false],
     ["rente1","Jahresrente Person 1","withdrawal","money","rente1","row.rente1","Rente1","both",false],
     ["rente2","Jahresrente Person 2","withdrawal","money","rente2","row.rente2","Rente2","both",false],
@@ -32,7 +34,7 @@ const DEFINITIONS = [
     ["widow-income-offset","Kürzung Hinterbliebenenrente","withdrawal","money","WidowIncomeOffset","row.WidowIncomeOffset","Rentenanrechnung","both",false],
     ["planned-expenses","Geplante Ausgaben","withdrawal","money","geplante_ausgaben","row.geplante_ausgaben","Geplante Ausgaben","both",false],
     ["zufluss","Einmalige Einkünfte","withdrawal","money","zufluss","row.zufluss","Zufluss","both",true],
-    ["floor-aus-depot","Aus dem Depot zu deckender Floor","withdrawal","money","floor_aus_depot","row.floor_aus_depot","FloorDep","both",false],
+    ["floor-aus-depot","Aus dem Depot zu deckender Grundbedarf","withdrawal","money","floor_aus_depot","row.floor_aus_depot","FloorDep","both",false],
     ["flexratepct","Flex-Rate","withdrawal","percent0","FlexRatePct","row.FlexRatePct","Flex%","both",true],
     ["minflexratepct","Mindest-Flex-Rate in Prozent","withdrawal","percent0","MinFlexRatePct","row.MinFlexRatePct","MinF%","both",true],
     ["wealthredf","Vermögensbedingte Kürzung in Prozent","withdrawal","percent0","WealthRedF","row.WealthRedF","WRed%","both",true],
@@ -69,7 +71,7 @@ const DEFINITIONS = [
     ["row-safety-score","Sicherheitsbewertung","strategy","integer",null,"row.safety_score","SafSc","both",false],
     ["row-safety-risk-streak","Aufeinanderfolgende Risikojahre","strategy","integer",null,"row.safety_risk_streak","RiskSt","both",false],
     ["row-safety-stable-streak","Aufeinanderfolgende stabile Jahre","strategy","integer",null,"row.safety_stable_streak","StabSt","both",false],
-    ["row-safety-transition","Übergang der Sicherheitsstufe","strategy","text",null,"row.safety_transition","SafTr","both",false],
+    ["row-safety-transition","Übergang der Sicherheitsstufe","strategy","text","safety_transition","row.safety_transition","SafTr","both",false],
     ["minimumflexblockreason","Blockierungsgrund des Mindest-Flex","withdrawal","text","minimumFlexBlockReason","row.minimumFlexBlockReason","MinFBlock","both",false],
     ["minimumflexeffectiveafter","Wirkung des Mindest-Flex in Euro","withdrawal","money","minimumFlexEffectiveAfter","row.minimumFlexEffectiveAfter","MinFEff","both",false],
     ["row-safety-real-drawdown-pct","Realer Vermögensrückgang in Prozent","strategy","percent0",null,"row.safety_real_drawdown_pct","DDreal%","both",false],
@@ -80,8 +82,8 @@ const DEFINITIONS = [
     ["cutreason","Kürzungsgrund","action","text","CutReason","row.CutReason","Cut","both",true],
     ["alarm","Alarmstatus","action","boolean","Alarm","row.Alarm","Alarm","both",true],
     ["quoteendpct","Quote","withdrawal","percent","QuoteEndPct","row.QuoteEndPct","Quote%","both",true],
-    ["runwaycoveragepct","Runway-Deckung in Prozent","strategy","percent0","RunwayCoveragePct","row.RunwayCoveragePct","Runway%","both",true],
-    ["runwaytargetsmoothedmonths","Geglättetes Runway-Ziel in Monaten","strategy","months","RunwayTargetSmoothedMonths","row.RunwayTargetSmoothedMonths","RunZiel","both",true],
+    ["runwaycoveragepct","Reichweitendeckung in Prozent","strategy","percent0","RunwayCoveragePct","row.RunwayCoveragePct","Runway%","both",true],
+    ["runwaytargetsmoothedmonths","Geglättete Zielreichweite in Monaten","strategy","months","RunwayTargetSmoothedMonths","row.RunwayTargetSmoothedMonths","RunZiel","both",true],
     ["runwaytargetseveritypct","Runway-Zielschwere in Prozent","strategy","percent0","RunwayTargetSeverityPct","row.RunwayTargetSeverityPct","RunSev","both",true],
     ["nominalreturnequitypct","Aktienrendite in Prozent","market","ratio","NominalReturnEquityPct",null,"Pf.Akt%","both",true],
     ["nominalreturngoldpct","Goldrendite in Prozent","market","ratio","NominalReturnGoldPct",null,"Pf.Gld%","both",true],
@@ -115,18 +117,18 @@ const DEFINITIONS = [
     ["tract","Portfoliostand nach Aktionsverkäufen","wealth","money",null,null,"TrAct","both",false],
     ["trpay","Portfoliostand nach Entnahme","wealth","money",null,null,"TrPay","both",false],
     ["trbond","Portfoliostand nach Auffüllung des Anleihentopfs","wealth","money",null,null,"TrBond","both",false],
-    ["health-bucket-start","Pflegebucket am Jahresanfang","care","money","health_bucket_start","row.health_bucket_start","HBStart","both",false],
-    ["health-bucket-used","Pflegebucket-Nutzung","care","money","health_bucket_used","row.health_bucket_used","HBUse","both",false],
+    ["health-bucket-start","Pflegereserve am Jahresanfang","care","money","health_bucket_start","row.health_bucket_start","HBStart","both",false],
+    ["health-bucket-used","Nutzung der Pflegereserve","care","money","health_bucket_used","row.health_bucket_used","HBUse","both",false],
     ["health-bucket-interest","Pflegebucket-Verzinsung","care","money","health_bucket_interest","row.health_bucket_interest","HBZins","both",false],
-    ["health-bucket-end","Pflegebucket am Jahresende","care","money","health_bucket_end","row.health_bucket_end","HBEnd","both",false],
+    ["health-bucket-end","Pflegereserve am Jahresende","care","money","health_bucket_end","row.health_bucket_end","HBEnd","both",false],
     ["health-bucket-target-inflation-adjusted","Inflationsangepasstes Pflegebucket-Ziel","care","money","health_bucket_target_inflation_adjusted","row.health_bucket_target_inflation_adjusted","HBZiel","both",false],
     ["health-bucket-real-coverage-pct","Reale Pflegebucket-Zieldeckung in Prozent","care","percent0","health_bucket_real_coverage_pct","row.health_bucket_real_coverage_pct","HBDeck%","both",false],
     ["health-bucket-target-gap","Pflegebucket-Ziellücke","care","money","health_bucket_target_gap","row.health_bucket_target_gap","HBLücke","both",false],
     ["health-bucket-triggered","Pflegebucket-Trigger","care","boolean","health_bucket_triggered","row.health_bucket_triggered","HBTrig","both",false],
-    ["health-bucket-warning","Pflegebucket-Warnung","care","text","health_bucket_warning","row.health_bucket_warning","HBWarn","both",false],
+    ["health-bucket-warning","Warnung zur Pflegereserve","care","text","health_bucket_warning","row.health_bucket_warning","HBWarn","both",false],
     ["liqstart","Liquidität vor Verzinsung","strategy","money","liqStart","row.liqStart","Liq@rC-","both",false],
     ["cashinterestearned","Erhaltene Liquiditätszinsen","strategy","money","cashInterestEarned","row.cashInterestEarned","Zins€","both",false],
-    ["liqend","Liquidität nach Verzinsung","strategy","money","liqEnd","row.liqEnd","Liq@rC+","both",false],
+    ["liqend","Liquidität Jahresende (vor Steuer)","strategy","money","liqEnd","row.liqEnd","LiqEnde","both",false],
     ["zielliquiditaet","Zielbestand der Liquidität","strategy","money","zielLiquiditaet","row.zielLiquiditaet","ZielLiq","both",false],
     ["runwaytargetrawmonths","Ungeglättetes Runway-Ziel in Monaten","strategy","months","RunwayTargetRawMonths","row.RunwayTargetRawMonths","RunRaw","both",false],
     ["runwaytargethardminmonths","Harte Runway-Untergrenze in Monaten","strategy","months","RunwayTargetHardMinMonths","row.RunwayTargetHardMinMonths","RunMin","both",false],
@@ -172,7 +174,7 @@ const EXPLANATIONS = Object.freeze({ ...CARE_COLUMN_EXPLANATIONS,
     'jahresentnahme-real': 'Entnahme aus dem Vermögen für Grundbedarf und Flex; feste geplante Ausgaben zählen zum Grundbedarf, einmalige stehen in eigener Spalte',
     'income-total': 'Renten nach Hinterbliebenen-Anrechnung plus sonstige und einmalige Einkünfte in nominalen Euro. Das ⓘ zeigt die Jahresposten; davon angelegt zählt nicht zusätzlich zur Summe.',
     'expense-total': 'Jahresbedarf mit Pflege (zu Hause Zusatz, im Heim Heimkosten und eigene Ausgaben statt des Grundbedarfsanteils) plus tatsächlich erfüllter Haushalts-Flex und einmalige geplante Ausgaben in nominalen Euro; feste geplante Ausgaben stecken im Grundbedarf. Das ⓘ zeigt die Posten und darunter getrennt, wie viel davon aus dem Vermögen bezahlt wurde: laufende Entnahme plus einmalige geplante Ausgaben.',
-    'quoteendpct': 'Vorläufige Entnahme auf Basis der Vorjahres-Flexrate vor Transaktion und Auszahlung; Depot ohne Liquidität und Pflegebucket als Nenner. Prozentpunkte, keine Aktienquote.',
+    'quoteendpct': 'Vorläufige Entnahme auf Basis der Vorjahres-Flexrate vor Transaktion und Auszahlung; Depot ohne Liquidität und Pflegereserve als Nenner. Prozentpunkte, keine Aktienquote.',
     runway: 'Liquiditätsreichweite nach Transaktion und vor Entnahme: vorhandene Monate geteilt durch zwölf.',
     flexratepct: 'Anteil des gewünschten Flex-Betrags, der ausgezahlt wurde. Prozentpunkte; unter 100 % bedeutet Kürzung.',
     rentesum: 'Summe der Jahresrenten beider Personen in nominalen Euro.',
@@ -180,9 +182,9 @@ const EXPLANATIONS = Object.freeze({ ...CARE_COLUMN_EXPLANATIONS,
     'income-saved': 'Überschuss aus Renten und festen sonstigen Einkünften nach Grundbedarf und Flex, dem persönlichen Tagesgeld gutgeschrieben. Anlage nach den bestehenden Regeln.',
     'widow-income-offset': 'Kürzung der Hinterbliebenenrente durch die eigene gesetzliche Rente oberhalb des Freibetrags; im Todesjahr nur für die letzten drei Monate.',
     'steuern-gesamt': 'Steuern auf die Verkäufe dieses Jahres in nominalen Euro.',
-    equity: 'Aktien- und ETF-Bestand am Jahresende; in der Drei-Bucket-Strategie ohne den separat ausgewiesenen Anleihentopf.',
+    equity: 'Aktien- und ETF-Bestand am Jahresende; in der Strategie Drei Töpfe ohne den separat ausgewiesenen Anleihentopf.',
     action: 'Vollständige Aktion und Begründung des Rechenlaufs.',
-    total: 'Tagesgeld, Anleihen, Aktien, Gold; damit rechnet die App Entnahmen und Ruin',
+    total: 'Tagesgeld, Anleihen, Aktien, Gold; damit rechnet die App Entnahmen und prüft, ob das Vermögen reicht',
     'home-value': 'Wert der Immobilien, die noch im Haushalt sind, wie beim Verkauf angesetzt; wächst mit der Inflation, in heutigen Euro daher gleichbleibend',
     'total-with-homes': 'Geldvermögen plus Immobilien',
     neta: 'Nettohandel Aktien: positiv = Verkauf, negativ = Kauf.',
@@ -193,7 +195,7 @@ const EXPLANATIONS = Object.freeze({ ...CARE_COLUMN_EXPLANATIONS,
 });
 const SHORT_HEADERS = Object.freeze({
     "widow-income-offset": "Rentenanrechnung",
-    "floor-aus-depot": "Floor aus Depot",
+    "floor-aus-depot": "Grundbedarf aus Depot",
     "minflexratepct": "Mindest-Flex-Rate",
     "wealthredf": "Vermögenskürzung",
     "wealthquoteusedpct": "Vermögensquote",
@@ -233,8 +235,8 @@ const SHORT_HEADERS = Object.freeze({
     "row-safety-real-drawdown-pct": "Rückgang real",
     "row-safety-runway-pre-months": "Reichweite vorher",
     "row-safety-runway-post-months": "Reichweite nachher",
-    "runwaycoveragepct": "Runway-Deckung",
-    "runwaytargetsmoothedmonths": "Runway-Ziel",
+    "runwaycoveragepct": "Reichweitendeckung",
+    "runwaytargetsmoothedmonths": "Zielreichweite",
     "runwaytargetseveritypct": "Runway-Zielschwere",
     "runwaytargetrawmonths": "Runway-Ziel roh",
     "runwaytargethardminmonths": "Runway-Minimum",
@@ -251,7 +253,7 @@ const SHORT_HEADERS = Object.freeze({
     "liq-after-payout": "Liquidität nach Entnahme",
     "liq-after-interest": "Liquidität nach Zinsen",
     "liqstart": "Liquidität vor Zinsen",
-    "liqend": "Liquidität nach Zinsen",
+    "liqend": "Liquidität Jahresende",
     "cashinterestearned": "Liquiditätszinsen",
     "zielliquiditaet": "Ziel-Liquidität",
     "needliq": "Auffüllbedarf",
@@ -281,15 +283,15 @@ const SHORT_HEADERS = Object.freeze({
     "carep2-grade": "Pflegegrad Person 2",
     "carep1-cost": "Pflegekosten Person 1",
     "carep2-cost": "Pflegekosten Person 2",
-    "health-bucket-start": "Pflegebucket Beginn",
-    "health-bucket-used": "Pflegebucket genutzt",
+    "health-bucket-start": "Pflegereserve Beginn",
+    "health-bucket-used": "Pflegereserve genutzt",
     "health-bucket-interest": "Pflegebucket Zinsen",
-    "health-bucket-end": "Pflegebucket Ende",
+    "health-bucket-end": "Pflegereserve Ende",
     "health-bucket-target-inflation-adjusted": "Pflegebucket-Ziel",
     "health-bucket-real-coverage-pct": "Pflegebucket-Deckung",
     "health-bucket-target-gap": "Pflegebucket-Lücke",
     "health-bucket-triggered": "Pflegebucket ausgelöst",
-    "health-bucket-warning": "Pflegebucket-Warnung",
+    "health-bucket-warning": "Pflegereserve-Warnung",
     "pflege-floor-anchor": "Floor bei Pflegebeginn",
     "pflege-maxfloor-anchor": "Pflege-Floor maximal",
     "pflege-cap-zusatz": "Pflegezusatz-Grenze",
@@ -404,6 +406,18 @@ export function protocolRowFlags(entry, source = 'mc') {
         care: Boolean(row.CareP1_Active || row.CareP2_Active || row.pflege_aktiv) };
 }
 const finite = value => typeof value === 'number' && Number.isFinite(value);
+/** FR-84 Punkt 6: Grund für den Heimeintritt nur im Jahr des Wechsels der Pflegeform (Vorjahreszeile nicht im Heim). NK-2 (Punkt 7):
+ * Im ersten Simulationsjahr zählt der Anfangszustand: Wer heute schon im Heim lebt, wechselt nicht.
+ * @param entry - Protokolleintrag. @param {number} index 0 für Person 1, 1 für Person 2. @param [options] - Optionen mit allen Zeilen.
+ * @returns {string|null} Text oder null ohne Wechsel. */
+export function protocolResidentialEntry(entry, index, options = {}) {
+    const source = options.source || 'mc', rows = options.rows || [], position = rows.indexOf(entry), key = `CareP${index + 1}`;
+    const row = protocolRowData(entry, source), previous = position > 0 ? protocolRowData(rows[position - 1], source) : null;
+    if (position < 0 || row[`${key}_Form`] !== 'residential' || !row[`${key}_Active`]) return null;
+    const today = index === 0 ? options.inputs?.careToday : options.inputs?.partner?.careToday;
+    const before = previous ? previous[`${key}_Form`] === 'residential' : today?.form === 'residential' || Boolean(row[`${key}_HeimBestand`]);
+    return before ? null : residentialReasonText(options.inputs, row[`${key}_Grade`], index);
+}
 const tracePhases = { TrAct: 'after_action_sales', TrPay: 'after_payout', TrBond: 'after_bond_refill' };
 /**
  * @param column - Kontext für column.
@@ -421,8 +435,8 @@ export function readProtocolValue(column, entry, options = {}) {
     }
     if (column.incomeProfileId !== undefined) return row.sonstige_einkuenfte_personen?.find(person => person.profileId === column.incomeProfileId)?.amount ?? 0;
     const flags = protocolRowFlags(entry, source);
-    if (column.id === 'year-status') return flags.ruin ? 'Ruin' : flags.cut ? 'Kürzung' : 'Ohne Kürzung';
-    if (column.id === 'household-care') return [1, 2].filter(p => row[`CareP${p}_Active`]).map(p => `Person ${p}${row[`CareP${p}_Grade`] != null ? ` · Pflegegrad ${row[`CareP${p}_Grade`]}` : ''}${row[`CareP${p}_Form`] === 'residential' ? ' · im Heim' : ''}`).join(' / ') || (flags.care ? 'Pflege aktiv' : '—');
+    if (column.id === 'year-status') return flags.ruin ? 'Vermögen aufgebraucht' : flags.cut ? 'Kürzung' : 'Ohne Kürzung';
+    if (column.id === 'household-care') return [1, 2].filter(p => row[`CareP${p}_Active`]).map(p => `Person ${p}${row[`CareP${p}_Grade`] != null ? ` · Pflegegrad ${row[`CareP${p}_Grade`]}` : ''}${row[`CareP${p}_Form`] === 'residential' ? ` · ${protocolResidentialEntry(entry, p - 1, options) || 'im Heim'}` : ''}`).join(' / ') || (flags.care ? 'Pflege aktiv' : '—');
     if (column.id === 'runway') return source === 'backtest' && Object.hasOwn(row, 'runway_after_transaction_before_payout_months')
         ? row.runway_after_transaction_before_payout_months : row.runway_after_transaction_before_payout_months ?? entry?.runway_after_transaction_before_payout_months;
     if (h in tracePhases) return row.balance_trace?.find(item => item?.phase === tracePhases[h])?.total;
@@ -460,7 +474,10 @@ export function readProtocolValue(column, entry, options = {}) {
 export function translateProtocolText(value) {
     const scenarios = { HEISS: 'Markt heiß gelaufen', ATH: 'Stabiler Höchststand', ERHOLUNG: 'Bestätigte Erholung',
         REC_BÄR: 'Erholung im Bärenmarkt', KORREKTUR: 'Junge Korrektur', BÄR: 'Tiefer Bär', SEITWÄRTS: 'Lange Seitwärtsbewegung' };
-    return translateBufferActionText(value).replace(/\b(?:REC_BÄR|HEISS|ATH|ERHOLUNG|KORREKTUR|BÄR|SEITWÄRTS)(?![\p{L}\p{N}_])/gu, key => scenarios[key])
+    return translateEngineTerms(translateBufferActionText(value).replace(/\b(?:REC_BÄR|HEISS|ATH|ERHOLUNG|KORREKTUR|BÄR|SEITWÄRTS)(?![\p{L}\p{N}_])/gu, key => scenarios[key])
+        .replaceAll('floor_covered_by_pension', 'Grundbedarf durch Renten und feste Einkünfte gedeckt')
+        .replaceAll('engine_guard_primary', 'Reguläre Schutzregel für den Grundbedarf')
+        .replaceAll('accumulation_phase', 'Ansparphase')
         .replaceAll('Profilverbund-Transaktionen', 'Verkäufe und Käufe je Person')
         .replaceAll('Runway-Notfüllung', 'Liquidität aufgefüllt')
         .replaceAll('(Cap aktiv)', '(begrenzt)').replaceAll('(neutral)', '(unauffälliger Markt)')
@@ -472,12 +489,14 @@ export function translateProtocolText(value) {
         .replaceAll('Opportunistisches Rebalancing', 'Anlagen bei günstiger Marktlage umschichten')
         .replaceAll('Dynamic-Flex-Obergrenze', 'Obergrenze des dynamischen Flex-Bedarfs')
         .replaceAll('(S)', '(Stagflation)').replaceAll(' (Kein Handlungsbedarf)', ' · kein Handlungsbedarf')
-        .replaceAll('!!! RUIN !!!', 'Ruin')
+        .replaceAll('!!! RUIN !!!', 'Vermögen aufgebraucht')
+        .replaceAll('>>> RUIN <<<', 'Vermögen aufgebraucht:')
+        .replaceAll('>>> ENDE: Alle Personen verstorben <<<', 'Alle Personen verstorben')
         .replaceAll('MinRW-Refill', 'Mindestreichweite auffüllen').replaceAll('Puffer-Refill', 'Liquiditätspuffer auffüllen')
         .replaceAll('Gesamtvermögen', 'Geldvermögen')
         .replaceAll('Bonds Auffüllen', 'Anleihen auffüllen')
         .replaceAll('Reinvest', 'Wiederanlage').replaceAll('Rebal.(G+)', 'Gold kaufen')
-        .replaceAll('Rebal.(G-)', 'Gold verkaufen').replaceAll('Rebal.(A+)', 'Aktien kaufen');
+        .replaceAll('Rebal.(G-)', 'Gold verkaufen').replaceAll('Rebal.(A+)', 'Aktien kaufen'));
 }
 /**
  * @param column - Kontext für column.
@@ -487,12 +506,63 @@ export function translateProtocolText(value) {
  * @returns Darstellung der übergebenen Laufdaten.
  */
 export function formatProtocolValue(column, value, entry, options = {}) {
+    const text = formatProtocolCell(column, value, entry, options);
+    // TX-2 (H-OP1-MINUSZEICHEN): Negative Zahlen zeigen das echte Minuszeichen „−“; Intl liefert nur „-“. Texte bleiben unverändert.
+    return column.format === 'text' ? text : text.replace(/(^|\s)-(?=\d)/gu, '$1−');
+}
+const PROTOCOL_TEXT_LABELS = {
+    'vpw-status': {
+        disabled: 'Ausgeschaltet', active: 'Aktiv', contract_ready: 'Bereit', safety_static_flex: 'Statischer Flex'
+    },
+    vpwfallbackhint: {
+        no_vpw: 'Keine VPW-Daten', dynamic_flex_off: 'Dynamischer Flex ist ausgeschaltet',
+        contract_not_active: 'Dynamischer Flex noch inaktiv', safety_static_flex: 'Statischer Flex zur Sicherheit',
+        unknown_status: 'Unbekannter VPW-Status', fallback_no_cape: 'Ersatzrechnung ohne CAPE-Wert',
+        fallback_no_cape_return: 'Ersatzrechnung ohne CAPE-Rendite',
+        fallback_no_real_return: 'Ersatzrechnung ohne reale Rendite', ok: 'Ohne Ersatzrechnung'
+    },
+    'vpw-returnpolicy': { legacy_step: 'CAPE-Stufenmodell', cape_continuous: 'Stetiges CAPE-Modell' },
+    'vpw-expectedreturnsource': { legacy_cape_linear: 'CAPE-Stützpunkte', cape_continuous: 'Stetiges CAPE-Modell', fallback: 'Ersatzwert' },
+    'vpw-capeinputstatus': { valid: 'Gültig', fallback_missing: 'CAPE-Wert fehlt', fallback_invalid: 'CAPE-Wert ungültig' },
+    'vpw-saferealreturnsource': { context: 'Vorgabe für den Lauf', config_dynamic_flex: 'Vorgabe für dynamischen Flex', fallback_zero: 'Ersatzwert 0 %' },
+    'row-safety-transition': { none: 'Kein Wechsel', up: 'Stufe erhöht', down: 'Stufe gesenkt' }
+};
+const CUT_REASON_LABELS = {
+    bear_deep: 'Tiefer Bärenmarkt', alarm: 'Alarm', flex_rate_hard_cap: 'Feste Obergrenze für Flex',
+    spending_guardrail: 'Leitplanke für Ausgaben', severe_bear_wealth_emergency: 'Schwere Flex-Notlage'
+};
+const MARKET_LABELS = {
+    accumulation: 'Ansparphase', BANKRUPT: 'Vermögen aufgebraucht', recovery: 'Bestätigte Erholung',
+    side_long: 'Lange Seitwärtsbewegung', bear: 'Bärenmarkt', unknown: 'Unbekannte Marktphase'
+};
+// ST7-A (H-BT-REAL-FLUSS): Real rechnet Bestände am Jahresende mit dem Preisstand am Jahresende um. Alle Zahlungen
+// und Zwischenstände des Jahres nehmen den Preisstand am Jahresanfang (Endfaktor des Vorjahrs, im ersten Jahr 1),
+// im Backtest wie in Monte Carlo. Ein gleichbleibender realer Grundbedarf zeigt so in jedem Jahr denselben Betrag.
+const YEAR_END_STOCK_IDS = new Set(['equity', 'gold', 'bonds', 'cash', 'total', 'home-value', 'total-with-homes',
+    'losscarryend', 'health-bucket-end', 'health-bucket-target-gap', 'liqend', 'portfolio-active-end']);
+// ST7-FIX (Gutachten ST7 P3-1): Zinsen der Pflegereserve und des Tagesgelds werden am Jahresende gutgeschrieben. Sie nehmen wie vor
+// ST7-A (KL-3) den Preisstand am Jahresende; Anfangsbestand plus Zinsen weicht dann nur um den Kaufkraftverlust des Anfangsbestands ab.
+const YEAR_END_INTEREST_IDS = new Set(['health-bucket-interest', 'cashinterestearned']);
+
+function formatProtocolCell(column, value, entry, options) {
     if (column.format === 'text') {
+        if (value == null || value === '') return '';
+        if (column.id === 'minimumflexstatus') return minimumFlexStatusText(value);
+        if (column.id === 'minimumflexblockreason') return minimumFlexBlockText(value);
         if (column.id === 'health-bucket-warning' && String(value).startsWith('Pflegebucket auf verfuegbare Liquiditaet gekappt:')) {
-            return 'Pflegereserve beim Start auf die verfügbare Liquidität begrenzt.';
+            return String(value).replace('Pflegebucket auf verfuegbare Liquiditaet gekappt:', 'Pflegereserve beim Start auf die verfügbare Liquidität begrenzt:').replaceAll(' EUR', ' €');
         }
-        if (column.id === 'market') return ({ accumulation: 'Ansparphase', BANKRUPT: 'Ruin', recovery: 'Bestätigte Erholung', side_long: 'Lange Seitwärtsbewegung' })[value]
-            || EngineAPI.getConfig().TEXTS?.SCENARIO?.[value] || String(value ?? '');
+        if (column.id === 'market') {
+            const labels = { ...EngineAPI.getConfig().TEXTS?.SCENARIO, ...MARKET_LABELS };
+            return Object.hasOwn(labels, value) ? labels[value] : 'Unbekannte Marktphase';
+        }
+        if (column.id === 'cutreason') {
+            if (value === 'none') return 'Keine Kürzung';
+            value = String(value).replace(/Safety-Cap \(([a-z_]+)\)/gu,
+                (_, reason) => `Sicherheitsgrenze (${Object.hasOwn(CUT_REASON_LABELS, reason) ? CUT_REASON_LABELS[reason] : 'sonstiger Grund'})`);
+        }
+        const labels = PROTOCOL_TEXT_LABELS[column.id];
+        if (labels) return Object.hasOwn(labels, value) ? labels[value] : 'Unbekannt';
         return translateProtocolText(value);
     }
     if (column.format === 'boolean') return value == null ? '' : value ? 'aktiv' : '—';
@@ -510,16 +580,12 @@ export function formatProtocolValue(column, value, entry, options = {}) {
             const startFactor = row.inflation_factor_cum;
             const inflation = options.source === 'backtest' ? entry.inflationVJ : row.inflation;
             const realWithdrawal = column.id === 'jahresentnahme-real';
+            // Die reale Entnahme ist schon mit dem Faktor am Jahresanfang protokolliert.
             if (realWithdrawal && options.moneyBasis !== 'real') {
                 value = finite(row.entnahme_effektiv) ? row.entnahme_effektiv
                     : finite(startFactor) && startFactor > 0 ? value * startFactor : NaN;
-            } else if (realWithdrawal && options.source === 'backtest') {
-                const nominal = finite(row.entnahme_effektiv) ? row.entnahme_effektiv : value * startFactor;
-                const factor = finite(inflation) ? startFactor * (1 + inflation / 100) : NaN;
-                value = finite(factor) && factor > 0 ? nominal / factor : NaN;
             } else if (!realWithdrawal && options.moneyBasis === 'real') {
-                const endStock = ['equity', 'gold', 'bonds', 'cash', 'total', 'home-value', 'total-with-homes', 'losscarryend', 'health-bucket-end'].includes(column.id);
-                const factor = endStock || options.source === 'backtest'
+                const factor = YEAR_END_STOCK_IDS.has(column.id) || YEAR_END_INTEREST_IDS.has(column.id)
                     ? finite(inflation) ? startFactor * (1 + inflation / 100) : NaN : startFactor;
                 value = finite(factor) && factor > 0 ? value / factor : NaN;
             }
@@ -544,6 +610,7 @@ const STANDARD_IDS = ['year', 'histjahr', 'person1-status', 'person2-status', 'i
     'equity', 'gold', 'bonds', 'cash', 'total', 'home-value', 'total-with-homes'];
 const GOLD_HEADERS = new Set(['Pf.Gld%', 'Handl.G', 'Gold', 'GuardG', 'Gld_vorR', 'Gld_nachR', 'Gld_nachV', 'Gld_nachK']);
 const NORMAL_CARE_IDS = new Set(['carep1-cost', 'carep2-cost', 'pflege']);
+const BACKTEST_RESERVE_IDS = new Set(['health-bucket-start', 'health-bucket-interest', 'health-bucket-end']);
 const DETAIL_CASHFLOW_IDS = ['widow-income-offset', 'zufluss', 'other-income', 'income-saved'];
 
 // Flüchtiger Anzeigebeleg: keine Erweiterung von Rohdaten oder Exportmetadaten.
@@ -590,6 +657,9 @@ function incomePersonColumns(options) {
  */
 export function getProtocolColumns(options = {}) {
     const source = options.source || 'mc', detailed = options.logDetailLevel === 'detailed';
+    const showBacktestReserve = source === 'backtest' && detailed
+        && options.rows?.some(entry => protocolRowData(entry, source).health_bucket_enabled === true);
+    const showReserveColumn = column => showBacktestReserve && BACKTEST_RESERVE_IDS.has(column.id);
     const personContext = options.personDisplayContext || createProtocolPersonContext(options.inputs);
     const named = text => text?.replace(/Person ([12])/g, (_, person) => personContext.persons[Number(person) - 1]?.name || `Person ${person}`);
     const conditional = Object.fromEntries(DETAIL_CASHFLOW_IDS.map(id => [id, detailed]));
@@ -600,17 +670,20 @@ export function getProtocolColumns(options = {}) {
             header: ['handl-bd', 'bonds'].includes(catalog.id) ? catalog.header : column.header } : column;
     }) : PROTOCOL_COLUMNS.filter(column => {
         const h = column.legacyHeader;
-        if (column.visibility === 'export') return false;
+        if (column.visibility === 'export' && !showReserveColumn(column)) return false;
         if (['home-value', 'total-with-homes'].includes(column.id)) return Boolean(options.inputs?.home?.length)
             || (options.rows || []).some(entry => Object.hasOwn(protocolRowData(entry, source), 'immobilien_wert_end'));
         if (column.id === 'home-rent') return detailed
             && (options.rows || []).some(entry => Object.hasOwn(protocolRowData(entry, source), 'wohnmiete'));
         if (['inheritance-outflow', 'inheritance-tax'].includes(column.id)
-            && !(options.rows || []).some(entry => Object.hasOwn(protocolRowData(entry, source), 'abgang_erben'))) return false;
+            && !(options.rows || []).some(entry => {
+                const raw = protocolRowData(entry, source);
+                return Object.hasOwn(raw, 'abgang_erben') || (column.id === 'inheritance-tax' && raw.housingCapitalMove?.kind === 'sold');
+            })) return false;
         if (column.id === 'residence-tax') return (options.rows || []).some(entry => Object.hasOwn(protocolRowData(entry, source), 'wohnrechtsteuer'));
         if (['home-sale', 'home-sale-year'].includes(column.id)) return (options.rows || [])
             .some(entry => Object.hasOwn(protocolRowData(entry, source), 'immobilienverkauf'));
-        if (source === 'backtest' && (column.group === 'care' || column.applicability === 'mc')) return false;
+        if (source === 'backtest' && column.applicability === 'mc') return false;
         if (column.group === 'care' && !detailed
             && !(source === 'mc' && options.showCareDetails && NORMAL_CARE_IDS.has(column.id))) return false;
         if (options.goldAktiv === false && GOLD_HEADERS.has(h)) return false;
@@ -629,11 +702,14 @@ export function getProtocolColumns(options = {}) {
     for (const [id, visible] of Object.entries(conditional)) {
         if (visible && !columns.some(column => column.id === id)) columns.push(PROTOCOL_COLUMNS.find(column => column.id === id));
     }
-    columns = columns.filter(column => (!Object.hasOwn(conditional, column.id) || conditional[column.id])
-        && (detailed || column.group !== 'withdrawal' || ['income-total', 'expense-total'].includes(column.id))
-        && column.visibility !== 'export'
-        && !PROTOCOL_COLUMNS.some(item => item.id === column.id && item.visibility === 'export')
-        && !(source === 'backtest' && ['care', 'persons'].includes(column.group)));
+    columns = columns.filter(column => {
+        if (source === 'backtest' && column.group === 'care') return showReserveColumn(column);
+        return (!Object.hasOwn(conditional, column.id) || conditional[column.id])
+            && (detailed || column.group !== 'withdrawal' || ['income-total', 'expense-total'].includes(column.id))
+            && column.visibility !== 'export'
+            && !PROTOCOL_COLUMNS.some(item => item.id === column.id && item.visibility === 'export')
+            && !(source === 'backtest' && column.group === 'persons');
+    });
     const groups = Object.keys(PROTOCOL_GROUPS);
     const rank = column => {
         if (column.id === 'home-value') return STANDARD_IDS.indexOf('total') + .1;
@@ -652,6 +728,10 @@ export function getProtocolColumns(options = {}) {
         if (column.id === 'total') column = { ...column, header: 'Geldvermögen', exportHeader: 'PortEnd' };
         if (column.id === 'zufluss') column = { ...column, label: 'Einmalige Einkünfte', header: 'Einmalige Einkünfte', exportHeader: 'Zufluss' };
         if (column.id === 'withdrawal') column = { ...column, exportHeader: 'Entnahme' };
+        if (column.id === 'residence-tax' && (options.rows || []).some(entry => protocolRowData(entry, source).residenceTaxPayment?.rentBequest)) {
+            const label = 'Erbschaftsteuer jährlich (§ 23)';
+            column = { ...column, label, header: label, explanation: 'Vorauszahlung auf die Rente aus dem Erbe in nominalen Euro.' };
+        }
         if (column.id === 'jahresentnahme-real') column = { ...column, label: 'Laufende Entnahme', header: 'Laufende Entnahme', exportHeader: 'Entnahme aus Vermögen' };
         if (column.group !== 'persons' && /Person [12]/.test(column.label)) {
             column = { ...column, label: named(column.label), header: named(column.label), explanation: named(column.explanation) };

@@ -18,7 +18,7 @@ import {
 } from '../app/profile/profilverbund-action-attribution.js';
 import {
     createProfile,
-    setProfileVerbundMembership,
+    deleteProfile,
     ensureProfileRegistry,
     getCurrentProfileId,
     updateProfileData
@@ -279,7 +279,7 @@ global.localStorage = createLocalStorageMock();
     assertEqual(loaded.inputs.geldmarktEtf, 15000, 'Money-Market-Tranche sollte übernommen werden');
     assertEqual(loaded.tranches.length, 2, 'Tranchen sollten erhalten bleiben');
 
-    setProfileVerbundMembership(profile.id, false);
+    assert(deleteProfile(profile.id), 'Zweite Person macht Platz');
     const noAgeProfile = createProfile('Alter nicht gesetzt');
     updateProfileData(noAgeProfile.id, {
         profile_tagesgeld: '1000',
@@ -916,8 +916,8 @@ console.log('Test 18: Produktiver Profilverbundloader trennt Kurs- und Strategie
     localStorage.clear();
     ensureProfileRegistry();
     updateProfileData(getCurrentProfileId(), { profile_person_schema_version: '1', profile_aktuelles_alter: '67' });
-    const datedProfile = createProfile('Kurszeit');
-    setProfileVerbundMembership('default', false);
+    // Ein Haushalt hat höchstens zwei Personen: das Standardprofil trägt den datierten Bestand.
+    const datedProfile = { id: getCurrentProfileId() };
     const undatedProfile = createProfile('Ohne Kurszeit');
     const lot = { schemaVersion: 2, trancheId: 'real', name: 'ETF', shares: 2,
         purchasePrice: 100, currentPrice: 120, category: 'equity', type: 'aktien_neu', tqf: 0.3, taxExempt: false };

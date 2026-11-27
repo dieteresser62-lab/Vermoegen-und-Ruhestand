@@ -44,7 +44,7 @@ export function prepareYearAction(context) {
         restoreEngineBoundaryPortfolio(portfolio, engineBoundaryPortfolio);
         return { outcome: /** @type {YearOutcome} */ (buildTechnicalErrorOutcome(
             SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID,
-            `Die Simulations-Engine lieferte keine ausgeglichene geplante Transaktion (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID}).`,
+            `Die Simulation lieferte keine ausgeglichene geplante Transaktion (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID}).`,
             null,
             {
                 contract: 'planned_action_flow',
@@ -66,7 +66,7 @@ export function prepareYearAction(context) {
         restoreEngineBoundaryPortfolio(portfolio, engineBoundaryPortfolio);
         return { outcome: /** @type {YearOutcome} */ (buildTechnicalErrorOutcome(
             SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID,
-            `Die Simulations-Engine lieferte keine zentral reconciliierte Jahressteuer (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID}).`,
+            `Die Simulation lieferte keine zentral reconciliierte Jahressteuer (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID}).`,
             null,
             {
                 contract: 'annual_tax_settlement',
@@ -172,7 +172,7 @@ export function prepareYearAction(context) {
         restoreEngineBoundaryPortfolio(portfolio, engineBoundaryPortfolio);
         return { outcome: /** @type {YearOutcome} */ (buildTechnicalErrorOutcome(
             SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID,
-            `Die Simulations-Engine lieferte keine ausgeglichene geplante Transaktion (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID}).`,
+            `Die Simulation lieferte keine ausgeglichene geplante Transaktion (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID}).`,
             null,
             {
                 contract: 'planned_action_flow',

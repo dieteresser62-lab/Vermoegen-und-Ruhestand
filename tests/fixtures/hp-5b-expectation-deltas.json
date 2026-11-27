@@ -1,0 +1,103 @@
+{
+  "reason": "FR-78 Ergänzung 7: Beide Karten zeigen den Verkaufszufluss je Person. Der Geldmarkt bekommt den Rest des angezeigten Verkaufszuflusses.",
+  "changes": [
+    {
+      "test": "tests/hp-5b-sollfaelle.test.mjs",
+      "field": "Max und Erika: Tagesgeld/Geldmarkt im Ergebnis, Tagesgeld nach Umsetzung und angezeigtes Ziel Erika in Balance",
+      "old": { "split": [0, 35000], "cashAfter": 25500, "erikaTarget": 20000 },
+      "new": { "split": [10000, 25000], "cashAfter": 36959, "erikaTarget": 19175 },
+      "reason": "Erika erhält genau 9.945,22 € und erreicht ihr Ziel. Max behält seinen Überschuss. Die Zielanzeige auf volle Euro verhindert einen Schein-Fehlbetrag. Die Gegenprobe auf f8cbd253 scheitert bereits an der Aufteilung."
+    },
+    {
+      "test": "tests/hp-5-sollfaelle.test.mjs",
+      "field": "Jan und Lena: Tagesgeld heute/nach Umsetzung, Tagesgeldzufluss/Geldmarktzufluss",
+      "old": { "grundfall": [60000, 65000, 5000, 85000], "lena20745": [55745, 65000, 9255, 80745] },
+      "new": { "grundfall": [60000, 67500, 7500, 82500], "lena20745": [55745, 67745, 12000, 78000] },
+      "reason": "Nur Lenas Lücke bestimmt den Tagesgeldzufluss. Jans Überschuss bleibt stehen."
+    },
+    {
+      "test": "tests/hp-5-sollfaelle.test.mjs, tests/wt-1-sollfaelle.test.mjs",
+      "field": "Beschriftung der Tagesgeld-Zeile im Jahresabschluss-Ergebnis",
+      "old": "Aufs Tagesgeld, bis es 12 Monate Entnahme deckt",
+      "new": "Aufs Tagesgeld bis zum Tagesgeldziel",
+      "reason": "Die Beschriftung nennt das persönliche Ziel."
+    },
+    {
+      "test": "tests/rk-4-sollfaelle.test.mjs",
+      "field": "Eine Person trägt: Martins Tagesgeld nach Umsetzung bei heute 10.000 €",
+      "old": 15000,
+      "new": 14500,
+      "reason": "Der persönliche Zufluss von 4.400 € erscheint gerundet als 4.500 €. Petras Tagesgeldsaldo fließt in diese Rundung nicht ein."
+    },
+    {
+      "test": "tests/gu-1b-sollfaelle.test.mjs",
+      "field": "A3: Liquidität nach Umsetzung im teilweise erledigten Plan",
+      "old": 179312,
+      "new": 179313,
+      "reason": "Angezeigte 99.363 € heute plus der angezeigte offene Rest von 79.950 € ergeben 179.313 €."
+    },
+    {
+      "test": "tests/gu-1b-sollfaelle.test.mjs",
+      "field": "Planversuch: Erkennung der Neuberechnung anhand der Reservekarte",
+      "old": "Prüft nur den Text „nach Umsetzung“ und schließt 179.313 € aus",
+      "new": "Liquidität heute99.363 €→nach Umsetzung179.363 €",
+      "reason": "Nach Max' Teilverkauf zeigt der Planversuch 99.363 € heute plus 80.000 € aus der neu gerundeten Rechnung. Der teilweise umgesetzte Beleg ergibt 179.313 €."
+    },
+    {
+      "test": "tests/gu-1b-sollfaelle.test.mjs",
+      "field": "Erikas angezeigtes Tagesgeldziel bei einem Stand von 27.450 € nach vollständiger Umsetzung",
+      "old": 27500,
+      "new": 27400,
+      "reason": "Erikas heutiges Tagesgeld deckt das genaue Ziel. Die Anzeige auf volle Euro verhindert einen Schein-Fehlbetrag."
+    },
+    {
+      "test": "tests/wt-1b-sollfaelle.test.mjs",
+      "field": "Befund 11: Liquidität nach Umsetzung, wenn die Aufbereitung des Jahresbelegs auf die Neuberechnung zurückfällt",
+      "old": 180500,
+      "new": 180000,
+      "reason": "Die heutige Liquidität von 90.000 € steigt um den gerundeten Verkaufskopf von 90.000 €. Der Warnhinweis belegt weiter den Rückfall."
+    },
+    {
+      "test": "tests/wt-1b-sollfaelle.test.mjs",
+      "field": "Rückfall auf die Neuberechnung mit teilweise umgesetztem Beleg",
+      "old": "Rückfall nur mit offenem Beleg geprüft",
+      "new": "nach Umsetzung179.363 €",
+      "reason": "99.363 € heutige Liquidität plus 80.000 € neu berechneter Verkauf. Der teilweise umgesetzte Beleg bestimmt die Rundung beim Rückfall nicht."
+    },
+    {
+      "test": "tests/balance-diagnosis-keyparams.test.mjs",
+      "field": "Hinweis zum Allzeithoch unter Marktdaten-Provenienz",
+      "old": "Engine-Referenz konservative Allzeithoch-Untergrenze angewendet",
+      "new": "Konservative Allzeithoch-Untergrenze angewendet",
+      "reason": "Die Diagnose nennt die angewendete Untergrenze direkt."
+    },
+    {
+      "test": "tests/balance-smoke.test.mjs",
+      "field": "Versionsangabe im Druckfuß",
+      "old": "Engine 31.0",
+      "new": "Rechenkern 31.0",
+      "reason": "Der Druckfuß zeigt dieselbe Versionsnummer mit dem deutschen Begriff."
+    },
+    {
+      "test": "tests/historical-backtest-runner.test.mjs",
+      "field": "Fehlermeldung für SIM_ENGINE_RESULT_ERROR",
+      "old": "Die Simulations-Engine hat das Jahr abgewiesen",
+      "new": "Der Rechenkern hat das Jahr abgewiesen",
+      "reason": "Die Meldung verwendet den deutschen Begriff; der Fehlercode bleibt derselbe."
+    },
+    {
+      "test": "tests/gn-2c-sollfaelle.test.mjs",
+      "field": "Deckung in Vorschau und Balance ohne passenden Beleg sowie Renates Planvergleich",
+      "old": { "renate": 108, "janLena": 52, "sophie4000": 108, "sophie5500": 117, "renateDelta": 3 },
+      "new": { "renate": 105, "janLena": 50, "sophie4000": 100, "sophie5500": 108, "renateDelta": 0 },
+      "reason": "Die Deckung nach Umsetzung nutzt heute plus den gerundeten Verkaufszufluss: Renate 105.000 €, Jan und Lena 160.000 €, Sophie 6.000 € bzw. 6.500 €. Renates Plan bleibt bei 105 %."
+    },
+    {
+      "test": "tests/rd-1b-sollfaelle.test.mjs",
+      "field": "Max und Erika am 23.10.2026: Reservebestände Tagesgeld und Geldmarkt nach Umsetzung",
+      "old": [32500, 147500],
+      "new": [46000, 134000],
+      "reason": "Erikas Lücke von 15.400 € erscheint gerundet als 16.000 €. Max behält seinen Überschuss, der Geldmarkt erhält die übrigen 74.000 €."
+    }
+  ]
+}

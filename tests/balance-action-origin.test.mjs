@@ -50,7 +50,8 @@ detailed.confirmed.action.quellen[0] = { ...detailed.confirmed.action.quellen[0]
     name: 'Muster Aktien-ETF', isin: 'DE000TEST123', netto: 1000.49 };
 const detailedBytes = JSON.stringify(detailed);
 renderer.renderAnnualAction(detailed);
-assert(texts().includes('Max') && texts().includes('Muster Aktien-ETF') && texts().includes('1.250 €'), 'Planzeile nennt Person, Wertpapier und ganze Euro (1.000,49 € aufgerundet, FR-78, Stufe 250 €)');
+// HP-3 (Ergänzung 6 FR-78): Die Zeile steht auf den Euro (1.000 €); der Kopf rundet diese Summe, 1.000 € liegt auf der Stufe (vorher 1.000,49 € → 1.250 €).
+assert(texts().includes('Max') && texts().includes('Muster Aktien-ETF') && texts().includes('ca. 1.000 €') && !texts().includes('1.250 €'), 'Planzeile nennt Person, Wertpapier und ganze Euro, der Kopf die Summe der Zeilen (FR-78, HP-3)');
 // FR-79 Punkt 2: Die Karte nennt je Planzeile das Wertpapier mit Bestand und ISIN; Cent bleiben in „Details & Drucken“.
 assert(texts().includes('DE000TEST123') && !texts().includes('1.000,49'), 'ISIN auf der Karte (FR-79), Cent nicht');
 assert(renderer.planDetails.text.includes('Max | Muster Aktien-ETF · DE000TEST123'), 'Details & Drucken nennt Person, Wertpapier und ISIN');
@@ -84,21 +85,14 @@ for (const change of [{ year: 2027 }, { scope: planScope('single', ['out']) },
 const single = planScope('household', ['a']);
 const alias = projectBalanceActionOrigin({ ...options, scope: overviewScope('single', ['a']), comparison: { ...view, scope: single } });
 assert(alias.confirmed, 'Der bestehende Einpersonenhaushaltsalias bleibt lesbar');
-assert(!projectBalanceActionOrigin({ ...options, scope: planScope('single', ['out']) }).confirmed, 'Eine Außenperson erhält keinen Haushaltsbeschluss');
+assert(!projectBalanceActionOrigin({ ...options, scope: planScope('single', ['out']) }).confirmed, 'Ein fremder Einzelbereich erhält keinen Haushaltsbeschluss');
 const noneView = structuredClone(view); noneView.confirmedAction.action = { type: 'NONE', title: 'Keine Transaktion', steuer: 0 };
 renderer.renderAnnualAction(projectBalanceActionOrigin({ ...options, comparison: noneView }));
 assert(texts().includes('Nichts tun') && texts().includes('kein Handlungsbedarf'), 'Beschlossenes Nichtstun bleibt eine vollständige Jahresanzeige');
 
-// Normaler Einzelumfang, nachdem die Haushaltsauswahl aufgehoben wurde.
-const outsideRegistry = structuredClone(f.registry);
-for (const profile of Object.values(outsideRegistry.profiles)) profile.meta.belongsToHousehold = false;
-const outside = projectOverview({ registry: outsideRegistry, activeId: 'out', liveData: f.records, now: f.now, balanceSingleFallback: true });
-renderer.renderAnnualAction(outside.actionOrigin);
-assertEqual(outside.scope.key, planScope('single', ['out']).key, 'Profilwechsel lädt den tatsächlichen Einzelumfang');
-assert(!outside.actionOrigin.confirmed && !texts().includes('Aktien verkaufen'), 'Außenperson ohne eigenen Beleg zeigt keine fremde Jahresaktion');
 const reloaded = projectOverview({ registry: structuredClone(f.registry), activeId: 'a', liveData: structuredClone(f.records), now: f.now });
 renderer.renderAnnualAction(reloaded.actionOrigin);
-assert(texts().includes('Aktien verkaufen') && host.querySelectorAll('[data-todo-plan]').length === 1, 'Reload und Rückkehr zum Haushalt zeigen genau den passenden Jahresbeschluss');
+assert(texts().includes('Aktien verkaufen') && host.querySelectorAll('[data-todo-plan]').length === 1, 'Reload zeigt genau den passenden Jahresbeschluss');
 
 for (const preview of [null, '{broken', JSON.stringify({ version: 1, entries: {} })]) {
     const liveData = { ...f.records, [OVERVIEW_SUMMARY_KEY]: preview };

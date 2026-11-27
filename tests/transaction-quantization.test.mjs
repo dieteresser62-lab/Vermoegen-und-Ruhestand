@@ -13,7 +13,7 @@ function assertEqual(actual, expected, message) {
 }
 
 function assertClose(actual, expected, epsilon, message) {
-    if (Math.abs(actual - expected) > epsilon) {
+    if (!Number.isFinite(actual) || !Number.isFinite(expected) || Math.abs(actual - expected) > epsilon) {
         console.error(`FAIL: ${message}`);
         console.error(`  Expected: ${expected} +/- ${epsilon}`);
         console.error(`  Actual:   ${actual}`);

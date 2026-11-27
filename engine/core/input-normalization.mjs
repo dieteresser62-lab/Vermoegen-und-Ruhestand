@@ -49,8 +49,6 @@ export function _normalizeEngineInput(rawInput) {
     input.startAlter = normalizeNum(input.startAlter, input.aktuellesAlter);
     input.inflation = normalizeNum(input.inflation, 0);
     input.liquidityRunwayYears = liquidityRunwayResolution.years;
-    delete input.runwayMinMonths;
-    delete input.runwayTargetMonths;
     delete input.targetEq;
     input.rebalancingBand = input.rebalancingBand == null
         ? 35

@@ -139,7 +139,6 @@ export function updateStartPortfolioDisplay(options = {}) {
         startField.value = formatDisplayNumber(derivedStartVermoegen);
     }
 
-    const showGoldPanel = inputs.goldAktiv || (useAggregates && displayGoldWert > 0);
 
     const einstandNeuField = /** @type {HTMLInputElement} */ (document.getElementById('einstandNeu'));
     if (einstandNeuField) {
@@ -185,19 +184,15 @@ export function updateStartPortfolioDisplay(options = {}) {
         <div class="sim-allocation-legend">${shares.map((share, index) => allocation[index] > 0 ? `<span><i class="sim-allocation-${colors[index]}" aria-hidden="true"></i>${labels[index]} ${share === null ? '—' : `${Math.round(share).toLocaleString('de-DE')} %`}</span>` : '').join('')}</div>
         <div class="sim-field-grid sim-allocation-values" ${homes.present ? '' : 'hidden'}><div class="ds-field"><label>Immobilien selbst genutzt</label><span class="calculated-display ds-metric">${wealthMoney(homes.self)}</span></div><div class="ds-field"><label>Immobilien vermietet</label><span class="calculated-display ds-metric">${wealthMoney(homes.rented)}</span></div></div>`;
     // FR-79 Ergänzung 1 Punkt 4: offene Gutschrift nennen; gerechnet wird unverändert mit dem eingetragenen Tagesgeld.
-    // Gutachten VK-1 P3-02: nur die Personen, die der Simulator rechnet (zum Haushalt gehörend), wie Balance und Jahresabschluss.
+    // Gutachten VK-1 P3-02: die Personen, die der Simulator rechnet, wie Balance und Jahresabschluss.
     const registry = (() => { try { return loadProfileRegistry().value; } catch { return null; } })();
-    const members = Object.entries(registry?.profiles || {}).filter(([, profile]) => /** @type {any} */ (profile)?.meta?.belongsToHousehold !== false).map(([id]) => id);
+    const members = Object.keys(registry?.profiles || {});
     const underway = creditUnderwayText(pendingCreditTotal(registry, members));
     if (underway) breakdownHtml += `<p class="ds-note ds-note-warning sim-sale-underway" data-sale-underway>${underway} Trag die Gutschrift in der Balance unter „Was zu tun ist“ ein.</p>`;
     // VK-2: offene Abbuchung eines Kaufs (Richtung „zu hoch“); gerechnet wird unverändert.
     const debit = debitUnderwayText(pendingDebitTotal(registry, members));
     if (debit) breakdownHtml += `<p class="ds-note ds-note-warning sim-sale-underway" data-buy-underway>${debit} Trag die Abbuchung in der Balance unter „Was zu tun ist“ ein.</p>`;
     document.getElementById('displayPortfolioBreakdown').innerHTML = breakdownHtml;
-    const goldPanel = document.getElementById('goldStrategyPanel');
-    if (goldPanel) {
-        goldPanel.style.display = showGoldPanel ? 'block' : 'none';
-    }
 }
 
 /** N2 (GN-1): Teile der Anzeige „Gesamtvermögen zu Beginn“ in der Reihenfolge Depot, Gold, Liquidität, Anleihen, Immobilien.

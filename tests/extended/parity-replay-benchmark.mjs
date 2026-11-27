@@ -8,10 +8,9 @@ import { performance } from 'node:perf_hooks';
 import { EngineAPI } from '../../engine/index.mjs';
 import { simulateOneYear } from '../../app/simulator/simulator-engine-wrapper.js';
 import { runMonteCarloChunk } from '../../app/simulator/monte-carlo-runner.js';
-import { runSweepChunk } from '../../app/simulator/sweep-runner.js';
 import { hashParityReplayValue } from '../../app/simulator/parity-replay-contract.js';
 import { createParityReplayCollector } from '../../app/simulator/parity-replay-collector.js';
-import { normalizeWidowOptions } from '../../app/simulator/simulator-sweep-utils.js';
+import { normalizeWidowOptions } from '../../app/simulator/simulator-run-utils.js';
 import { inputs, records, source, provider, runFixture } from './parity-replay-fixture.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -39,7 +38,7 @@ async function loadBaseline(scratch) {
     const sourcePath = 'app/simulator/';
     const direct = sourcePath + 'simulator-engine-direct.js';
     const wrapper = sourcePath + 'simulator-engine-wrapper.js';
-    const targets = new Map([direct, wrapper, sourcePath + 'monte-carlo-runner.js', sourcePath + 'sweep-runner.js']
+    const targets = new Map([direct, wrapper, sourcePath + 'monte-carlo-runner.js']
         .map(path => [resolve(root, path), pathToFileURL(join(scratch, path.split('/').at(-1))).href]));
     for (const [absolute, destination] of targets) {
         const name = relative(root, absolute);
@@ -63,12 +62,11 @@ async function loadBaseline(scratch) {
         });
         await writeFile(fileURLToPath(destination), rewritten);
     }
-    const [wrapperModule, mc, sweep] = await Promise.all([
+    const [wrapperModule, mc] = await Promise.all([
         import(targets.get(resolve(root, wrapper))),
-        import(targets.get(resolve(root, sourcePath + 'monte-carlo-runner.js'))),
-        import(targets.get(resolve(root, sourcePath + 'sweep-runner.js')))
+        import(targets.get(resolve(root, sourcePath + 'monte-carlo-runner.js')))
     ]);
-    return { simulate: wrapperModule.simulateOneYear, mc: mc.runMonteCarloChunk, sweep: sweep.runSweepChunk };
+    return { simulate: wrapperModule.simulateOneYear, mc: mc.runMonteCarloChunk };
 }
 
 export async function benchmarkParityReplayCollector() {
@@ -81,15 +79,11 @@ export async function benchmarkParityReplayCollector() {
         const monteCarloParams = { anzahl: 12, maxDauer: 12, blockSize: 3, seed: 12345,
             methode: 'block', rngMode: 'per-run-seed', startYearMode: 'UNIFORM' };
         const options = { inputs, monteCarloParams, widowOptions: normalizeWidowOptions(inputs.widowOptions), useCapeSampling: true, engine: EngineAPI };
-        const sweepOptions = { baseInputs: inputs, paramCombinations: [
-            { liquidityRunwayYears: 3 }, { liquidityRunwayYears: 5 }
-        ], sweepConfig: { ...monteCarloParams, anzahl: 6, useCapeSampling: true }, engine: EngineAPI };
         const jobs = [
             { name: 'Backtest, 26 Jahre', old: () => runFixture({ simulate: baseline.simulate, selectedPeriod }),
                 off: () => runFixture({ selectedPeriod }),
                 on: () => runFixture({ selectedPeriod, collector: createParityReplayCollector({ source: provenance, initialRecords: records }) }) },
-            { name: 'Monte Carlo, 12 × 12 Jahre', old: () => baseline.mc(options), off: () => runMonteCarloChunk(options) },
-            { name: 'Sweep, 2 × 6 × 12 Jahre', old: () => baseline.sweep(sweepOptions), off: () => runSweepChunk(sweepOptions) }
+            { name: 'Monte Carlo, 12 × 12 Jahre', old: () => baseline.mc(options), off: () => runMonteCarloChunk(options) }
         ];
         const measurements = [];
         for (const job of jobs) {

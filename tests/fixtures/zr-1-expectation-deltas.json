@@ -1,0 +1,32 @@
+{
+  "reason": "ZR-1: Barzinsen der Pflege-Rücklage zählen im Simulator wie Tagesgeldzinsen zum steuerpflichtigen Ertrag ihrer Eigentümer. Basis 7c626f84.",
+  "changes": [
+    {
+      "test": "tests/zr-1-reserve-interest-tax.test.mjs",
+      "field": "Zusätzliche Jahressteuer im Entnahmejahr gegenüber dem Kontrollfall mit demselben freien Tagesgeld",
+      "old": 0,
+      "new": 158.25,
+      "reason": "30.000 € Bar-Rücklage ergeben bei 2 % Zins 600 € zusätzlichen Ertrag. Das Tagesgeld schöpft den Pauschbetrag bereits aus. Ohne Kirchensteuer fallen auf die 600 € daher 26,375 % inklusive Solidaritätszuschlag an."
+    },
+    {
+      "test": "tests/ff-g-regression.test.mjs",
+      "field": "Helga und Werner 2000–2025, vollständige Jahreszeilen und vollständiger Backtest (SHA-256)",
+      "old": {
+        "rows": "5300f1ecc8267f2caec87482596c1f28dff506da7e19d6fd8642296201d38974",
+        "backtest": "d83e09ec58f8b3e0c7bdfbb4a94130b68d95a4241322e91fbc44f11a68b4e1b9"
+      },
+      "new": {
+        "rows": "8576663e2ea37763547d11923ad47215b75ec85f033f4c6458b2b0065c7cece1",
+        "backtest": "1f14700819269efcda942e4272ed2a31a0e252f45c26bbb295fb5bd46a8e8ee5"
+      },
+      "reason": "2000 ergeben 40.000 € bar gehaltene Rücklage bei 4,12 % Zins zusätzlich 1.648 € steuerpflichtigen Zins. Die gesamte Jahressteuer steigt von 1.138,82 € auf 1.600,18 €. Die Folgejahre rechnen mit dem dadurch geminderten Bestand. Die sechs Kürzungsjahre ab 10 % sind gleich."
+    },
+    {
+      "test": "tests/qs-d-regressions.test.mjs",
+      "field": "Rücklagenrest am Ende von 2001 vor dem Ruinjahr, auf Cent angezeigt",
+      "old": "6909.54",
+      "new": "6844.57",
+      "reason": "Die 412 € Barzins im Jahr 2000 erhöhen den steuerpflichtigen Zins auf 1.236 €. 62,245 € Jahressteuer mindern das freie Tagesgeld. 2001 führt der niedrigere Bestand samt geringerem Tagesgeldzins zu 64,97 € mehr Rücklagennutzung. Das Ruinjahr bleibt 2002."
+    }
+  ]
+}

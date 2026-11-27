@@ -1,3 +1,5 @@
+import { readJA1References } from './helpers/ja-1-expectations.mjs';
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
 import { readQSCReferences } from './helpers/qs-c-expectations.mjs';
 import { readVF2BReferences } from './helpers/vf-2b-expectations.mjs';
 import { readGL1References } from './helpers/gl-1-expectations.mjs';
@@ -9,7 +11,7 @@ import { createHash } from 'node:crypto';
 import { inputs as fixtureInputs } from './extended/parity-replay-fixture.mjs';
 import { initMcRunState, simulateOneYear, makeDefaultCareMeta } from '../app/simulator/simulator-engine-wrapper.js';
 import { createMonteCarloLifeState, updateMonteCarloLifeEventsForYear } from '../app/simulator/mc-life-events.js';
-import { normalizeWidowOptions } from '../app/simulator/simulator-sweep-utils.js';
+import { normalizeWidowOptions } from '../app/simulator/simulator-run-utils.js';
 import { rng } from '../app/simulator/simulator-utils.js';
 
 const inputs = { ...structuredClone(fixtureInputs), survivorFloorPercent: 70, survivorFlexPercent: 75, survivorMinimumFlexPercent: 75, startFloorBedarf: 24000, startFlexBedarf: 24000,
@@ -67,7 +69,7 @@ const healthyDeath = simulateOneYear(initMcRunState(healthyInputs), healthyInput
 const healthyNext = simulateOneYear(healthyDeath.newState, healthyInputs, year, 1, null, 0, healthyContext, .75, EngineAPI);
 const unchangedBytes = JSON.stringify([healthyDeath, healthyNext], (key, value) =>
     ['kuerzungQuelle', 'anmerkung', 'CutReason'].includes(key) ? undefined : value);
-assertEqual(createHash('sha256').update(unchangedBytes).digest('hex'), readQSCReferences(readVF2BReferences(readGL1References(readEP1Hash(readNR1Hash(readFX1aHash('2a3cd8f4f5edbbd3e164f64bbdb10e3903037a6c37275c60c61d67fe31be3962')))))),
+assertEqual(createHash('sha256').update(unchangedBytes).digest('hex'), readJA1References(readKR1cReferences(readQSCReferences(readVF2BReferences(readGL1References(readEP1Hash(readNR1Hash(readFX1aHash('2a3cd8f4f5edbbd3e164f64bbdb10e3903037a6c37275c60c61d67fe31be3962')))))))),
     'Tod ohne Pflege: Sterbe- und Folgejahr mit belegten Text- und Nachlassprotokollfolgen');
 
 // B2: halbe Pflegekosten dürfen im Sterbejahr aus der Reserve bezahlt werden.

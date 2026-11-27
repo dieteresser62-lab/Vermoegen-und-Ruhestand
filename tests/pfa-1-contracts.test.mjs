@@ -10,7 +10,6 @@ import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { captureProfileData } from '../app/profile/profile-live-storage.js';
 import { exportProfilesBundle, importProfilesBundle } from '../app/profile/profile-bundle-io.js';
 import { isAllowedSnapshotCaptureKey, isProbelaufRecordKey } from '../app/shared/persistence-key-policy.js';
-import { normalizePersonFile } from '../app/profile/profile-person-file.js';
 import { syncManagerCareToday } from '../app/tranches/tranchen-manager-care.js';
 import { renderCareTodaySummary } from '../app/simulator/simulator-care-today-ui.js';
 import { careRowUsesResidentialCosts } from '../app/simulator/simulator-ui-pflege.js';
@@ -22,7 +21,6 @@ import { inputs as fixture, records as fixtureRecords } from './extended/parity-
 import { buildCareMetrics } from '../app/simulator/results-metrics.js';
 import { playFixture } from './helpers/probelauf-area-fixture.mjs';
 import { PersistenceFacade as P, resetPersistenceForTests } from '../app/shared/persistence-facade.js';
-import { previewPersonExport, previewPersonImport, importPersonFile } from '../app/profile/profile-person-file.js';
 setAppTestDate('2026-10-23');
 const record = { sim_pflegeStufe1Zusatz: '6000', sim_pflegeStufe2Zusatz: '12000', sim_pflegeKostenDrift: '3.5',
     sim_pflegeCustomCosts: JSON.stringify({ 1: '6000', 2: '12000', 3: '7000', 4: '0', 5: '60000' }) };
@@ -151,10 +149,6 @@ assertEqual(fields.profileCareResidentialSinceField.hidden, true, 'Seit bei häu
 const play = await playFixture('tauri', storage.records);
 try {
     let controller = await play.boot();
-    const exported = await previewPersonExport(id);
-    assertEqual(normalizePersonFile(exported.file).profile.data[CARE_VALUE_KEYS.residentialSince], '2023-01', 'Seit im echten Personenexport');
-    const draft = await previewPersonImport(exported.file), imported = await importPersonFile(draft);
-    assertEqual(JSON.parse(P.getItemSync('rs_profiles_v1')).profiles[imported.id].data[CARE_VALUE_KEYS.residentialSince], '2023-01', 'Seit im bestätigten Personenimport');
     const baseline = play.realBytes();
     await controller.start(() => ({ source: 'copy', testDate: '2026-10-23' })); controller = await play.boot();
     assertEqual(P.getItemSync(CARE_VALUE_KEYS.residentialSince), '2023-01', 'Seit wird in den Spielbereich kopiert');

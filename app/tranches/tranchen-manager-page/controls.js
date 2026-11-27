@@ -6,6 +6,7 @@ import { isEditableDecimalInput } from '../tranchen-manager-decimal-input.js';
 import { syncManagerPeopleControls, syncManagerProfileControls } from '../tranchen-manager-profiles.js';
 import { isCashPostingEditorCompleted, isCashPostingSourceInvalid } from '../tranchen-manager-modal.js';
 import { getPageNavigationGuard } from '../../shared/navigation-guard-dialog.js';
+import { getAppTestDate } from '../../shared/app-clock.js';
 
 export function processingIsBlocked() {
     return state.personManagementPending || Boolean(window?.__personMigrationDeferred) || state.navigationLifecycle?.isBlocked()
@@ -69,7 +70,7 @@ export function setManagerControlsBlocked(blocked) {
         'managerPersonCreateBtn',
         'managerPersonRenameBtn',
         'managerPersonRenameCancelBtn',
-        'updatePricesBtn',
+        'managerQuoteRefresh',
         'cashPostingSubmitBtn',
         ...RECONCILIATION_INPUT_IDS,
         ...PROFILE_INPUT_IDS
@@ -85,6 +86,14 @@ export function setManagerControlsBlocked(blocked) {
             element.disabled = blocked && !editingProfileField && !(field && !fieldsBlocked);
         }
     });
+    // OP-3 Punkt 3: Im Spielbereich ist die Kursanzeige nicht klickbar (Spielkurse).
+    const quoteRefresh = /** @type {HTMLButtonElement} */ (byId('managerQuoteRefresh'));
+    if (quoteRefresh) {
+        const play = getAppTestDate() !== null;
+        quoteRefresh.disabled ||= play;
+        if (quoteRefresh.dataset) quoteRefresh.dataset.playArea = String(play);
+        if (play) quoteRefresh.removeAttribute?.('title'); else quoteRefresh.setAttribute?.('title', 'Kurse jetzt aktualisieren');
+    }
     /** @type {NodeListOf<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>} */ (byId('managerIncome')?.querySelectorAll?.('input, select, button'))?.forEach?.(element => {
         // VN-3: Das fokussierte Element wird nie gesperrt (sonst fällt der Fokus auf BODY); Wahlknöpfe wie „wie Inflation“ zählen als Feld.
         const field = element.tagName !== 'BUTTON' || element.hasAttribute('data-person-segment-field');

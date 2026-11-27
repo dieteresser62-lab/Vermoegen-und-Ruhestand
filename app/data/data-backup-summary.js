@@ -1,5 +1,5 @@
 // Vergleichsbasis der Dateiausgabe: Kennungen und SHA-256-Signaturen, keine Finanzkopie.
-import { readOverviewSummaries, readMonthProvision, overviewScope } from '../overview/overview-storage.js';
+import { readOverviewSummaries, readMonthProvision, overviewScope, readLastFullBackup } from '../overview/overview-storage.js';
 import { assertCashHistory } from '../profile/profile-wealth-history.js';
 import { normalizeTrancheCollection } from '../../types/tranche-contract.js';
 import { HOUSEHOLD_PLAN_KEY } from '../profile/household-plan.js';
@@ -11,6 +11,12 @@ import { PROFILE_VALUE_KEYS, PROFILE_HEALTH_BUCKET_KEY } from '../profile/profil
 import { CARE_VALUE_KEYS } from '../profile/profile-care.js';
 
 export const DATA_BACKUP_SUMMARY_KEY = 'rs_data_backup_summary_v1';
+/** Art der letzten Vollsicherung `{version: 1, at, delivery}`: `bestaetigt` nach bestätigtem Schreiben im Speicherdialog, `angestossen` bei
+ * bloßer Dateiübergabe (Desktop-App, Browser ohne Speicherdialog). Eigener Schlüssel neben der Sicherungszeit: nicht in der Sicherungsdatei
+ * und nicht in Wiederherstellungspunkten; ältere Versionen kennen ihn nicht und übergehen ihn. Fehlt er oder gehört er zu einer anderen
+ * Zeit, gilt der Stand wie bisher. */
+export const BACKUP_DELIVERY_KEY = 'overview_last_full_backup_delivery_v1';
+export const BACKUP_DELIVERIES = Object.freeze(['angestossen', 'bestaetigt']);
 const categories = ['months', 'cash', 'tranches'];
 /** GH-1 Punkt 5 (F-06): Version 2 prüft zusätzlich Haushalts- und Planwerte je Bereich als eine Signatur. Version 1 bleibt lesbar; ihr fehlen
  * diese Bereiche, sie gelten dann als „seit der letzten Sicherung nicht feststellbar“. */
@@ -62,6 +68,44 @@ export function assertBackupSummary(value) {
         }
     }
     return value;
+}
+/** Record der Sicherungsart zur Sicherungszeit `at`.
+ * @param {string} at Sicherungszeit. @param {'angestossen'|'bestaetigt'} delivery Art. @returns {string} Gespeicherter Text.
+ */
+export const backupDeliveryRecord = (at, delivery) => JSON.stringify({ version: 1, at, delivery });
+/** @param {string} at Datum aus dem Dateikopf. @param {string} importedAt Zeitpunkt des Einspielens. */
+export const backupImportRecord = (at, importedAt) => JSON.stringify({ version: 1, at, delivery: 'eingespielt', importedAt });
+
+/** @param {unknown} raw */
+export function readBackupImport(raw) {
+    try {
+        const record = assertBackupDelivery(raw);
+        return record.delivery === 'eingespielt' ? record : null;
+    } catch { return null; }
+}
+/** Letzte eigene Vollsicherung mit Ausgabeart.
+ * @param {{getItem: (key: string) => string|null}} storage Speicher oder Records.
+ * @returns {{at: string|null, delivery: 'angestossen'|'bestaetigt'|null}} Zeit und Art.
+ */
+export function readLastFullBackupStatus(storage) {
+    const at = readLastFullBackup(storage);
+    try {
+        const record = assertBackupDelivery(storage.getItem(BACKUP_DELIVERY_KEY));
+        return { at, delivery: at && record.at === at && record.delivery !== 'eingespielt' ? record.delivery : null };
+    } catch { return { at, delivery: null }; }
+}
+/** @param {unknown} raw Gespeicherter Text.
+ * @returns {{version: 1, at: string, delivery: 'angestossen'|'bestaetigt'}|{version: 1, at: string, delivery: 'eingespielt', importedAt: string}} */
+export function assertBackupDelivery(raw) {
+    const record = JSON.parse(String(raw ?? 'null'));
+    if (record && typeof record === 'object' && !Array.isArray(record) && record.version === 1
+        && typeof record.at === 'string' && Number.isFinite(Date.parse(record.at))) {
+        const size = Object.keys(record).length;
+        if (size === 3 && BACKUP_DELIVERIES.includes(record.delivery)) return record;
+        if (size === 4 && record.delivery === 'eingespielt' && typeof record.importedAt === 'string'
+            && Number.isFinite(Date.parse(record.importedAt))) return record;
+    }
+    throw new Error('Die Art der letzten Vollsicherung ist ungültig.');
 }
 function canonical(value) {
     if (Array.isArray(value)) return value.map(canonical);

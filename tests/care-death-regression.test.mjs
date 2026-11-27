@@ -1,13 +1,10 @@
 import { EngineAPI } from '../engine/index.mjs';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
-import { normalizeWidowOptions } from '../app/simulator/simulator-sweep-utils.js';
+import { normalizeWidowOptions } from '../app/simulator/simulator-run-utils.js';
 import { createMonteCarloLifeState, updateMonteCarloLifeEventsForYear } from '../app/simulator/mc-life-events.js';
-import { initMcRunState, simulateOneYear, makeDefaultCareMeta, endCareForDeceased, getDataVersion } from '../app/simulator/simulator-engine-wrapper.js';
+import { initMcRunState, simulateOneYear, makeDefaultCareMeta, endCareForDeceased } from '../app/simulator/simulator-engine-wrapper.js';
 import { rng } from '../app/simulator/simulator-utils.js';
 import { inputs as fixtureInputs } from './extended/parity-replay-fixture.mjs';
-import { createStressReplayCaptureRequest, materializeStressReplayPathV1 } from '../app/simulator/stress-replay-path-materializer.js';
-import { createStressReplayFingerprint } from '../app/simulator/stress-replay-contract.js';
-import { runStressReplayPathV1 } from '../app/simulator/stress-replay-runner.js';
 
 const inputs = { ...structuredClone(fixtureInputs), survivorFloorPercent: 70, survivorFlexPercent: 75, survivorMinimumFlexPercent: 75, startAlter: 85, partner: { ...fixtureInputs.partner, startAlter: 75 },
     rentAdjMode: 'fix', rentAdjPct: 2, pflegefallLogikAktivieren: true, pflegeModellTyp: 'chronisch',
@@ -17,9 +14,9 @@ const widowOptions = normalizeWidowOptions(inputs.widowOptions);
 // LE-1 (FR-75): Mit der Kohortentafel trifft Lauf 51 das Muster (vorher Lauf 3 von 20): Tod von A in beidseitiger Pflege, B später im Heim.
 const monteCarloParams = { anzahl: 60, maxDauer: 12, methode: 'regime_markov', seed: 12345 };
 const chunk = await runMonteCarloChunk({ inputs, widowOptions, monteCarloParams, runRange: { start: 51, count: 1 }, logIndices: [51],
-    stressReplayCapture: createStressReplayCaptureRequest([51]), useCapeSampling: false, engine: EngineAPI });
+    useCapeSampling: false, engine: EngineAPI });
 assertEqual(chunk.financialMetricsValid, true, 'Pflegepfad bleibt auswertbar');
-const meta = chunk.runMeta[0], rows = meta.logDataRows;
+const rows = chunk.runMeta[0].logDataRows;
 const deathIndex = rows.findIndex((row, index) => index > 0 && rows[index - 1].CareP1_Active && rows[index - 1].CareP2_Active && row.Person1Alive === 0 && row.Person2Alive === 1);
 assert(deathIndex >= 1 && rows[deathIndex + 1]?.recordType === 'financial_year', 'Fester Seed: Muster A stirbt während beide Personen gepflegt werden; Muster B lebt weiter');
 // FR-72 (HE-2): Muster B kommt nach dem Tod mit Grad 4 ins Heim; der Grundbedarf zu Hause entfällt,
@@ -39,14 +36,7 @@ for (const row of rows.slice(deathIndex + 1)) {
     }
     if (!row.CareP2_Active) assertEqual(row.pflege_flex_faktor, 1, 'Ohne aktive Pflege kein eingefrorener Pflegefaktor');
 }
-const path = materializeStressReplayPathV1({ capture: meta.stressReplayCapture, sourceLogRows: rows,
-    sourceRequest: { inputs, widowOptions, monteCarloParams, useCapeSampling: false },
-    dataFingerprint: createStressReplayFingerprint({ dataVersion: getDataVersion() }), engineFingerprint: createStressReplayFingerprint({ engineVersion: EngineAPI.getVersion() }),
-    scenarioKey: 'synthetic-care-death', selectionMetric: 'nominal_terminal_wealth_eur' });
-const replay = runStressReplayPathV1({ path, baselineInputs: inputs, sourceScenarioLog: rows, engine: EngineAPI });
-assertEqual(replay.reconciliation.matched, true, 'Stresspfad-Replay erhält die korrigierte Rechnung samt Todesfall');
-
-// Gegenprobe am gemeinsamen Lebensereignispfad für Sweep/Auto-Optimize: beide leben.
+// Gegenprobe am gemeinsamen Lebensereignispfad: beide leben.
 const state = createMonteCarloLifeState(inputs, rng(42), widowOptions);
 for (const [care, grade] of [[state.careMetaP1, 1], [state.careMetaP2, 2]]) Object.assign(care, {
     active: true, triggered: true, grade, currentYearInCare: 0, floorAtTrigger: 30000, flexAtTrigger: 30000, maxFloorAtTrigger: 100000 });
@@ -63,7 +53,8 @@ assertClose(result.logData.floor_brutto, inputs.startFloorBedarf + 6000, 1e-9, '
 
 // FR-40: Auch nach Tod mit PG4 schützt nur FR-26 den gesunden Resthaushalt.
 // Großes Vermögen bzw. der alte Sicherheitsboden lassen die Obergrenze greifen.
-const stageInputs = { ...inputs, dynamicFlex: true, horizonYears: 25, startFlexBedarf: 10000, minimumFlexAnnual: 1000,
+// FR-88: Mit der vorschüssigen VPW-Rate greift die Obergrenze erst ab 24 statt 25 Jahren Horizont.
+const stageInputs = { ...inputs, dynamicFlex: true, horizonYears: 24, startFlexBedarf: 10000, minimumFlexAnnual: 1000,
     renteMonatlich: 0, partner: { ...inputs.partner, monatsrente: 0, brutto: 0, startInJahren: 0, renteStartMonate: 12 } };
 for (const stage of [0, 1, 2]) for (const survivorPension of [0, 60000]) {
     const care = { ...makeDefaultCareMeta(true), active: true, grade: 4, flexFactor: 0 };
@@ -114,29 +105,18 @@ for (const stage of [0, 1, 2]) for (const survivorPension of [0, 60000]) {
     assertClose(death.logData.rente2, 24000, 1e-7, 'Eigene Rente der überlebenden Person zählt zwölf Monate');
 }
 
-// Alte Replay-Ereignisse werden lesend bereinigt; Quellbeleg bleibt unverändert.
+// Veraltete Ereigniskontexte werden lesend bereinigt; der übergebene Kontext bleibt unverändert.
 const staleContext = { p1Alive: false, p2Alive: true, care: { p1: state.careMetaP1, p2: state.careMetaP2 } };
 const staleBytes = JSON.stringify(staleContext);
 const cleaned = simulateOneYear(initMcRunState(inputs), inputs, year, 0, state.careMetaP1,
     lifeYear.totalCareFloor, staleContext, lifeYear.effectiveFlexFactor, EngineAPI);
 assertEqual(cleaned.kind, 'success', 'Gemeinsamer Jahreseinstieg korrigiert auch alte aktive Pflege Verstorbener');
-assertClose(cleaned.logData.floor_brutto, inputs.startFloorBedarf * .85 + state.careMetaP1.zusatzFloorZiel * .5 + state.careMetaP2.zusatzFloorZiel, 1e-9, 'Altes Replay zählt im Sterbejahr die halbe Pflege der verstorbenen Person');
-assertEqual(cleaned.logData.pflege_zusatz_floor, state.careMetaP1.zusatzFloorZiel * .5 + state.careMetaP2.zusatzFloorZiel, 'Altes Replay zeigt die anteiligen Jahrespflegekosten');
-assertEqual(JSON.stringify(staleContext), staleBytes, 'Gespeichertes Replay-Ereignis bleibt unverändert');
-
-// B1: Pflegefelder werden im Stress-Replay selbst abgeglichen.
-for (const field of ['pflege_zusatz_floor', 'pflege_flex_faktor', 'CareP1_Cost', 'CareP2_Cost']) {
-    const changed = structuredClone(rows);
-    changed[deathIndex][field] += 1;
-    let rejected = false;
-    try { runStressReplayPathV1({ path, baselineInputs: inputs, sourceScenarioLog: changed, engine: EngineAPI }); }
-    catch (error) { rejected = error.code === 'STRESS_REPLAY_BASELINE_RECONCILIATION_FAILED'; }
-    assert(rejected, `Replay erkennt abweichendes Sterbejahresfeld ${field}`);
-}
+assertClose(cleaned.logData.floor_brutto, inputs.startFloorBedarf * .85 + state.careMetaP1.zusatzFloorZiel * .5 + state.careMetaP2.zusatzFloorZiel, 1e-9, 'Veralteter Kontext zählt im Sterbejahr die halbe Pflege der verstorbenen Person');
+assertEqual(cleaned.logData.pflege_zusatz_floor, state.careMetaP1.zusatzFloorZiel * .5 + state.careMetaP2.zusatzFloorZiel, 'Veralteter Kontext zeigt die anteiligen Jahrespflegekosten');
+assertEqual(JSON.stringify(staleContext), staleBytes, 'Übergebener Ereigniskontext bleibt unverändert');
 
 // B4: auch ein Ruin ohne Jahreslog behält nur die halben Sterbejahreskosten.
 {
-    const { runSweepChunk } = await import('../app/simulator/sweep-runner.js');
     const ruinInputs = { ...structuredClone(fixtureInputs), startAlter: 95,
         partner: { ...fixtureInputs.partner, startAlter: 65, brutto: 0, monatsrente: 0 },
         startVermoegen: 1, depotwertAlt: 0, tagesgeld: 1, geldmarktEtf: 0,
@@ -146,17 +126,14 @@ for (const field of ['pflege_zusatz_floor', 'pflege_flex_faktor', 'CareP1_Cost',
         pflegeModellTyp: 'chronisch', pflegeKostenDrift: 0, pflegeRegionalZuschlag: 0,
         pflegeGradeConfigs: Object.fromEntries([1, 2, 3, 4, 5].map(grade =>
             [grade, { zusatz: 12000, flexCut: .25, mortalityFactor: 1 }])) };
-    const sweep = runSweepChunk({ baseInputs: ruinInputs,
-        paramCombinations: [{ liquidityRunwayYears: 5, goldRebalancingBand: 25,
-            maxSkimPct: 10, maxBearRefillPct: 5, goldTargetPct: 0 }],
-        sweepRequest: { schemaVersion: 'SweepRequestV1', monteCarloParameters: {
-            anzahl: 1, maxDauer: 1, seed: 33, methode: 'regime_markov', rngMode: 'per-run-seed' }, useCapeSampling: false },
-        engine: EngineAPI }).results[0];
-    const diagnosis = sweep.provenance.householdRiskDiagnostics;
-    const event = diagnosis.tracedRuns[0].events[0];
-    assert(!event.p1Alive && event.p2Alive && !event.p2CareActive, 'Fester Seed: P1 stirbt in Pflege, P2 bleibt ohne Pflege');
+    const ruin = await runMonteCarloChunk({ inputs: ruinInputs, widowOptions: normalizeWidowOptions(ruinInputs.widowOptions),
+        monteCarloParams: { anzahl: 1, maxDauer: 1, seed: 33, methode: 'regime_markov', rngMode: 'per-run-seed' },
+        runRange: { start: 0, count: 1 }, logIndices: [0], useCapeSampling: false, engine: EngineAPI });
+    const [event] = ruin.runMeta[0].logDataRows;
+    assert(event.recordType === 'terminal_ruin' && event.Person1Alive === 0 && event.Person2Alive === 1 && !event.CareP2_Active,
+        'Fester Seed: P1 stirbt in Pflege, P2 bleibt ohne Pflege');
     const annualCost = 12000; // Erstes Simulationsjahr: heutige Preise, noch keine Inflation.
-    assertClose(diagnosis.household.totalCareFloorNominalEur, annualCost / 2, 1e-8, 'Ruin-Diagnose verwendet halbe Pflegekosten');
-    assertEqual(diagnosis.household.minimumTemporaryFlexFactor, .78125, 'Ruin-Diagnose verwendet den gemittelten Sterbejahresfaktor');
-    assertEqual(diagnosis.household.p1CareActiveYears, .5, 'Sweep zählt ein halbes Pflegejahr');
+    assertClose(event.pflege_zusatz_floor, annualCost / 2, 1e-8, 'Ruin-Diagnose verwendet halbe Pflegekosten');
+    assertClose(ruin.pathSummaries.p1CareAdditionalNeedNominalEur[0], annualCost / 2, 1e-8, 'Pfadzusammenfassung des Ruins verwendet halbe Pflegekosten');
+    assertEqual(event.pflege_flex_faktor, .78125, 'Ruin-Diagnose verwendet den gemittelten Sterbejahresfaktor');
 }

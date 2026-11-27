@@ -186,7 +186,7 @@ function stockUncertainty(lot) {
  * @returns Tageswerte, Ereignisse, Lücken und Geldvermögenskennzahlen. */
 export function evaluateWealthHistory({ profiles, prices = { symbols: {} }, events = [], startDate, today, period = 'all', profileId = null, assetType = null, includeAssetDetails = false }) {
     const range = historyRange(startDate, today, period);
-    const selected = profiles.filter(profile => profileId ? profile.id === profileId : profile.belongsToHousehold !== false);
+    const selected = profileId ? profiles.filter(profile => profile.id === profileId) : profiles;
     const errors = [], marks = [], prepared = [];
     let sales, auditError = null;
     try { sales = confirmedHistorySales(events.filter(event => selected.some(profile => profile.id === event.profileId))); } catch (error) { errors.push(error.message); auditError = error.message; sales = []; }
@@ -214,10 +214,11 @@ export function evaluateWealthHistory({ profiles, prices = { symbols: {} }, even
                     ...(change.sale.source === 'spielwert' ? { source: 'spielwert' } : {}) }));
                 return { tranche, chain, symbol };
             } catch (error) {
+                // OP-2 (Punkt 3): Sichtbar stehen Name und deutsches Datum, nie die interne Personenkennung.
                 const diagnostic = uncertainty ? uncertainty.fromDay === null
                     ? 'Bestand unbekannt: ursprünglicher Kaufbeginn nicht gesichert; jeder Tag bleibt unvollständig.'
-                    : `Bestand unbekannt ab ${historyDate(uncertainty.fromDay)}; keine belegte Ausführung.` : error.message;
-                errors.push(`${profile.id}: ${diagnostic}`);
+                    : `Bestand ab ${historyDate(uncertainty.fromDay).split('-').reverse().join('.')} nicht belegt.` : error.message;
+                errors.push(`${typeof profile.name === 'string' && profile.name.trim() ? profile.name.trim() : profile.id}: ${diagnostic}`);
                 return { tranche, error: diagnostic, uncertainty };
             }
         });

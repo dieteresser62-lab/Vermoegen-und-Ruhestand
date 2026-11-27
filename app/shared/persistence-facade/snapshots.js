@@ -59,7 +59,7 @@ export async function readSnapshots(ids) {
     assertAreaWritable();
     if (storeState.areaManager) await storeState.areaManager.assertCurrent();
     const byId = new Map((await storeState.adapter.readPersistedSnapshots()).map(point => [String(point?.id || ''), point]));
-    // Nicht gefundene Kennungen laufen über das Einzellesen mit Altbestandsumzug und Fehlermeldung.
+    // Nicht gefundene Kennungen laufen über das Einzellesen mit Fehlermeldung.
     return Promise.all(wanted.map(id => byId.get(id) || readSnapshot(id)));
 }
 
@@ -140,17 +140,4 @@ export async function deleteSnapshotImpl(id, options, flushOwned) {
     setItemSync(LOCAL_SNAPSHOT_ARCHIVE_KEY, serializeSnapshotListArchive(nextSnapshots));
     await flushOwned();
     return true;
-}
-
-export async function migrateLegacySnapshotsIfNeeded() {
-    if (!storeState.initialized && !storeState.adapterExplicitlyConfigured) await init();
-    assertAreaWritable();
-    if (storeState.areaManager) await storeState.areaManager.assertCurrent();
-    if (typeof storeState.adapter?.migrateLegacySnapshotsIfNeeded === 'function') {
-        return storeState.adapter.migrateLegacySnapshotsIfNeeded();
-    }
-    if (isLocalStorageFallbackAdapter()) {
-        return { migratedCount: 0, skippedCount: 0, notStandardRestorableCount: 0, errors: [] };
-    }
-    throw new Error('Aktiver Persistenzadapter unterstuetzt migrateLegacySnapshotsIfNeeded() nicht.');
 }

@@ -54,6 +54,29 @@ export function renderSuiteHousehold(profiles, doc = globalThis.document) {
         : `Haushalt: ${profiles.length ? profiles.map(p => p.name || p.id || p.profileId).join(', ') : 'Keine Auswahl'}`;
 }
 
+/** KS-1: Kopf und Spielbereich-Streifen kleben oben. Ihre tatsächlichen Höhen stehen als
+ * CSS-Variablen am Wurzelelement, damit Leiste, klebende Inhalte und Sprungziele darunter beginnen.
+ * Der Kopf bricht um, deshalb misst ein ResizeObserver; ohne ihn gelten die Ersatzwerte aus suite-frame.css.
+ *
+ * @param {Document} doc Dokument der Seite.
+ * @returns {boolean} Ob die Messung läuft.
+ */
+export function bindSuiteStickyHeights(doc = globalThis.document) {
+    const root = doc?.documentElement, Observer = doc?.defaultView?.ResizeObserver;
+    const header = doc?.querySelector?.('.suite-header'), band = doc?.getElementById?.('probelaufBand');
+    if (!root?.style || !header || typeof Observer !== 'function') return false;
+    const height = node => `${node && !node.hidden ? Math.ceil(node.getBoundingClientRect().height) : 0}px`;
+    const update = () => {
+        root.style.setProperty('--suite-kopf-hoehe', height(header));
+        root.style.setProperty('--suite-streifen-hoehe', height(band));
+    };
+    const observer = new Observer(update);
+    observer.observe(header);
+    if (band) observer.observe(band);
+    update();
+    return true;
+}
+
 /** Das Markup und seine Linknamen stehen bereits ohne JavaScript bereit.
  *
  * @param {Document} doc Dokument der Seite.
@@ -69,6 +92,7 @@ export function initSuiteFrame(doc = globalThis.document) {
         .catch(() => renderSuiteProfile(doc, { status: 'unavailable' }));
     initSuiteSidebar(doc);
     initHouseholdSwitcher(doc);
+    bindSuiteStickyHeights(doc);
     for (const host of /** @type {NodeListOf<HTMLElement>} */ (doc.querySelectorAll('[data-suite-icon]'))) {
         createDesignsystemIcon(host.dataset.suiteIcon, doc)
             .then(icon => host.replaceChildren(icon))

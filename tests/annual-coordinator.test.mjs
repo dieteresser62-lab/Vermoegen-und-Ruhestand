@@ -1,5 +1,5 @@
 import { annualServiceFixture, readyAnnualFixture, annualTestNow, annualTestMarketData, createAtomicLockProvider } from './helpers/balance-storage-fixtures.mjs';
-import { createAnnualSnapshot, createAnnualNavigationLifecycle, consumeAnnualRetry, validateAnnualRetry, ANNUAL_RETRY_SESSION_KEY } from '../app/shared/annual-coordinator.js';
+import { annualExpensesYearError, createAnnualSnapshot, createAnnualNavigationLifecycle, consumeAnnualRetry, validateAnnualRetry, ANNUAL_RETRY_SESSION_KEY } from '../app/shared/annual-coordinator.js';
 import { deriveAnnualCloseEvidence } from '../app/shared/annual-close-evidence.js';
 import { prepareAnnualMarketData } from '../app/shared/annual-marketdata.js';
 import { buildSnapshotRestorePlan } from '../app/shared/snapshot-restore.js';
@@ -7,7 +7,7 @@ import { createNavigationGuard } from '../app/shared/navigation-guard.js';
 import { SnapshotArchive } from '../app/shared/snapshot-archive.js';
 import { CONFIG } from '../app/balance/balance-config.js';
 import { HOUSEHOLD_PLAN_KEY } from '../app/profile/household-plan.js';
-import { PersistenceFacade } from '../app/shared/persistence-facade.js';
+import { blockDocumentWrites, PersistenceFacade } from '../app/shared/persistence-facade.js';
 import { EngineAPI } from '../engine/index.mjs';
 const deferred = () => { let resolve; return { promise: new Promise(done => { resolve = done; }), resolve: value => resolve(value) }; };
 const bytes = env => JSON.stringify(Object.fromEntries(env.backend));
@@ -80,12 +80,30 @@ try {
             if (change === 'records') { env.storage.setItem('depot_tranchen', env.storage.getItem('depot_tranchen') + ' '); await env.persistence.flush(); }
             const before = bytes(env), batchCount = env.batches.length, archiveBytes = JSON.stringify([...env.snapshots]);
             gate.resolve();
-            assertEqual((await running).status, 'invalid', stage + '/' + change + ': Quellen- oder Kontextwechsel verhindert Freigabe');
+            const result = await running;
+            assertEqual(result.status, 'invalid', stage + '/' + change + ': Quellen- oder Kontextwechsel verhindert Freigabe');
+            assertEqual(result.error?.message, 'Die Jahresquellen wurden während der Belegprüfung geändert. Bitte erneut vorbereiten.',
+                stage + '/' + change + ': echte Quelländerung behält ihren Hinweis');
             assertEqual(questions + preparations, 0, stage + '/' + change + ': kein Dialog oder Vorbereitung nach Kontextwechsel');
             assertEqual(bytes(env), before, stage + '/' + change + ': keine Jahreswrites nach Kontextwechsel');
             assertEqual(env.batches.length, batchCount, stage + '/' + change + ': kein Metadatenbatch');
             assertEqual(JSON.stringify([...env.snapshots]), archiveBytes, stage + '/' + change + ': kein zusätzlicher Vorabpunkt');
         }
+    }
+    {
+        const sample = legacySample(), state = JSON.parse(sample.records[CONFIG.STORAGE.LS_KEY]);
+        state.ageAdjustedForInflation = 65;
+        sample.records[CONFIG.STORAGE.LS_KEY] = JSON.stringify(state);
+        const env = await annualServiceFixture({ sample });
+        const blockReason = 'Lade die Seite neu, bevor du Änderungen speicherst.';
+        const service = env.create({ getLegacyDecision: async () => {
+            blockDocumentWrites(blockReason);
+            return 'not_committed';
+        } });
+        const result = await service.close();
+        assertEqual(result.status, 'invalid', 'Schreibsperre während der Altjahrklärung bricht den Abschluss ab');
+        assertEqual(env.reports[0]?.message, blockReason, 'Belegprüfung meldet den Schreibsperrgrund aus der Fassade');
+        assertEqual(env.batches.length, 0, 'Gesperrte Altjahrklärung übernimmt keine Metadaten');
     }
     for (const stage of ['index', 'payload']) {
         const sample = legacySample(), env = await annualServiceFixture({ sample });
@@ -166,35 +184,17 @@ try {
         await env.persistence.flush();
         const changed = await env.persistence.readPersistedRecords(), changedBytes = JSON.stringify(changed);
         assert(changed.depot_tranchen !== snapshot.records.depot_tranchen, origin + ': echter späterer depot_tranchen-Write');
-        assertEqual(evidence(changed).status, 'legacy_confirmation_required', origin + ': Kurswrite löst Klärung aus');
-        assertEqual(evidence(changed).allowOpenConfirmation, true, origin + ': markerloser Punkt erlaubt ehrliche Offen-Antwort');
+        // JW-1a (Fable P2-2): Ein metadatenloser eigener Vorabpunkt fragt auch nach einem Kurswrite nicht „bereits abgeschlossen?“.
+        assertEqual(evidence(changed).status, 'ready', origin + ': Kurswrite nach Vorabpunkt des Erstabschlusses bleibt offen');
         assertEqual(JSON.stringify(await env.persistence.readPersistedRecords()), changedBytes, origin + ': Ableitung erhält Quellbytes');
-        const archiveBytes = JSON.stringify([...env.snapshots]), batchCount = env.batches.length;
         let questions = 0, preparations = 0;
-        const cancelled = env.create({ getLegacyDecision: async () => { questions++; return 'cancel'; },
-            confirmAnnual: async () => { preparations++; return {}; } });
-        assertEqual((await cancelled.reconcilePeriod()).status, 'legacy_confirmation_required', origin + ': Prüfung ohne clarify bleibt ungelöst');
-        assertEqual(questions, 0, origin + ': Hintergrundprüfung öffnet keinen Dialog');
-        assertEqual((await cancelled.close()).status, 'cancelled', origin + ': Klärungsabbruch beendet den Versuch');
-        assertEqual(questions, 1, origin + ': ausdrückliche Aktion fragt genau einmal');
-        assertEqual(preparations, 0, origin + ': Abbruch erreicht keine Vorbereitung');
-        assertEqual(JSON.stringify(await env.persistence.readPersistedRecords()), changedBytes, origin + ': Abbruch erhält Backend');
-        assertEqual(JSON.stringify([...env.snapshots]), archiveBytes, origin + ': Abbruch erhält Archiv');
-        assertEqual(env.batches.length, batchCount, origin + ': Abbruch übernimmt keine Metadaten');
-        assertEqual(env.reports.length, origin === 'restore' ? 1 : 0, origin + ': Abbruch erzeugt keinen neuen Fehler');
-        questions = 0;
         const service = env.create({ snapshotId: 'after-' + origin,
-            getLegacyDecision: async () => { questions++; return 'not_committed'; },
+            getLegacyDecision: async () => { questions++; return 'already_committed'; },
             confirmAnnual: async () => { preparations++; return {}; } });
-        assertEqual((await service.reconcilePeriod({ clarify: true })).status, 'ready', origin + ': Noch nicht abgeschlossen führt zur offenen Periode');
-        const adopted = await env.persistence.readPersistedRecords(), adoptedState = JSON.parse(adopted[CONFIG.STORAGE.LS_KEY]);
-        assertEqual(adoptedState.annualPeriodMetadata.lastCommittedPeriod, null, origin + ': Offenklärung behauptet keinen Erfolg');
-        delete adoptedState.annualPeriodMetadata;
-        assertEqual(JSON.stringify(adoptedState), changed[CONFIG.STORAGE.LS_KEY], origin + ': Offenklärung erhält Finanzfelder');
-        for (const key of Object.keys(changed).filter(key => key !== CONFIG.STORAGE.LS_KEY))
-            assertEqual(adopted[key], changed[key], origin + ': Offenklärung erhält Record ' + key);
+        assertEqual((await service.reconcilePeriod({ clarify: true })).status, 'ready', origin + ': Wiederholung führt ohne Frage zur offenen Periode');
+        assertEqual(JSON.stringify(await env.persistence.readPersistedRecords()), changedBytes, origin + ': Prüfung schreibt keine Metadaten');
         assertEqual((await service.close()).status, 'already_committed', origin + ': ehrlicher Wiederanlauf schließt regulär ab');
-        assertEqual(questions, 1, origin + ': Offenübernahme und Abschluss fragen zusammen einmal');
+        assertEqual(questions, 0, origin + ': Wiederholung fragt nicht nach dem Jahresstand');
         assertEqual(preparations, 1, origin + ': genau eine bestätigte Vorbereitung');
         const after = await env.persistence.readPersistedRecords();
         assertEqual(JSON.parse(after[CONFIG.STORAGE.LS_KEY]).lastState.cumulativeInflationFactor, 1 * 1.0214, origin + ': Inflation genau einmal');
@@ -443,3 +443,12 @@ try {
         await service.close({ resume: request }); assertEqual(annualBatches(env).length, 1, 'Erneut verwendeter Token startet keinen Fachwrite');
     }
 } finally { PersistenceFacade.resetPersistenceRuntimeForTests(); }
+
+// ST6-FIX (P2-3): Ohne Ausgabenspeicher blockiert das Auswahljahr nicht; ein vorhandener Speicher mit falschem Jahr schon.
+{
+    const storeOf = raw => ({ getItem: key => key === 'balance_expenses_v1' ? raw : null });
+    const day = new Date(2027, 0, 5);
+    assertEqual(annualExpensesYearError(storeOf(null), 2026, day), null, 'Fehlender Ausgabenspeicher blockiert nicht');
+    assert(annualExpensesYearError(storeOf('{"version":1,"activeYear":2028,"years":{}}'), 2026, day), 'Falsches Auswahljahr blockiert');
+    assertEqual(annualExpensesYearError(storeOf('{"version":1,"activeYear":2026,"years":{}}'), 2026, day), null, 'Passendes Auswahljahr blockiert nicht');
+}

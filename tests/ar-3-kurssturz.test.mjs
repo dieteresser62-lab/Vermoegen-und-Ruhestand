@@ -1,3 +1,6 @@
+import { readDM1References } from './helpers/dm-1-expectations.mjs';
+import { readVS2References } from './helpers/vs-2-expectations.mjs';
+import { readSP1iReferences } from './helpers/sp-1i-expectations.mjs';
 import { readGU1References } from './helpers/gu-1-expectations.mjs';
 // LE-1 (FR-75) und KO-2 (Ergänzung FR-76) in einem Leser; Paare, die beide ändern, sind für den vereinten Stand gemessen.
 import { readLE1KO2References } from './helpers/le-1-ko-2-expectations.mjs';
@@ -16,7 +19,7 @@ import { syntheticChart, syntheticDay, syntheticDate, syntheticPrice, syntheticA
 import { annualTestMarketData } from './helpers/balance-storage-fixtures.mjs';
 import { annualRecordStorage } from '../app/balance/balance-annual-storage.js';
 import { projectAnnualMarketReadings } from '../app/balance/balance-annual-market-preview.js';
-import { classifyMarketPreview } from '../app/balance/balance-market-preview.js';
+import { readKR1bReferences } from './helpers/kr-1b-expectations.mjs';
 
 // AR-3: Beispielvariante „Markt erst heiß, dann Rückgang“ macht den Warnfall aus FR-71 im Spielbereich testbar.
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -34,9 +37,9 @@ for (const household of MUSTER_HAUSHALTE) for (const variant of musterVarianten(
     // seit PFA-5 nennt ihr Jahresplanbeleg das Liquiditätsziel mit fortgeschriebenen Folgejahreseinkünften (124.700 € statt 129.600 €).
     // GA-2: Sophie trägt den Ratenkredit als feste geplante Ausgabe.
     const reference = value => readGA2References(readPFA5References(readPFA3References(readPFA2References(value))));
-    assertEqual(hash(start), readLE1KO2References(readGU1References(reference(basis[key].start))), `${key}: Startbestand bytegleich`);
-    assertEqual(hash(rebuildSyntheticPriceRecords(start, '2027-01-02')), readLE1KO2References(readGU1References(reference(basis[key].jump2027))), `${key}: Datumssprung bytegleich`);
-    assertEqual(hash(createMusterHaushaltRecords('2026-01-02', household.id, variant.id)), readLE1KO2References(readGU1References(reference(basis[key].jan2026))), `${key}: Januarbestand bytegleich`);
+    assertEqual(hash(start), readDM1References(readKR1bReferences(readSP1iReferences(readVS2References(readLE1KO2References(readGU1References(reference(basis[key].start))))))), `${key}: Startbestand nach gemessener Referenz`);
+    assertEqual(hash(rebuildSyntheticPriceRecords(start, '2027-01-02')), readDM1References(readKR1bReferences(readSP1iReferences(readVS2References(readLE1KO2References(readGU1References(reference(basis[key].jump2027))))))), `${key}: Datumssprung nach gemessener Referenz`);
+    assertEqual(hash(createMusterHaushaltRecords('2026-01-02', household.id, variant.id)), readDM1References(readKR1bReferences(readSP1iReferences(readVS2References(readLE1KO2References(readGU1References(reference(basis[key].jan2026))))))), `${key}: Januarbestand nach gemessener Referenz`);
     compared++;
 }
 assertEqual(compared, Object.keys(basis).length, 'Jede bisherige Variante verglichen');
@@ -56,7 +59,7 @@ assertEqual(withSyntheticMarketScenario('kurssturz', () => syntheticPrice('XEON.
 assertEqual(withSyntheticMarketScenario('kurssturz', () => syntheticPrice('VWCE.DE', '2025-12-31')), syntheticPrice('VWCE.DE', '2025-12-31'), 'Bis Ende 2025 unverändert');
 assertEqual(syntheticMarketScenario(), null, 'Marktverlauf gilt nur innerhalb des Aufrufs');
 
-// Jahresabschluss 2026 der Variante: Warnung mit Wahl (Abstand weit über dem Grundrauschen von 10 %).
+// Jahresabschluss 2026 der Variante (FR-89): Das Hoch vom 15.06. gilt automatisch, ohne Wahl.
 const start = createMusterHaushaltRecords('2026-11-04', 'max-erika', 'kurssturz');
 assertEqual(syntheticMarketScenario(), null, 'Anlage der Beispieldaten hinterlässt keinen Marktverlauf');
 const records = withSyntheticMarketScenario('kurssturz', () => rebuildSyntheticPriceRecords(start, '2027-01-02'));
@@ -65,16 +68,14 @@ const marketData = { ...annualTestMarketData,
     etf: { ...annualTestMarketData.etf, ...withSyntheticMarketScenario('kurssturz', () => syntheticAnnualQuote('VWCE.DE', 2026, '2027-01-02')), source: SYNTHETIC_MARKET_SOURCE } };
 const view = await projectAnnualMarketReadings({ targetYear: 2026, quote: marketData.etf, marketData,
     storage: annualRecordStorage(records), engineLoader: { load: async () => EngineAPI } });
-assert(view && 'yearlyHigh' in view, 'Jahresvergleich verfügbar');
-assertEqual(view.yearlyHigh.asOf, '2026-06-15', 'Jahresabschluss kennt das Jahreshoch vom 15.06.');
-const stage = classifyMarketPreview(view);
-assert(stage.gapPct > 30, `Ende 2026 weit unter dem Jahreshoch (${stage.gapPct.toFixed(1)} %)`);
-assertEqual(view.rule.market.key, 'peak_hot', 'Jahresendregel sieht ein neues Hoch');
+assert(view && 'high' in view, 'Allzeithoch im Jahresabschluss verfügbar');
+assertEqual(view.high.asOf, '2026-06-15', 'Jahresabschluss verwendet das Tageshoch vom 15.06.');
+assert(view.quote.price > view.stored.inputs.ath, 'Nach Jahresendständen allein wäre Ende 2026 ein neues Hoch');
+assert(view.drawdownPct > 30, `Ende 2026 weit unter dem Allzeithoch (${view.drawdownPct.toFixed(1)} %)`);
 // Mit +25 % im Jahr liest die Engine den tiefen Bären als „Erholung im Bärenmarkt“; beide kürzen den Flex.
-assert(['bear_deep', 'recovery_in_bear'].includes(view.high.market.key), `Gemessen am Jahreshoch Bärenmarkt (${view.high.market.key})`);
-assertEqual(stage.stage, 'warning', 'Jahresabschluss 2026 verlangt die Wahl');
+assert(['bear_deep', 'recovery_in_bear'].includes(view.market.key) && view.deepBear.cutActive, `Gemessen am Allzeithoch Bärenmarkt mit Kürzung (${view.market.key})`);
 
 // Steckbrief und Übung.
 const lesson = musterLesson('max-erika', 'kurssturz');
-assert(lesson.exercises.some(text => text.includes('Reiter „Plan 2027“')), 'Übung führt zur Wahl im Schritt Plan (WT-1)');
+assert(lesson.exercises.some(text => text.includes('Reiter „Marktdaten“') && text.includes('Tagesschluss vom 15.06.2026')), 'Übung führt zum Allzeithoch im Schritt Marktdaten (FR-89)');
 assert(lesson.note.includes('15.06.'), 'Hinweis nennt das Hochdatum');

@@ -40,6 +40,16 @@ export async function captureRD1({ browser, baseUrl, newProbelauf, goto, tab, ch
                     : node.querySelector('[data-annual-plan-status]')?.textContent === 'Dein Plan ist gültig.');
             }, step, step === 'market' ? 'Vollständige Marktdaten' : 'Gerechnete Planvorschau', 90000);
         }
+        // JA-4: alter Tagesgeld-Stand bzw. CAPE-Sprung im jeweiligen Schritt bestätigen, die Knöpfe sind nur dort sichtbar.
+        const persons = await dialog.locator('[data-tagesgeld-confirm-person]').evaluateAll(nodes => nodes.map(node => node.dataset.tagesgeldConfirmPerson));
+        if (persons.length) {
+            await dialog.locator('[data-close-dialog-activate="cash"]').click();
+            for (const person of persons) await dialog.locator(`[data-tagesgeld-confirm-person="${person}"]`).click();
+        }
+        if (await dialog.locator('[data-annual-cape-confirm]').count()) {
+            await dialog.locator('[data-close-dialog-activate="market"]').click();
+            await dialog.locator('[data-annual-cape-confirm]').click();
+        }
         await dialog.locator('#annualConfirmBtn').click();
         await poll(page, () => {
             const node = document.querySelector('#balanceAnnualClose');

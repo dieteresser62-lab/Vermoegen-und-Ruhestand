@@ -12,7 +12,7 @@ Vermögen & Ruhestand plant Entnahmen für Einzelpersonen und Paare. Du erfasst 
 | [Personen & Vermögen](depot-tranchen-manager.html) | Personen, Einkünfte, Depot, Immobilien und Haushaltsplan pflegen. |
 | [Ausgaben](Ausgaben.html) | Monatsausgaben je Person importieren, nach Floor und Flex lesen und mit dem Budget vergleichen. |
 | [Balance](Balance.html) | Monatsbudget, „Was zu tun ist“ mit dem Stand des Jahresplans, Reserven und Diagnose lesen. |
-| [Simulator](Simulator.html) | Historische Pfade, Monte Carlo und Varianten rechnen; heutige Pflegekosten automatisch aus Staffel und Heimjahr ergänzen. |
+| [Simulator](Simulator.html) | Historische Pfade, Monte Carlo und Varianten rechnen. Das Papier für simulierte Zukäufe je Haushalt wählen und heutige Pflegekosten aus Staffel und Heimjahr ergänzen. |
 | [Daten & Sicherung](Daten-Sicherung.html) | Haushalte, Vollsicherungen, Wiederherstellungspunkte und Datenstatus verwalten. |
 
 „Erst ausprobieren – mit Max und Erika“ auf der leeren Übersicht startet mit Spielkursen am 23.10.2026 und 790.000 € Gesamtvermögen, auch ohne Kursdienst. Im Startdialog bieten Beispielhaushalte ausschließlich Spielkurse; bei „Kopie meiner Daten“ kannst du auch echte Kurse von heute wählen.
@@ -23,6 +23,8 @@ Ein Haushalt besteht aus einer oder zwei Personen. Balance empfiehlt Entnahmen u
 
 Einzelne Tranchen öffnen zuerst ihre Kennzahlen und den Verlauf. Die Stückzahl änderst du an der Kachel „Stück“. Längere Verläufe zeigen zuerst die neuesten drei Einträge und den Kauf; alle Einträge lassen sich aufklappen. Widersprüche zwischen Bestand und Kaufdatum erscheinen direkt als Warnung und in der Tranchenzeile. Verkäufe und Wertpapierangaben haben eigene Zugänge; Notizen speichern beim Verlassen des Felds.
 
+Beim Tageskurs für `.DE` kommen Stuttgart, Düsseldorf und München/gettex als weitere Börsen infrage. Börse und Uhrzeit stehen am Kurs. Die Regeln findest du im [Handbuch](Handbuch.html#kauf-kurs).
+
 Monats- und Jahresabschluss halten Tagesgeld, Marktdaten und Plan fest. In Balance zeigt die Karte „Was zu tun ist“ den Plan aus dem Jahresabschluss, wie weit du ihn umgesetzt hast, und eine Vorschau auf den nächsten Plan; daneben stehen deine Reserven. Das Jahreshoch erscheint nur bei einem verdeckten Bärenmarkt. Dann wählst du im Jahresabschluss die Lesart; [Jahresbudget](docs/reference/JAHRESBUDGET.md) erklärt beide. Simulationen rechnen mit Jahresendständen, Fondskosten auf Aktien, der Kohortensterbetafel des Geburtsjahrgangs und vereinfachten Steuer-, Pflege- und Erbannahmen. Sie garantieren keine künftige Finanzierung.
 
 ### Keine Beratung
@@ -31,7 +33,7 @@ Die App ist ein privates Planungswerkzeug und keine Anlage-, Steuer- oder Rechts
 
 ### Geldvermögen und Immobilien
 
-Gesamtvermögen umfasst Geldvermögen und Immobilien. Entnahme, Deckung und Ruin beziehen sich auf Geldvermögen. Immobilien können im Modell verkauft oder vererbt werden; ihre Bewertung ist keine Marktpreisprognose.
+Gesamtvermögen umfasst Geldvermögen und Immobilien. Entnahme, Deckung und aufgebrauchtes Vermögen beziehen sich auf Geldvermögen. Immobilien können im Modell verkauft oder vererbt werden. Die Wahl „Verkauf, Miete auf Lebenszeit“ verbindet den Verkauf im Erbfall mit einer Rente für die überlebende Person. Bei „Verkauf mit Wohnkapital“ erhält sie einmalig einen Anteil am Erlös und kann im Todesjahr und bis zu zehn Folgejahre mietfrei wohnen bleiben. Die Bewertung der Immobilien dient der Planung.
 
 Die Daten bleiben im lokalen Speicher der gewählten Laufzeit. Browser, EXE und verschiedene Browseradressen teilen keinen Bestand. Eine Vollsicherung überträgt den geöffneten Haushalt beim Wechsel und schützt vor Verlust des App-Speichers. [Sicherung](docs/reference/SICHERUNG.md) erklärt Vollsicherung, Wiederherstellungspunkte und Aufbewahrung.
 
@@ -63,7 +65,7 @@ Der [Doku-Wegweiser](docs/README.md) führt zu Budget, Handlungsanweisung, Pfleg
 
 ### Entwicklung
 
-Die App verwendet native ES-Module und Tauri. [TECHNICAL](docs/reference/TECHNICAL.md) erklärt Architektur, [Modulaufbau](docs/reference/TECHNICAL.md#modulaufbau), Diagnose, Selbstbau und Auslieferung; [package.json](package.json) enthält die Befehle. Die EXE wird lokal gebaut und liegt nicht im Repository.
+Die App verwendet native ES-Module und Tauri. [TECHNICAL](docs/reference/TECHNICAL.md) erklärt Architektur, [Modulaufbau](docs/reference/TECHNICAL.md#modulaufbau), Diagnose, Selbstbau und Auslieferung; [package.json](package.json) enthält die Befehle. Die EXE wird lokal gebaut und liegt nicht im Repository. Wie jedes Jahr neue Daten für die historischen Reihen und neue amtliche Werte dazukommen, steht unter [Jahresdaten pflegen](docs/reference/JAHRESDATEN.md).
 
 ## Lizenz
 

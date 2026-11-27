@@ -104,7 +104,7 @@ export function prepareHouseholdCash({ storage = persistenceStorage, activeId, i
         throw new Error('Das aktive Profil hat sich geändert.');
     }
     if (checkMembership) {
-        const members = Object.keys(registry.profiles).filter(id => registry.profiles[id].meta.belongsToHousehold !== false).sort();
+        const members = Object.keys(registry.profiles).sort();
         if (JSON.stringify(members) !== JSON.stringify([...ids].sort())) throw new Error('Der Haushalt hat sich geändert.');
     }
     const nextRegistry = structuredClone(registry), records = {}, expected = {};

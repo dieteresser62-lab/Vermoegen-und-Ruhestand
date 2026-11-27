@@ -39,7 +39,7 @@ Die [Entscheidungsfolge](../docs/reference/TECHNICAL.md#engineaufruf) erklärt d
 | [transactions/transaction-action.mjs](transactions/transaction-action.mjs) | Auffüllung, Verkauf oder keine Aktion wählen |
 | [transactions/transaction-opportunistic.mjs](transactions/transaction-opportunistic.mjs), [transaction-surplus.mjs](transactions/transaction-surplus.mjs) | Opportunistische Auffüllung und Investition überschüssiger Liquidität prüfen |
 | [transactions/sale-engine.mjs](transactions/sale-engine.mjs) | Verkaufsquellen und steuerliche Rohwerte bestimmen |
-| [transactions/net-action.mjs](transactions/net-action.mjs) | Gegenläufige Aufträge verrechnen, Restverkäufe mit vorhandenem Verlustvortrag neu versteuern; bei ungedeckter Steuer den ursprünglichen Auftrag über `netActionEntriesOrOriginal` erhalten |
+| [transactions/net-action.mjs](transactions/net-action.mjs) | Gegenläufige Aufträge verrechnen, Restverkäufe mit vorhandenem Verlustvortrag neu versteuern; `netActionEntriesOrOriginal` wirft bei ungedeckter Steuer `NET_ACTION_TAX_SHORTFALL` |
 | [transactions/three-bucket-logic.mjs](transactions/three-bucket-logic.mjs) | Anleiheersatz und Auffüllung im Drei-Topf-Modus finalisieren |
 | [tax-settlement.mjs](tax-settlement.mjs) | Einzel- oder gemeinsame Jahressteuer und nächste Verlustvorträge berechnen |
 | [errors.mjs](errors.mjs) | `AppError`, `ValidationError` und `FinancialCalculationError` definieren |
@@ -102,7 +102,7 @@ Nach FR-40 hat der verbleibende Haushalt nach Tod in Pflege keine eigene Flex-Ob
 
 `minimumFlexAnnual` ist ein nominales Jahresziel. Fehlt es oder ist es leer, verwendet Core `0`. Sonst wird es numerisch konvertiert und anschließend validiert: endlich, nicht negativ, höchstens `flexBedarf`. Zu große Werte werden zurückgewiesen und nicht still begrenzt.
 
-`aktuelleLiquiditaet` überschreibt bei ausdrücklicher Angabe die Summe aus Tagesgeld und Geldmarkt. Dieser Wert muss bereits eine endliche, nicht negative Zahl sein. Eine fehlende Angabe verwendet die Summe. Die Reichweite ist kanonisch `liquidityRunwayYears`; Core entfernt die alten Felder `runwayMinMonths`, `runwayTargetMonths` und `targetEq` aus dem normalisierten Input. Die Feldprüfung verlangt 1 bis 10 Jahre in Halbjahren.
+`aktuelleLiquiditaet` überschreibt bei ausdrücklicher Angabe die Summe aus Tagesgeld und Geldmarkt. Dieser Wert muss bereits eine endliche, nicht negative Zahl sein. Eine fehlende Angabe verwendet die Summe. Die Reichweite ist kanonisch `liquidityRunwayYears`; Alte Monatsfelder (`runwayMinMonths`, `runwayTargetMonths`) werden nicht mehr gelesen, ein fehlender Wert gilt als Standard; Core entfernt `targetEq` aus dem normalisierten Input. Die Feldprüfung verlangt 1 bis 10 Jahre in Halbjahren.
 
 C4/C5 begrenzen den Netto-Auffüllauftrag und stellen ein gemeinsames Aktien-Bruttobudget einschließlich maximaler Kapitalertragsteuer bereit. Die Verkaufsroutine nutzt darin ihre normale Steuerreihenfolge statt eines festen Alt-/Neu-Mixes. Bei Gold über dem Band lautet die Quellenfolge Gold, Anleihen, Aktien; die Bandprüfung verwendet ebenfalls `aktuelleLiquiditaet`. Rechenweg und verbleibende Grenzen stehen in [C4/C5](../docs/reference/HANDLUNGSANWEISUNG.md#c4) und [C10/C11](../docs/reference/HANDLUNGSANWEISUNG.md#c10).
 
@@ -137,7 +137,7 @@ Core prüft die geplante Entnahme und die Quellen-/Verwendungsflüsse. Inkonsist
 
 ### Optionaler Flex-Trace
 
-Der dritte Parameter `{ includeFlexTrace: true }` schaltet `ui.spending.flexTrace` zu. Ohne diese Option wird kein Collector erzeugt. Balance fordert ihn für die lesende Diagnose an; die Rechenpfade für Monte Carlo, Sweep, Backtest und Replay brauchen ihn nicht.
+Der dritte Parameter `{ includeFlexTrace: true }` schaltet `ui.spending.flexTrace` zu. Ohne diese Option wird kein Collector erzeugt. Balance fordert ihn für die lesende Diagnose an; die Rechenpfade für Monte Carlo, Backtest und Replay brauchen ihn nicht.
 
 Der Trace hält die tatsächlich durchlaufenen Flex-Schritte und deren Monatswirkung als eingefrorene Einträge fest. Nicht endliche Diagnosezahlen werden zu `null`. Entnahme, Aktion und Folgestate bleiben durch die Option unverändert. Reihenfolge und Diagnoseanschlüsse stehen in der [Entscheidungsreferenz](../docs/reference/TECHNICAL.md#engineaufruf). Im Guardrails-Schritt meldet `budgetFloorBegrenzt` eine bindende Begrenzung des Kaufkraftziels nach FR-60. `budgetFloorGesperrt` gilt nur, wenn dadurch gar nicht angehoben wurde. Die bestehende Diagnose `cautionBudgetFloor.details.budgetFloorBlocked` bezeichnet weiterhin beide Fälle; die Vorsichtskarte zeigt dann „Löst aus“. Der Trace gehört nicht in persistierte States oder Ergebnisexporte.
 

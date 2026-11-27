@@ -1,3 +1,4 @@
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
 import { readGL1References } from './helpers/gl-1-expectations.mjs';
 import { readAN1Hash } from './helpers/an-1-expectations.mjs';
 import { readJB2Hash } from './helpers/jb-2-expectations.mjs';
@@ -11,13 +12,14 @@ import { computeRentAdjRate } from '../app/simulator/simulator-portfolio-pension
 import { initializePortfolio, sumDepot } from '../app/simulator/simulator-portfolio.js';
 import { beginPersonalTaxYear, settlePersonalTaxYear } from '../app/simulator/simulator-personal-tax.js';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
-import { buildMonteCarloRuinLogRow, buildStressReplayLogRow } from '../app/simulator/mc-log-builder.js';
+import { buildMonteCarloRuinLogRow } from '../app/simulator/mc-log-builder.js';
 import { renderProtocolTable } from '../app/simulator/protocol-renderer.js';
 import { evaluateStoredAnnualHousehold } from '../app/balance/balance-main-profilverbund.js';
 import { personalProfiles } from '../app/simulator/simulator-personal-accounts.js';
 import { householdInput, syntheticLot, marketYear } from './helpers/ff-c-scenarios.mjs';
 import { unchangedFFD } from './helpers/ff-d-scenarios.mjs';
 import { fffHousehold, fffYearSevenHousehold, fffHistory, fffHistoricalYears, fffMonteCarloParameters, fffDynamicEngineSamples } from './helpers/ff-f-scenarios.mjs';
+import { readKR1bReferences } from './helpers/kr-1b-expectations.mjs';
 
 const api = { engine: EngineAPI, initMcRunState, simulateOneYear, annualData, computeRentAdjRate };
 const history = fffHistory(api);
@@ -140,9 +142,6 @@ for (const threeBuckets of [false, true]) {
         inputs: {}, lifeLogContext });
     assert(row.aktionUndGrund.includes(reason), 'Szenario-Log nennt den konkreten Ruin-Grund');
     assert(renderProtocolTable([row], { source: 'mc' }).includes(reason), 'Grund bleibt im sichtbaren Protokoll und Info erhalten');
-    const replay = buildStressReplayLogRow({ record: { yearIndex: 6, historicalYear: 1988,
-        recordType: 'terminal_ruin', householdEvents: [{ type: 'household_state', p1Alive: true, p2Alive: true }] }, result, inputs: {} });
-    assertEqual(replay.aktionUndGrund, row.aktionUndGrund, 'Replay erhält den Grund auch ohne Zufluss');
 }
 
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -151,11 +150,11 @@ for (const [key, expected] of Object.entries({
     engines: 'b67d8f07fcffa09faf1cf7a83652a266364263ffa132bd7285cf4d27f00bb343',
     households: 'b36aa608d5c0451332c75efad00f8a1c6cb6d7f5a1cd5be66097494e1e0e545d',
     singles: 'c836f6a70bd12b327acff8ff09dea88a0963ea8624dfe7c0190cf258dba9b697'
-})) assertEqual(hash(unchanged[key]), readGL1References(readAN1Hash(readJB2Hash(expected))), `${key}: vollständige Ergebnisse ohne Dynamik nach BK-2`);
+})) assertEqual(hash(unchanged[key]), readKR1cReferences(readGL1References(readAN1Hash(readJB2Hash(expected)))), `${key}: vollständige Ergebnisse ohne Dynamik nach BK-2`);
 const dynamic = fffDynamicEngineSamples(EngineAPI);
 for (const [key, expected] of Object.entries({
     input: '15aba1519cedc2e2f0403478f640753afe558ef271caf8317b335714ea0639d1',
     newState: 'b2be0fbc49d047565d168d90ea642c2651a12bf11199b11f6617bc9807cd0b4c',
     action: '2847958a523feb324af1ded3d423886c736807b13d4f95d551b58b430550c20f'
-})) assertEqual(hash(dynamic.map(row => key === 'action' ? row.ui.action : row[key])), readGL1References(readAN1Hash(expected)),
+})) assertEqual(hash(dynamic.map(row => key === 'action' ? row.ui.action : row[key])), readKR1bReferences(readGL1References(readAN1Hash(expected))),
     `Dynamic Flex ohne Kürzung: vollständiges ${key}-Objekt nach FR-33/34; Aktionen separat`);

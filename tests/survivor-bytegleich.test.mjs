@@ -1,3 +1,7 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { fz1References } from './helpers/fz-1-expectations.mjs';
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
 import { readLE1References } from './helpers/le-1-expectations.mjs';
 import { readGU1References } from './helpers/gu-1-expectations.mjs';
 import { readQSCReferences } from './helpers/qs-c-expectations.mjs';
@@ -11,11 +15,13 @@ import { createHash } from 'node:crypto';
 import { inputs, runFixture } from './extended/parity-replay-fixture.mjs';
 import { dynamicFlexPresetPatch } from '../app/shared/dynamic-flex-presets.js';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
-import { normalizeWidowOptions } from '../app/simulator/simulator-sweep-utils.js';
+import { normalizeWidowOptions } from '../app/simulator/simulator-run-utils.js';
 import { EngineAPI } from '../engine/index.mjs';
+import { readKR1bReferences } from './helpers/kr-1b-expectations.mjs';
 
 // BK-2-Referenz: vollständige Jahreslogs mit Notlage, Obergrenze und Zinskorrektur,
 // Backtest 2000–2025 und MC-Pfad 0, Seed 12345, zwölf Jahre ohne Todesfall.
+const readFZ1Reference = fz1References(import.meta.url);
 const expected = {
   "off": {
     "backtest": "de3154e6a31ea76ed33d63292233d18b1d34a066d6c427b66dd7f48eb7ac037a",
@@ -54,6 +60,6 @@ for (const preset of ['off', 'konservativ', 'ausgewogen', 'offensiv']) {
         assertEqual(readLE1References(backtestBefore), backtestBefore, 'off: Backtest-Anker ohne LE-1-Übersetzung');
         assertEqual(readLE1References(mcBefore), mcBefore, 'off: MC-Anker ohne LE-1-Übersetzung');
     }
-    assertEqual(hash({ rows: bt.rows, outcome: bt.outcome }), readLE1References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(readAN1Hash(readJB2Hash(expected[preset].backtest))))))), `${preset}: Backtest ohne Tod entspricht BK-2-Referenz`);
-    assertEqual(hash(rows), readLE1References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readJB2Hash(expected[preset].mc))))))))), `${preset}: MC ohne Tod entspricht BK-2-Referenz`);
+    assertEqual(hash({ rows: bt.rows, outcome: bt.outcome }), readFZ1Reference(readKR1cReferences(readKR1bReferences(readLE1References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(readAN1Hash(readJB2Hash(expected[preset].backtest)))))))))), `${preset}: Backtest ohne Tod entspricht BK-2-Referenz`);
+    assertEqual(hash(rows), readFZ1Reference(readKR1cReferences(readKR1bReferences(readLE1References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readJB2Hash(expected[preset].mc)))))))))))), `${preset}: MC ohne Tod entspricht BK-2-Referenz`);
 }

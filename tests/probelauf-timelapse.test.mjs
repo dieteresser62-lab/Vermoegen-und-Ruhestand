@@ -149,11 +149,14 @@ try {
     const band = ui.createElement('aside'); band.id = 'probelaufBand';
     const actions = ui.createElement('div'); actions.className = 'ds-actions';
     const day = ui.createElement('button'); day.dataset.probelaufAction = 'day';
-    const end = ui.createElement('button'); end.dataset.probelaufAction = 'end'; end.textContent = 'Spielbereich beenden'; actions.append(day, end); band.append(actions);
-    const content = ui.createElement('div'); main.append(band, content); ui.body.append(main);
+    // OP-1 (Punkt 2): „Spielbereich beenden“ steht im Kopf, nicht mehr im Band.
+    const header = ui.createElement('header');
+    const end = ui.createElement('button'); end.id = 'probelaufEnd'; end.dataset.probelaufAction = 'end'; end.textContent = 'Spielbereich beenden'; header.append(end);
+    actions.append(day); band.append(actions);
+    const content = ui.createElement('div'); main.append(band, content); ui.body.append(header, main);
     renderTimeLapseUI(ui, controller);
     const order = actions.children.map(node => node.id || node.className || node.dataset.probelaufAction);
-    assertEqual(order.join(','), 'day,probelaufTimeLapse,ds-info,probelaufTimeLapseStop,end,probelaufTimeLapseProgress', 'Zeitraffer, Info und Anhalten vor Beenden; Fortschritt am Bandende');
+    assertEqual(order.join(','), 'day,probelaufTimeLapse,ds-info,probelaufTimeLapseStop,probelaufTimeLapseProgress', 'Zeitraffer, Info und Anhalten im Band; Fortschritt am Bandende');
     renderTimeLapseUI(ui, controller);
     assertEqual(actions.children.map(node => node.id || node.className || node.dataset.probelaufAction).join(','), order.join(','), 'Erneutes Rendern erhält Bandreihenfolge ohne doppelte Knöpfe');
     let releaseReady; const waiting = new Promise(resolve => { releaseReady = resolve; });
@@ -163,8 +166,9 @@ try {
     ui.querySelector('[data-time-lapse-date="end"]').value = '2027-01-02';
     await ui.querySelector('[data-time-lapse-start]').fire('click'); await Promise.resolve();
     assert(content.inert && day.disabled && !ui.getElementById('probelaufTimeLapseStop').hidden, 'Lauf sperrt Eingaben und lässt Anhalten im Band bedienbar');
+    assert(end.disabled, 'OP-1 Punkt 2: Zeitraffer sperrt auch „Spielbereich beenden“ im Kopf');
     await ui.getElementById('probelaufTimeLapseStop').fire('click'); releaseReady(); await click;
-    assert(!content.inert && !day.disabled, 'Anhalten gibt den erreichten Stand zur manuellen Bedienung frei');
+    assert(!content.inert && !day.disabled && !end.disabled, 'Anhalten gibt den erreichten Stand zur manuellen Bedienung frei, auch Beenden im Kopf');
     await controller.changeDate('2027-11-02'); controller = await f.boot();
     const lateAnnual = await createTimeLapseServices({ controller, win: f.win }).preparePeriod();
     assert(lateAnnual.annual && lateAnnual.year === 2026, 'Ein verspäteter Jahresabschluss behält sein Abschlussjahr statt des aktuellen Vormonatsjahres');

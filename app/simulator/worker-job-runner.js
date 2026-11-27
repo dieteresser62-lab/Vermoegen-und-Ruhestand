@@ -32,7 +32,7 @@ function createGenerationId() {
 
 /**
  * Generic worker-job orchestrator with adaptive chunk sizing.
- * Used by Monte Carlo and Parameter Sweep to distribute jobs to a worker pool.
+ * Used by Monte Carlo to distribute jobs to a worker pool.
  *
  * Callback contract:
  * - `buildPayload(start, count)` must return the worker payload for one chunk.
@@ -51,7 +51,6 @@ export class WorkerJobRunner {
         minChunk = 10,
         maxChunk = null,
         onProgress = () => { },
-        trackPartialProgress = false,
         buildPayload,
         mergeResult,
         generationId = createGenerationId(),
@@ -77,7 +76,6 @@ export class WorkerJobRunner {
             ? Math.min(400, Math.max(this.minChunk, Math.ceil((this.totalItems || this.minChunk) / this.workerCount)))
             : Math.max(this.minChunk, Number(maxChunk) || this.minChunk);
         this.onProgress = typeof onProgress === 'function' ? onProgress : () => { };
-        this.trackPartialProgress = trackPartialProgress === true;
         this.buildPayload = buildPayload;
         this.mergeResult = mergeResult;
         this.generationId = generationId;
@@ -122,13 +120,9 @@ export class WorkerJobRunner {
         let completedItems = 0;
         let nextItemIdx = 0;
         let reportedProgress = 0;
-        const scheduledRanges = new Map();
-        const partialProgress = new Map();
         const reportProgress = () => {
-            const activeUnits = [...partialProgress.values()].reduce((sum, value) => sum + value, 0);
-            const percentage = ((completedItems + activeUnits) / this.totalItems) * 100;
-            reportedProgress = Math.max(reportedProgress,
-                this.trackPartialProgress ? Math.min(99, percentage) : percentage);
+            const percentage = (completedItems / this.totalItems) * 100;
+            reportedProgress = Math.max(reportedProgress, percentage);
             this.onProgress(reportedProgress, { completedItems, totalItems: this.totalItems });
         };
 
@@ -143,17 +137,6 @@ export class WorkerJobRunner {
         this.pool.onProgress = message => {
             if (message?.generationId !== this.generationId) return;
             lastProgressAt = performance.now();
-            if (this.trackPartialProgress && message.phase === 'sweep') {
-                const start = message.comboRange?.start;
-                const count = message.comboRange?.count;
-                const units = message.completedUnits;
-                if (Number.isInteger(start) && scheduledRanges.get(start) === count
-                    && Number.isFinite(units) && units >= 0 && units <= count
-                    && partialProgress.has(start)) {
-                    partialProgress.set(start, Math.max(partialProgress.get(start), units));
-                    reportProgress();
-                }
-            }
             if (typeof previousPoolOnProgress === 'function') {
                 previousPoolOnProgress(message);
             }
@@ -170,10 +153,6 @@ export class WorkerJobRunner {
             this.signal?.addEventListener?.('abort', abortHandler, { once: true });
         });
         const scheduleJob = (start, count) => {
-            if (this.trackPartialProgress) {
-                scheduledRanges.set(start, count);
-                partialProgress.set(start, 0);
-            }
             const startedAt = performance.now();
             const payload = this.buildPayload(start, count);
             let promise = null;
@@ -236,8 +215,6 @@ export class WorkerJobRunner {
                 if (this.signal?.aborted) throw cancellationError();
                 this.mergeResult(result, start, count);
 
-                partialProgress.delete(start);
-                scheduledRanges.delete(start);
                 completedItems += count;
                 reportProgress();
                 lastProgressAt = performance.now();

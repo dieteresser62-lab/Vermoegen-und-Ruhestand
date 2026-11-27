@@ -41,7 +41,7 @@ Rechts zeigt „Was zu tun ist“ den Plan aus dem Jahresabschluss und je Zeile,
 
 Beende den Spielbereich und bestätige das Verwerfen der Beispieldaten. Vollsicherungen sind im Spielbereich gesperrt. Richte für die erste eigene Sicherung deinen Haushalt nach [Einrichten und erste Sicherung](Handbuch.html#erste-schritte) ein oder kehre zu deinem vorhandenen Bestand zurück.
 
-Öffne „Daten & Sicherung“ und klicke „Jetzt sichern“. Die Datei enthält den geöffneten Haushalt. Prüfe, ob sie am gewünschten Ablageort liegt. Der App-Hinweis bestätigt den gewählten Dateiordner nicht.
+Öffne „Daten & Sicherung“ und klicke „Jetzt sichern“. Die Datei enthält den geöffneten Haushalt. Die Desktop-App fragt mit „Speichern unter“, wo die Datei hin soll, und nennt danach Ordner und Dateinamen. Der Browser lädt sie herunter; prüfe dann, ob sie am gewünschten Ablageort liegt.
 
 <!-- docs:control {"source":"Daten-Sicherung.html","selector":"#fullBackupBtn","text":"Jetzt sichern"} -->
 

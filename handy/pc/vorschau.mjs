@@ -3,11 +3,13 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import worker from '../worker/index.js';
+import { musterYahoo } from './muster.mjs';
 
 const WURZEL = new URL('../public/', import.meta.url).pathname;
 const TYPEN = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
 const port = Number(process.env.PORT || 8788);
+if (process.argv.includes('--muster')) globalThis.fetch = musterYahoo;
 
 createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${port}`);

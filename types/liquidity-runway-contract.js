@@ -1,12 +1,10 @@
 /**
  * Canonical user-facing liquidity runway contract shared by Balance,
- * Simulator and the engine. Legacy month fields are input-only migration
- * aliases and must never be emitted by current readers or exports.
+ * Simulator and the engine. Values in months from older versions are ignored;
+ * a missing runway uses the default.
  */
 
 const REQUEST_KEY = 'liquidityRunwayYears';
-const LEGACY_TARGET_KEY = 'runwayTargetMonths';
-const LEGACY_MINIMUM_KEY = 'runwayMinMonths';
 
 export const LIQUIDITY_RUNWAY_CONTRACT_V1 = Object.freeze({
     version: 'LiquidityRunwayContractV1',
@@ -16,21 +14,6 @@ export const LIQUIDITY_RUNWAY_CONTRACT_V1 = Object.freeze({
     minimumYears: 1,
     maximumYears: 10,
     stepYears: 0.5,
-    legacyKeys: Object.freeze({
-        targetMonths: LEGACY_TARGET_KEY,
-        minimumMonths: LEGACY_MINIMUM_KEY
-    }),
-    legacyMonthDomains: Object.freeze({
-        target: Object.freeze({ minimum: 18, maximum: 72, step: 1 }),
-        minimum: Object.freeze({ minimum: 12, maximum: 60, step: 1 }),
-        normalization: 'ceil_to_next_half_year'
-    }),
-    migrationPrecedence: Object.freeze([
-        REQUEST_KEY,
-        LEGACY_TARGET_KEY,
-        LEGACY_MINIMUM_KEY,
-        'default'
-    ]),
     internalPolicy: Object.freeze({
         hardMinimumCapMonths: 24,
         hardMinimumSource: 'engine_policy_cap_24_months'
@@ -65,37 +48,13 @@ export function isValidLiquidityRunwayYears(years) {
         && isValidStep(years);
 }
 
-/** @param {number} legacyMonths
- * @param {{minimum:number;maximum:number}} domain */
-function normalizeLegacyMonths(legacyMonths, domain) {
-    if (!Number.isInteger(legacyMonths)
-        || legacyMonths < domain.minimum
-        || legacyMonths > domain.maximum) {
-        return {
-            years: NaN,
-            normalizedMonths: NaN,
-            normalization: 'invalid'
-        };
-    }
-    const canonicalStepMonths = LIQUIDITY_RUNWAY_CONTRACT_V1.stepYears * 12;
-    const normalizedMonths = Math.ceil(legacyMonths / canonicalStepMonths) * canonicalStepMonths;
-    return {
-        years: normalizedMonths / 12,
-        normalizedMonths,
-        normalization: normalizedMonths === legacyMonths
-            ? 'exact'
-            : LIQUIDITY_RUNWAY_CONTRACT_V1.legacyMonthDomains.normalization
-    };
-}
-
 /** @param {import('../typcheck/rechenkern').RunwayInput} input */
 export function resolveLiquidityRunwayYears(input = {}) {
     const canonicalYears = finiteNumber(input[REQUEST_KEY]);
     if (canonicalYears !== null) {
         return {
             years: canonicalYears,
-            source: 'canonical',
-            migrated: false
+            source: 'canonical'
         };
     }
 
@@ -105,63 +64,14 @@ export function resolveLiquidityRunwayYears(input = {}) {
         && input[REQUEST_KEY] !== '') {
         return {
             years: NaN,
-            source: 'canonical_invalid',
-            migrated: false
-        };
-    }
-
-    const legacyTargetMonths = finiteNumber(input[LEGACY_TARGET_KEY]);
-    if (legacyTargetMonths !== null && legacyTargetMonths > 0) {
-        const normalized = normalizeLegacyMonths(
-            legacyTargetMonths,
-            LIQUIDITY_RUNWAY_CONTRACT_V1.legacyMonthDomains.target
-        );
-        return {
-            years: normalized.years,
-            source: Number.isFinite(normalized.years)
-                ? 'legacy_runway_target_months'
-                : 'legacy_runway_target_months_invalid',
-            migrated: true,
-            legacyMonths: legacyTargetMonths,
-            normalizedMonths: normalized.normalizedMonths,
-            normalization: normalized.normalization
-        };
-    }
-
-    const legacyMinimumMonths = finiteNumber(input[LEGACY_MINIMUM_KEY]);
-    if (legacyMinimumMonths !== null && legacyMinimumMonths > 0) {
-        const normalized = normalizeLegacyMonths(
-            legacyMinimumMonths,
-            LIQUIDITY_RUNWAY_CONTRACT_V1.legacyMonthDomains.minimum
-        );
-        return {
-            years: normalized.years,
-            source: Number.isFinite(normalized.years)
-                ? 'legacy_runway_min_months'
-                : 'legacy_runway_min_months_invalid',
-            migrated: true,
-            legacyMonths: legacyMinimumMonths,
-            normalizedMonths: normalized.normalizedMonths,
-            normalization: normalized.normalization
+            source: 'canonical_invalid'
         };
     }
 
     return {
         years: LIQUIDITY_RUNWAY_CONTRACT_V1.defaultYears,
-        source: 'default',
-        migrated: false
+        source: 'default'
     };
-}
-
-/** @param {import('../typcheck/rechenkern').RunwayInput} input */
-export function migrateLiquidityRunwayInput(input = {}, { dropTargetEq = false } = {}) {
-    const migrated = { ...(input || {}) };
-    const resolution = resolveLiquidityRunwayYears(migrated);
-    migrated[REQUEST_KEY] = deriveLiquidityRunwayPolicy(resolution.years).targetYears;
-    delete migrated[LEGACY_TARGET_KEY];
-    delete migrated[LEGACY_MINIMUM_KEY];
-    if (dropTargetEq) delete migrated.targetEq;
-    return migrated;
 }
 
 /** @param {unknown} years */

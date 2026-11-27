@@ -12,7 +12,7 @@ import { bindInfoPopovers } from '../shared/designsystem-info-popover.js';
 import { syncManagerCareToday } from './tranchen-manager-care.js';
 import { renderManagerHouseholdAdoption, syncPensionWageHint } from './tranchen-manager-household-adoption.js';
 import { bindCareHintDone, renderCareHint } from '../shared/care-hint.js';
-import { loadProfileRegistry, getHouseholdPrimaryProfileId, householdMemberCount, HOUSEHOLD_LIMIT_REASON, HOUSEHOLD_MINIMUM_REASON } from '../profile/profile-registry.js';
+import { loadProfileRegistry, getHouseholdPrimaryProfileId, householdMemberCount, HOUSEHOLD_MINIMUM_REASON } from '../profile/profile-registry.js';
 import { loadProfileAssetValues, validateProfileAssetValues } from '../profile/profile-asset-values.js';
 import { PROFILE_VALUE_KEYS, loadProfileHealthBucketFromData, loadStoredBalanceStateFromData } from '../profile/profile-state.js';
 import { loadTranchesFromStorage, calculateTrancheDerivedValues } from './tranchen-manager-state.js';
@@ -67,7 +67,7 @@ function upcomingIncome(profiles) {
  * @property {string} id
  * @property {string} name
  * @property {boolean} active
- * @property {boolean} belongs
+ * @property {true} belongs Feste Konstante für bytegleiche Belege; keine Logik liest sie.
  * @property {boolean} valid
  * @property {ReturnType<typeof validateProfileAssetValues>} [values]
  * @property {ReturnType<typeof projectCurrentIncome>} [currentIncome]
@@ -128,27 +128,24 @@ export function projectManagerProfiles(registry, activeId, historyContext = null
             const allocation = { aktien_alt: 0, aktien_neu: 0, anleihe: 0, geldmarkt: 0, gold: 0, cash: values.tagesgeld };
             for (const lot of derived) allocation[lot.type] += lot.marketValue;
             if (![assets, cost, market].every(Number.isFinite)) throw new Error('PROFILE_TOTAL_INVALID');
-            return { id, name: profile.meta.name || id, active: id === activeId,
-                belongs: profile.meta.belongsToHousehold !== false, valid: true, values, currentIncome, income: currentIncome.income,
+            // AP-1: `belongs` bleibt als feste Konstante, damit Übersicht und Belege bytegleich bleiben; gelesen wird es nicht mehr.
+            return { id, name: profile.meta.name || id, active: id === activeId, belongs: true, valid: true, values, currentIncome, income: currentIncome.income,
                 incomeSteps: upcomingIncome([{ currentIncome, income: currentIncome.income }]), personDates: describePersonDates(profile.data, referenceYear, now),
                 assets, cost, gain: market - cost, count: derived.length, allocation, tranches: derived,
                 taxState: balance.value?.lastState?.taxState,
                 careTarget: values.healthBucket.enabled ? values.healthBucket.initialAmount : 0 };
         } catch {
-            return { id, name: profile.meta.name || id, active: id === activeId,
-                belongs: profile.meta.belongsToHousehold !== false, valid: false };
+            return { id, name: profile.meta.name || id, active: id === activeId, belongs: true, valid: false };
         }
     });
-    const members = profiles.filter(profile => profile.belongs);
     for (const profile of profiles) profile.historyRecovery = profile.active && profile.valid ? projectHistoryRecovery(registry, profile.id) : [];
     // Dieselbe Reihenfolge wie listProfiles/loadProfilverbundProfiles: das erste
     // Haushaltsmitglied liefert den bestehenden Hauptprofil-/Pflegebezug.
-    const primaryId = getHouseholdPrimaryProfileId(members);
-    for (const profile of profiles) profile.householdRole = !profile.belongs ? 'Außerhalb Haushalt'
-        : profile.id === primaryId ? 'Hauptprofil im Haushalt' : 'Partnerprofil';
-    const complete = members.length > 0 && members.length <= 2 && members.every(profile => profile.valid);
+    const primaryId = getHouseholdPrimaryProfileId(profiles);
+    for (const profile of profiles) profile.householdRole = profile.id === primaryId ? 'Hauptprofil im Haushalt' : 'Partnerprofil';
+    const complete = profiles.length > 0 && profiles.length <= 2 && profiles.every(profile => profile.valid);
     /** @type {{assets: number, cost: number, gain: number, income: number, careTarget: number, allocation: Record<string, number>, incomeSteps?: ReturnType<typeof upcomingIncome>, incomeWarnings?: string[]}} */
-    let household = complete ? members.reduce((sum, profile) => ({
+    let household = complete ? profiles.reduce((sum, profile) => ({
         assets: sum.assets + profile.assets, cost: sum.cost + profile.cost, gain: sum.gain + profile.gain,
         income: sum.income + profile.income,
         careTarget: sum.careTarget + profile.careTarget,
@@ -157,8 +154,8 @@ export function projectManagerProfiles(registry, activeId, historyContext = null
         allocation: { aktien_alt: 0, aktien_neu: 0, anleihe: 0, geldmarkt: 0, gold: 0, cash: 0 } }) : null;
     if (household && Object.values(household).some(value => typeof value === 'number' && !Number.isFinite(value))) household = null;
     if (household) {
-        household.incomeSteps = upcomingIncome(members);
-        household.incomeWarnings = members.filter(profile => profile.currentIncome.missing).map(profile => `${profile.name}: Rentenbeginn fehlt`);
+        household.incomeSteps = upcomingIncome(profiles);
+        household.incomeWarnings = profiles.filter(profile => profile.currentIncome.missing).map(profile => `${profile.name}: Rentenbeginn fehlt`);
         if (household.incomeSteps.some(step => !Number.isFinite(step.income))) household = null;
     }
     let householdHistory = null;
@@ -196,7 +193,7 @@ export function bindManagerProfileSwitch(doc, switchPerson) {
             .finally(() => { state.pending = null; });
         return state.pending;
     };
-    for (const id of ['managerHousehold', 'managerSectionNav', 'managerHistorySwitch', 'managerWealthPersonHint']) doc.getElementById(id)?.addEventListener('click', handler);
+    for (const id of ['managerHousehold', 'managerSectionNav', 'managerHistorySwitch']) doc.getElementById(id)?.addEventListener('click', handler);
     const nav = doc.getElementById('managerSectionNav');
     nav?.addEventListener('keydown', event => {
         const tab = event.target?.closest?.('[role="tab"]');
@@ -230,13 +227,10 @@ export function renderManagerPeople(doc, activeId) {
     const form = doc.getElementById('managerPeopleForm');
     if (form && doc.getElementById('managerPersonRenameBtn')?.hidden !== false) form.hidden = full;
     host.innerHTML = Object.entries(loaded.value.profiles).map(([id, profile]) => {
-        const reason = profile.meta.belongsToHousehold === false ? (full ? HOUSEHOLD_LIMIT_REASON : '')
-            : count <= 1 ? HOUSEHOLD_MINIMUM_REASON : '';
-        const deleteReason = profile.meta.belongsToHousehold !== false && count <= 1 ? HOUSEHOLD_MINIMUM_REASON : '';
+        const deleteReason = count <= 1 ? HOUSEHOLD_MINIMUM_REASON : '';
         return `
         <article class="pv-person-row"><div><strong>${escapeHtml(profile.meta.name || id)}</strong>${id === activeId ? ' · gerade angezeigt' : ''}</div>
-        <div class="reconciliation-actions"><div class="pv-membership"><label ${reason ? `title="${reason}"` : ''}><input ${reason ? `disabled data-person-disabled-reason="${reason}"` : ''} class="ds-checkbox" type="checkbox" data-person-membership="${escapeHtml(id)}" ${profile.meta.belongsToHousehold !== false ? 'checked' : ''}> im Haushalt</label>${reason ? `<small class="ds-help">${reason}</small>` : ''}</div>
-        <button type="button" class="ds-button ds-button-secondary" data-person-action="rename" data-person-id="${escapeHtml(id)}">Umbenennen</button>
+        <div class="reconciliation-actions"><button type="button" class="ds-button ds-button-secondary" data-person-action="rename" data-person-id="${escapeHtml(id)}">Umbenennen</button>
         <button type="button" ${deleteReason ? `disabled title="${deleteReason}" data-person-disabled-reason="${deleteReason}"` : ''} class="ds-button ds-button-danger" data-person-action="delete" data-person-id="${escapeHtml(id)}">Löschen …</button></div></article>`; }).join('');
 }
 /** Fachliche Sperren bleiben beim Freigeben einer laufenden Operation erhalten. */
@@ -293,11 +287,6 @@ export function bindManagerPeopleDialog(doc, { execute, activeId, blocked }) {
         byId('managerPersonRenameBtn').hidden = false;
         byId('managerPersonRenameCancelBtn').hidden = false;
         byId('managerPersonName').focus();
-    });
-    byId('managerPeopleList').addEventListener('change', event => {
-        const input = event.target?.closest?.('[data-person-membership]');
-        if (!input || input.disabled || pending || blocked()) return;
-        return run({ kind: 'membership', profileId: input.dataset.personMembership, belongs: input.checked });
     });
     peopleBindings.set(doc, { reset });
 }

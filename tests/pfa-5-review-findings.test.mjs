@@ -5,15 +5,6 @@ import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input
 import { CONFIG } from '../app/balance/balance-config.js';
 import { setAppTestDate } from '../app/shared/app-clock.js';
 import { EngineAPI } from '../engine/index.mjs';
-import { buildSimulatorInputsFromProfileData } from '../app/simulator/simulator-profile-inputs.js';
-import { initMcRunState } from '../app/simulator/simulator-engine-wrapper.js';
-import { fixedCareTodayForYear } from '../app/simulator/simulator-care-today.js';
-import { readCareInputs } from '../app/simulator/simulator-input-care.js';
-import { initInputPersistence } from '../app/simulator/simulator-main-input-persist.js';
-import { calculateCareNeeds } from '../app/shared/care-needs.js';
-import { OWN_CARE_PRICES_KEY, resolveCarePrices } from '../app/shared/care-prices.js';
-import { PersistenceFacade as P, persistenceStorage, resetPersistenceForTests } from '../app/shared/persistence-facade.js';
-import { simulatorDocument } from './simulator-page-fixture.mjs';
 import { annualRecordStorage, computeAnnualPlanUpdate } from '../app/balance/balance-annual-storage.js';
 import { prepareAnnualCommitRecords } from '../app/balance/balance-annual-storage-commit.js';
 import { annualTestMarketData, annualTestNow } from './helpers/balance-storage-fixtures.mjs';
@@ -83,46 +74,6 @@ function withWage(records, percent) {
     const allowanceCalc = balance(allowance.records, allowance.scope);
     assertEqual(allowanceCalc.inputData.renteMonatlich * 12, 4164, 'B1 Pflegegeld Grad 2 heute 4.164 €/Jahr');
     close(allowanceCalc.inputData.careLiquidityProjection.income, 4247.28, 'B1 Pflegegeld im Folgejahr 4.164 × 1,02 = 4.247,28 € (nicht 4.164)');
-}
-
-// Befund 2: Eine Außenperson markiert bewusst eingegebene 3,5 % bei ihrem eigenen Preisbesitzer (echtes Eingabeereignis im Simulator-DOM).
-{
-    const base = JSON.parse(pfa2Records({ care: [today(3, 'home-support'), null] }).records.rs_profiles_v1).profiles[IDS[0]].data;
-    const outsideData = { ...base, sim_pflegeStufe3Zusatz: '21000', sim_pflegeKostenDrift: '3.5' };
-    delete outsideData[OWN_CARE_PRICES_KEY];
-    const registry = { version: 1, profiles: { aussen: { meta: { name: 'Außen', belongsToHousehold: false }, data: outsideData } } };
-    const store = new Map(Object.entries({ ...outsideData, rs_profiles_v1: JSON.stringify(registry), rs_current_profile: 'aussen', rs_active_profile: 'aussen' }));
-    const prior = { document: globalThis.document, window: globalThis.window };
-    P.resetPersistenceForTests({ name: 'PFA-5 B2', async loadAll() { return Object.fromEntries(store); },
-        async saveBatch({ upserts, deletes }) { for (const key of deletes) store.delete(key); for (const [key, value] of upserts) store.set(key, value); } });
-    await P.init({ installLifecycleHooks: false, installTauriCloseHook: false });
-    try {
-        globalThis.document = simulatorDocument(); globalThis.window = { addEventListener() {}, removeEventListener() {} };
-        initInputPersistence();
-        const field = document.getElementById('pflegeKostenDrift');
-        assertEqual(field.value, '5', 'B2 unmarkierter Altbestand 3,5 der Außenperson gilt lesend als 5 (Sollfall K)');
-        assertEqual(readCareInputs({ doc: document, storage: persistenceStorage }).pflegeKostenDrift, .05, 'B2 vor der Eingabe rechnet der DOM-Reader 5 %');
-        field.value = '3,5'; field.dispatchEvent(new Event('input'));
-        assertEqual(persistenceStorage.getItem('sim_pflegeKostenDrift'), '3,5', 'B2 das Feld landet weiter im eigenen sim_-Schlüssel');
-        const own = JSON.parse(persistenceStorage.getItem(OWN_CARE_PRICES_KEY));
-        assertEqual(`${own.origin} ${own.driftPercent} ${own.costs[3]} ${own.priceYear}`, 'von Hand 3.5 21000 2026', 'B2 die Eingabe markiert den Kostenanstieg im eigenen Preisblock der Außenperson');
-        assertEqual(readCareInputs({ doc: document, storage: persistenceStorage }).pflegeKostenDrift, .035, 'B2 DOM-Reader: 3,5 % bleiben 3,5 % (nicht 5)');
-        const profileData = { ...outsideData, [OWN_CARE_PRICES_KEY]: persistenceStorage.getItem(OWN_CARE_PRICES_KEY) };
-        const inputs = buildSimulatorInputsFromProfileData(profileData, { storage: persistenceStorage, referenceYear: 2026, planValues: null, profileId: 'aussen' });
-        assertEqual(inputs.pflegeKostenDrift, .035, 'B2 Profilreader: 3,5 % bleiben 3,5 %');
-        assertEqual(inputs.pflegeGradeConfigs[3].zusatz, 21000, 'B2 eigene Staffel der Außenperson bleibt erhalten');
-        const state = initMcRunState(inputs), fixed = fixedCareTodayForYear(inputs, state, 0);
-        const next = calculateCareNeeds({ inputs, household: fixed.householdContext, referenceDate: inputs.careReferenceDate, yearIndex: 0,
-            inflationFactor: 1, nextInflationFactor: 1.02, baseFloor: state.baseFloor }).next;
-        close(next.homeCareAddition, 22169.7, 'B2 Folgejahr 21.000 × 1,02 × 1,035 = 22.169,70 € (nicht 22.491)', .01);
-        assertEqual(buildSimulatorInputsFromProfileData({ ...outsideData, sim_pflegeKostenDrift: '3.5' }, { storage: persistenceStorage, referenceYear: 2026, planValues: null, profileId: 'aussen' }).pflegeKostenDrift, .05,
-            'B2 ohne Preisblock bleibt ein unmarkierter Altbestand 3,5 im Profilreader 5 %');
-        const member = resolveCarePrices(null, { sim_pflegeKostenDrift: '3.5', [OWN_CARE_PRICES_KEY]: JSON.stringify(own) }, { shared: true });
-        assertEqual(`${member.driftPercent} ${member.driftMarked}`, '5 false', 'B2 Haushaltsmitglieder lesen den eigenen Block einer Außenperson nicht');
-        field.value = '21500'; document.getElementById('pflegeStufe3Zusatz').value = '21500'; document.getElementById('pflegeStufe3Zusatz').dispatchEvent(new Event('input'));
-        const later = JSON.parse(persistenceStorage.getItem(OWN_CARE_PRICES_KEY));
-        assertEqual(`${later.driftPercent} ${later.costs[3]}`, '3.5 21500', 'B2 eine spätere Staffeleingabe behält die Markierung');
-    } finally { globalThis.document = prior.document; globalThis.window = prior.window; await resetPersistenceForTests(); }
 }
 
 // Befund 3: Der eigene Wert ist im Schritt „Pflegewerte“ änderbar; der bestätigte Betrag geht in den Abschlussbatch.

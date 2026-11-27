@@ -6,7 +6,6 @@ import { getProtocolColumns } from '../app/simulator/protocol-columns.js';
 import { projectScenarioLogV2, serializeScenarioLogCsvV2 } from '../app/simulator/monte-carlo-export.js';
 import { renderWorstRunLog, displayMonteCarloResults, persistDetailLevel, WORST_LOG_DETAIL_KEY, BACKTEST_LOG_DETAIL_KEY, loadDetailLevel } from '../app/simulator/simulator-results.js';
 import { persistenceStorage } from '../app/shared/persistence-facade.js';
-import { initStressReplayUI, publishStressReplayMonteCarloContext, selectStressReplayScenario } from '../app/simulator/stress-replay-ui.js';
 
 // GL-1 / EP3: ältere Nachlasslogs können den Erlös ohne Jahresliste enthalten.
 const legacyEstate = { jahr: 1, inheritance: { assets: 100000, home: 800000, inheritedSaleProceeds: 800000,
@@ -70,7 +69,7 @@ for (const [code, label] of Object.entries({ REC_BÄR: 'Erholung im Bärenmarkt'
         const entry = source === 'mc' ? row : { jahr: 2026, row };
         assert(renderProtocolTable([entry], { source }).includes(`${label} · kein Handlungsbedarf`), `${source}: ${code} erscheint als deutscher Klartext`);
     }
-    assert(serializeScenarioLogCsvV2(projectScenarioLogV2([row])).includes(`${code} (Kein Handlungsbedarf)`), 'CSV erhält das ursprüngliche Handlungskürzel');
+    assert(serializeScenarioLogCsvV2(projectScenarioLogV2([row])).includes(`${label} · kein Handlungsbedarf`), 'CSV schreibt die Handlung als deutschen Text');
     assertEqual(JSON.stringify(row), bytes, 'Protokollübersetzung erhält die Rohzeile');
 }
 assert(renderProtocolTable([{ jahr: 1, aktionUndGrund: 'SEITWÄRTS (S) (Kein Handlungsbedarf)' }], { source: 'mc' })
@@ -100,6 +99,17 @@ for (const [logDetailLevel, showCareDetails] of [['normal', true], ['detailed', 
 }
 assert(renderProtocolTable([{ jahr: 4, recordType: 'terminal_ruin' }], options).includes('protocol-row-ruin'), 'Terminalruin ist ein eigener Zeilenzustand');
 assert(!renderProtocolTable([{ jahr: 4, recordType: 'terminal_death', wertAktien: 0 }], options).includes('protocol-row-ruin'), 'Tod und Nullbestand erzeugen keinen erfundenen Ruin');
+const deathDuringWaiting = protocolActionShortText({ recordType: 'terminal_death',
+    aktionUndGrund: '>>> ENDE: Alle Personen verstorben <<<', housingCapitalMove: { kind: 'cancelled', reason: 'death' } });
+assert(deathDuringWaiting.includes('Alle Personen verstorben') && deathDuringWaiting.includes('Wohnkapital entfällt durch Tod'),
+    'Kurztext beim Tod nennt das Laufende und den Wegfall des Wohnkapitals');
+const savingDuringWaiting = { Regime: 'accumulation', aktionUndGrund: 'Sparrate: 12000€ / Kauf A: 0€ / Kauf G: 0€',
+    housingCapitalMove: { kind: 'staying' }, kaufAkt: 0, kaufGld: 0, vk: { vkAkt: 0, vkBnd: 0, vkGld: 0, vkGes: 0 } };
+for (const rendererOptions of [options, bondOptions]) {
+    const savingAction = protocolActionShortText(savingDuringWaiting, rendererOptions);
+    assert(savingAction.includes('Sparrate') && savingAction.includes('Mietfreies Wohnen bis zum Auszug'),
+        'Kurztext im Ansparjahr ohne Handel nennt Sparrate und mietfreies Wohnen');
+}
 assert(renderProtocolTable([{ jahr: 1, Regime: 'accumulation' }], options).includes('Ansparphase'), 'Ansparrecord bleibt lesbar');
 for (const [entry, index, context, expected] of [
     [{ jahr: 3 }, 0, { source: 'mc', startYear: 2030, inputs: { startAlter: 70, partner: { aktiv: false, startAlter: 40 } } }, { calendarYear: 2032, simulationYear: 3, ages: '72' }],
@@ -114,7 +124,7 @@ const zeroSummary = renderProtocolSummary(rows, { outcome: 'completed', endWealt
 assert(zeroSummary.includes('>0\u00a0€</strong>') && zeroSummary.includes('>Gesamtvermögen · nominal</span>'), 'Beobachtetes Nullendvermögen bleibt Null');
 assert(!renderProtocolSummary([], {}).includes('Vollständig'), 'Fehlender Outcome erzeugt keinen Erfolgsstatus');
 assert(!renderProtocolSummary(rows, { subtitle: danger }).includes('<img'), 'Auch Kopfunterzeilen behandeln Daten als Text');
-for (const [outcome, label] of [['ruin', 'Ruin'], ['all_dead', 'Haushalt verstorben'], ['horizon_exhausted', 'Horizont erreicht'], ['technical_error', 'Technischer Fehler']]) {
+for (const [outcome, label] of [['ruin', 'Vermögen aufgebraucht'], ['all_dead', 'Haushalt verstorben'], ['horizon_exhausted', 'Horizont erreicht'], ['technical_error', 'Technischer Fehler']]) {
     const summary = renderProtocolSummary([], { outcome: { kind: outcome } });
     assert(summary.includes(label), 'Statuschip übernimmt den gerechneten Outcome');
     assert(!summary.includes('Endvermögen'), 'Ohne vorhandenen Vermögenswert kein erfundener Vermögenschip');
@@ -123,7 +133,7 @@ const boundaryCount = columns.slice(1).filter((column, index) => column.group !=
 assertEqual((html.match(/protocol-group-start/g) || []).length, boundaryCount * 2, 'Einzelköpfe und Zellen markieren jede fachliche Gruppengrenze');
 
 // CaR gehört zur Entnahmeidentität, auch bei verschachtelten und alten Spalten.
-const lowWithdrawalHint = 'Reale Entnahme unter dem 10-%-Wert aller simulierten Jahre (CaR)';
+const lowWithdrawalHint = 'Reale Entnahme unter dem 10-%-Wert aller simulierten Jahre';
 for (const source of ['mc', 'backtest']) for (const logDetailLevel of ['normal', 'detailed']) {
     const context = { source, logDetailLevel, caRThreshold: 100 };
     const catalogColumns = getProtocolColumns(context);
@@ -182,7 +192,7 @@ class NodeDouble {
     set innerHTML(value) { this.markup = value; writes++; }
     get innerHTML() { return this.markup || ''; }
 }
-const hosts = Object.fromEntries(['scenarioLogContainer', 'scenarioSelector', 'scenarioList', 'scenarioGroups', 'scenarioLogOutput', 'scenarioExportButtons', 'scenarioProtocolSummary', 'toggle-care-details', 'toggle-log-detail', 'exportScenarioLogJson', 'exportScenarioLogCsv', 'monteCarloResults', 'toastContainer', 'stressReplayFixButton', 'stressReplayStatus', 'stressReplaySelectedScenarioEmpty', 'stressReplaySelectedScenarioDetails', 'stressReplaySelectedScenarioLabel', 'stressReplaySelectedScenarioWealth', 'stressReplaySelectedScenarioCare'].map(id => [id, new NodeDouble()]));
+const hosts = Object.fromEntries(['scenarioLogContainer', 'scenarioSelector', 'scenarioList', 'scenarioGroups', 'scenarioLogOutput', 'scenarioExportButtons', 'scenarioProtocolSummary', 'toggle-care-details', 'toggle-log-detail', 'exportScenarioLogJson', 'exportScenarioLogCsv', 'monteCarloResults', 'toastContainer'].map(id => [id, new NodeDouble()]));
 const scenario = { key: 'worst', label: danger, sourceIdentity: { runIndex: 0 }, endVermoegen: 12345, failed: false, logDataRows: [{ recordType: 'financial_year', financiallyEvaluable: true, jahr: 1, histJahr: 1974, Regime: 'normal', aktionUndGrund: 'Halten', entscheidung: { jahresEntnahme: 1000 } }] };
 const batch = { characteristic: [scenario], random: [{ ...scenario, key: danger }] };
 const run = (logs, inputs = { startAlter: 62 }, displayContext = { startYear: 2026 }) => displayMonteCarloResults({}, 1, 0, null, {}, {}, 0, inputs, null, logs, displayContext);
@@ -195,19 +205,13 @@ try {
     globalThis.setTimeout = () => 0;
     URL.createObjectURL = blob => { blobs.push(blob); return 'blob:synthetic'; };
     URL.revokeObjectURL = () => {};
-    initStressReplayUI({
-        documentRef: globalThis.document, windowRef: globalThis.window,
-        readParameters: () => ({ rngMode: 'per-run-seed' }), resolveCompatibility: () => ({}),
-        loadWorkspace: () => ({ status: 'empty', workspace: null }), renderViews() {}
-    });
     persistenceStorage.setItem('logDetailLevel', 'detailed');
     persistenceStorage.removeItem(WORST_LOG_DETAIL_KEY); persistenceStorage.removeItem(BACKTEST_LOG_DETAIL_KEY);
     assertEqual(loadDetailLevel(WORST_LOG_DETAIL_KEY), 'detailed', 'Legacypräferenz bleibt lesbarer Fallback');
     persistDetailLevel(WORST_LOG_DETAIL_KEY, 'normal');
     persistDetailLevel(BACKTEST_LOG_DETAIL_KEY, 'detailed');
     run(batch); run(batch); run(batch);
-    assert(hosts.scenarioProtocolSummary.innerHTML.includes('Kein Ruin') && !hosts.scenarioProtocolSummary.innerHTML.includes('Vollständig'), 'MC: failed=false belegt keinen Ruin, aber keinen unzensierten Lebensabschluss');
-    assertEqual(hosts.stressReplayFixButton.disabled, false, 'Aktiver Replaycontroller erhält den neuen MC-Kontext und die Worst-Auswahl');
+    assert(hosts.scenarioProtocolSummary.innerHTML.includes('Vermögen reicht') && !hosts.scenarioProtocolSummary.innerHTML.includes('Vollständig'), 'MC: failed=false belegt keinen Ruin, aber keinen unzensierten Lebensabschluss');
     assertEqual(hosts['toggle-log-detail'].listeners.size, 1, 'Wiederholtes Rendern hinterlässt genau einen Detaillistener');
     assertEqual(hosts['toggle-care-details'].listeners.size, 1, 'Wiederholtes Rendern hinterlässt genau einen Pflegelistener');
     assertEqual(hosts.scenarioList.clickListeners.size, 1, 'Auch bei identischem Listendoppel genau ein Auswahlweg');
@@ -242,12 +246,10 @@ try {
     assertEqual(window.globalCurrentScenarioData, null, 'Leerauswahl invalidiert Exportgrundlage');
     hosts.exportScenarioLogJson.onclick(); assertEqual(downloads, downloadsBeforeEmpty, 'Leerauswahl lässt keinen Download des alten Pfads zu');
     hosts.scenarioList.choose('char_worst');
-    assertEqual(hosts.stressReplaySelectedScenarioLabel.textContent, danger, 'Replayauswahl folgt dem aktuellen Szenario als Text');
     const invalid = { characteristic: [{ ...scenario, logDataRows: [{ ...scenario.logDataRows[0], get aktionUndGrund() { throw new Error('synthetischer Renderfehler'); } }] }], random: [] };
     globalThis.console = { ...saved.console, error() {} }; run(invalid);
     assertEqual(window.globalCurrentScenarioData, null, 'Renderfehler hinterlässt keinen exportierbaren Altpfad');
     assertEqual(hosts.scenarioExportButtons.style.display, 'none', 'Renderfehler verbirgt Downloads');
-    assertEqual(hosts.stressReplaySelectedScenarioDetails.hidden, true, 'Renderfehler entfernt den Replayaltpfad');
     run(batch); run(null);
     assertEqual(window.globalCurrentScenarioData, null, 'Neuer Batch ohne Logs invalidiert alte Auswahl');
     assertEqual(hosts.exportScenarioLogJson.onclick, null, 'Batch ohne Logs entfernt alte Downloadcallback');
@@ -255,25 +257,18 @@ try {
     assertEqual(hosts.scenarioList.clickListeners.size, 1, 'Batch ohne Logs belässt nur den aktuellen leeren Binder');
     assertEqual(window.globalScenarioLogs, null, 'Batch ohne Logs entfernt im eigenen Protokollhost die alte Loggrundlage');
     assertEqual(window.globalScenarioCarThreshold, null, 'Batch ohne Logs entfernt im eigenen Protokollhost die alte CaR-Grenze');
-    assertEqual(hosts.stressReplayFixButton.disabled, true, 'Batch ohne Logs sperrt die alte Replayauswahl');
-    assert(hosts.stressReplayStatus.textContent.includes('Ursprungslauf ist nicht mehr verfügbar'), 'Aktiver Replaycontroller invalidiert den alten Kontext ohne null-Destrukturierungsfehler');
 
-    // Aufrufer ohne Protokollhost können Logs und Replaykontext selbst setzen.
+    // Aufrufer ohne Protokollhost können Logs und Auswahl selbst setzen.
     const lookup = globalThis.document.getElementById;
     globalThis.document.getElementById = id => id === 'scenarioLogContainer' ? null : lookup(id);
     window.globalScenarioLogs = batch;
     window.globalScenarioCarThreshold = 765;
     window.globalCurrentScenarioData = scenario;
-    publishStressReplayMonteCarloContext({ inputs: { startAlter: 62 }, scenarioLogs: batch });
-    selectStressReplayScenario(scenario);
     for (const suppliedLogs of [batch, null]) {
         run(suppliedLogs);
         assert(window.globalScenarioLogs === batch, 'Renderer ohne Protokollhost erhält die vom Aufrufer gesetzten Logs');
         assertEqual(window.globalScenarioCarThreshold, 765, 'Renderer ohne Protokollhost erhält die vom Aufrufer gesetzte CaR-Grenze');
         assert(window.globalCurrentScenarioData === scenario, 'Renderer ohne Protokollhost erhält die Auswahl des Aufrufers');
-        selectStressReplayScenario(scenario);
-        assertEqual(hosts.stressReplayFixButton.disabled, false, 'Renderer ohne Protokollhost erhält die Replayauswahl');
-        assert(!hosts.stressReplayStatus.textContent.includes('Ursprungslauf ist nicht mehr verfügbar'), 'Renderer ohne Protokollhost erhält den veröffentlichten Replaykontext');
     }
     globalThis.document.getElementById = lookup;
 } finally {

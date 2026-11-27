@@ -71,7 +71,8 @@ export function bindControls() {
         if (processingIsBlocked()) return;
         openManagerSaleFlow(null, /** @type {HTMLElement|null} */ (event.currentTarget));
     });
-    byId('updatePricesBtn')?.addEventListener('click', () => updatePrices());
+    // OP-3 Punkt 3: Die Kursanzeige im Kopf startet die manuelle Aktualisierung (früher Knopf „Kurse aktualisieren“).
+    byId('managerQuoteRefresh')?.addEventListener('click', () => updatePrices());
     byId('closeTrancheModalBtn')?.addEventListener('click', () => { if (!processingIsBlocked()) cancelTrancheDetails(); });
     byId('trancheForm')?.addEventListener('submit', event => saveTranche(event));
     bindTrancheDetailControls();

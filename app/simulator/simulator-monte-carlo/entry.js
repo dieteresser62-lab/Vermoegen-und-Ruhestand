@@ -1,5 +1,4 @@
 import { readHouseholdPersonStatus } from '../../shared/person-data-status.js';
-import { featureFlags } from '../../shared/feature-flags.js';
 import { activeMonteCarloRun, monteCarloNavigationRegistration, createMonteCarloGenerationId, setActiveMonteCarloRun } from './state.js';
 import { setMonteCarloRunBusy } from '../monte-carlo-ui.js';
 import { executeMonteCarloRun } from './execution.js';

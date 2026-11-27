@@ -1,5 +1,5 @@
 import { buildBalanceEngineInputFromStorage } from './balance-input-storage.js';
-import { evaluateBalanceFileInputs } from './balance-file-service.js';
+import { evaluateBalanceInputs } from './balance-evaluation.js';
 import { createProfilverbundHandlers, evaluateStoredAnnualHousehold } from './balance-main-profilverbund.js';
 import { createBalanceDisplayEngineApi, buildBalanceRendererPayload, validateBalanceInputs } from './balance-update-pipeline.js';
 import { postprocessBalanceAction } from './balance-action-postprocessor.js';
@@ -22,7 +22,7 @@ export function evaluateBalanceCurrentYear({ storage, engineApi, profileId }) {
     if (!calculation.inputData.aktuellesAlter) return null;
     const plan = calculation.householdPlan, api = createBalanceDisplayEngineApi(engineApi);
     const withdrawalMode = plan.status === 'valid' ? plan.entry.values.householdWithdrawalMode : storage.getItem('household_withdrawal_mode') || 'tax_optimized';
-    const evaluation = evaluateBalanceFileInputs({ inputData: calculation.inputData, persistentState: calculation.history.persistentState,
+    const evaluation = evaluateBalanceInputs({ inputData: calculation.inputData, persistentState: calculation.history.persistentState,
         profiles: calculation.history.profiles, profileId, engineApi: api, publish: false,
         planInputs: plan.status === 'valid' ? plan.entry.values : calculation.inputData, marketPreviewContext: { calculation, storage },
         profilverbundHandlers: { runProfilverbundProfileSimulations: (input, profiles, state) => evaluateStoredAnnualHousehold(input, profiles, state,
@@ -47,7 +47,7 @@ export function evaluateBalanceCurrentYear({ storage, engineApi, profileId }) {
  * @returns {{plan: {today: number|null, after: number|null}|null, preview: {today: number|null, after: number|null}}} */
 export function balanceReserveCoverages(currentYear, { confirmed = null, people = [] } = {}) {
     const reserves = (/** @type {ReturnType<typeof prepareReserveSource>} */ result) => projectBalanceReserves(currentYear, result.prepared,
-        { targetEntries: result.source.targetEntries, settled: result.source.settled });
+        { action: result.source.action, targetEntries: result.source.targetEntries, settled: result.source.settled });
     const today = reserveActionSource(currentYear, null);
     const preview = displayedReserveView(reserves(today), null).coverage;
     let plan = null;

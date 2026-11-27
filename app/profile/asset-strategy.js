@@ -4,7 +4,7 @@ import { readBalanceHouseholdPlan, patchHouseholdPlan, PLAN_DEFAULTS } from './h
 import { loadProfileRegistry } from './profile-registry.js';
 import { loadProfileAssetValues, DEFAULT_PROFILE_ASSET_VALUES } from './profile-asset-values.js';
 import { PROFILE_VALUE_KEYS } from './profile-state.js';
-import { persistenceStorage, PersistenceFacade } from '../shared/persistence-facade.js';
+import { persistenceStorage, PersistenceFacade, syncWriteBlockMessage } from '../shared/persistence-facade.js';
 
 export const THREE_BUCKET_ACTIVATION = Object.freeze({ ...PLAN_DEFAULTS.decumulation, mode: '3_bucket_jilge' });
 
@@ -35,13 +35,13 @@ export function readAssetStrategyWarnings({ storage = persistenceStorage, plan =
 export async function enableAssetStrategy({ kind, profileId, scopeKey, storage = persistenceStorage,
     persistence = PersistenceFacade, navigationOperation } = {}) {
     navigationOperation.check();
-    if (persistence.hasSyncWriteBlocks?.() || globalThis.window?.__profileRecoveryBlocker) throw new Error('Speichern wegen Wiederherstellung gesperrt.');
-    const plan = readBalanceHouseholdPlan({ storage, profileId });
+    if (persistence.hasSyncWriteBlocks?.() || globalThis.window?.__profileRecoveryBlocker) throw new Error(syncWriteBlockMessage());
+    const plan = readBalanceHouseholdPlan({ storage });
     if (plan.status !== 'valid' || plan.scope.key !== scopeKey) throw new Error('Der Planbereich hat sich geändert.');
     if (!readAssetStrategyWarnings({ storage, plan }).some(warning => warning.kind === kind && warning.profileId === profileId)) return;
     if (kind === 'bonds') {
         return patchHouseholdPlan({ scope: plan.scope, patch: { decumulation: THREE_BUCKET_ACTIVATION }, storage, persistence,
-            navigationOperation, isCurrent: () => readBalanceHouseholdPlan({ storage, profileId }).scope?.key === scopeKey });
+            navigationOperation, isCurrent: () => readBalanceHouseholdPlan({ storage }).scope?.key === scopeKey });
     }
     const registryRaw = storage.getItem('rs_profiles_v1'), registry = JSON.parse(registryRaw);
     const active = storage.getItem('rs_current_profile');
@@ -64,7 +64,7 @@ export async function enableAssetStrategy({ kind, profileId, scopeKey, storage =
             postValidate: () => {
                 navigationOperation.check();
                 if (storage.getItem('rs_current_profile') !== active
-                    || readBalanceHouseholdPlan({ storage, profileId }).scope?.key !== scopeKey) throw new Error('Der Planbereich hat sich geändert.');
+                    || readBalanceHouseholdPlan({ storage }).scope?.key !== scopeKey) throw new Error('Der Planbereich hat sich geändert.');
             } });
     } catch (error) {
         if (error.code === 'rollback_failed') persistence.blockSyncWrites?.(keys, 'Goldänderung und Rücknahme unbestätigt. Bitte neu laden.');

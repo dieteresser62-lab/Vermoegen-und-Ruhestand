@@ -4,16 +4,6 @@ import { getProbelaufController } from '../shared/probelauf-state.js';
 import { getPageNavigationGuard } from '../shared/navigation-guard-dialog.js';
 import { canGenerateExampleExpenses, assertExampleExpensesAllowed, generateExampleExpensesCsv, resolveExampleExpensesBasis, resolveExampleExpensesFloor, EXAMPLE_SOURCE } from '../demo/beispielausgaben.js';
 import { importExpenses, requestExpensesPreview } from '../balance/balance-expenses-import.js';
-import { createBalanceWealthHistoryPreview } from '../balance/balance-wealth-history-preview.js';
-
-/** Kompatible Anbindung der Import-Nacherfassung an die gemeinsame Vorschau. */
-/**
- * @param options Optionen und Abhängigkeiten des bestehenden Aufrufers.
- * @returns Bestehender Dienst zur Nacherfassung des Vermögensstands.
- */
-export function createOverviewExpensesWealthCapture(options = {}) {
-    return createBalanceWealthHistoryPreview(options);
-}
 
 /**
  * @param options Optionen und Abhängigkeiten des bestehenden Aufrufers.
@@ -49,11 +39,11 @@ const boundImports = new WeakMap();
  */
 export function bindOverviewExampleExpenses({ doc, win, getModel, refresh,
     controller = getProbelaufController(doc), choose = requestExampleExpensePerson,
-    importOptions = /** @type {O.ImportOptions} */ ({}), wealthCapture = null,
+    importOptions = /** @type {O.ImportOptions} */ ({}),
     confirm = (targets, context) => requestExpensesPreview(targets, { doc, ...context }) }) {
     if (boundImports.has(doc)) return boundImports.get(doc);
     const guard = getPageNavigationGuard(doc, win);
-    let pending = false, abort = null, request = null, message = '', wealthMessage = '', job = Promise.resolve();
+    let pending = false, abort = null, request = null, message = '', job = Promise.resolve();
     const roots = new Map();
     const key = model => JSON.stringify([model?.activeId, model?.scope?.key, model?.expenses?.year, model?.expenses?.month, model?.now?.toDateString()]);
     const allowed = model => !model?.recovery && model?.scope?.ids?.length && !model.expenses?.beforePlanning
@@ -77,9 +67,7 @@ export function bindOverviewExampleExpenses({ doc, win, getModel, refresh,
                 node.textContent = [message, message.includes('importiert.') ? progress.notice : ''].filter(Boolean).join(' ');
                 node.setAttribute('role', 'status');
             }
-            const wealth = doc.getElementById('overviewExpensesWealthStatus'); if (wealth) wealth.textContent = wealthMessage;
         },
-        reportWealth(text) { wealthMessage = text; controls.syncButtons(); },
         get pending() { return pending; },
         wait: () => job,
         abort: () => abort?.abort(),
@@ -143,12 +131,8 @@ export function bindOverviewExampleExpenses({ doc, win, getModel, refresh,
                         basis: resolveExampleExpensesBasis({ year, ids, budget: model.expenseBudget }), floorMonthly: resolveExampleExpensesFloor({ ids }) }) }));
                 const result = await importExpenses({ ...importOptions, targets, controller, guard, signal: localAbort.signal, isCurrent,
                     confirm: (targets, context) => confirm(targets, { ...context, opener }), win,
-                    onSuccess: async target => {
-                        // Erfolgskontext vor einem UI-Refresh fixieren; Beispiele erfassen niemals Vermögen.
-                        if (target.source !== EXAMPLE_SOURCE) await wealthCapture?.afterImport();
-                        await importOptions.onSuccess?.(target);
-                    },
-                    onFollowupError: error => controls.reportWealth(`Ausgaben importiert; Vermögensstand nicht bestätigt: ${error.message || error}`),
+                    // VS-2: Ein Ausgabenimport erfasst keinen Vermögensstand mehr.
+                    onSuccess: async target => { await importOptions.onSuccess?.(target); },
                     onProgress: text => { message = text; controls.syncButtons(); } });
                 if (!isCurrent()) return;
                 message = result.status === 'cancelled' ? 'Import abgebrochen.' : result.results.map(item =>

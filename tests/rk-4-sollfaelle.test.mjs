@@ -34,13 +34,13 @@ async function reserves(variant, cash) {
     const comparison = projectHouseholdPlanComparison({ year: 2026, scope: record.scope, storage: { getItem: key => data[key] ?? null } });
     const confirmed = projectBalanceActionOrigin({ comparison, year: 2026, scope: record.scope }).confirmed;
     const source = reserveActionSource(year, confirmed);
-    const view = projectBalanceReserves(year, source.prepared, { targetEntries: source.source.targetEntries, settled: source.source.settled });
+    const view = projectBalanceReserves(year, source.prepared, { action: source.source.action, targetEntries: source.source.targetEntries, settled: source.source.settled });
     return { view, shown: displayedReserveView(view, projectAnnualTodoPlan({ confirmed, people: confirmed.people || [] })).shown };
 }
 
 // Punkt 1 (Ergänzung 1 FR-80): Martin trägt, Martin 10.000 € Tagesgeld (Ziel 14.400 €, angezeigt 15.000 €). Vorher hing Martins
 // angezeigtes Tagesgeld nach Umsetzung an Petras Stand: Petra 110.000 € oder 30.000 € → Martin 14.500 €, Petra 1.000 € → 14.250 €,
-// nur Petra 8.500 € → 15.000 €. Soll: Petra bleibt stehen, Martin endet immer bei seinem Ziel, der Geldmarkt ist überall gleich.
+// nur Petra 8.500 € → 15.000 €. Seit HP-5b zeigt die Karte den gerundeten Verkaufszufluss für Martin unabhängig von Petras Stand.
 {
     const results = [];
     for (const petra of [110000, 30000, 1000, 8500]) {
@@ -48,7 +48,7 @@ async function reserves(variant, cash) {
         assertClose(view.after.tagesgeld - petra, 14400, 0.5, `RK-4 P1: Martin erreicht sein Ziel genau gerechnet (Petra ${petra} €)`);
         results.push({ petra, martin: shown.after.tagesgeld - petra, geldmarkt: shown.after.geldmarkt });
     }
-    for (const row of results) assertEqual(row.martin, 15000, `RK-4 P1: Martins Tagesgeld nach Umsetzung 15.000 € (Petra ${row.petra} €, war ${row.martin} €)`);
+    for (const row of results) assertEqual(row.martin, 14500, `RK-4 P1: Martins Tagesgeld nach Umsetzung 14.500 € (Petra ${row.petra} €, war ${row.martin} €)`);
     assert(results.every(row => row.geldmarkt === results[0].geldmarkt), `RK-4 P1: Geldmarkt unabhängig von Petra (${results.map(row => row.geldmarkt).join(' / ')})`);
     // Gegenprobe Vorgabemodus: gleiche Bestände, Haushaltsrechnung wie bisher (keine Kennzeichen, keine Verschiebung).
     const base = await reserves('grund', { [MARTIN]: 10000, [PETRA]: 30000 });

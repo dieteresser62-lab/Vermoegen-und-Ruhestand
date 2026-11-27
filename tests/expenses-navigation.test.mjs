@@ -84,8 +84,11 @@ for (const year of [2026, 2027]) {
         async waitFor() { assertEqual(new URL(currentUrl).pathname, '/index.html', 'Vorbereitung bleibt im Balance-Jahresdialog'); },
         locator(selector) {
             if (selector === '[data-tagesgeld-person]') return { async count() { return 2; } };
-            if (selector === '[data-annual-market-reading="year_end"]') return { async count() { return 0; } };
             if (selector === '[data-annual-care-confirm]') return { async count() { return 1; }, async click() { events.push('care-confirmed'); } };
+            // JA-4: Tagesgeld- und CAPE-Bestätigung erscheinen nur bei altem Stand bzw. großem Sprung; im Nachbau ist keine nötig.
+            if (selector === '[data-tagesgeld-confirm-person]' || selector === '[data-annual-cape-confirm]') return {
+                async count() { return 0; }, async evaluateAll(project) { return project([]); }, async all() { return []; }
+            };
             if (selector === '[data-close-dialog-step]:not([data-visited="true"]):not([data-locked="true"])') return {
                 async evaluateAll(project) { return project(preparationSteps.filter(id => !visited.has(id))
                     .map(id => ({ dataset: { closeDialogStep: id } }))); },
@@ -227,9 +230,7 @@ assertEqual(selectors[0], 'button[data-action="import"][data-month="8"]', 'Impor
 // die tatsächliche Layout-/Browserabnahme bleibt extern.
 const expensesWaitSource = smokeSection(browserSource, 'async function waitExpensesBrowser(', 'async function assertExpensesBrowserRegions(');
 const regionsSource = smokeSection(browserSource, 'async function assertExpensesBrowserRegions(', 'async function activateSuiteSection(');
-const startupSource = smokeSection(browserSource, 'async function waitForWealthBrowserStartup(', '// page.evaluate serialisiert diese Funktion');
-const visibilityFunction = smokeSection(browserSource, 'async function assertWealthBrowserVisibility(', 'async function waitExpensesBrowser(');
-const absenceSource = smokeSection(visibilityFunction, "    assert(await page.locator('#expensesHistoryChart,", '\n}');
+const startupSource = smokeSection(browserSource, 'async function waitForWealthBrowserStartup(', 'async function probePlanFieldStyles(');
 const designFunction = smokeSection(browserSource, 'async function runDesignsystemBalance(', 'export function createDesignsystemDataLayoutFixture(');
 const designOpening = smokeSection(designFunction, '    const smoke = await openSmokePage(', '\n    try {');
 const designBeforeOrigins = smokeSection(designFunction, 'async function runDesignsystemBalance(', '        const checkOrigins = async () => {');
@@ -244,8 +245,7 @@ const commonSmokeSources = expensesWaitSource + regionsSource + suiteSectionSour
 function createSmokeVm() {
     let currentUrl = 'https://suite.invalid/index.html', redirectUrl = null;
     let ready = false, observer = false, historyActive = false, media = 'screen';
-    let viewportWidth = null;
-    const events = [], wealthTransitions = [], window = {}, document = { documentElement: { dataset: {}, scrollWidth: 1300, clientWidth: 1366 }, activeElement: null };
+    const events = [], window = {}, document = { documentElement: { dataset: {}, scrollWidth: 1300, clientWidth: 1366 }, activeElement: null };
     let nodes = new Map(), details;
     const onPage = expected => {
         strictAssert.equal(new URL(currentUrl).pathname, '/' + expected, 'Falsche Seite: ' + expected);
@@ -345,7 +345,7 @@ function createSmokeVm() {
             strictAssert.equal(role, 'region'); strictAssert.equal(exact, true);
             return locator('.expenses-table-region', name);
         },
-        async setViewportSize({ width }) { viewportWidth = width; events.push('width:' + width); },
+        async setViewportSize({ width }) { events.push('width:' + width); },
         async emulateMedia({ media: next }) { onPage('Balance.html'); media = next; events.push('print:Balance'); },
         async waitForFunction(fn, arg) {
             strictAssert.notEqual(fn.constructor.name, 'AsyncFunction', 'Keine asynchronen Browserpolls');
@@ -359,7 +359,7 @@ function createSmokeVm() {
             if (arg?.kind) {
                 onPage(arg.kind === 'expenses' ? 'Ausgaben.html' : 'Balance.html');
                 events.push(`chart:${arg.kind}:${arg.count}`);
-                return { scales: [[1, 1]], markers: [[2, 2]], live: [{ empty: true, hidden: false, display: 'block', visibility: 'visible', margin: '0px' }], width: 1000, height: 500, ratio: 2, minWidth: 1000 };
+                return { scales: [[1, 1]], live: [{ empty: true, hidden: false, display: 'block', visibility: 'visible', margin: '0px' }], width: 1000, height: 500, ratio: 2, minWidth: 1000 };
             }
             if (fn.toString().includes('import(')) { events.push('flush/read'); return 2026; }
             return evaluate(fn, arg);
@@ -367,7 +367,7 @@ function createSmokeVm() {
     };
     const context = {
         page, URL, assert: strictAssert, baseUrl: 'https://suite.invalid', browser: {}, storage: { expenses: '{}' }, EXPENSES_KEY: 'expenses',
-        chartFixture: { state: { wealthHistory: { entries: [] } }, storage: { expenses: '{}' } },
+        chartFixture: { storage: { expenses: '{}' } },
         state: { wealthHistory: { entries: Array(24).fill({}) } }, names: {},
         async openSmokePage(_browser, baseUrl, entry, options) {
             observer = options.observeWealthUpdates === true;
@@ -387,20 +387,9 @@ function createSmokeVm() {
         async waitBalanceHouseholdList() { strictAssert(!expenses(), 'Balancebereitschaft auf falscher Seite'); ready = true; events.push('balance-ready'); },
         async openBalanceHouseholdList() { onPage('Balance.html'); },
         async assertProfilverbundGeometry() { onPage('Balance.html'); },
-        async activateWealthBrowserTab(_page, expanded) {
-            onPage('Balance.html');
-            strictAssert(window.__wealthPendingUpdates instanceof Set, 'Observer vor lokalem Tabwechsel');
-            const before = historyActive;
-            if (expanded) strictAssert.equal(historyActive, false, 'VM vor lokaler Verlaufseröffnung: Verlauf muss inaktiv sein');
-            historyActive = expanded;
-            wealthTransitions.push({ width: viewportWidth, expanded, before, after: historyActive });
-            events.push('local-wealth-tab');
-            await runInNewContext(`(async () => { ${absenceSource} })()`, context);
-        },
-        async assertWealthBrowserTable() { onPage('Balance.html'); },
         async assertExpensesBrowserTable() { onPage('Ausgaben.html'); strictAssert(details.open, 'Jahreswerte vor Öffnung'); }
     };
-    return { context, events, wealthTransitions, onPage };
+    return { context, events, onPage };
 }
 
 async function executeSmokeVm(code, initialPage = null) {
@@ -426,10 +415,6 @@ await rejectsSmoke(designSequence.replace('observeWealthUpdates: true', 'observe
 const dataSequence = dataOpening + overflowSource + scrollSource + dataMeasurements;
 const dataVm = await executeSmokeVm(dataSequence);
 assertEqual(dataVm.events.filter(event => event.startsWith('width:')).join(','), 'width:1280,width:1366,width:1920,width:2560', 'Datenlayout führt alle PC-Breiten ab 1280 px aus');
-assertEqual(dataVm.events.filter(event => event === 'local-wealth-tab').length, 0, 'Abgelöste Balance-Verlaufhosts werden nicht mehr bedient');
-strictAssert.deepEqual(dataVm.wealthTransitions.filter(({ expanded }) => expanded),
-    [],
-    'Datenlayout öffnet kein abgelöstes Balance-Verlaufspanel');
 assertEqual(dataVm.events.filter(event => event === 'focus:Monatsausgaben').length, 4, 'Jede Datenlayoutbreite fokussiert die Monatsmatrix');
 assert(dataVm.events.includes('print:Balance'), 'Seitenbezogene DOM-Reihenfolge und Druck werden bis Balance ausgeführt');
 function mutateDataSequence(anchor, replacement) {
@@ -445,9 +430,6 @@ await rejectsSmoke(mutateDataSequence(overviewPreparation, '            await no
 
 await rejectsSmoke(dataSequence.replace('.expenses-table-region[aria-label="Monatsausgaben"]', '.expenses-table-region'), /Mehrdeutiger/);
 
-const absentVm = await executeSmokeVm(absenceSource, 'Balance.html');
-assert(absentVm.events.includes('load:/Balance.html'), 'Echter Sichtbarkeitsabschnitt akzeptiert Balance ohne entfernte Ausgabenhosts');
-await rejectsSmoke(absenceSource, /Balance enthält/, 'Ausgaben.html');
 await rejectsSmoke("await activateSuiteSection(page, 'expenses'); await expensesMonthlyRegion(page);" + '\n' +
     "await page.locator('.expenses-table-region').evaluate(node => node.scrollLeft);", /Mehrdeutiger/, 'Balance.html');
 await rejectsSmoke("await activateSuiteSection(page, 'expenses'); await assertExpensesBrowserRegions(page);".replace("await activateSuiteSection(page, 'expenses');", "await waitExpensesBrowser(page);"), /Geöffnete Ausgabenregion/, 'Ausgaben.html');
@@ -481,11 +463,10 @@ await rejectsSmoke(regionsSource.replace('        await region.focus();', '') + 
 // Die folgenden Gegenproben betreiben echte Smoke-Assertions mit synthetischen
 // Eingaben. Sie sind keine Browsermessung und ersetzen die externe Abnahme nicht.
 const importContract = smokeSection(browserSource, 'function assertCommittedExpenseImport(', 'async function runBalanceExpensesWealthCapture(');
-const wealthContracts = smokeSection(browserSource, 'function assertWealthScrollRegions(', 'const WEALTH_TAB_SINGLE_ROW_MIN_WIDTH');
 const recoveryContract = smokeSection(browserSource, 'function assertCareRecoveryErrors(', 'async function runBalanceCorruptProfileHealthSmoke(');
 const profileContracts = smokeSection(browserSource, 'function suiteHistoryPageKind(', 'async function assertSuiteExpensesProfile(');
-const gates = runInNewContext(importContract + wealthContracts + recoveryContract + profileContracts +
-    '\n({ assertCommittedExpenseImport, assertWealthScrollRegions, assertBalanceTabInventory, assertCareRecoveryErrors, suiteHistoryPageKind, assertSuiteExpensesContent })',
+const gates = runInNewContext(importContract + recoveryContract + profileContracts +
+    '\n({ assertCommittedExpenseImport, assertCareRecoveryErrors, suiteHistoryPageKind, assertSuiteExpensesContent })',
     { assert: strictAssert, UIUtils: { formatBalanceCurrency: value => `${value} €` } });
 const rejectsGate = (call, expected) => {
     strictAssert.throws(call, expected);
@@ -496,25 +477,7 @@ gates.assertCommittedExpenseImport(imported, 2025, 2, 'import-quote');
 rejectsGate(() => gates.assertCommittedExpenseImport(imported, 2026, 2, 'import-quote'), /Zieljahr/);
 rejectsGate(() => gates.assertCommittedExpenseImport(imported, 2025, 3, 'import-quote'), /Zielmonat/);
 rejectsGate(() => gates.assertCommittedExpenseImport(imported, 2025, 2, 'andere-person'), /Zielperson/);
-const layoutProbe = { form: { width: 500 }, regions: [
-    { id: 'wealthHistoryChart', name: 'Vermögensdiagramm', scroll: 800, client: 500, start: 0, position: 300, overflow: 'auto', width: 500 },
-    { id: 'wealthHistoryTable', name: 'Tabelle der Vermögensstände', scroll: 900, client: 500, start: 0, position: 400, overflow: 'auto', width: 500 }
-] };
-gates.assertWealthScrollRegions(layoutProbe, 'Gegenprobenfixture');
-for (const mutate of [probe => probe.regions.pop(), probe => probe.regions.push({ ...probe.regions[0] }),
-    probe => { probe.regions[0].name = 'Monatsausgaben'; }]) {
-    const changed = structuredClone(layoutProbe); mutate(changed);
-    rejectsGate(() => gates.assertWealthScrollRegions(changed, 'Gegenprobe'), /beiden wirklichen/);
-}
-for (const mutate of [probe => { probe.regions[1].position = 0; }, probe => { probe.regions[0].start = 300; },
-    probe => { probe.regions[0].scroll = 500; }, probe => { probe.regions[0].overflow = 'visible'; }]) {
-    const changed = structuredClone(layoutProbe); mutate(changed);
-    rejectsGate(() => gates.assertWealthScrollRegions(changed, 'Gegenprobe'), /scrollt tatsächlich/);
-}
-const tabsProbe = [['balanceTabOverview', 'Überblick'], ['balanceTabStrategy', 'Bedarf & Strategie'],
-    ['balanceTabHistory', 'Verlauf'], ['openDiagnosisBtn', 'Diagnose']].map(([id, label]) => ({ id, label }));
-gates.assertBalanceTabInventory(tabsProbe, 'Gegenprobenfixture');
-rejectsGate(() => gates.assertBalanceTabInventory(tabsProbe.map(tab => ({ ...tab, label: 'Auswertung' })), 'Gegenprobe'), /Tabinventar/);
+// VS-3a: Die Gegenproben der toten Verlaufs-Layouthelfer (assertWealthScrollRegions, assertBalanceTabInventory) entfallen mit ihnen.
 const expectedErrors = [
     '[console.error] Update-Fehler: ProfilverbundProfileStateError: Profilverbund: Profil Browserprofil Pflege-Recovery ist im Bereich profile_health_bucket fehlerhaft.',
     '[console.error] Update-Fehler: ProfileRecoveryError: Profil Browserprofil Pflege-Recovery: Der Pflegebucket ist korrupt und blockiert die Profilnutzung.'

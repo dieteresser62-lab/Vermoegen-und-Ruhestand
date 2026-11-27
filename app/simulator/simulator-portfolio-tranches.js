@@ -86,24 +86,26 @@ function createSimulationLot(portfolio, amount, assetKind, profileId = null) {
     portfolio.simulationLotSequence = sequence;
 
     const isGold = assetKind === 'gold';
+    const storedTemplate = portfolio.simulationEquityPurchaseTemplates?.[sourceProfileId];
+    const template = isGold ? null : storedTemplate ?? equityPurchaseTemplate(portfolio.depotTranchesAktien, sourceProfileId);
+    const isin = portfolio.simulatedEquityPurchases === 'separate' ? '' : template?.isin || '';
     return {
         schemaVersion: 2,
         trancheId,
         sourceProfileId,
         name: isGold ? 'Simulierter Goldkauf' : 'Simulierter Aktienkauf',
-        isin: '',
+        isin,
         ticker: '',
         shares: value,
         purchasePrice: 1,
         currentPrice: 1,
         purchaseDate,
+        ...(isin ? { simulationPurchaseOrder: sequence } : {}),
         marketValue: value,
         costBasis: value,
         tqf: isGold
             ? (Number(portfolio.simulationGoldTqf) || 0)
-            : (portfolio.simulationEquityPurchaseTemplates?.[sourceProfileId]?.tqf
-                ?? equityPurchaseTemplate(portfolio.depotTranchesAktien, sourceProfileId)?.tqf
-                ?? portfolio.simulationEquityTqf ?? .3),
+            : (template?.tqf ?? portfolio.simulationEquityTqf ?? .3),
         taxExempt: isGold && portfolio.simulationGoldTaxExempt === true,
         type: isGold ? 'gold' : 'aktien_neu',
         category: isGold ? 'gold' : 'equity',

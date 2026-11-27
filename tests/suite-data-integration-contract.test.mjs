@@ -2,15 +2,6 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-    createManualMarketCsvImportPlan,
-    parseMarketDataCsv
-} from '../app/balance/balance-binder-imports.js';
-import {
-    AUTO_OPTIMIZE_PARAMETER_OPTIONS,
-    AUTO_OPTIMIZE_PARAMETER_REGISTRY
-} from '../app/simulator/auto-optimize-param-meta.js';
-import { buildSweepInputs } from '../app/simulator/sweep-runner.js';
 import { getTestExecutionPolicy } from './run-tests.mjs';
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
@@ -84,10 +75,29 @@ const actualOracleIds = inventory.oracles.map(oracle => oracle.id);
 assertSame(actualOracleIds, expectedOracleIds,
     'Traceability inventory must contain O-01 through O-22 exactly once and in order');
 
+// WS-1: Die Werkstatt (Sweep, Auto-Optimize, Stresspfad-Replay) ist entfernt; ihre Belege entfallen.
+// Nur diese Einträge dürfen ohne Beleg bleiben, alle anderen behalten ihre Pflicht.
+const RETIRED_BY_WS1 = ['O-11', 'O-12', 'O-13', 'O-14', 'O-15', 'O-20', 'O-21', 'ENG-07', 'SWP-06', 'SWP-07', 'SWP-08', 'SWP-10',
+    'OPT-05', 'MOD-05', 'MOD-06', 'MOD-07', 'MOD-08'];
+// AL-P: Der Markt-CSV-Import (Module und Oberfläche) ist entfernt; sein Beleg "Stale CSV" entfällt.
+const RETIRED_BY_ALP = ['O-17', 'IMP-02', 'IMP-03'];
+assertSame(
+    ['oracles', 'findings', 'invariants'].flatMap(section => inventory[section]
+        .filter(entry => entry.retiredBy !== undefined)
+        .map(entry => {
+            assertEqual(entry.retiredBy, RETIRED_BY_ALP.includes(entry.id) ? 'AL-P' : 'WS-1', `${entry.id} names its retirement`);
+            return entry.id;
+        })).sort(),
+    [...RETIRED_BY_WS1, ...RETIRED_BY_ALP].sort(),
+    'Only evidence of removed code may be retired'
+);
+const isRetired = entry => entry.retiredBy !== undefined && [...RETIRED_BY_WS1, ...RETIRED_BY_ALP].includes(entry.id)
+    && Array.isArray(entry.witnesses) && entry.witnesses.length === 0;
+
 for (const oracle of inventory.oracles) {
     assert(typeof oracle.title === 'string' && oracle.title.length > 0,
         `${oracle.id} must retain a readable title`);
-    assert(Array.isArray(oracle.witnesses) && oracle.witnesses.length > 0,
+    assert(Array.isArray(oracle.witnesses) && (oracle.witnesses.length > 0 || isRetired(oracle)),
         `${oracle.id} must have at least one concrete witness`);
     for (const witness of oracle.witnesses) {
         assertWitness(witness, oracle.id);
@@ -99,7 +109,7 @@ const oracleById = new Map(inventory.oracles.map(oracle => [oracle.id, oracle]))
 function assertTraceabilityOwner(entry, owner) {
     assert(Array.isArray(entry.oracleIds), `${owner} must declare oracleIds, even when empty`);
     assert(Array.isArray(entry.witnesses), `${owner} must declare witnesses, even when empty`);
-    assert(entry.oracleIds.length + entry.witnesses.length > 0,
+    assert(entry.oracleIds.length + entry.witnesses.length > 0 || entry.retired,
         `${owner} must retain at least one concrete oracle or direct witness`);
     for (const oracleId of entry.oracleIds) {
         assert(oracleById.has(oracleId), `${owner} oracle reference must resolve: ${oracleId}`);
@@ -150,7 +160,8 @@ for (const finding of inventory.findings) {
         `${finding.id} evidence slices must use integer slice numbers`);
     assertTraceabilityOwner({
         oracleIds: finding.oracleIds || [],
-        witnesses: finding.witnesses || []
+        witnesses: finding.witnesses || [],
+        retired: isRetired(finding)
     }, finding.id);
 }
 
@@ -220,7 +231,8 @@ for (const [index, invariant] of inventory.invariants.entries()) {
         `${invariant.id} must retain its exact plan title`);
     assertTraceabilityOwner({
         oracleIds: invariant.oracleIds || [],
-        witnesses: invariant.witnesses || []
+        witnesses: invariant.witnesses || [],
+        retired: isRetired(invariant)
     }, invariant.id);
 }
 
@@ -229,7 +241,7 @@ for (const contract of inventory.browserContracts) {
 }
 assertSame(
     inventory.browserContracts.map(contract => contract.id),
-    ['preview_commit', 'three_bucket', 'hybrid_profile', 'import_recovery', 'sweep', 'optimizer'],
+    ['preview_commit', 'three_bucket', 'hybrid_profile', 'import_recovery'],
     'Browser inventory must cover every Slice-16 workflow'
 );
 
@@ -238,114 +250,9 @@ for (const contract of inventory.parityContracts) {
 }
 assertSame(
     inventory.parityContracts.map(contract => contract.id),
-    ['single_multi_profile', 'main_worker', 'mc_single_sweep', 'evaluate_apply'],
-    'Parity inventory must cover the four required integration dimensions'
+    ['single_multi_profile', 'main_worker'],
+    'Parity inventory must cover the remaining integration dimensions'
 );
-
-{
-    const parsed2010 = parseMarketDataCsv([
-        'Datum;Schluss',
-        '30.12.2007;80',
-        '30.12.2008;70',
-        '30.12.2009;90',
-        '30.12.2010;100'
-    ].join('\n'));
-    let staleError = null;
-    try {
-        createManualMarketCsvImportPlan(parsed2010, {
-            mode: 'current',
-            targetYear: 2025,
-            expectedAsOf: '2025-12-30',
-            instrument: 'SYNTH.DE',
-            sourceFileName: 'synthetic-stale-2010.csv',
-            currentPeriodYear: 2025,
-            importedAt: '2026-01-02T10:00:00.000Z'
-        });
-    } catch (error) {
-        staleError = error;
-    }
-    assertEqual(staleError?.code, 'market_csv_asof_mismatch',
-        'O-17 rejects a 2010 market CSV for current period 2025');
-    assertEqual(parsed2010.asOf, '2010-12-30',
-        'O-17 rejection must retain the stale source date for diagnostics');
-}
-
-const simulatorHtml = readProjectFile('Simulator.html');
-const sweepRangesMarkup = simulatorHtml.match(
-    /<legend><span[^>]*>[^<]*<\/span>Sweep-Ranges<\/legend>([\s\S]*?)<\/fieldset>/
-);
-assert(sweepRangesMarkup,
-    'Simulator.html must retain one identifiable Sweep-Ranges fieldset');
-const visibleSweepIds = [...sweepRangesMarkup[1].matchAll(
-    /<input\b[^>]*\bid="(sweep[A-Za-z0-9_-]+)"/g
-)].map(match => match[1]);
-const sweepRows = inventory.parameterCausality.sweep;
-assertSame(
-    [...visibleSweepIds].sort(),
-    sweepRows.map(row => row.uiId).sort(),
-    'Every visible interactive Sweep parameter must have exactly one causality row'
-);
-assert(!simulatorHtml.includes('id="sweepHorizonYears"'),
-    'Direct horizon must not be offered as a no-op in the actuarial Sweep UI');
-assert(simulatorHtml.includes('id="sweepMaxBearRefillPct"'),
-    'Interactive Sweep must retain the visible Bear-Refill base assumption');
-
-const sweepBase = {
-    liquidityRunwayYears: 3,
-    rebalancingBand: 25,
-    maxSkimPctOfEq: 10,
-    maxBearRefillPctOfEq: 5,
-    goldAktiv: false,
-    goldZielProzent: 0,
-    dynamicFlex: true,
-    horizonMethod: 'survival_quantile',
-    survivalQuantile: 0.85,
-    goGoActive: true,
-    goGoMultiplier: 1.1
-};
-const sweepParams = Object.fromEntries(sweepRows.map(row => [row.key, row.witnessValue]));
-const sweptInputs = buildSweepInputs(sweepBase, sweepParams);
-for (const row of sweepRows) {
-    assertEqual(
-        sweptInputs[row.canonicalKey],
-        row.witnessValue,
-        `${row.uiId} must reach canonical Sweep consumer ${row.canonicalKey}`
-    );
-    assert(row.consumer.endsWith('#buildSweepInputs'),
-        `${row.uiId} must name its concrete Sweep consumer`);
-    assert(row.provenance.includes(`params.${row.key}`),
-        `${row.uiId} must name its result provenance`);
-    assert(row.status.startsWith('canonical_path_verified'),
-        `${row.uiId} must declare canonical-path evidence without overstating KPI effectiveness`);
-}
-assertEqual(sweptInputs.goldAktiv, true,
-    'Positive Sweep gold target must preserve its canonical activation side effect');
-
-const optimizerRows = inventory.parameterCausality.optimizer;
-assertSame(
-    optimizerRows.map(row => row.key),
-    AUTO_OPTIMIZE_PARAMETER_OPTIONS.map(option => option.key),
-    'Optimizer causality rows must exactly match the interactive production registry'
-);
-for (const row of optimizerRows) {
-    const definition = AUTO_OPTIMIZE_PARAMETER_REGISTRY[row.key];
-    assert(definition, `Optimizer registry must contain ${row.key}`);
-    assertEqual(definition.requestKey, row.canonicalKey,
-        `${row.key} must retain its canonical request key`);
-    assertEqual(definition.formId, row.uiId,
-        `${row.key} must retain its actual form target`);
-    assertSame(definition.domain, row.domain,
-        `${row.key} matrix domain must match the production registry`);
-    assert(simulatorHtml.includes(`id="${row.uiId}"`),
-        `${row.key} apply target must exist in Simulator.html`);
-    assert(row.provenance.includes(row.canonicalKey),
-        `${row.key} must name canonical fingerprint provenance`);
-}
-assertWitness({
-    gate: 'node',
-    file: 'tests/auto-optimize-fidelity.test.mjs',
-    marker: 'every interactive parameter has a deterministic causal witness'
-}, 'optimizer-causality');
 
 for (const baseline of inventory.deltaBaselines) {
     const absolutePath = path.join(projectRoot, baseline.file);

@@ -59,10 +59,10 @@ export function annualNeedsTiles(preview, annual) {
     const { need, expenses, difference, percent } = annualNeedsComparison(preview, annual);
     const review = annual?.needsReview, split = review?.monthsWithBreakdown;
     return [
-        { label: `Ausgaben ${preview.targetYear}`, value: money(expenses), detail: split ? `Floor ${money(review.annualForecast.floor)} · Flex ${money(review.annualForecast.flex)}${review.monthsWithoutBreakdown ? ' · ' + expenseNeedsCoverage(review) : ''}` : expenses === null ? 'unvollständig' : 'laut Monatsabschlüssen' },
+        { label: `Ausgaben ${preview.targetYear}`, value: money(expenses), detail: split ? `Grundbedarf ${money(review.annualForecast.floor)} · Flex ${money(review.annualForecast.flex)}${review.monthsWithoutBreakdown ? ' · ' + expenseNeedsCoverage(review) : ''}` : expenses === null ? 'unvollständig' : 'laut Monatsabschlüssen' },
         { label: `Bedarf ${preview.targetYear}`, value: money(need), detail: review ? `Grundbedarf ${money(review.plans.floor)} + Flex nach Regeln ${money(review.plans.flex)}` : 'Grundbedarf + Flex' },
         { label: 'Abweichung', value: difference === null ? '—' : (difference > 0 ? '+' : '') + money(difference),
-            detail: split ? ['floor', 'flex'].map(key => `${key === 'floor' ? 'Floor' : 'Flex'} ${review.comparisons[key].difference > 0 ? '+' : ''}${money(review.comparisons[key].difference)}`).join(' · ')
+            detail: split ? ['floor', 'flex'].map(key => `${key === 'floor' ? 'Grundbedarf' : 'Flex'} ${review.comparisons[key].difference > 0 ? '+' : ''}${money(review.comparisons[key].difference)}`).join(' · ')
                 : percent === null ? '—' : `${Math.abs(percent).toLocaleString('de-DE', { maximumFractionDigits: 1 })} % ${percent < 0 ? 'unter' : 'über'} Bedarf`, tone: difference > 0 ? 'warning' : '' }
     ];
 }

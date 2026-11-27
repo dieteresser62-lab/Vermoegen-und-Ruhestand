@@ -21,11 +21,11 @@ same(needs.plans, { floor: 30000, flex: 18000, total: 48000 }, 'Flex nach Regeln
 same([needs.monthsWithBreakdown, needs.monthsWithoutBreakdown], [2, 1], 'Monate mit und ohne Aufteilung');
 same([needs.comparisons.floor.difference, needs.comparisons.floor.percent], [3000, 10], 'Floor-Abweichung in Euro und Prozent');
 same(needs.avgMonthly, { floor: 2750, flex: 1000, total: 9500 / 3 }, 'Tabellenmittelwerte');
-same(projectCategoryNeeds(yearData, ['a', 'b']).get('Alltag'), { floor: 5500, flex: 2000, unallocated: 2000 }, 'Kategorien zählen gemischten Monat vollständig ohne Aufteilung');
+same(projectCategoryNeeds(yearData, ['a', 'b']).categories.get('Alltag'), { floor: 6400, flex: 2200, unallocated: 900 }, 'Kategorien zählen die vorhandene Aufteilung je Person');
 const args = { store, year: 2026, people, budget: { monthly: 4000, status: 'adopted' }, needsPlan: { floorBedarf: 30000, flexBedarf: 24000 }, now: new Date(2026, 9, 30) };
 const view = projectExpenses(args);
 same(view.stats.annualForecast, 38000, 'Hochrechnung oben zählt auch Monate ohne Aufteilung');
-same([view.categories[0].floor, view.categories[0].flex, view.categories[0].amount], [5500, 2000, 9500], 'Kategorienprojektion enthält Beträge und Gesamtsumme');
+same([view.categories[0].floor, view.categories[0].flex, view.categories[0].amount], [6400, 2200, 9500], 'Kategorienprojektion enthält Beträge und Gesamtsumme');
 const personal = projectExpenses({ ...args, personId: 'a' });
 same(personal.needs, null, 'Personenansicht ohne Floor/Flex');
 assert(!Object.hasOwn(personal.categories[0], 'floor'), 'FF-2: Personenkategorien bleiben unverändert');
@@ -40,6 +40,13 @@ assert(text(table).includes('Ø Monat mit Aufteilung') && text(table).includes('
 const plain = projectExpenses({ ...args, store: { years: { 2026: { months: { 1: { profiles: { a: { categories: { Alltag: -100 } } } } } } } } });
 renderExpenseNeeds(doc, plain, true);
 assert(text(card).includes('Spalte „Bedarf“') && !doc.getElementById('expensesNeedsMonths').open, 'FF-2: Ohne Aufteilung kurzer Importhinweis und bisherige Tabelle');
+assertEqual(doc.getElementById('expensesNeedsMonths').querySelector('tbody').children[0].children[1].textContent,
+    'Import von Erika fehlt · Max ohne Aufteilung importiert', 'Fehlender Import und vorhandener Import ohne Aufteilung werden beide genannt');
+const partial = projectExpenses({ ...args, people: [people[0], { id: 'b', name: 'Mira' }],
+    store: { years: { 2026: { months: { 1: { profiles: { a: entry(100, 50) } } } } } } });
+renderExpenseNeeds(doc, partial, true);
+assertEqual(doc.getElementById('expensesNeedsMonths').querySelector('tbody').children[0].children[1].textContent,
+    'Import von Mira fehlt', 'Fehlender Import nennt den Namen aus dem Profil');
 renderExpenseNeeds(doc, personal, true);
 assert(card.hidden && !doc.getElementById('expensesNeedsMonths'), 'FF-2: Personenansicht blendet neue Haushaltsansicht aus');
 const tiles = monthlyNeedsTiles(needs, needs.months[1], 2026);
@@ -51,7 +58,7 @@ same(monthContent.querySelectorAll('.close-dialog-tile').length, 5, 'Monatsvergl
 assert(text(monthContent).includes('Ein einzelner Monat schwankt'), 'FF-2: Monatsvergleich verweist auf Jahresmittel');
 const preview = { targetYear: 2026, planningYear: 2027, inflation: { rate: 2.5 }, people: [], needs: [{ id: 'floorBedarf', before: 30000 }, { id: 'flexBedarf', before: 24000 }] };
 const annual = { needsReview: needs };
-assert(annualNeedsTiles(preview, annual)[0].detail.includes('Floor 33.000 € · Flex 12.000 €'), 'FF-2: Jahreskachel zeigt hochgerechnete Ist-Aufteilung');
+assert(annualNeedsTiles(preview, annual)[0].detail.includes('Grundbedarf 33.000 € · Flex 12.000 €'), 'FF-2: Jahreskachel zeigt hochgerechnete Ist-Aufteilung');
 assert(annualNeedsTiles(preview, annual)[1].detail.includes('Flex nach Regeln 18.000 €'), 'FF-2: Jahresbedarf vergleicht freigegebenen Flex');
 same(annualNeedSuggestions(preview, annual, 'floorBedarf', 30750).fromActual, 33825, 'GN-1: Ist mit Inflation genau in ganzen Euro');
 same([30750, 32595, 27675, 7688, 25000, 0].map(roundAnnualSuggestion), [32500, 35000, 30000, 8000, 25000, 0], 'Rundungsbeispiele nach Anzeigestaffel einschließlich glatter Werte');
@@ -124,9 +131,9 @@ doc.createElement = tag => { const element = originalCreate(tag); element.style 
 for (const id of ['expensesCategories', 'expensesCategoriesLegend', 'expensesCategoriesNeeds', 'overviewFocus', 'expensesClose', 'expensesForecastNote']) { const element = doc.createElement('div'); element.id = id; doc.body.append(element); }
 renderExpensesPage(doc, view);
 const categoryBar = doc.getElementById('expensesCategories').querySelector('.expense-category-track');
-assert(categoryBar.title.includes('Floor 5.500') && categoryBar.title.includes('Flex 2.000'), 'FF-2: Kategorienbalken zeigt beide Beträge mit Mauszeiger');
+assert(categoryBar.title.includes('Grundbedarf 6.400') && categoryBar.title.includes('Flex 2.200'), 'FF-2: Kategorienbalken zeigt beide Beträge mit Mauszeiger');
 same(categoryBar.children[0].children.map(part => part.className), ['expense-category-floor', 'expense-category-flex', 'expense-category-unallocated'], 'Geteilter Balken einschließlich Monat ohne Aufteilung');
-assert(doc.getElementById('expensesCategoriesNeeds').textContent.includes('Floor 5.500') && doc.getElementById('expensesCategoriesNeeds').textContent.includes('ohne Aufteilung 2.000'), 'FF-2: Kategoriesummen mit Anteilen und ungeteilten Beträgen');
+assert(doc.getElementById('expensesCategoriesNeeds').textContent.includes('Grundbedarf 6.400') && doc.getElementById('expensesCategoriesNeeds').textContent.includes('ohne Aufteilung 900'), 'FF-2: Kategoriesummen mit Anteilen und ungeteilten Beträgen');
 renderExpensesPage(doc, personal);
 assert(doc.getElementById('expensesCategoriesLegend').hidden && doc.getElementById('expensesCategoriesNeeds').hidden, 'FF-2: Person zeigt Kategorien ohne Floor/Flex-Legende');
 assert(doc.getElementById('expensesForecastNote').textContent.includes('Mittelwert aus'), 'FF-2: Person nennt Mittelwert und Monatszahl');

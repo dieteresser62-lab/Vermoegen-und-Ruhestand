@@ -39,5 +39,5 @@ for (const household of MUSTER_HAUSHALTE) for (const variant of musterVarianten(
     }
 }
 const exercise = musterLesson('max-erika').exercises.join(' ');
-assert(['Floor über Plan erkennen', 'Floor und Flex', '02.01.2027', 'Ist 2026 + Inflation', 'Monatsbudget']
+assert(['Grundbedarf über Plan erkennen', 'Grundbedarf und Flex', '02.01.2027', 'Ist 2026 + Inflation', 'Monatsbudget']
     .every(text => exercise.includes(text)), 'FF-3: Steckbrief führt vom Floor-Vergleich zum neuen Monatsbudget');

@@ -24,6 +24,7 @@ const diagnosisIds = ['diag-chips', 'diag-decision-tree', 'diag-guardrails', 'di
 const texts = ids => json(ids.map(id => [id, get(id)?.textContent]));
 const fields = () => json(env.doc.querySelectorAll('input, select').map(field => [field.id, field.value, field.checked]));
 let payloads = [], diagnosis;
+const actionDiffers = [];
 UIRenderer.render = function(payload) { payloads.push(payload); return render.call(this, payload); };
 UIRenderer.renderDiagnosis = function(value) { diagnosis = value; return renderDiagnosis.call(this, value); };
 try {
@@ -70,7 +71,7 @@ try {
             assertEqual(payload.nextYearBudget.current.needBeforeIndexation, 31000 + values.flexBedarf, mode + ': Projektion basiert auf übernommenem Plan');
             assertEqual(get('balanceActionPreviewTitle').textContent, 'Vorschau auf den Plan 2027', mode + ': Vorschauzeile verwendet Folgejahr');
             // FR-78/RD-1d: Das Budget wird immer nur abgerundet.
-            assertEqual(get('balanceMonthlyBudget').textContent, UIUtils.formatBalanceCurrency(displayMonthlyDown(payload.nextYearBudget.rule.monthlyBudget)), mode + ': Budgetkarte zeigt Folgejahresbudget, nur abgerundet (FR-78)');
+            assertEqual(get('balanceMonthlyBudget').textContent, UIUtils.formatBalanceCurrency(displayMonthlyDown(payload.nextYearBudget.plan.monthlyBudget)), mode + ': Budgetkarte zeigt Folgejahresbudget, nur abgerundet (FR-78)');
             if (mode === 'standard' && household === 'max-erika') assertEqual(get('balanceMonthlyBudget').textContent, UIUtils.formatBalanceCurrency(5000), 'Max und Erika: Budget 5.100 € → 5.000 €, nicht angehoben');
             const projectedAction = json(UIRenderer.getActionSummary());
             render.call(UIRenderer, { ...payload, currentYear: undefined });
@@ -79,7 +80,9 @@ try {
             render.call(UIRenderer, { ...current, marketPreview: payload.marketPreview }); renderDiagnosis.call(UIRenderer, diagnosis);
             assertEqual(texts(planIds), planText, mode + ': Bedarf, Strategie, Markt und Reserven entsprechen laufender Rechnung');
             assertEqual(texts(diagnosisIds), diagnosisText, mode + ': gesamte Diagnose einschließlich Aktion entspricht laufender Rechnung');
-            if (mode === 'standard' && household === 'max-erika') assert(json(UIRenderer.getActionSummary()) !== projectedAction, 'Gegenprobe: laufende und projizierte Aktionszusammenfassung unterscheiden sich');
+            // Gegenprobe: In mindestens einem Fall unterscheiden sich laufende und projizierte Empfehlung (Prüfung nach der Schleife).
+            // ATH-1: Seit FR-89 messen beide am Tageshoch der Spielkurse, im Grundfall Max und Erika ist die Empfehlung daher gleich.
+            actionDiffers.push(json(UIRenderer.getActionSummary()) !== projectedAction);
         } else {
             assertEqual(payload.currentYear, undefined, 'Ohne Projektion kein abweichender Anzeigedatensatz');
             assertEqual(payload.input.floorBedarf, 31000, 'Ohne Projektion bisherige Vorschau mit Planwert');
@@ -104,6 +107,7 @@ try {
         UIReader.planFormSource = null;
         P.resetPersistenceRuntimeForTests();
     }
+    assert(actionDiffers.some(Boolean), `Gegenprobe: laufende und projizierte Aktionszusammenfassung unterscheiden sich mindestens einmal (${actionDiffers})`);
 } finally {
     UIRenderer.render = render; UIRenderer.renderDiagnosis = renderDiagnosis;
     P.resetPersistenceRuntimeForTests(); restoreLocks(); setAppTestDate(oldDate); env.restore();

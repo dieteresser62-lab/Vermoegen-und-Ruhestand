@@ -33,13 +33,13 @@ export function pensionAdjustmentDisplay(adjustment) {
 
 /** Übernahme der Rentenanpassung für die angezeigte Person, oder null, wenn sie ihre eigene gilt.
  *
- * @param {{profiles: Array<{id: string, name: string, belongs: boolean, valid: boolean, values?: Record<string, any>}>}} projection
+ * @param {{profiles: Array<{id: string, name: string, valid: boolean, values?: Record<string, any>}>}} projection
  *   Projektion aus `projectManagerProfiles`.
  * @param {string} activeId Angezeigte Person.
  * @returns {{from: string, value: string, unit: string, reason: string}|null} Anzeige der übernommenen Anpassung.
  */
 export function pensionAdoption(projection, activeId) {
-    const members = projection.profiles.filter(profile => profile.belongs);
+    const members = projection.profiles;
     const active = members.find(profile => profile.id === activeId);
     const primaryId = getHouseholdPrimaryProfileId(members);
     const primary = members.find(profile => profile.id === primaryId);
@@ -64,12 +64,12 @@ export function syncPensionWageHint(doc) {
 
 /** Satz bei der Pflegereserve, nur für eine Person in einem Haushalt mit zwei Personen.
  *
- * @param {{profiles: Array<{id: string, name: string, belongs: boolean, valid: boolean, values?: Record<string, any>}>}} projection
+ * @param {{profiles: Array<{id: string, name: string, valid: boolean, values?: Record<string, any>}>}} projection
  * @param {string} activeId Angezeigte Person.
  * @returns {string} Satz oder leer.
  */
 export function careReserveHouseholdText(projection, activeId) {
-    const members = projection.profiles.filter(profile => profile.belongs);
+    const members = projection.profiles;
     if (members.length !== 2 || !members.some(profile => profile.id === activeId)) return '';
     const first = members.find(profile => profile.valid && profile.values?.healthBucket?.enabled);
     return `Im Haushalt werden die Zielbeträge aktiver Pflegereserven addiert. Quelle, Trigger und die übrigen Einstellungen kommen von der ersten Person mit aktiver Reserve${first ? `, zurzeit ${first.name}` : ''}.`;

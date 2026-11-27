@@ -1,3 +1,5 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import './helpers/grundbestand-sicht-aktiv.mjs';
 import { renderManagerPartnership } from '../app/tranches/tranchen-manager-partnership.js';
 import { projectManagerProfiles } from '../app/tranches/tranchen-manager-profiles.js';
 import { testamentFields } from '../app/tranches/tranchen-manager-testament.js';
@@ -42,7 +44,7 @@ for (const mode of ['nominal', 'real']) {
     assert(cards[2].moneyDetail.includes('davon Geldvermögen') && cards[2].description.includes('Summe der Klassen-Perzentile'), 'Kennzahlen erklären Geldanteil und fehlende eindeutige Klassenaufteilung');
 }
 // Eine reale Verkaufsgegenprobe bei denselben Personen mit kleinem Geldpolster.
-const scarce = structuredClone(inputs);
+const scarce = { ...structuredClone(inputs), partnership: { status: 'married', inheritance: {} } };
 
 // Die Eingabeportfolios liegen je nach Strategie in eigenen Feldern; hoher Grundbedarf
 // erzwingt hier die bestehende Notverkaufsregel ohne einen Eingabevertrag umzubauen.
@@ -80,8 +82,8 @@ for (const variant of ['grund', 'immobilien']) {
 }
 const history = { points: [{ day: 1, date: '2026-09-30', total: 100, allocation: { cash: 100 } }, { day: 2, date: '2026-10-01', total: 110, allocation: { cash: 110 } }], metrics: { change: 10 }, types: ['cash'], events: [], gaps: [], range: { start: 1, end: 2 } };
 const annotated = withPropertyHistory(history, [{ values: { immobilien: [{ wert: 600000, nutzung: 'selbst', stand: '2026-10' }] } }]);
-assertEqual(annotated.points[0].totalWithHomes, 600100, 'Immobilie erscheint über den ganzen Zeitraum mit heutigem Wert');
-assertEqual(annotated.end.totalWithHomes, 600110, 'Gesamtlinie ergänzt konstant den heutigen Immobilienwert');
+assertEqual(annotated.points[0].totalWithHomes, 600100, 'IM-1: Ohne Wertverlauf gilt der erste bekannte Wert flach über den ganzen Zeitraum');
+assertEqual(annotated.end.totalWithHomes, 600110, 'IM-1: Gesamtlinie ist Geldvermögen plus damals gültiger Immobilienwert');
 assertEqual(annotated.metrics, history.metrics, 'Veränderung bleibt Geldvermögen; Anzeigeprojektion ergänzt Immobilien');
 assert(renderWealthHistorySvg(annotated).includes('history-property-total'), 'Zusätzliche dünne Gesamtvermögenslinie wird gezeichnet');
 assertEqual(JSON.stringify(readPartnership({ schemaVersion: 1, status: 'married', inheritance: {}, testament: { a: {} } })), JSON.stringify(readPartnership({ schemaVersion: 1, status: 'married', inheritance: {} })), 'Leere Testamentregel wird wie fehlende Regel gelesen und nicht gespeichert');

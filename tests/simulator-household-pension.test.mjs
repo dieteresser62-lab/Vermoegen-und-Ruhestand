@@ -1,3 +1,5 @@
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import { readKL1Hash } from './helpers/kl-1-expectations.mjs';
 import { readQSCReferences } from './helpers/qs-c-expectations.mjs';
 import { readAS1Hash } from './helpers/as-1-expectations.mjs';
 import { readEK1dHash as readBeforeAS1Hash } from './helpers/ek-1d-expectations.mjs';
@@ -9,7 +11,6 @@ import { buildSimulatorInputsFromProfileData, combineSimulatorProfiles } from '.
 import { simulateOneYear, initMcRunState } from '../app/simulator/simulator-engine-direct.js';
 import { prepareHistoricalDataOnce } from '../app/simulator/simulator-engine-helpers.js';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
-import { extractP2Invariants, areP2InvariantsEqual } from '../app/simulator/simulator-sweep-utils.js';
 import { EngineAPI } from '../engine/index.mjs';
 const close = (actual, expected, label) => assert(Math.abs(actual - expected) < 1e-8, label);
 const personData = (monthly, date) => ({ profile_person_schema_version: '1', profile_geburtsdatum: '1958-03-14',
@@ -63,7 +64,6 @@ for (const quote of [0, 20, 80, 100]) {
         currentAnnualPension2: 24000, p2Alive: false, widowBenefits: { p1FromP2: true, p1FromP2Percent: .6 } });
     close(survivorP1.rente1, 6000 + 14400, 'FR-11: Auch P1 erhält eigene Teiljahresrente und Hinterbliebenenrente ohne Abschlag');
 }
-assert(!areP2InvariantsEqual(extractP2Invariants(inputs), extractP2Invariants({ ...inputs, partner: { ...inputs.partner, renteStartMonate: 12 } })), 'Partnerinvariante schützt wirksame Rentenmonate');
 for (const months of [0, 13, 6.5, '6']) { let error; try { pensionPaymentFactor(0, 0, months); } catch (cause) { error = cause; } assert(error, 'Ungültiger Monatszusatz wird abgewiesen'); }
 
 // Echter DOM-freier Jahreslauf: fortgeschriebene Basis und vollständiger Übergang.
@@ -201,15 +201,17 @@ close(legacy[0].logData.liquiditaet, targetFor(36000) - 1000 * .26375,
 close(legacy[0].logData.wertGold,
     (legacy[0].logData.portfolio_total_before_accumulation + legacy[0].logData.cashInterestEarned + 6000) * .02,
     'FR-16: Ohne Notverkauf bleibt das gekaufte Goldziel erhalten');
-assertEqual(hash(legacy), readQSCReferences(readEK1dHash(readST1Hash('a01678b5ea993ef49dd54d09f381f8090af9ec5d5a63b3f236945ffa7f20af70'))), 'FR-16: Alt-Kalenderpfad nutzt Partner-Liquidität für persönliche Ansparsteuer');
+const legacyReference = readKR1cReferences(readQSCReferences(readEK1dHash(readST1Hash('a01678b5ea993ef49dd54d09f381f8090af9ec5d5a63b3f236945ffa7f20af70'))));
+assertEqual(hash(legacy), readKL1Hash(legacyReference), 'FR-16: Alt-Kalenderpfad nutzt Partner-Liquidität für persönliche Ansparsteuer');
 const zeroTax = runYears({ ...accumulationInputs, partner: { ...accumulationInputs.partner, steuerquotePct: 0 } }, 0);
 assertEqual(JSON.stringify(controlled), JSON.stringify(zeroTax), 'FR-11: Altquote 20 und Nullquote ergeben identische Jahresläufe');
-assertEqual(hash(zeroTax), readQSCReferences(readEK1dHash(readST1Hash('93ef454655dde825dd73e839cb4c1196ec18868f03f072bcac0f2fab66a46703'))), 'PA-A7: Kontrollierter Lauf enthält persönliche Ansparsteuer');
+const zeroTaxReference = readKR1cReferences(readQSCReferences(readEK1dHash(readST1Hash('93ef454655dde825dd73e839cb4c1196ec18868f03f072bcac0f2fab66a46703'))));
+assertEqual(hash(zeroTax), readKL1Hash(zeroTaxReference), 'PA-A7: Kontrollierter Lauf enthält persönliche Ansparsteuer');
 const incoming = runYears(taxInputs)[2].newState;
-assertEqual(hash(incoming), readQSCReferences(readEK1dHash(readST1Hash('e6891f4d7b3351453b329b98878c6a3e039cd80b612280f97d9703d274060079'))), 'FR-11: Höhere Nettorente senkt die vorherige Vermögensentnahme');
+assertEqual(hash(incoming), readKR1cReferences(readQSCReferences(readEK1dHash(readST1Hash('e6891f4d7b3351453b329b98878c6a3e039cd80b612280f97d9703d274060079')))), 'FR-11: Höhere Nettorente senkt die vorherige Vermögensentnahme');
 const withdrawal = simulateOneYear(structuredClone(incoming), taxInputs,
     { jahr: 2029, rendite: .03, gold_eur_perf: 0, zinssatz: 1, inflation: 0, lohn: 2 }, 3, null, 0, null, 1, EngineAPI);
-assertEqual(hash(withdrawal), readQSCReferences(readEK1dHash(readST1Hash('e0ed37bfdc8b0ab2d6ddfcf6867695efef59c8ea21e8fe8e299109bf2a12a721'))), 'PA-A7: Entnahmebeleg enthält persönliche Steuerdiagnose');
+assertEqual(hash(withdrawal), readKR1cReferences(readQSCReferences(readEK1dHash(readST1Hash('e0ed37bfdc8b0ab2d6ddfcf6867695efef59c8ea21e8fe8e299109bf2a12a721')))), 'PA-A7: Entnahmebeleg enthält persönliche Steuerdiagnose');
 const mc = await runMonteCarloChunk({ inputs: runInputs, engine: EngineAPI, useCapeSampling: false,
     widowOptions: { mode: 'none', percent: 0 }, monteCarloParams: { anzahl: 1, maxDauer: 4, blockSize: 1, seed: 42, methode: 'block', rngMode: 'per-run-seed' } });
 assertEqual(mc.totals.failCount, 0, 'Kleiner Monte-Carlo-Lauf transportiert neue Renteneingaben');

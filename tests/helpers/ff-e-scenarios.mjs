@@ -7,7 +7,7 @@ import { initializePortfolio } from '../../app/simulator/simulator-portfolio.js'
 import { simulateOneYear } from '../../app/simulator/simulator-engine-direct.js';
 import { computeAdjPctForYear } from '../../app/simulator/simulator-main-helpers.js';
 import { resolveDynamicFlexRunnerHorizon } from '../../app/simulator/dynamic-flex-runner-horizon.js';
-import { createHistoricalBacktestContractProvider } from '../../app/simulator/historical-backtest-contract.js';
+import { historischerProvider } from './grundbestand-stichprobe.mjs';
 import { runHistoricalBacktest } from '../../app/simulator/historical-backtest-runner.js';
 import { portfolioTotal } from '../../app/simulator/simulator-results.js';
 import { prepareHistoricalDataOnce } from '../../app/simulator/simulator-engine-helpers.js';
@@ -38,7 +38,7 @@ export function helgaWernerBacktest({ onEngineResult } = {}) {
         return result;
     } } : EngineAPI;
     return runHistoricalBacktest({ inputs, period: { startYear: 2000, endYear: 2025 },
-        historicalDataProvider: createHistoricalBacktestContractProvider(), initializePortfolio,
+        historicalDataProvider: historischerProvider(), initializePortfolio,
         simulateYear: (...args) => simulateOneYear(...args, null, 0, null, 1, engine),
         computeAdjustmentPct: computeAdjPctForYear, resolveHorizon: resolveDynamicFlexRunnerHorizon,
         totalPortfolio: portfolioTotal, breakOnRuin: true });

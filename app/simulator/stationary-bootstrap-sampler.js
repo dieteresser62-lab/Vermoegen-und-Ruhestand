@@ -37,6 +37,21 @@ function normalizeStartIndices({ annualData, startIndices }) {
     return valid.length > 0 ? valid : annualData.map((_, index) => index);
 }
 
+// MS-1 (NG-9): Nachfolger entlang der sortierten Pool-Indizes, nach dem letzten wieder der erste (Politis & Romano).
+// Ein Index außerhalb des Pools (etwa ein verankerter Start) geht zum nächsten größeren Pool-Index.
+function buildSuccessorIndices({ annualData, poolIndices }) {
+    const pool = [...new Set((Array.isArray(poolIndices) ? poolIndices : [])
+        .map(rawIndex => Math.round(Number(rawIndex)))
+        .filter(index => Number.isInteger(index) && index >= 0 && index < annualData.length))]
+        .sort((a, b) => a - b);
+    const cycle = pool.length > 0 ? pool : annualData.map((_, index) => index);
+    let position = 0;
+    return annualData.map((_, index) => {
+        while (position < cycle.length && cycle[position] <= index) position += 1;
+        return position < cycle.length ? cycle[position] : cycle[0];
+    });
+}
+
 function normalizeSamplerCdf({ cdf, startIndices }) {
     if (Array.isArray(cdf) && cdf.length === startIndices.length) {
         return cdf.map(value => clampRandom(Number(value)));
@@ -84,6 +99,7 @@ export function createStationaryBootstrapSampler({
     mode = 'UNIFORM',
     cdf = null,
     startIndices = null,
+    poolIndices = null,
     initialStartIndex = null
 } = {}) {
     const safeAnnualData = validateAnnualData(annualData);
@@ -115,6 +131,7 @@ export function createStationaryBootstrapSampler({
         startIndices: normalizedStartIndices,
         startCdf: normalizeSamplerCdf({ cdf, startIndices: normalizedStartIndices }),
         startSamplerObject,
+        successorByIndex: buildSuccessorIndices({ annualData: safeAnnualData, poolIndices }),
         initialStartIndex: Number.isInteger(initialStartIndex)
             && initialStartIndex >= 0
             && initialStartIndex < safeAnnualData.length
@@ -140,14 +157,12 @@ export function nextYearSample(state, rng = null) {
     const isInitial = state.currentIndex === null || state.currentIndex === undefined;
     const restartDraw = isInitial ? null : drawRandom(rng);
     state.lastRestartDraw = restartDraw;
-    const isAtDataEnd = !isInitial && state.currentIndex >= state.annualData.length - 1;
-    const isRandomRestart = !isInitial && !isAtDataEnd && restartDraw < state.restartProbability;
+    const isRandomRestart = !isInitial && restartDraw < state.restartProbability;
 
+    // Am Datenende kein Neustart mehr: die Fortsetzung bricht zirkulär zum Fensteranfang um (NG-9).
     let restartReason = null;
     if (isInitial) {
         restartReason = STATIONARY_BOOTSTRAP_RESTART_REASONS.INITIAL;
-    } else if (isAtDataEnd) {
-        restartReason = STATIONARY_BOOTSTRAP_RESTART_REASONS.DATA_END;
     } else if (isRandomRestart) {
         restartReason = STATIONARY_BOOTSTRAP_RESTART_REASONS.RANDOM;
     }
@@ -161,7 +176,7 @@ export function nextYearSample(state, rng = null) {
         state.restartCount += 1;
         state.lastRestartReason = restartReason;
     } else {
-        state.currentIndex += 1;
+        state.currentIndex = state.successorByIndex?.[state.currentIndex] ?? (state.currentIndex + 1) % state.annualData.length;
         state.yearsInCurrentBlock += 1;
         state.lastRestartReason = null;
     }

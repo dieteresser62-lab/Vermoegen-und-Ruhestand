@@ -3,6 +3,9 @@
 Die festgeschriebenen Eingaben aus JST R6 und Destatis liefern die Grundlage für
 `GermanGrossWageGrowthChainV2`.
 
+Ein neues Datenjahr kommt nur als Jahreslieferung unter `jahre/<Jahr>/` dazu; Ablauf und Regeln stehen unter
+[Jahresdaten pflegen](../../../docs/reference/JAHRESDATEN.md).
+
 ## Quellen und Reihenidentität
 
 | Datei | Reihe / Verwendung | SHA-256 |

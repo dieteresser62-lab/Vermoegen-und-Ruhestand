@@ -12,12 +12,11 @@ export function completedComparisonFixture({ adjusted = false, receipt = true, p
     const now = new Date('2026-10-09T12:00:00Z'), scope = planScope('household', ['a', 'z']);
     const metadata = { schemaVersion: 1, lastCommittedPeriod: 'calendar-year:2025', pendingCommit: null };
     const data = { depot_tranchen: '[]', profile_tagesgeld: '100', [CONFIG.STORAGE.LS_KEY]: JSON.stringify({ annualPeriodMetadata: metadata }) };
-    const registry = { version: 1, profiles: Object.fromEntries(['a', 'z', 'out'].map(id => [id, {
-        meta: { name: id.toUpperCase(), belongsToHousehold: id !== 'out' }, data: { ...data }
+    const registry = { version: 1, profiles: Object.fromEntries(['a', 'z'].map(id => [id, {
+        meta: { name: id.toUpperCase() }, data: { ...data }
     }])) };
     const records = { ...data, rs_profiles_v1: JSON.stringify(registry), rs_current_profile: 'z', rs_active_profile: 'z',
-        [HOUSEHOLD_PLAN_KEY]: buildPlanRecord(null, [{ scope, values: structuredClone(PLAN_DEFAULTS) },
-            { scope: planScope('single', ['out']), values: structuredClone(PLAN_DEFAULTS) }], { now: () => new Date('2026-01-01') }).raw };
+        [HOUSEHOLD_PLAN_KEY]: buildPlanRecord(null, [{ scope, values: structuredClone(PLAN_DEFAULTS) }], { now: () => new Date('2026-01-01') }).raw };
     const outcome = { monthlyWithdrawal: 1500, monthlyBudget: 2000, liquidityBefore: 70, liquidityAfter: 80, flexRate: 100,
         marketPhase: 'Synthetisch', action: { type: 'NONE', title: 'Keine Transaktion', quellen: [], verwendungen: {}, steuer: 0 },
         snapshot: { plan: structuredClone(PLAN_DEFAULTS), inflation: 2.1, ageByPerson: { a: 60, z: 62 } } };

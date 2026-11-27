@@ -1,5 +1,5 @@
 import {
-    createMonteCarloUI, readMonteCarloParameters, cancelMonteCarlo, activeMonteCarloRun, setOverviewRunPhase, beginOverviewRun, readOverviewAssumptions, failOverviewRun, completeOverviewRun, projectMonteCarloOverview, throwIfRunCancelled, formatMs, formatSpeedup, prepareHistoricalDataOnce, compileScenario, getDataVersion, validateSimulatorInputs, formatSimulatorValidationError, getCommonInputs, personDataContextFor, readDocumentPersonInputs, createProtocolPersonContext, normalizeWidowOptions, annualData, resolveMonteCarloSamplingContractV1, beginSimulationSummary, completeSimulationSummary, ScenarioAnalyzer, runMonteCarloSerial, runMonteCarloLogsForIndices, runMonteCarloWithWorkers, isWorkerRunCancelledError, createMonteCarloRunRequestV1, createMonteCarloRunResultV1, createMonteCarloExportDownload, captureMonteCarloEngineProvenance, EngineAPI, displayMonteCarloResults, recordMonteCarloHintMeasurement, monteCarloHintComparableKey, simulatorRunAssumptions
+    createMonteCarloUI, readMonteCarloParameters, cancelMonteCarlo, activeMonteCarloRun, setOverviewRunPhase, beginOverviewRun, readOverviewAssumptions, failOverviewRun, completeOverviewRun, projectMonteCarloOverview, throwIfRunCancelled, formatMs, formatSpeedup, prepareHistoricalDataOnce, compileScenario, getDataVersion, validateSimulatorInputs, formatSimulatorValidationError, getCommonInputs, personDataContextFor, readDocumentPersonInputs, createProtocolPersonContext, normalizeWidowOptions, annualData, resolveMonteCarloSamplingContractV1, beginSimulationSummary, completeSimulationSummary, ScenarioAnalyzer, runMonteCarloSerial, runMonteCarloLogsForIndices, runMonteCarloWithWorkers, isWorkerRunCancelledError, createMonteCarloRunRequestV1, createMonteCarloRunResultV1, createMonteCarloExportDownload, captureMonteCarloEngineProvenance, EngineAPI, displayMonteCarloResults, recordMonteCarloHintMeasurement, monteCarloHintComparableKey, simulatorRunAssumptions, appNow
 } from './execution-dependencies.js';
 import { rememberPublishedMonteCarloRun, monteCarloFingerprint, showMonteCarloMemorySource } from './result-memory.js';
 
@@ -81,7 +81,7 @@ export async function executeMonteCarloRun(runState) {
         runState.status = 'running';
         overviewToken = (dependencies.beginOverviewRun || beginOverviewRun)('montecarlo', readOverviewAssumptions('montecarlo', inputs, {
             ...monteCarloParams, useCapeSampling
-        }), { startedAt: new Date().toISOString(), generationId });
+        }), { startedAt: appNow().toISOString(), generationId });
         summaryContext = (dependencies.beginSimulationSummary || beginSimulationSummary)('montecarlo', inputs, { ...monteCarloParams, useCapeSampling });
         runState.registration?.notify();
         ui.showProgress();
@@ -169,7 +169,6 @@ export async function executeMonteCarloRun(runState) {
                 onProgress: updateProgress,
                 scenarioAnalyzer,
                 signal
-                // engine parameter removed - wrapper selects correct engine based on feature flag mode
             });
         }
         throwIfRunCancelled(signal, generationId);

@@ -172,7 +172,7 @@ export function renderActionTechnicalExamples(examples = calculateActionExamples
     const three = care.model.ui.threeBucket || care.model.diagnosis.keyParams.threeBucket;
     return [
         '### Max und Erika mit Auffüllung und persönlicher Steuer', '',
-        'Synthetische Variante von Max und Erika Mustermann für die Vorschau des Jahresabschlusses 2026 und Plan 2027. Alter 65 und 63; stabiler Höchststand, Inflation 0 %, Dynamic Flex und Go-Go aus, Standardstrategie ohne Gold und Pflege-Rücklage. Kirchensteuer und Zusammenveranlagung sind aus.', '',
+        'Synthetische Variante von Max und Erika Mustermann für die Vorschau des Jahresabschlusses 2026 und Plan 2027. Alter 65 und 63; stabiler Höchststand, Inflation 0 %, Dynamic Flex und Go-Go aus, Standardstrategie ohne Gold und Pflegereserve. Kirchensteuer und Zusammenveranlagung sind aus.', '',
         '| Ausgangswert | Max | Erika |', '| --- | ---: | ---: |',
         ...['tagesgeld','geldmarktEtf','depotwertAlt','costBasisAlt','depotwertNeu','costBasisNeu','renteMonatlich','sparerPauschbetrag'].map((key,i) =>
             `| ${['Tagesgeld','Geldmarkt ohne Buchgewinn','Aktien alt Marktwert','Aktien alt Einstand','Aktien neu Marktwert','Aktien neu Einstand','Rente monatlich','Pauschbetrag'][i]} | ${eur(main.profiles[0].inputs[key])} | ${eur(main.profiles[1].inputs[key])} |`),
@@ -201,8 +201,8 @@ export function renderActionTechnicalExamples(examples = calculateActionExamples
         'Variante derselben Musterprofile: Je Person kommen 300.000 € Tagesgeld hinzu; das Abschöpflimit wird auf 5 % gesetzt. Andere Bestände bleiben erhalten. Das ist eine synthetische Sofortanlage, keine vorweggenommene einmalige Einkunft. C9 baut zuerst das Goldziel auf und gibt den verbleibenden Überschuss an Aktien.', '',
         actionTable(surplus.model), '',
         `Enginepfad: „${surplus.calls[0].result.ui.action.title}“. Das eingestellte Abschöpflimit beträgt ${fmt(surplus.input.maxSkimPctOfEq, 0)} %; auch bei 0 % bleibt dieser Überschusskauf gleich.`, '',
-        '### Helga und Werner mit Pflege-Rücklage und drei Töpfen', '',
-        'Musterbestände vom 19. Oktober 2026: proportionale Verteilung und Kirchensteuer 9 %. Der Generator sowie Live-Formularleser und gespeicherter Balance-Leser übergeben die gespeicherte Zusammenveranlagung an den Haushaltsaufruf. Die aktivierte Pflege-Rücklage wird vor der Rechnung aus Geldmarkt und Tagesgeld getrennt. Die Tabellen zeigen die operative Basis nach diesem Abzug.', '',
+        '### Helga und Werner mit Pflegereserve und drei Töpfen', '',
+        'Musterbestände vom 19. Oktober 2026: proportionale Verteilung und Kirchensteuer 9 %. Der Generator sowie Live-Formularleser und gespeicherter Balance-Leser übergeben die gespeicherte Zusammenveranlagung an den Haushaltsaufruf. Die aktivierte Pflegereserve wird vor der Rechnung aus Geldmarkt und Tagesgeld getrennt. Die Tabellen zeigen die operative Basis nach diesem Abzug.', '',
         `Liquidität vor Reservierung ${eur(care.input.tagesgeld + care.input.geldmarktEtf)}, operative Liquidität ${eur(care.model.input.tagesgeld + care.model.input.geldmarktEtf)}; reserviert ${eur(care.input.tagesgeld + care.input.geldmarktEtf - care.model.input.tagesgeld - care.model.input.geldmarktEtf)}. Kirchensteuerfaktor im Modell: ${fmt(capitalGainsTaxRate(0.09) * 100, 6)} %.`, '',
         actionTable(care.model), '',
         `Drei Töpfe: ${three?.isBadYear ? 'schlechtes' : 'kein schlechtes'} Aktienjahr; Anleihen vorher ${eur(three?.bondBucketBefore)}, Verkauf ${eur(three?.bondSaleAmount)}, Nachkauf ${eur(three?.bondRefillNet)}, danach ${eur(three?.bondBucketAfter)}. D2 rechnet den endgültigen Haushaltssteuerstand mit Zusammenveranlagung; die Drei-Topf-Diagnose stammt aus der vorherigen Enginefinalisierung.`, '',
@@ -219,7 +219,7 @@ export function renderActionExamples(examples = calculateActionExamples()) {
     const { main, bear } = examples, initial = main.calls[0].result.ui.action, final = main.model.ui.action;
     return [
         '### Max und Erika mit Auffüllung und persönlicher Steuer', '',
-        `Synthetischer Jahresabschlussentwurf 2026 für Plan 2027, geprüft am 27.10.2026: ${eur(main.input.floorBedarf)} Grundbedarf, ${eur(main.input.flexBedarf)} Wunsch-Flex, ${eur(main.input.minimumFlexAnnual)} Mindest-Flex und ${eur(main.input.renteMonatlich * 12)} Rente jährlich. Dynamik und Go-Go aus, stabiler Höchststand, keine Inflation, kein Gold und keine Pflege-Rücklage. Zusammenveranlagung und Kirchensteuer aus.`, '',
+        `Synthetischer Jahresabschlussentwurf 2026 für Plan 2027, geprüft am 27.10.2026: ${eur(main.input.floorBedarf)} Grundbedarf, ${eur(main.input.flexBedarf)} Wunsch-Flex, ${eur(main.input.minimumFlexAnnual)} Mindest-Flex und ${eur(main.input.renteMonatlich * 12)} Rente jährlich. Dynamik und Go-Go aus, stabiler Höchststand, keine Inflation, kein Gold und keine Pflegereserve. Zusammenveranlagung und Kirchensteuer aus.`, '',
         `Aktienbestand ${eur(main.input.depotwertAlt + main.input.depotwertNeu)}, freie Liquidität ${eur(main.input.tagesgeld + main.input.geldmarktEtf)}. Fünf Jahre Reserve und 5 % Abschöpfgrenze. Die [vollständigen Ausgangstranchen und Steuerdaten](TECHNICAL.md#max-und-erika-mit-auffüllung-und-persönlicher-steuer) gehören zu demselben Beispiel.`, '',
         actionTable(main.model), '',
         `Die ursprüngliche Lücke von ${eur(main.model.ui.zielLiquiditaet - main.input.tagesgeld - main.input.geldmarktEtf)} führt durch Plansteuer und Handelsrundung zunächst zu ${eur(sum(initial.quellen.map(q => q.brutto)))} Bruttoverkauf und ${eur(initial.steuer)} Plansteuer. Persönliche Abrechnung verändert Brutto und Steuer; das Netto bleibt ${eur(final.nettoErlös)}.`, '',
@@ -229,7 +229,7 @@ export function renderActionExamples(examples = calculateActionExamples()) {
         '### Max und Erika im Bärenjahr', '',
         `Musterbestände vom 17.10.2026 im historischen Lauf mit ${EQUITY_COST_TEXT} Fondskosten auf Aktien, Beschluss nach der Rendite ${bear.year}. Die Rente deckt den Grundbedarf. Der Bärenpfad wartet bei ausreichender Liquidität; eine Kürzung erzwingt keinen Verkauf.`, '',
         actionTable(bear.result), '',
-        `Anweisung: „${bear.result.ui.action.title}“. Gold, Überschussanlage, Pflege-Rücklage und isolierte Steuergegenproben stehen in den [vollständigen technischen Beispielen](TECHNICAL.md#vollständige-handelsbeispiele).`
+        `Anweisung: „${bear.result.ui.action.title}“. Gold, Überschussanlage, Pflegereserve und isolierte Steuergegenproben stehen in den [vollständigen technischen Beispielen](TECHNICAL.md#vollständige-handelsbeispiele).`
     ].join('\n');
 }
 

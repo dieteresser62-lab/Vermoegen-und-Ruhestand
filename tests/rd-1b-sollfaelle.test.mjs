@@ -28,16 +28,18 @@ const reasonsHidden = maxErika.doc.getElementById('balanceBudgetReasons').hidden
 {
     const card = maxErika.card;
     // VN-1 Punkt 4: Zeilen auf den Euro, die Handlungszeile gerundet mit „ca.“.
-    assert(card.includes('Aktien verkaufenca. 89.500 €netto') && card.includes('9.363 €offen') && card.includes('79.950 €offen'),
-        `Was zu tun ist: ca. 89.500 €, Zeilen 9.363 + 79.950 € (${card.slice(0, 260)})`);
-    assert(card.includes('der Rest in den Geldmarkt89.500 €'), 'Was zu tun ist: „Wohin das Geld geht“ 89.500 €');
+    // HP-3 (Ergänzung 6 FR-78): Der Kopf rundet die Summe der Zeilen einmal, 9.363 + 79.950 = 89.313 € → ca. 90.000 € (vorher 9.500 + 80.000 = 89.500 €).
+    assert(card.includes('Aktien verkaufenca. 90.000 €netto') && card.includes('9.363 €offen') && card.includes('79.950 €offen'),
+        `Was zu tun ist: ca. 90.000 €, Zeilen 9.363 + 79.950 € (${card.slice(0, 260)})`);
+    assert(card.includes('der Rest in den Geldmarkt90.000 €'), 'Was zu tun ist: „Wohin das Geld geht“ 90.000 €');
 }
 
-// Karte „Deine Reserven“: nach Umsetzung aus angezeigten Beträgen, Tagesgeld genau am angezeigten Ziel.
+// Karte „Deine Reserven“: nach Umsetzung aus angezeigten Beträgen und Tagesgeldziel je Person.
 {
-    assertEqual(read(maxErika, 'balanceReserveValues'), 'Liquidität heute90.000 €→nach Umsetzung179.500 €', 'Reserven: 90.000 → 179.500 €');
-    assertEqual(read(maxErika, 'balanceReserveParts'), 'Tagesgeld30.000 €→32.500 €Geldmarkt60.000 €→147.000 €', 'Reserven: Tagesgeld 30.000 → 32.500 €, Geldmarkt 60.000 → 147.000 €');
-    assert(read(maxErika, 'balancePersonalCashTargets').endsWith('Summe 32.500 €'), 'Reserven: Tagesgeld nach Umsetzung = angezeigtes Tagesgeldziel 32.500 €');
+    // HP-3: Zufluss wie der Kopf der Karte, 90.000 + 90.000 = 180.000 € (vorher 179.500 €).
+    assertEqual(read(maxErika, 'balanceReserveValues'), 'Liquidität heute90.000 €→nach Umsetzung180.000 €', 'Reserven: 90.000 → 180.000 €');
+    assertEqual(read(maxErika, 'balanceReserveParts'), 'Tagesgeld30.000 €→46.000 €Geldmarkt60.000 €→134.000 €', 'Reserven: 16.000 € für Erikas Tagesgeld und 74.000 € für den Geldmarkt');
+    assert(read(maxErika, 'balancePersonalCashTargets').endsWith('Summe 32.500 €'), 'Reserven: Summe der angezeigten Tagesgeldziele 32.500 €');
     const view = { before: { tagesgeld: 30000, geldmarkt: 60000, liquidity: 90000 }, after: { tagesgeld: 32400, geldmarkt: 146912.5, liquidity: 179312.5 } };
     const shown = displayedReserves(view, { cashTarget: 32400, shownCashTarget: 32500, inflow: 89500 });
     assertEqual(`${shown.after.tagesgeld} · ${shown.after.geldmarkt} · ${shown.after.liquidity}`, '32500 · 147000 · 179500', 'Reserven: Teile ergeben die angezeigte Liquidität');

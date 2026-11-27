@@ -30,11 +30,11 @@ const byAscendingWealthThenIndex = (left, right) => (
 );
 
 export const WEALTH_SCENARIO_LABELS = Object.freeze({
-    worst: 'Worst Case des Geldendvermögens', p5: 'P5 des Geldendvermögens',
+    worst: 'Niedrigstes Geldendvermögen', p5: 'P5 des Geldendvermögens',
     p10: 'P10 des Geldendvermögens', p25: 'P25 des Geldendvermögens',
     p50: 'Median des Geldendvermögens', p75: 'P75 des Geldendvermögens',
     p90: 'P90 des Geldendvermögens', p95: 'P95 des Geldendvermögens',
-    best: 'Best Case des Geldendvermögens'
+    best: 'Höchstes Geldendvermögen'
 });
 
 function typicalMarketScenario(scenarios) {
@@ -225,7 +225,7 @@ export class ScenarioAnalyzer {
         const careSpecific = [];
         if (careScenarios.length > 0) {
             const worstWithCare = selectExtreme(careScenarios, 'endVermoegen', 'minimum');
-            careSpecific.push({ key: 'worstCare', label: 'Worst MIT Pflege', scenario: worstWithCare });
+            careSpecific.push({ key: 'worstCare', label: 'Niedrigstes Geldendvermögen mit Pflege', scenario: worstWithCare });
 
             const longestCare = selectExtreme(careScenarios, 'totalCareYears');
             careSpecific.push({ key: 'longestCare', label: 'Längste Pflegedauer', scenario: longestCare });

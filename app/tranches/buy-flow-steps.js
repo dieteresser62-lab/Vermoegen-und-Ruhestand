@@ -3,6 +3,7 @@
 import { el, button, chip, euro, euroCent, flowNumber, flowDate, joinNames, personSegment, parseMoney, parseQuantity, parseShares, euroFrame, unitFrame, formatFlowField, formatPriceField, priceFieldText, formatMoneyField, formatCashField, wholeCash } from './sale-flow-steps.js';
 import { suggestBuyShares, estimateBuy, settleBuy, restBuyQuestionAmount, buyPlanProgress, CLASS_NAMES, BUY_PRICE_BUFFER } from './buy-flow-model.js';
 import { shownPrice, trancheTypeName } from './sale-flow-model.js';
+import { formatQuoteExchangeTime } from '../shared/designsystem-number-format.js';
 
 /** VK-3b (Fable P3-7): Meldung für einen Ausführungstag in der Zukunft. @param {string} executedAt */
 export const futureBuyMessage = executedAt => `Der ${flowDate(executedAt)} liegt in der Zukunft. Einen Kauf trägst du ab seinem Ausführungstag ein.`;
@@ -12,6 +13,10 @@ const TQF_NAMES = /** @type {Record<string, string>} */ ({ '0.3': '30 % (Aktienf
 /** Teilfreistellung in Klartext. @param {number} tqf */
 export const tqfText = tqf => TQF_NAMES[String(tqf)] || `${flowNumber(tqf * 100)} %`;
 const possessive = (/** @type {string} */ name) => name.endsWith('s') ? `${name}’` : `${name}s`;
+const quoteSource = (/** @type {any} */ security) => {
+    const stand = formatQuoteExchangeTime(security?.quoteExchange, security?.asOf);
+    return stand ? ` · ${stand}` : '';
+};
 
 /** Stand einer Kaufzeile. @param {any} line */
 export function buyLineStateText(line) {
@@ -104,7 +109,7 @@ export function buyOverviewStep(doc, view) {
     if (view.suggestion) {
         const held = view.suggestion.holders.map((/** @type {any} */ row) => `${row.name} ${flowNumber(row.shares, 3)} Stück`).join(', ');
         choices.append(option('suggestion', [view.suggestion.name, el(doc, 'span', 'sale-flow-sub-inline', [view.suggestion.isin ? ` · ISIN ${view.suggestion.isin}` : '', view.suggestion.ticker ? ` · ${view.suggestion.ticker}` : ''].join(''))],
-            `${view.suggestion.holders.length > 1 ? 'Habt ihr schon' : 'Hast du schon'}: ${held}. Der Kauf wird eine neue Tranche im ${trancheTypeName({ type: view.suggestion.type })}.`, quoteChip(doc, view.suggestion)));
+            `${view.suggestion.holders.length > 1 ? 'Habt ihr schon' : 'Hast du schon'}: ${held}. Der Kauf wird eine neue Tranche im ${trancheTypeName({ type: view.suggestion.type })}.${quoteSource(view.suggestion)}`, quoteChip(doc, view.suggestion)));
     }
     choices.append(option('other', ['Anderes Wertpapier'], 'Suche nach ISIN oder Name. Die App prüft, ob der Kursdienst einen Kurs liefert.', view.choice === 'other' && view.security ? quoteChip(doc, view.security) : null));
     main.append(choices);
@@ -128,7 +133,7 @@ function securityFields(doc, view) {
         return el(doc, 'label', 'ds-field', [el(doc, 'span', '', [label, ...(hint ? [' ', el(doc, 'span', 'ds-source', hint)] : [])]), name === 'price' ? euroFrame(doc, node) : node]);
     };
     box.append(el(doc, 'p', 'sale-flow-panel-head', [el(doc, 'strong', '', security.symbol ? `${security.symbol}${security.exchange ? ` · ${security.exchange}` : ''}` : 'Ohne Treffer'),
-        el(doc, 'span', 'ds-source', security.symbol ? ` · ${security.available ? `letzter Kurs ${euroCent(shownPrice(security.price))}` : 'kein Kurs'}` : ' · ohne Kursabruf, Kurs von Hand pflegen')]));
+        el(doc, 'span', 'ds-source', security.symbol ? ` · ${security.available ? `letzter Kurs ${euroCent(shownPrice(security.price))}${quoteSource(security)}` : 'kein Kurs'}` : ' · ohne Kursabruf, Kurs von Hand pflegen')]));
     const fields = el(doc, 'div', 'sale-flow-fields buy-flow-fields');
     fields.append(input('name', 'Name', security.name || ''), input('isin', 'ISIN', security.isin || '', security.symbol ? '(Yahoo liefert keine ISIN)' : ''));
     if (!security.symbol) fields.append(input('ticker', 'Kürzel', security.ticker || '', '(freiwillig)'), input('price', 'Kurs von Hand', Number.isFinite(security.price) ? priceFieldText(security.price) : '', 'je Stück'));
@@ -182,7 +187,8 @@ function searchPanel(doc, view) {
                 const selectable = hit.status === 'ok' || hit.status === 'stale';
                 radio.disabled = !selectable; radio.checked = view.choice === 'other' && view.security?.symbol === hit.symbol;
                 radio.addEventListener('change', () => view.onPick(hit));
-                const right = hit.status === 'ok' ? el(doc, 'span', 'buy-flow-hit-price', [el(doc, 'span', '', [euroCent(shownPrice(hit.price)), ' ', el(doc, 'span', 'buy-flow-ok', '✓')])])
+                const right = hit.status === 'ok' ? el(doc, 'span', 'buy-flow-hit-price', [el(doc, 'span', '', [euroCent(shownPrice(hit.price)), ' ', el(doc, 'span', 'buy-flow-ok', '✓')]),
+                    ...(hit.quoteExchange ? [el(doc, 'small', 'sale-flow-sub', formatQuoteExchangeTime(hit.quoteExchange, hit.asOf))] : [])])
                     : hit.status === 'stale' ? el(doc, 'span', 'buy-flow-hit-price', [euroCent(shownPrice(hit.price)), el(doc, 'small', 'sale-flow-sub sale-flow-sub-warn', `Kurs vom ${flowDate(new Date(hit.asOf * 1000).toISOString())}, älter als 7 Tage`)])
                         : el(doc, 'span', 'ds-source', hit.status === 'currency' ? 'andere Währung, kein Kursabruf in €' : 'kein Kurs');
                 list.append(el(doc, 'label', `buy-flow-hit${radio.checked ? ' buy-flow-hit-selected' : ''}${selectable ? '' : ' buy-flow-hit-off'}`, [radio,
@@ -231,7 +237,7 @@ export function buyStep(doc, line, { draft, security, quoteDate: date, cash, pay
     const side = el(doc, 'div', 'sale-flow-stack');
     const estimate = estimateBuy(shares, price);
     const cost = el(doc, 'section', 'sale-flow-panel'); cost.dataset.buyFlowEstimate = '';
-    cost.append(el(doc, 'p', 'sale-flow-panel-head', [el(doc, 'strong', '', 'Was es kostet'), el(doc, 'span', 'ds-source', price > 0 ? ` · geschätzt mit ${euroCent(price)} vom ${flowDate(date, true)}` : ' · ohne Kurs')]));
+    cost.append(el(doc, 'p', 'sale-flow-panel-head', [el(doc, 'strong', '', 'Was es kostet'), el(doc, 'span', 'ds-source', price > 0 ? ` · geschätzt mit ${euroCent(price)} vom ${flowDate(date, true)}${quoteSource(security)}` : ' · ohne Kurs')]));
     const rows = el(doc, 'dl', 'sale-flow-sum');
     const sum = (/** @type {string|Node} */ term, /** @type {string} */ value, /** @type {string} */ className = '') => rows.append(el(doc, 'div', `sale-flow-sum-row ${className}`.trim(), [el(doc, 'dt', '', term), el(doc, 'dd', '', value)]));
     sum(`${flowNumber(shares)} Stück × ${euroCent(price)}`, euroCent(estimate.gross));
@@ -355,7 +361,7 @@ export function buySettleStep(doc, line, { draft, security, plan, tranche, onCha
     const rows = el(doc, 'dl', 'sale-flow-sum');
     const sum = (/** @type {string} */ term, /** @type {string} */ value) => rows.append(el(doc, 'div', 'sale-flow-sum-row', [el(doc, 'dt', '', term), el(doc, 'dd', '', value)]));
     sum('ISIN · Kürzel', [security?.isin || '—', security?.ticker || '—'].join(' · '));
-    if (security?.price > 0) sum('Letzter Kurs', `${euroCent(shownPrice(security.price))}${security.asOf ? ` am ${flowDate(new Date(security.asOf * 1000).toISOString())}` : ''}`);
+    if (security?.price > 0) sum('Letzter Kurs', `${euroCent(shownPrice(security.price))}${security.asOf ? ` am ${flowDate(new Date(security.asOf * 1000).toISOString())}` : ''}${quoteSource(security)}`);
     sum('Kaufdatum', flowDate(draft.executedAt) || '—');
     sum('Stück', Number.isFinite(values.shares) ? flowNumber(values.shares, Number.isInteger(values.shares) ? 0 : 3) : '—');
     sum('Kaufpreis je Stück, mit Gebühren', euroCent(values.pricePerShare));

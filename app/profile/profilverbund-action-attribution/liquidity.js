@@ -18,12 +18,13 @@ export function allocateLiquiditySources(totalAmount, profiles, mode) {
 
     const allocations = new Array(entries.length).fill(0);
     // FR-80: Bei „Eine Person trägt“ zuerst ihre Liquidität, dann die der anderen wie steueroptimiert.
+    // FR-27 (NG-11): Steueroptimiert folgt der Personenreihenfolge aus Haushalt & Plan wie die Auszahlung, je Person TG vor MM.
     const carrierId = activeCarrier(mode, profiles.map(profile => ({ profileId: profile?.profileId })));
     if (mode === 'tax_optimized' || String(mode).startsWith('one_carries')) {
         let remaining = totalCents;
         entries.slice()
             .sort((left, right) => Number(right.profile.profileId === carrierId) - Number(left.profile.profileId === carrierId)
-                || String(left.profile.profileId).localeCompare(String(right.profile.profileId)))
+                || left.index - right.index)
             .forEach(entry => {
                 const used = Math.min(remaining, entry.capacityCents);
                 allocations[entry.index] = used;

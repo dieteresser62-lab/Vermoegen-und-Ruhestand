@@ -170,6 +170,13 @@ try {
     applyPersonImmobilienToDom([...homes, { ...homes[0], id: 'ferienhaus', bezeichnung: 'Ferienhaus', wert: 150000 }], doc);
     refresh();
     assertEqual(`${count('homeSelf')}|${count('homeRented')}`, '2|1', 'IMO-1b: zwei selbst genutzte Immobilien zählen zwei');
+    // JV-1: Eine Wertänderung im Folgemonat setzt einen unverändert gelassenen Stand auf den aktuellen Monat.
+    setAppTestDate('2026-11-18');
+    table.querySelector('[data-home-open="haus"]').click();
+    doc.getElementById('home-wert').value = '460000'; doc.getElementById('home-wert').dispatchEvent(new FakeEvent('input'));
+    table.querySelector('[data-home-action="save"]').click();
+    assertEqual(readImmobilien(field.value).filter(entry => ['haus', 'ferienhaus'].includes(entry.id)).map(entry => `${entry.wert}/${entry.stand}`).join(','), '460000/2026-11,150000/2026-10',
+        'JV-1: Wertänderung setzt den Stand auf 11.2026, die unveränderte Immobilie behält ihren Stand');
 } finally {
     setAppTestDate(previousDate);
     globalThis.document = previousDocument;

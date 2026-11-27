@@ -5,8 +5,6 @@ import { importFullPersistenceBackup, buildFullPersistenceBackup, bindFullBackup
 import { StorageManager } from '../app/balance/balance-storage.js';
 import { CONFIG } from '../app/balance/balance-config.js';
 import { PROFILE_STORAGE_KEYS } from '../app/profile/profile-state.js';
-import { createSnapshotHandlers } from '../app/balance/balance-binder-snapshots.js';
-import { UIRenderer } from '../app/balance/balance-renderer.js';
 import { BALANCE_UPDATE_MODE, persistBalanceUpdate } from '../app/balance/balance-update-pipeline.js';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { bootstrapProfileContext, saveCurrentProfileFromLocalStorage, PROFILE_LIVE_BASE_KEY } from '../app/profile/profile-storage.js';
@@ -145,26 +143,13 @@ for (const full of [false, true]) for (const foreign of ['none', 'input', 'commi
     const f = fixture({ [CONFIG.STORAGE.LS_KEY]: initialState, [PROFILE_STORAGE_KEYS.registry]: registry, [PROFILE_STORAGE_KEYS.current]: 'a', [PROFILE_STORAGE_KEYS.active]: 'a', [CONFIG.STORAGE.MIGRATION_FLAG]: '1', ui_panel_state: 'technical' });
     await initialize(f);
     const targetState = JSON.stringify({ inputs: { aktuellesAlter: 68 }, marker: 'snapshot bytes' });
-    const saved = await SnapshotArchive.createSnapshot({ id: 'restore-fixture', activeProfileId: 'a', kind: full ? 'full-backup-import-recovery' : 'manual', records: { ...f.records, [CONFIG.STORAGE.LS_KEY]: targetState } });
+    const saved = await SnapshotArchive.createSnapshot({ id: 'restore-fixture', activeProfileId: 'a', kind: full ? 'full-backup-import-recovery' : 'monthly-close-pre-mutation', records: { ...f.records, [CONFIG.STORAGE.LS_KEY]: targetState } });
     f.gates.write1 = deferred(); let reloads = 0;
     const listeners = new Map();
     const doc = { addEventListener(type, listener) { listeners.set(type, listener); }, removeEventListener(type) { listeners.delete(type); } };
-    const original = { restore: StorageManager.restoreSnapshot, error: UIRenderer.handleActionError, clear: UIRenderer.clearActionError };
-    const errors = [];
-    UIRenderer.handleActionError = (error, scope) => errors.push({ error, scope });
-    UIRenderer.clearActionError = () => {};
-    StorageManager.restoreSnapshot = (key, handle, options) => original.restore.call(StorageManager, key, handle, { ...options, guard: f.guard, document: doc, reload: () => { reloads++; } });
-    const confirmation = deferred(); let questions = 0;
-    const handlers = createSnapshotHandlers({ dom: {}, appState: {},
-        decide: () => { questions++; return confirmation.promise; },
-        navigationLifecycle: createNavigationOperationLifecycle({ guard: f.guard }) });
-    try {
-    const task = handlers.handleSnapshotActions({ target: { closest: selector => selector === '.restore-snapshot' ? { dataset: { key: saved.id } } : null } });
-    await tick();
-    assertEqual(questions, 1, 'Echter Snapshotrestore wartet auf die Seitendialogentscheidung');
-    assertEqual(f.writes, 0, 'Offene Restoreentscheidung startet keinen Bestandswrite');
-    assertEqual(reloads, 0, 'Offene Restoreentscheidung lädt nicht neu');
-    confirmation.resolve(true);
+    // SV-1: Die Rückfrage gehört der Datenseite; hier läuft das Zurückholen direkt über den Balance-Dienst.
+    const task = StorageManager.restoreSnapshot(saved.id, { guard: f.guard, document: doc, reload: () => { reloads++; } });
+    {
     await tick(); assert(f.entered.write1, 'Echter Snapshotrestore erreicht Bestandswrite');
     assert(unload(f.guard), 'Restore schützt nativen Reload bis Bestätigung');
     if (foreign === 'dom-input') listeners.get('input')();
@@ -178,9 +163,8 @@ for (const full of [false, true]) for (const foreign of ['none', 'input', 'commi
     assertEqual(reloads, foreign !== 'none' ? 0 : 1, 'Neue Eingaben verhindern Reload; unveränderter Erfolg lädt einmal');
     assertEqual(result.status, foreign === 'none' ? 'restored' : 'reload_required', 'Restore unterscheidet gespeicherten Stand ohne Reload');
     if (foreign !== 'none') {
-        assertEqual(errors[0]?.scope, 'snapshots', 'Gespeicherter Restore ohne Reload meldet sich am Snapshot-Aktionsort');
-        assert(errors[0]?.error.message.includes('Snapshot gespeichert') && errors[0]?.error.message.includes('nicht neu geladen')
-            && errors[0]?.error.message.includes('jetzt neu laden'), 'Snapshot-Hinweis erklärt Speicherung und erforderlichen Reload');
+        assert(result.message.includes('Snapshot gespeichert') && result.message.includes('nicht neu geladen')
+            && result.message.includes('jetzt neu laden'), 'Snapshot-Hinweis erklärt Speicherung und erforderlichen Reload');
         let inputError;
         try {
             persistBalanceUpdate({ mode: BALANCE_UPDATE_MODE.PERSIST_INPUTS, storageManager: StorageManager,
@@ -192,16 +176,13 @@ for (const full of [false, true]) for (const foreign of ['none', 'input', 'commi
         try { persistence.setItemSync(PROFILE_STORAGE_KEYS.registry, registry); } catch (error) { profileError = error; }
         assertEqual(profileError?.code, 'PERSISTENCE_RELOAD_REQUIRED', 'Veraltete Profilkopien können Restore ebenfalls nicht überschreiben');
         await persistence.flush();
-    } else assertEqual(errors.length, 0, 'Bestätigter Reload braucht keinen Fehlerhinweis');
+    }
     assertEqual(listeners.size, 0, 'Restoreende entfernt gewöhnliche Eingabelistener');
     assertEqual(f.records[CONFIG.STORAGE.LS_KEY], targetState, 'Restorewerte bleiben exakt');
     assertEqual(f.records.ui_panel_state, 'technical', 'Technische Einstellungen bleiben erhalten');
     assertEqual(JSON.parse(f.records[PROFILE_STORAGE_KEYS.registry]).profiles.b.data.profile_tagesgeld, '777', 'Anderes Profil bleibt erhalten');
     assertEqual(JSON.stringify(f.snapshots.get(saved.id)), JSON.stringify(saved), 'Archivierte Records werden nie verändert');
     f.guard.revokeNative();
-    } finally {
-        StorageManager.restoreSnapshot = original.restore; UIRenderer.handleActionError = original.error;
-        UIRenderer.clearActionError = original.clear;
     }
 }
 for (const outcome of ['cancelled', 'rollback', 'flush']) {
@@ -216,7 +197,7 @@ for (const outcome of ['cancelled', 'rollback', 'flush']) {
     const originalFlush = persistence.flush;
     if (outcome === 'flush') persistence.flush = async () => false;
     let result, failure, reloads = 0;
-    try { result = await StorageManager.restoreSnapshot(saved.id, null, { guard, reload: () => { reloads++; } }); }
+    try { result = await StorageManager.restoreSnapshot(saved.id, { guard, reload: () => { reloads++; } }); }
     catch (error) { failure = error; }
     finally { persistence.flush = originalFlush; }
     assertEqual(reloads, 0, `${outcome}: Restoreabschluss lädt nicht neu`);
@@ -292,6 +273,48 @@ for (const rollbackFails of [false, true]) {
         assertEqual(reloads, 0, 'Restorefehler lädt nicht neu');
         assertEqual(f.snapshots.size, 1, 'Restorefehler erhält Recoverypunkt');
     } finally { globalThis.FileReader = oldReader; }
+}
+// HL-1 (H-04): Nach dem Einspielen ohne Neuladen sperrt die alte Seite wie nach dem Zurückholen eines Punkts; ein Rückbau gibt frei.
+for (const outcome of ['input', 'reload', 'rollback']) {
+    const f = fixture(); await initialize(f);
+    const handlers = {}, status = { dataset: {}, textContent: '' };
+    const button = { addEventListener() {} }, fileInput = { files: [{}], value: 'chosen', addEventListener(type, fn) { handlers[type] = fn; } };
+    const oldReader = globalThis.FileReader; let reloads = 0, owner;
+    globalThis.FileReader = class { readAsText() { this.result = JSON.stringify(backup()); this.onload(); } };
+    if (outcome === 'input') f.gates.write1 = deferred();
+    if (outcome === 'rollback') f.gates.failWrite = 1;
+    try {
+        bindFullBackupImport({ document: {}, button, fileInput, status, guard: f.guard, confirmImport: () => true,
+            reload: () => { reloads++; if (outcome === 'reload') throw new Error('RELOAD_REFUSED'); },
+            createRecoveryBackup: async () => ({ skipped: false }) });
+        const task = handlers.change();
+        if (outcome === 'input') {
+            for (let i = 0; i < 50 && !f.entered.write1; i++) await tick();
+            assert(f.entered.write1, 'H-04: Einspielen erreicht den Bestandswrite');
+            owner = f.guard.register('new-input', { read: () => ({ dirty: true, revision: 1 }) });
+            f.gates.write1.resolve();
+        }
+        await task;
+        let writeError;
+        try { persistence.setItemSync('sim_old', 'veraltete Eingabe'); } catch (error) { writeError = error; }
+        await persistence.flush();
+        if (outcome === 'rollback') {
+            assert(status.dataset.kind === 'error' && f.records.sim_new === undefined, 'H-04: Einspielen wurde zurückgenommen');
+            assertEqual(writeError?.code, undefined, 'H-04: nach bestätigter Rücknahme bleibt die Seite nutzbar');
+            assertEqual(reloads, 0, 'H-04: Rücknahme lädt nicht neu');
+            continue;
+        }
+        assertEqual(f.records.sim_new, 'target: 2.00', `${outcome}: Sicherung ist eingespielt`);
+        assertEqual(reloads, outcome === 'reload' ? 1 : 0, `${outcome}: Neuladen ist gescheitert`);
+        if (outcome === 'input') assert(status.textContent.includes('nicht neu geladen') && status.textContent.includes('jetzt neu laden'),
+            'H-04: Status nennt den nötigen Neuladevorgang wie beim Zurückholen');
+        assertEqual(writeError?.code, 'PERSISTENCE_RELOAD_REQUIRED', `${outcome}: spätere Eingabe der alten Seite wird abgewiesen`);
+        assert(writeError?.message.includes('Eingaben werden bis dahin nicht gespeichert'), `${outcome}: Sperre erklärt sich wie beim Zurückholen`);
+        assertEqual(f.records.sim_old, undefined, `${outcome}: eingespielter Stand bleibt unverändert`);
+        let profileError;
+        try { persistence.setItemSync(PROFILE_STORAGE_KEYS.registry, '{}'); } catch (error) { profileError = error; }
+        assertEqual(profileError?.code, 'PERSISTENCE_RELOAD_REQUIRED', `${outcome}: auch Profilkopien schreiben nicht mehr`);
+    } finally { globalThis.FileReader = oldReader; owner?.unregister(); }
 }
 for (const phase of ['preparing', 'running', 'commit', 'decision']) {
     const f = fixture(); await initialize(f);

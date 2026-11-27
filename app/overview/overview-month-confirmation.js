@@ -4,11 +4,11 @@ import { bindClosePriceActions } from '../shared/close-price-actions.js';
 import { quoteIssueReason } from '../tranches/tranchen-startup-prices.js';
 import { createTagesgeldFields, parseMonthlyCashInput } from '../shared/tagesgeld-fields.js';
 import { createCloseDialog, createCloseResult, dialogElements, closeImportProgress, advanceCloseImport, closeReadinessText, createCloseTiles } from '../shared/close-dialog.js';
-import { overviewPricesDone, overviewPriceLabel } from './overview-model.js';
+import { annualXetraQuoteNeedsReview, overviewPricesDone, overviewPriceLabel } from './overview-model.js';
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
 import { appendExampleExpensesIcon, exampleExpensesLabel } from '../shared/designsystem-icons.js';
 import { createCashProposals } from './overview-cash-proposal.js';
-import { computeSpent } from '../balance/balance-expenses-metrics.js';
+import { computeSpent, expenseConvention } from '../balance/balance-expenses-metrics.js';
 import { readCloseExpenseNeeds, expenseDeviation, expenseNeedsCoverage } from '../expenses/expenses-needs.js';
 
 const money = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 2 }) : '—';
@@ -59,9 +59,10 @@ export const readMonthCloseNeeds = (model, year, storage) => readCloseExpenseNee
 /** Dieselben Anzeigequellen für Karte und Dialog; keine neuen Abschlussbedingungen. */
 /**
  * @param model Bereits gelesene Anzeigeprojektion.
+ * @param {{ annual?: boolean }} [options] Börsenprüfung für den Jahresabschluss.
  * @returns Vorbereitungsschritte des Monatsabschlusses aus den Anzeigequellen.
  */
-export function projectOverviewMonthSteps(model = {}) {
+export function projectOverviewMonthSteps(model = {}, { annual = model.occasion?.kind === 'annual' } = {}) {
     const expenses = model.expenses || {}, summary = model.summary;
     const needs = model.expenseNeeds ?? readMonthCloseNeeds(model, expenses.year ?? model.occasion?.previousYear);
     const split = needs?.months.find(month => month.month === (expenses.month ?? model.occasion?.previousMonth));
@@ -79,11 +80,16 @@ export function projectOverviewMonthSteps(model = {}) {
     const percentage = budgetDone && model.expenseBudget > 0
         ? ` · ${formatDisplayNumber(Math.abs(difference) / model.expenseBudget * 100, { fractionDigits: 1 })} %` : '';
     const count = (model.members || []).reduce((sum, person) => sum + (person.count || 0), 0);
+    const xetraOpen = annual && model.priceTranches?.some(annualXetraQuoteNeedsReview);
     const steps = [
-        { id: 'prices', chip: 'Kurse', title: 'Kurse prüfen', continueLabel: 'Weiter zu den Kursen', done: model.now ? overviewPricesDone(model) : false,
-            result: model.now ? overviewPriceLabel(model) + (Number.isInteger(model.priceReport?.completed) ? ` · ${model.priceReport.completed} von ${model.priceReport.total} im Abruf bearbeitet` : ` · ${count} Tranchen`) : 'Kursstand unbekannt' },
+        { id: 'prices', chip: 'Kurse', title: 'Kurse prüfen', continueLabel: 'Weiter zu den Kursen', done: model.now ? overviewPricesDone(model, { annual }) : false,
+            ...(xetraOpen ? { statusLabel: 'Xetra prüfen', resultTone: 'warning' } : {}),
+            result: xetraOpen ? 'Xetra-Kurse fehlen für einzelne Tranchen. Wähle „Kurse aktualisieren“.'
+                : model.now ? overviewPriceLabel(model) + (Number.isInteger(model.priceReport?.completed) ? ` · ${model.priceReport.completed} von ${model.priceReport.total} im Abruf bearbeitet` : ` · ${count} Tranchen`) : 'Kursstand unbekannt' },
         { id: 'expenses', chip: 'Ausgaben', title: `Ausgaben ${previous}`, continueLabel: 'Weiter zu den Ausgaben', done: Boolean(expenses.complete),
-            result: expenses.complete ? `${money(expenses.spent)} · vollständig${split?.withBreakdown ? ` · Floor ${money(split.floor)} · Flex ${money(split.flex)}` : ''}` : `Ausgaben fehlen noch${missing ? ': ' + missing : ''}` },
+            // NR-1 (M5): Ohne vollständigen Import trägt der Reiter auch nach dem Ansehen „Import fehlt“ im Warnton. Er sperrt den Abschluss weiter nicht.
+            ...(expenses.complete ? {} : { statusLabel: 'Import fehlt', resultTone: 'warning' }),
+            result: expenses.complete ? `${money(expenses.spent)} · vollständig${split?.withBreakdown ? ` · Grundbedarf ${money(split.floor)} · Flex ${money(split.flex)}` : ''}` : `Ausgaben fehlen noch${missing ? ': ' + missing : ''}` },
         { id: 'budget', chip: 'Budgetvergleich', title: 'Mit dem Budget vergleichen', continueLabel: 'Weiter zum Budgetvergleich', done: budgetDone, state: budgetStatus === 'missing' ? 'not_applicable' : 'open',
             resultTone: budgetDone && difference > 0 ? 'warning' : '',
             result: budgetStatus === 'missing' ? `Entfällt: Für ${previous} ${expenses.year || model.occasion?.previousYear} ist kein passendes Budget vorhanden.`
@@ -136,12 +142,13 @@ function expensesDetails(doc, model) {
     head.append(headings); const body = node('tbody');
     const rows = people.map(person => expenses.rows?.find(row => row.id === person.id));
     const categories = [...new Set(rows.flatMap(row => Object.keys(row?.categories || {})))];
+    const directions = rows.map(row => row?.direction ?? expenseConvention(row?.categories));
     for (const category of categories) {
-        const tr = node('tr'), amounts = rows.map(row => row?.present ? (computeSpent(row.categories).sum < 0 ? -1 : 1) * (row.categories?.[category] ?? 0) : null);
+        const tr = node('tr'), amounts = rows.map((row, index) => row?.present ? directions[index] * (row.categories?.[category] ?? 0) : null);
         tr.append(node('th', category), ...amounts.map(amount => node('td', amount === null ? 'Import fehlt' : money(amount))),
             node('td', money(amounts.reduce((sum, amount) => sum + (amount ?? 0), 0)))); body.append(tr);
     }
-    const totals = rows.map(row => row?.present ? row.categories ? computeSpent(row.categories).spent : row.spent : null);
+    const totals = rows.map((row, index) => row?.present ? row.categories ? computeSpent(row.categories, directions[index]).spent : row.spent : null);
     const total = node('tr');
     total.append(node('th', 'Summe:'), ...totals.map(value => node('td', value === null ? 'Import fehlt' : money(value))),
         node('td', `${money(totals.reduce((sum, value) => sum + (value ?? 0), 0))}${expenses.complete ? '' : ' · unvollständig'}`));
@@ -157,7 +164,7 @@ function expensesDetails(doc, model) {
  * @param options Optionen und Abhängigkeiten des bestehenden Aufrufers.
  * @returns Schreibfreier Inhalt des gewählten Vorbereitungsschritts.
  */
-export function createOverviewStepContent({ doc, model, step, status, wealthStatus }) {
+export function createOverviewStepContent({ doc, model, step, status, annual = model.occasion?.kind === 'annual' }) {
     const node = (tag, text) => { const element = doc.createElement(tag); if (text !== undefined) element.textContent = text; return element; };
     const button = text => { const el = node('button', text); el.type = 'button'; el.className = 'ds-button ds-button-secondary'; return el; };
     const body = node('div');
@@ -177,6 +184,10 @@ export function createOverviewStepContent({ doc, model, step, status, wealthStat
         overview.append(node('p', `Abrufzeit: ${Number.isFinite(retrieved.getTime()) ? retrieved.toLocaleString('de-DE') : 'noch kein bestätigter Abruf'}`));
         const quote = new Date(model.quoteDate || NaN);
         overview.append(node('p', `Ältestes Kursdatum: ${Number.isFinite(quote.getTime()) ? quote.toLocaleString('de-DE') : 'unbekannt'}`), refresh);
+        if (annual && model.priceTranches?.some(annualXetraQuoteNeedsReview)) {
+            const note = node('p', 'Für einzelne .DE-Tranchen ist kein Xetra-Kurs belegt. „Kurse aktualisieren“ fragt nur die eingetragene Börse ab.');
+            note.className = 'ds-note ds-note-warning'; overview.append(note);
+        }
         const table = node('table'); table.className = 'ds-table close-dialog-table';
         const head = node('thead'), headings = node('tr');
         for (const label of ['Person', 'Tranche', 'Kurs', 'Status']) headings.append(node('th', label));
@@ -185,10 +196,13 @@ export function createOverviewStepContent({ doc, model, step, status, wealthStat
         const lots = results.length ? results : model.priceTranches || [];
         for (const result of lots) {
             const name = result.profileName || model.members?.find(p => p.id === result.profileId)?.name || 'Unbenannte Person';
-            const stored = model.priceTranches?.find(lot => lot.profileId === result.profileId && lot.trancheId === result.trancheId);
+            const stored = model.priceTranches?.find(lot => lot.profileId === result.profileId && (lot.trancheId || lot.id) === (result.trancheId || result.id));
+            const issue = result.status === 'updated' ? 'gespeichert' : result.status ? quoteIssueReason(result) : 'gespeicherter Stand';
+            const exchange = stored?.quoteExchange
+                ? `${stored.quoteExchange} · nicht Xetra` : 'Xetra-Kurs nicht belegt';
             const row = node('tr'); row.append(node('td', name), node('td', result.trancheName || result.name || result.trancheId || 'Bestand'),
                 node('td', money(result.quote?.price ?? result.tranche?.currentPrice ?? stored?.currentPrice ?? result.currentPrice)),
-                node('td', result.status === 'updated' ? 'gespeichert' : result.status ? quoteIssueReason(result) : 'gespeicherter Stand')); rows.append(row);
+                node('td', annual && annualXetraQuoteNeedsReview(stored) ? `${issue} · ${exchange}` : issue)); rows.append(row);
         }
         table.append(head, rows); details.append(table);
         const technical = node('details'); technical.dataset.closePricesTechnical = ''; technical.append(node('summary', 'Technik'), node('pre', JSON.stringify({ status: report?.status, results: (report?.results || []).map(r => ({ profileId: r.profileId, trancheId: r.trancheId, status: r.status, code: r.code })) }, null, 2)));
@@ -236,7 +250,7 @@ export function createOverviewStepContent({ doc, model, step, status, wealthStat
             all.setAttribute('aria-label', all.title);
             all.dataset.overviewExample = 'all'; body.append(all);
         }
-        body.append(status, wealthStatus, expensesDetails(doc, model));
+        body.append(status, expensesDetails(doc, model));
     }
     if (step.id === 'budget') {
         const progress = closeImportProgress(model);
@@ -254,7 +268,7 @@ export function createOverviewStepContent({ doc, model, step, status, wealthStat
         if (split?.withBreakdown) {
             const tiles = createCloseTiles({ doc, items: monthlyNeedsTiles(needs, split, year) });
             tiles.className += ' close-dialog-needs-tiles'; body.append(tiles);
-            body.append(node('p', `Ein einzelner Monat schwankt. Maßgeblich ist der Jahresdurchschnitt auf der Seite Ausgaben: Floor ${money(needs.avgMonthly.floor)} · Flex ${money(needs.avgMonthly.flex)} im Monat.${needs.monthsWithoutBreakdown ? ' ' + expenseNeedsCoverage(needs) : ''}`));
+            body.append(node('p', `Ein einzelner Monat schwankt. Maßgeblich ist der Jahresdurchschnitt auf der Seite Ausgaben: Grundbedarf ${money(needs.avgMonthly.floor)} · Flex ${money(needs.avgMonthly.flex)} im Monat.${needs.monthsWithoutBreakdown ? ' ' + expenseNeedsCoverage(needs) : ''}`));
         }
         if (!model.expenses?.complete && step.state !== 'not_applicable') {
             const missing = (model.members || []).filter(p => !model.expenses?.rows?.some(r => r.id === p.id && r.present));
@@ -275,7 +289,7 @@ export function monthlyNeedsTiles(needs, month, year) {
     return ['floor', 'flex'].map(key => {
         // FR-43: Floor des Monats mit dessen festen Ausgaben; Flex nach Regeln ist in jedem Monat gleich.
         const plan = needs.plans[key] === null ? null : key === 'floor' && needs.plans.floorMonths ? needs.plans.floorMonths[month.month - 1] : needs.plans[key] / 12;
-        return { label: `${key === 'floor' ? 'Floor' : 'Flex'} ${monthName(year, month.month)}`, value: money(month[key]),
+        return { label: `${key === 'floor' ? 'Grundbedarf' : 'Flex'} ${monthName(year, month.month)}`, value: money(month[key]),
             detail: `${key === 'floor' ? 'Grundbedarf' : `Flex ${year} nach Regeln`}: ${money(plan)} im Monat · ${expenseDeviation(month[key], plan, money).replace('über Plan', 'darüber').replace('unter Plan', 'darunter')}`,
             tone: plan !== null && month[key] > plan ? 'warning' : '' };
     });
@@ -323,7 +337,6 @@ export function requestOverviewMonthConfirmation({ doc = document, signal, retur
             catch { return input.value !== initial[index]; }
         }) || false;
         const status = node('p'); status.id = 'overviewExampleExpensesStatus'; status.setAttribute('role', 'status');
-        const wealthStatus = node('p'); wealthStatus.id = 'overviewExpensesWealthStatus'; wealthStatus.dataset.errorChannel = 'expenses-wealth'; wealthStatus.setAttribute('role', 'status');
         let currentModel = model, completed = false, importActive = false;
         const link = (href, text) => {
             const anchor = node('a', text); anchor.setAttribute('href', href); anchor.setAttribute('data-profile-handoff', '');
@@ -331,10 +344,10 @@ export function requestOverviewMonthConfirmation({ doc = document, signal, retur
             return anchor;
         };
         const contents = new Map();
-        const project = nextModel => projectOverviewMonthSteps(nextModel).map(step => {
+        const project = nextModel => projectOverviewMonthSteps(nextModel, { annual: false }).map(step => {
             const body = node('div');
             if (['prices', 'expenses', 'budget'].includes(step.id)) {
-                body.append(createOverviewStepContent({ doc, model: nextModel, step, status, wealthStatus }));
+                body.append(createOverviewStepContent({ doc, model: nextModel, step, status, annual: false }));
                 preserveCloseDetails(contents.get(step.id), body); contents.set(step.id, body);
             }
             if (step.id === 'cash') {

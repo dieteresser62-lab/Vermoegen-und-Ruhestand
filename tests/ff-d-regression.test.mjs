@@ -1,3 +1,4 @@
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
 import { readMU1Hash } from './helpers/mu-1-expectations.mjs';
 import { readGL1References } from './helpers/gl-1-expectations.mjs';
 import { readAN1Hash } from './helpers/an-1-expectations.mjs';
@@ -118,7 +119,7 @@ for (const [key, expected] of Object.entries({
     engines: 'b67d8f07fcffa09faf1cf7a83652a266364263ffa132bd7285cf4d27f00bb343',
     households: 'b36aa608d5c0451332c75efad00f8a1c6cb6d7f5a1cd5be66097494e1e0e545d',
     singles: 'c836f6a70bd12b327acff8ff09dea88a0963ea8624dfe7c0190cf258dba9b697'
-})) assertEqual(createHash('sha256').update(JSON.stringify(unchanged[key])).digest('hex'), readGL1References(readAN1Hash(readJB2Hash(expected))),
+})) assertEqual(createHash('sha256').update(JSON.stringify(unchanged[key])).digest('hex'), readKR1cReferences(readGL1References(readAN1Hash(readJB2Hash(expected)))),
     `Vollständige ${key}-Ergebnisse mit FR-20/33/34-Diagnosen`);
 
 {

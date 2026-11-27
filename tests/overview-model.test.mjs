@@ -13,7 +13,7 @@ import { preflightAnnualPeriod } from '../app/balance/balance-annual-period.js';
 import { persistenceStorage, resetPersistenceForTests, resetPersistenceRuntimeForTests } from '../app/shared/persistence-facade.js';
 import { loadProfileRegistry } from '../app/profile/profile-registry.js';
 import { storeOverviewSummary, storeMonthProvision } from '../app/overview/overview-storage.js';
-import { beginSimulationSummary, completeSimulationSummary, workshopProvenanceFor } from '../app/simulator/simulator-overview-summary.js';
+import { beginSimulationSummary, completeSimulationSummary } from '../app/simulator/simulator-overview-summary.js';
 import { OVERVIEW_SIMULATION_KEY, projectSimulationSummaries } from '../app/overview/overview-simulation-summary.js';
 import { SummaryRenderer } from '../app/balance/balance-renderer-summary.js';
 import { createPresentationTestDocument } from './designsystem-source-contract.mjs';
@@ -72,13 +72,8 @@ assertEqual(model.summary.status, 'fest', 'Leser gleicht vorläufige Commit-Summ
 assertEqual(isPlanFixed({ ...meta, pendingCommit: { periodId: 'calendar-year:2025' } }, 2026), false, 'Recovery ist kein fester Jahresplan');
 registry.profiles.b.data[CONFIG.STORAGE.LS_KEY] = JSON.stringify({ annualPeriodMetadata: { ...meta, pendingCommit: { periodId: 'calendar-year:2025' } } });
 assertEqual(projectOverview({ registry, activeId: 'a', liveData: registry.profiles.a.data, now }).summary.status, 'vorläufig', 'Haushalt erst fest, wenn alle Mitglieder bestätigen');
-registry.profiles.b.meta.belongsToHousehold = false;
-assertEqual(projectOverview({ registry, activeId: 'a', liveData: registry.profiles.a.data, now }).summary, null, 'Geänderte Mitgliedschaft verwendet keinen alten Haushalt');
-registry.profiles.a.meta.belongsToHousehold = false;
-model = projectOverview({ registry, activeId: 'a', liveData: data, now });
-assertEqual(model.members.length, 0, 'Leere Auswahl ersetzt nicht alle Profile');
-assertEqual(model.household, null, 'Leere Auswahl erfindet keine Summe');
-registry.profiles.a.meta.belongsToHousehold = true; registry.profiles.b.meta.belongsToHousehold = true;
+const withoutB = structuredClone(registry); delete withoutB.profiles.b;
+assertEqual(projectOverview({ registry: withoutB, activeId: 'a', liveData: registry.profiles.a.data, now }).summary, null, 'Geänderte Haushaltszusammensetzung verwendet keinen alten Haushalt');
 registry.profiles.b.data.depot_tranchen = '{broken';
 assertEqual(projectOverview({ registry, activeId: 'a', liveData: data, now }).complete, false, 'Beschädigter Haushaltsbestand ist unvollständig');
 assertEqual(projectOverview({ registry: null, activeId: null, now }).available, false, 'Recovery legt keine Defaults an');
@@ -124,7 +119,8 @@ assertEqual(deriveOverviewOccasion({ ...march, metadata: [{ ...completed(2026), 
 assertEqual(deriveOverviewOccasion({ ...march, scope, metadata: [completed(2026), completed(2025)] }).kind, 'annual', 'Haushalt braucht jeden Jahresabschluss');
 assertEqual(deriveOverviewOccasion({ ...march, scope, metadata: [completed(2026), completed(2026)], provisions: [provision('2027-02', scope), null] }).kind, 'monthly', 'Haushalt braucht jeden Monatshaken');
 assertEqual(deriveOverviewOccasion({ ...march, provisions: [provision('2027-02', scope)] }).kind, 'monthly', 'Haushaltshaken täuscht keinen Einzelhaken vor');
-for (const [days, warning, recommended] of [[7, false, false], [7 + 1 / 86400, false, true], [29.999, false, true], [30, true, true]]) {
+// ST7-B (Befund 1047): Pille und Empfehlung zählen Kalendertage wie der Text; sieben Tage und eine Sekunde bleiben sieben Kalendertage.
+for (const [days, warning, recommended] of [[7, false, false], [7 + 1 / 86400, false, false], [8, false, true], [29, false, true], [30, true, true]]) {
     const age = overviewBackupAge(now, new Date(now.getTime() - days * 86400000).toISOString());
     assertEqual(age.warning, warning, days + ' Tage: Pillengrenze unabhängig');
     assertEqual(age.recommended, recommended, days + ' Tage: Fokusempfehlung unabhängig');
@@ -136,9 +132,10 @@ assertEqual(projectFocusExpenses(expenseStore, singleScope, 2026, 12).complete, 
 assertEqual(projectFocusExpenses(expenseStore, scope, 2026, 12).spent, 25, 'Ausgaben verwenden gefilterte Personen und bestehende Vorzeichen');
 assertEqual(projectFocusExpenses(expenseStore, scope, 2027, 12).complete, false, 'Fehlender Monat ist kein Nullimport');
 assertEqual(JSON.stringify(expenseStore), expenseBytes, 'Fokusausgaben bleiben schreibfrei');
-for (const [page, hash] of [['balance', 'abschluss'], ['balance', 'jahresabschluss'], ['balance', 'ausgaben'], ['balance', 'ausgaben-import'], ['simulator', 'backtest'], ['simulator', 'monte-carlo'], ['simulator', 'annahmen'], ['simulator', 'werkstatt'], ['manager', 'personen']]) {
+for (const [page, hash] of [['balance', 'abschluss'], ['balance', 'jahresabschluss'], ['balance', 'ausgaben'], ['balance', 'ausgaben-import'], ['simulator', 'backtest'], ['simulator', 'monte-carlo'], ['simulator', 'annahmen'], ['manager', 'personen']]) {
     assertEqual(parseOverviewTarget(page, { hash: '#' + hash }).target, hash === 'abschluss' ? 'jahresabschluss' : hash, 'Bekanntes Ziel: ' + hash);
 }
+assertEqual(parseOverviewTarget('simulator', { hash: '#werkstatt' }), null, 'WS-1: Ziel der entfernten Werkstatt löst nichts aus');
 assertEqual(parseOverviewTarget('balance', { hash: '#ausgaben-import', search: '?year=2026&month=12' }).month, 12, 'Validierte Monatsauswahl');
 for (const search of ['?year=abc', '?year=1800', '?year=2026&month=13', '?year=2026&month=0', '?month=2', '?year=2026&year=2027', '?year=2026&month=01', '?execute=true']) {
     assertEqual(parseOverviewTarget('balance', { hash: '#ausgaben', search }), null, 'Ungültige Parameter lösen nichts aus: ' + search);
@@ -265,11 +262,10 @@ assertEqual(formerProjection.summary.scope.key, scope.key, 'Haushaltsfixture hat
 assertEqual(formerProjection.comparison.reason, missingScopeReason, 'Vollständige Haushaltsprojektion sperrt trotz passender Summary');
 assertEqual(formerProjection.comparison.delta, null, 'Vollständige Haushaltsprojektion erfindet keine Differenz');
 assertEqual(formerProjection.comparison.percent, null, 'Vollständige Haushaltsprojektion erfindet keinen Prozentvergleich');
-for (const removed of [false, true]) {
+{
     const switched = structuredClone(formerHousehold);
     switched.profiles.a.data = switchData(400, singleScope);
-    if (removed) delete switched.profiles.b;
-    else switched.profiles.b.meta.belongsToHousehold = false;
+    delete switched.profiles.b;
     const before = JSON.stringify(switched);
     const projected = projectOverview({ registry: switched, activeId: 'a', liveData: switched.profiles.a.data, now: switchNow });
     assertEqual(projected.scope.key, singleScope.key, 'Heute ist A allein im ausgewählten Umfang');
@@ -278,7 +274,7 @@ for (const removed of [false, true]) {
     const direct = projectOverviewWealth({ ...householdComparisonArgs, states: [sharedHouseholdState],
         members: [householdMembers[0]], scope: singleScope, comparisonScope: singleScope, currentAssets: 400 });
     for (const comparison of [direct, projected.comparison, projected.annual.comparison]) {
-        assertEqual(comparison.delta, null, `Früheres Mitglied ${removed ? 'gelöscht' : 'ausgeschlossen'}: keine erfundene Einzeländerung`);
+        assertEqual(comparison.delta, null, 'Früheres Mitglied gelöscht: keine erfundene Einzeländerung');
         assertEqual(comparison.percent, null, 'Früherer Haushaltsstand liefert keinen Einzelprozentvergleich');
         assertEqual(comparison.reason, missingScopeReason, 'Passende heutige Einzel-Summary belegt keinen historischen Umfang');
     }
@@ -564,7 +560,7 @@ const dailyStart = dailyDay('2026-01-01');
 const dailyLot = { ...lot, trancheId: 'daily', shares: 1, purchaseDate: '2026-01-01', ticker: 'DAILY.DE' };
 const dailyData = { profile_tagesgeld: '5', depot_tranchen: JSON.stringify([dailyLot]), profile_cash_history_v1: JSON.stringify({ version: 1, baselineValue: 5, entries: [] }) };
 const dailyRegistry = { profiles: { a: { meta: { name: 'A' }, data: { ...dailyData, profile_tagesgeld: '999' } },
-    b: { meta: { name: 'B' }, data: { ...dailyData } }, outsider: { meta: { name: 'Außen', belongsToHousehold: false }, data: { profile_tagesgeld: '10000', depot_tranchen: '[]' } } } };
+    b: { meta: { name: 'B' }, data: { ...dailyData } } } };
 const dailyLive = { ...dailyData, rs_wealth_history_start_v1: JSON.stringify({ version: 1, startDate: '2026-01-01' }),
     rs_daily_prices_v1: JSON.stringify({ version: 1, symbols: { 'DAILY.DE': { currency: 'EUR', days: [dailyStart], closes: [10], queried: [[dailyStart, dailyStart + 4]], failures: 0, lastError: null } } }) };
 const dailyBytes = JSON.stringify({ dailyRegistry, dailyLive });
@@ -599,7 +595,7 @@ const dailyModel = projectOverview({ registry: dailyRegistry, activeId: 'a', liv
     for (const key of ['metrics', 'measurementStart', 'range', 'gaps', 'events', 'errors']) assert(view[key] === source[key], 'Unveränderte Fachreferenz: ' + key);
     assertEqual(JSON.stringify(source), before, 'Tief eingefrorene vollständige Fachprojektion bleibt bytegleich');
 }
-assertEqual(dailyModel.history.end.total, 30, 'Tagesverlauf überlagert aktive Registry mit Livecash und schließt Fremdprofil aus');
+assertEqual(dailyModel.history.end.total, 30, 'Tagesverlauf überlagert aktive Registry mit Livecash');
 assertEqual(dailyModel.history.end.day, dailyStart + 4, 'Tagesabschluss endet gestern');
 assertEqual(dailyModel.history.metrics.withdrawals, 0, 'Leere belegte Cashhistorie besitzt null Entnahmen');
 assertEqual(JSON.stringify({ dailyRegistry, dailyLive }), dailyBytes, 'Tagesprojektion bewahrt Quellrecords');
@@ -622,8 +618,7 @@ assertEqual(projectOverview({ registry: dailyRegistry, activeId: 'a', liveData: 
         const current = removed ? [valid] : [valid, copies.lots.uncertain.tranche];
         const fixture = { profiles: {
             a: { meta: { name: 'A' }, data: { profile_tagesgeld: '100', depot_tranchen: JSON.stringify(current), profile_wealth_history_lots_v1: JSON.stringify(copies) } },
-            b: { meta: { name: 'B' }, data: { profile_tagesgeld: '20', depot_tranchen: JSON.stringify([dailyLot]) } },
-            outside: { meta: { name: 'Außen', belongsToHousehold: false }, data: { profile_tagesgeld: '9999', depot_tranchen: '[]' } }
+            b: { meta: { name: 'B' }, data: { profile_tagesgeld: '20', depot_tranchen: JSON.stringify([dailyLot]) } }
         } };
         const prices = JSON.parse(dailyLive.rs_daily_prices_v1);
         prices.symbols['DAILY.DE'].queried = [[dailyStart, dailyStart + 5]];
@@ -641,12 +636,14 @@ assertEqual(projectOverview({ registry: dailyRegistry, activeId: 'a', liveData: 
             assertEqual(point.byProfile.b.total, 30, 'Gültige zweite Person behält Total');
             assertEqual(point.total, kind === 'datiert' && point.day < dailyDay('2026-01-05') ? 150 : null, 'Gesicherte Datierung oder durchgehende Altunsicherheit');
         }
-        assertEqual(manager.profiles.find(person => person.id === 'outside').history.end.total, 9999, 'Außenprofil getrennt bewertet');
         for (const assetType of ['aktien_neu', 'cash']) {
             const result = projectProfileWealthHistory(fixture, manager.profiles, { ...context, assetType });
             assertEqual(result.end.known, assetType === 'cash' ? 120 : 30, 'Anlageform trennt bekannte Cash-/Depotbeiträge');
             assertEqual(result.end.total, assetType === 'cash' ? 120 : null, 'Unbekannte Tranche sperrt keinen reinen Cashfilter');
         }
+        // OP-2 (Punkt 3): Name statt interner Kennung, deutsches Datum.
+        assert(overview.errors.length > 0 && overview.errors.every(error => error.startsWith('A: ')), kind + ': Hinweis nennt die Person mit Namen statt Kennung: ' + overview.errors.join(' | '));
+        if (kind === 'datiert') assert(overview.errors.includes('A: Bestand ab 05.01.2026 nicht belegt.'), 'Datierter Hinweis: „<Name>: Bestand ab <TT.MM.JJJJ> nicht belegt.“: ' + overview.errors.join(' | '));
         if (kind === 'alt') {
             assert(overview.errors.some(error => error.includes('ursprünglicher Kaufbeginn nicht gesichert')), 'Altfallhinweis nennt nicht gesicherten Kaufbeginn');
             const repeated = projectOverviewHistory({ registry: fixture, profiles: manager.profiles, liveData: live, today: context.today });
@@ -655,6 +652,38 @@ assertEqual(projectOverview({ registry: dailyRegistry, activeId: 'a', liveData: 
         }
         assertEqual(JSON.stringify({ fixture, live }), before, 'Personen-/Übersichtsprojektion bewahrt Quell- und Speicherbytes');
     }
+}
+
+// OP-2 (Punkt 3): Max und Erika, Variante „Plan teilweise umgesetzt“, 23.10.2026: Der Verlauf-Hinweis nennt Namen, keine Kennung „muster_“.
+// VS-3a: Die Beispielverkäufe führen die Verlaufsstammdaten fort, der Verlauf ist ohne Hinweis. Den Hinweis erzeugt hier eine
+// Stückänderung ohne Verkaufsbeleg an derselben Tranche.
+{
+    const { createMusterHaushaltRecords } = await import('../app/demo/muster-haushalt.js');
+    const { projectManagerProfiles } = await import('../app/tranches/tranchen-manager-profiles.js');
+    const { readManagerHistoryContext, buildPersonHistoryDetailsHtml } = await import('../app/tranches/tranchen-history-ui.js');
+    const records = createMusterHaushaltRecords('2026-10-23', 'max-erika', 'teilweise');
+    const histories = (registry, liveData) => ({
+        overview: projectOverview({ registry, activeId: records.rs_current_profile, liveData, now: new Date(2026, 9, 23, 12) }).history,
+        manager: projectManagerProfiles(registry, records.rs_current_profile,
+            readManagerHistoryContext(registry, { storage: { getItem: key => liveData[key] ?? null }, today: '2026-10-23' })) });
+    const sold = histories(JSON.parse(records.rs_profiles_v1), records);
+    assertEqual(JSON.stringify(sold.overview.errors), '[]', 'Plan teilweise umgesetzt: Übersicht ohne Bestandshinweis');
+    assert(sold.manager.householdHistory.errors.length === 0 && sold.manager.profiles.every(person => person.history.errors.length === 0),
+        'Plan teilweise umgesetzt: Haushalt und beide Personen ohne Bestandshinweis');
+    const registry = JSON.parse(records.rs_profiles_v1), liveData = { ...records };
+    for (const [id, profile] of Object.entries(registry.profiles)) {
+        const tranches = JSON.parse(profile.data.depot_tranchen);
+        tranches.find(lot => lot.trancheId === `${id}_lot_2`).shares -= 1;
+        profile.data.depot_tranchen = JSON.stringify(tranches);
+        if (id === records.rs_current_profile) liveData.depot_tranchen = profile.data.depot_tranchen;
+    }
+    const { overview, manager } = histories(registry, liveData);
+    assertEqual(JSON.stringify(overview.errors), JSON.stringify(['Max: Bestand ab 18.05.2020 nicht belegt.', 'Erika: Bestand ab 14.02.2025 nicht belegt.']),
+        'Plan teilweise umgesetzt: Übersicht nennt Max und Erika mit deutschem Datum');
+    const texts = [overview.errors, manager.householdHistory.errors, ...manager.profiles.map(person => person.history?.errors || []),
+        ...manager.profiles.map(person => buildPersonHistoryDetailsHtml(person.history))].map(value => JSON.stringify(value));
+    assert(manager.householdHistory.errors.length === 2 && manager.profiles.every(person => person.history.errors.length === 1), 'Plan teilweise umgesetzt: Haushalt und beide Personen zeigen den Hinweis');
+    assert(texts.every(text => !text.includes('muster_')), 'Plan teilweise umgesetzt: keine Zeichenfolge „muster_“ im Verlauf von Max und Erika');
 }
 
 assertEqual(parseOverviewTarget('balance', { hash: '#handlungsanweisung', search: '' }).target, 'handlungsanweisung', 'Gemeinsamer Handlungsschritt erhält expliziten lesenden Balancezielvertrag');
@@ -680,9 +709,12 @@ assertEqual(parseOverviewTarget('balance', { hash: '#handlungsanweisung', search
             }])) };
             const values = new Map(Object.entries({ ...sourceData, rs_profiles_v1: JSON.stringify(fixture),
                 rs_current_profile: 'a', rs_active_profile: 'a' }));
+            // SV-1: Auch der Monatsabschluss ohne Tagesgeldbuchung legt vorher einen Punkt an.
+            const points = new Map();
             resetPersistenceForTests({ getItemSync: key => values.get(key) ?? null,
                 setItemSync: (key, value) => values.set(key, value), removeItemSync: key => values.delete(key),
-                keysSync: () => [...values.keys()] });
+                keysSync: () => [...values.keys()], writeSnapshot: async point => { points.set(point.id, point); },
+                readSnapshot: async id => points.get(id), listSnapshots: async () => [...points.values()], deleteSnapshot: async id => points.delete(id) });
             const storage = persistenceStorage;
             const dependencies = { storage, guard: null, flush: async () => true, isBlocked: () => false };
             const selectedScope = overviewScope(ids.length === 1 ? 'single' : 'household', ids);
@@ -702,35 +734,24 @@ assertEqual(parseOverviewTarget('balance', { hash: '#handlungsanweisung', search
                 `${label}: Balanceanzeige wird wirklich gespeichert`);
             assertEqual(await storeMonthProvision({ month, scope: selectedScope, expectedProfileId: 'a' }, dependencies), true,
                 `${label}: Monat wird im echten Speicherweg bestätigt`);
+            assertEqual([...points.values()].filter(point => point.kind === 'monthly-close-pre-mutation').length, 1, `${label}: genau ein Monatspunkt des ganzen Haushalts`);
             let overview = read();
             assertEqual(overview.scope.key, selectedScope.key, `${label}: Schreib- und Leseumfang identisch`);
             assertEqual(overview.occasion.annualState, 'done', `${label}: Vorjahr abgeschlossen`);
             assertEqual(overview.occasion.monthCompleted, true, `${label}: Monat bestätigt`);
             assertEqual(overview.cashStatus.state, 'valid', `${label}: Cashaudit gültig`);
             assertEqual(JSON.stringify(overview.nextSteps), '[]', `${label}: unveränderte Quellen erzeugen keinen Plan- oder Pflichtschritt`);
-            // Alle drei Arten durchlaufen begin → complete → den echten storeSimulationSummary.
-            // Der MC-Start bindet den Werkstattbeleg an dieselben dokumentlokalen Inputs.
+            // Beide Arten durchlaufen begin → complete → den echten storeSimulationSummary.
             const runInputs = {};
             const results = {
                 backtest: { request: { startYear: 2000, endYear: 2001 }, outcome: { kind: 'completed' },
                     metrics: { values: { wealth_end_real_eur: 123 } } },
                 montecarlo: { outcomeInventory: { schemaVersion: 'MonteCarloOutcomeInventoryV1', requestedRuns: 2,
                     technical_error: 0, ruin: 0, all_dead: 0, horizon_exhausted: 2, floorCoveragePct: 100 },
-                    finalOutcomes: { distribution: { values: [100, 200] } } },
-                workshop: { variantOrder: ['baseline', 'v'], pairwise: [{ variantId: 'v', comparable: true }],
-                    variants: [{ variantId: 'baseline', label: 'Baseline' }, { variantId: 'v', label: 'Alternative',
-                        terminalStatus: 'horizon_exhausted', summary: { finalValueRealEur: 456 } }] }
+                    finalOutcomes: { distribution: { values: [100, 200] } } }
             };
             for (const [kind, result] of Object.entries(results)) {
-                if (kind === 'workshop') {
-                    const before = storage.getItem(OVERVIEW_SIMULATION_KEY);
-                    assertEqual(beginSimulationSummary(kind, runInputs, {}, { storage }), null,
-                        `${label}/workshop: ohne Herkunftsbeleg kein Abschlussstart`);
-                    assertEqual(storage.getItem(OVERVIEW_SIMULATION_KEY), before,
-                        `${label}/workshop: abgewiesener Start erhält gespeicherte Ergebnisse`);
-                }
-                const context = beginSimulationSummary(kind, runInputs, {}, { storage,
-                    workshopProvenance: kind === 'workshop' ? workshopProvenanceFor(runInputs) : null });
+                const context = beginSimulationSummary(kind, runInputs, {}, { storage });
                 assertEqual(context?.scope.key, selectedScope.key, `${label}/${kind}: Erfassung nutzt denselben Umfang`);
                 assertEqual(await completeSimulationSummary(context, result, {}, dependencies), true,
                     `${label}/${kind}: echte Ergebnisablage erfolgreich`);
@@ -819,10 +840,8 @@ for (const date of [new Date(2027, 0, 15, 12), new Date(2027, 9, 15, 12)]) {
     const raw = JSON.stringify({ version: 1, entries: { [summaryEntryKey(2027, selected)]: plan } });
     const common = { depot_tranchen: '[]', profile_tagesgeld: '100', [OVERVIEW_SUMMARY_KEY]: raw };
     const a = { ...common, [CONFIG.STORAGE.LS_KEY]: JSON.stringify(state) }, b = { ...common };
-    const profiles = { a: { meta: { name: 'Synthetisch A' }, data: a }, b: { meta: { name: 'Synthetisch B' }, data: b },
-        c: { meta: { name: 'Ungewählte Person', belongsToHousehold: false }, data: { depot_tranchen: '[]', profile_tagesgeld: '100',
-            [CONFIG.STORAGE.LS_KEY]: JSON.stringify({ annualPeriodMetadata: completed(2030) }) } } };
-    for (const activeId of ['a', 'b', 'c']) for (const reverse of [false, true]) {
+    const profiles = { a: { meta: { name: 'Synthetisch A' }, data: a }, b: { meta: { name: 'Synthetisch B' }, data: b } };
+    for (const activeId of ['a', 'b']) for (const reverse of [false, true]) {
         const registry = { version: 1, profiles: Object.fromEntries(reverse ? Object.entries(profiles).reverse() : Object.entries(profiles)) };
         const input = { registry, activeId, liveData: { ...profiles[activeId].data, rs_profiles_v1: JSON.stringify(registry) }, now };
         const bytes = JSON.stringify(input), projected = projectOverview(input);
@@ -843,22 +862,8 @@ for (const date of [new Date(2027, 0, 15, 12), new Date(2027, 9, 15, 12)]) {
         periodId: 'calendar-year:2026', phase: 'writes_started', snapshotId: 'synthetisch' } } };
     assertEqual(read(JSON.stringify(pending)).occasion.annualState, 'recovery', 'Pending der tatsächlichen Quelle bleibt Recovery nach Profilwechsel');
     assertEqual(read('{broken').occasion.annualState, 'unavailable', 'Beschädigte tatsächliche Quelle wird gesperrt');
-    const changed = { version: 1, profiles: structuredClone(profiles) }; changed.profiles.a.meta.belongsToHousehold = false;
+    const changed = { version: 1, profiles: structuredClone(profiles) }; delete changed.profiles.a;
     assertEqual(projectOverview({ registry: changed, activeId: 'b', liveData: b, now }).summary, null, 'Geänderter Scope übernimmt keinen gemeinsamen Plan');
-
-    const staleOutside = { version: 1, profiles: structuredClone(profiles) };
-    staleOutside.profiles.c.data[CONFIG.STORAGE.LS_KEY] = JSON.stringify({ annualPeriodMetadata: completed(2025) });
-    const oldPlan = { ...plan, year: 2026, status: 'vorläufig' };
-    staleOutside.profiles.c.data[OVERVIEW_SUMMARY_KEY] = JSON.stringify({ version: 1,
-        entries: { [summaryEntryKey(2026, selected)]: oldPlan } });
-    const staleBytes = JSON.stringify(staleOutside);
-    const afterClose = projectOverview({ registry: staleOutside, activeId: 'a', liveData: a, now });
-    assertEqual(afterClose.periodSource.ids.join(), 'a', 'Alte Haushaltsanzeige einer Außenperson ist keine aktuelle Abschlussquelle');
-    assertEqual(afterClose.occasion.annualState, 'done', 'Alte Außenperson-Kopie blockiert den Monat nach Jahresabschluss nicht');
-    assertEqual(JSON.stringify(staleOutside), staleBytes, 'Quellenzuordnung verändert Außenperson-Records nicht');
-    const pendingOutside = { ...staleOutside.profiles.c.data, [CONFIG.STORAGE.LS_KEY]: JSON.stringify(pending) };
-    assertEqual(projectOverview({ registry: staleOutside, activeId: 'c', liveData: pendingOutside, now }).occasion.annualState,
-        'recovery', 'Geöffneter fremder Writer bleibt trotz alter Anzeige mit Pending vorrangig geschützt');
 }
 
 // Haushalt: tatsächlich fehlende Cashhistorie ergänzt vorläufig 0 statt As Entnahmen zu verlieren.
@@ -895,13 +900,12 @@ import { readCashPerson } from '../app/profile/profile-cash-update.js';
     const bHistory = history(210, 200, '2026-09-02');
     const selected = { version: 1, profiles: {
         a: { meta: { name: 'A', belongsToHousehold: true }, data: { profile_tagesgeld: '100', profile_cash_history_v1: storedHistory } },
-        b: { meta: { name: 'B', belongsToHousehold: true }, data: { profile_tagesgeld: '200', profile_cash_history_v1: bHistory } },
-        c: { meta: { name: 'C', belongsToHousehold: false }, data: { profile_tagesgeld: '999' } }
+        b: { meta: { name: 'B', belongsToHousehold: true }, data: { profile_tagesgeld: '200', profile_cash_history_v1: bHistory } }
     } };
     const liveData = { profile_tagesgeld: '120.125', profile_cash_history_v1: liveHistory };
     const before = JSON.stringify({ selected, liveData });
     const projected = projectOverview({ registry: selected, activeId: 'a', liveData, now });
-    assertEqual(projected.cashPeople.map(person => person.id).join(','), 'a,b', 'Produktprojektion enthält genau A+B in Haushaltsreihenfolge, kein Außenprofil C');
+    assertEqual(projected.cashPeople.map(person => person.id).join(','), 'a,b', 'Produktprojektion enthält genau A+B in Haushaltsreihenfolge');
     const [a, b] = projected.cashPeople;
     assertEqual(a.name, 'A', 'Livecash bleibt der aktiven Person zugeordnet');
     assertEqual(a.value, 120.125, 'Aktives Cashfeld stammt aus Livewert statt Registry');
@@ -1016,6 +1020,24 @@ for (const [today, quote, occasion, expected] of [
     ['2027-01-02T12:00:00', '2026-12-30T17:00:00', { kind: 'annual', closingYear: 2026 }, false],
     ['2026-10-10T12:00:00', '2026-10-08T17:00:00', {}, false]
 ]) assertEqual(overviewPricesDone(priceFixture(today, quote, occasion)), expected, `Kalenderprüfung ${today} / ${quote}`);
+const xetraClose = (today, closingYear, quoteDate) => {
+    const model = priceFixture(today, quoteDate, { kind: 'annual', closingYear });
+    Object.assign(model.priceTranches[0], { ticker: 'VWCE.DE', quoteExchange: 'Xetra' });
+    return model;
+};
+for (const date of [1, 2, 3, 4]) {
+    const today = `2027-01-0${date}T12:00:00`;
+    const model = xetraClose(today, 2026, '2026-12-30T14:00:00');
+    assert(overviewPricesDone(model), `Ohne Abruf am ${today} zählt der gespeicherte Xetra-Jahresschluss`);
+    assert(overviewPricesDone({ ...model, priceReport: { status: 'offline', updated: 0 } }), `Offline am ${today} zählt der Xetra-Jahresschluss`);
+    assert(!overviewPricesDone(xetraClose(today, 2026, '2026-12-29T17:00:00')), `Am ${today} bleibt der ältere Xetra-Kurs offen`);
+}
+assert(overviewPricesDone(xetraClose('2024-01-02T12:00:00', 2023, '2023-12-29T14:00:00')), 'Am Wochenende rückt der Xetra-Jahresschluss auf Freitag vor');
+const mixedClose = xetraClose('2027-01-02T12:00:00', 2026, '2026-12-30T14:00:00');
+mixedClose.priceTranches.push({ ...mixedClose.priceTranches[0], trancheId: 'other', ticker: 'WORLD.AS', quoteExchange: 'Amsterdam' });
+assert(!overviewPricesDone(mixedClose), 'Für einen anderen Handelsplatz gilt weiter sein bisheriger Stichtag');
+mixedClose.priceTranches[1].asOf = new Date('2026-12-31T14:00:00').getTime() / 1000;
+assert(overviewPricesDone(mixedClose), 'Für ein gemischtes Depot zählt der passende Stichtag je Tranche');
 const oldPrice = priceFixture('2027-01-02T12:00:00', '2026-12-30T17:00:00', { kind: 'annual', closingYear: 2026 });
 const fullReport = { status: 'complete', updated: 1, retrievedAt: oldPrice.now.getTime() - 60000,
     results: [{ profileId: 'a', trancheId: 'lot', status: 'updated' }] };
@@ -1089,9 +1111,10 @@ assert(overviewPriceLabel({ ...oldPrice, scope: { ids: ['a'] }, priceReport: { .
     registry.profiles[options.activeId].data.depot_tranchen = sample.records.depot_tranchen;
     sample.records.rs_profiles_v1 = JSON.stringify(registry);
     for (const project of [projectOverview, projectOverviewFromRecords]) {
-        assertEqual(project({ ...options, snapshots: [point] }).occasion.annualState, 'unclear', 'Vorabpunkt nach Restore und Startkurswrite verlangt sichtbare Klärung');
+        // JW-1a (Fable P2-2): Der metadatenlose Vorabpunkt des Erstabschlusses verlangt nach einem Startkurswrite keine Klärung.
+        assertEqual(project({ ...options, snapshots: [point] }).occasion.annualState, 'open', 'Vorabpunkt nach Restore und Startkurswrite bleibt offen');
     }
-    assertEqual(projectOverviewWithAnnualArchive(options, { reader }).occasion.annualState, 'unclear', 'Unverändertes Archiv klassifiziert neue Finanzrecords erneut');
+    assertEqual(projectOverviewWithAnnualArchive(options, { reader }).occasion.annualState, 'open', 'Unverändertes Archiv klassifiziert neue Finanzrecords erneut');
     assertEqual(reads, 1, 'Neue Kursrecords brauchen keinen geänderten Archivindex');
     assertEqual(point.records.depot_tranchen, JSON.parse(before).depot_tranchen, 'Projektion verändert den archivierten Vorabstand nicht');
     const broken = createAnnualCloseArchiveReader({ archive: { listSnapshots: async () => { throw new Error('ARCHIVE_FAILURE'); } } });
@@ -1106,7 +1129,7 @@ assert(overviewPriceLabel({ ...oldPrice, scope: { ids: ['a'] }, priceReport: { .
         projectOverviewWithAnnualArchive(options, { reader: delayed, onChange: () => { staleNotices++; } });
         const next = { ...options, registry: structuredClone(registry) };
         if (changed === 'profile') next.activeId = sample.scope.ids.find(id => id !== options.activeId);
-        if (changed === 'scope') Object.entries(next.registry.profiles).forEach(([id, profile]) => { profile.meta.belongsToHousehold = id === options.activeId; });
+        if (changed === 'scope') Object.keys(next.registry.profiles).forEach(id => { if (id !== options.activeId) delete next.registry.profiles[id]; });
         if (changed === 'year') next.now = new Date(2028, 0, 2);
         const waiting = projectOverviewWithAnnualArchive(next, { reader: delayed, onChange: currentNotice });
         assertEqual(waiting.annualArchive.status, 'loading', changed + ': neuer produktiver Kontext wartet');
@@ -1161,7 +1184,7 @@ for (const legacyMarker of [true, false]) for (const year of [2026, 2027]) {
 
 // Fall C: dieselben Browserfixtures durch den echten Profillader und die DOM-freie Projektion.
 // Die Vergleichserwartung stammt aus dem Periodenvertrag, nicht aus gemessenem DOM-Text.
-for (const membership of ['household', 'excluded', 'deleted']) for (const retrospective of [false, true]) {
+for (const membership of ['household', 'deleted']) for (const retrospective of [false, true]) {
     const fixture = createOverviewWealthComparisonFixture(membership, retrospective);
     const records = structuredClone(fixture.storage);
     const adapter = { name: 'browser-comparison-probe', async loadAll() { return { ...records }; },

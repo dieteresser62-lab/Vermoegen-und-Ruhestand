@@ -3,6 +3,32 @@ import { detectDynamicFlexPreset } from '../shared/dynamic-flex-presets.js';
 import { syncDynamicFlexPresetSelection, refreshDynamicFlexControls } from '../simulator/simulator-main-dynamic-flex.js';
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
 import { UIUtils } from './balance-utils.js';
+import { storedHighSource, renderAthCorrections } from './balance-ath-corrections-view.js';
+import { ATH_NOISE_BAND_TEXT, athNoiseBandApplies } from './balance-ath-noise.js';
+
+/** FIX-ST9 (Befund 1604): Jahr der gespeicherten Jahresschlüsse für die Beschriftung „Ende …“, nicht der Kalender. Zuerst das
+ * Jahresende der Vorschau (letzter abgeschlossener Jahresstand), sonst `annualMarketDataMeta.targetYear`, sonst der zuletzt
+ * abgeschlossene Zeitraum, sonst das letzte Kalenderjahr. Im Januar vor dem Abschluss ist das noch das vorletzte Jahr.
+ * @param {{view?: object|null, state?: any, fallback: number}} options @returns {number} */
+export function storedMarketYear({ view = null, state = null, fallback }) {
+    const yearEnd = view && 'yearEndDate' in view && typeof view.yearEndDate === 'string' ? Number(view.yearEndDate.slice(0, 4)) : NaN;
+    if (Number.isInteger(yearEnd)) return yearEnd;
+    if (Number.isInteger(state?.annualMarketDataMeta?.targetYear)) return state.annualMarketDataMeta.targetYear;
+    const committed = /^calendar-year:(\d{4})$/.exec(state?.annualPeriodMetadata?.lastCommittedPeriod || '');
+    return committed ? Number(committed[1]) : fallback;
+}
+
+/** Felder „Ende …“ unter „Marktdaten-Korrektur“ und der Satz zum noch offenen Jahresschluss.
+ * @param {Document} doc @param {number} marketYear Jahr des gespeicherten Standes @param {number} completedYear letztes Kalenderjahr */
+export function renderMarketYearLabels(doc, marketYear, completedYear) {
+    for (const [id, offset] of /** @type {[string, number][]} */ ([['endeVJ', 0], ['endeVJ_1', 1], ['endeVJ_2', 2], ['endeVJ_3', 3]])) {
+        const label = doc?.querySelector?.(`label[for="${id}"]`);
+        if (label) label.textContent = `Ende ${marketYear - offset}`;
+    }
+    const note = doc?.getElementById?.('balanceMarketYearNote');
+    const pending = Number.isInteger(marketYear) && Number.isInteger(completedYear) && marketYear < completedYear;
+    if (note) { note.hidden = !pending; note.textContent = pending ? `Der Schluss ${marketYear + 1} kommt mit dem Jahresabschluss.` : ''; }
+}
 
 /** Lesende Kacheln verwenden dieselben Werte wie die aktuelle Balancevorschau. */
 /**
@@ -11,7 +37,7 @@ import { UIUtils } from './balance-utils.js';
  * @param marketYear Eingabe für die bestehende Projektion.
  * @returns Ergebnis der bestehenden Operation.
  */
-export function renderBalanceStrategyValues(doc, input, marketYear) {
+export function renderBalanceStrategyValues(doc, input, marketYear, { state = null, view = null } = {}) {
     if (!doc?.getElementById) return;
     const set = (id, text) => { const node = doc?.getElementById(id); if (node) node.textContent = text; };
     const currency = value => Number.isFinite(value) ? UIUtils.formatBalanceCurrency(value) : '—';
@@ -21,10 +47,18 @@ export function renderBalanceStrategyValues(doc, input, marketYear) {
         set(`balanceMarket-${id}-detail`, String(marketYear - offset));
     }
     set('balanceMarket-ath-value', price(input.ath));
-    set('balanceMarket-ath-detail', Number.isFinite(input.jahreSeitAth)
+    // ATH-1b: Herkunft des gespeicherten Hochs und Warnhinweise zum verwendeten Hoch; Einzelheiten unter „Alle Parameter“.
+    set('balanceMarket-ath-detail', `${storedHighSource(state, input.ath)} · ${Number.isFinite(input.jahreSeitAth)
         ? input.jahreSeitAth === 0 ? 'aktuell'
             : input.jahreSeitAth < 0.1 ? 'vor weniger als 0,1 Jahren'
-            : `vor ${formatDisplayNumber(input.jahreSeitAth)} Jahren` : 'Zeit seit Hoch nicht belegt');
+            : `vor ${formatDisplayNumber(input.jahreSeitAth)} Jahren` : 'Zeit seit Hoch nicht belegt'}${athNoiseBandApplies(input) ? ` · ${ATH_NOISE_BAND_TEXT}` : ''}`);
+    const warnings = view && 'warnings' in view ? /** @type {any} */ (view).warnings : null;
+    const warning = doc.getElementById('balanceMarket-ath-warning');
+    if (warning) {
+        const texts = [warnings?.outlier ? 'Ausreißer-Verdacht – Kurs prüfen' : '', warnings?.drop ? 'Möglicher Split oder Datenfehler' : ''].filter(Boolean);
+        warning.hidden = !texts.length; warning.textContent = texts.join(' · ');
+    }
+    renderAthCorrections(doc, { state, view });
     set('balanceMarket-cape-value', `${Number.isFinite(input.marketCapeRatio) ? formatDisplayNumber(input.marketCapeRatio, { fractionDigits: 2, minimumFractionDigits: 0 }) : '—'} · ${Number.isFinite(input.inflation) ? formatDisplayNumber(input.inflation, { unit: 'percent' }) : '—'}`);
     set('balanceAdopt-costs-value', [input.costBasisAlt, input.costBasisNeu, input.goldCost].every(Number.isFinite)
         ? currency(input.costBasisAlt + input.costBasisNeu + input.goldCost) : '—');

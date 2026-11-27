@@ -20,12 +20,6 @@ export function bindManagerPersonCards(doc, profileId) {
             const action = byId(`manager${card}Action`);
             if (action) action.textContent = shown[card] ? '▾ ausblenden' : '▸ zeigen';
         });
-        const all = byId('managerCardsToggleAll');
-        const expanded = present().length > 0 && present().every(card => shown[card]);
-        if (all) {
-            all.textContent = expanded ? '▾ Alle Details ausblenden' : '▸ Alle Details zeigen';
-            all.setAttribute('aria-expanded', String(expanded));
-        }
     };
     const paint = saved => {
         present().forEach(card => { byId(`manager${card}Body`).hidden = saved[card] !== true; });
@@ -38,11 +32,6 @@ export function bindManagerPersonCards(doc, profileId) {
     };
     // Native Buttons übernehmen Enter/Space; kein zweiter keydown-Toggle.
     cards.forEach(card => byId(`manager${card}Toggle`)?.addEventListener('click', () => set({ [card]: byId(`manager${card}Body`)?.hidden === true })));
-    byId('managerCardsToggleAll')?.addEventListener('click', () => {
-        const shown = visibleState();
-        const open = !present().every(card => shown[card]);
-        set(Object.fromEntries(present().map(card => [card, open])));
-    });
     const openTarget = () => {
         if (doc.defaultView?.location?.hash !== '#personendaten' || byId('managerPersonPanel')?.hidden) return;
         set({ Person: true });

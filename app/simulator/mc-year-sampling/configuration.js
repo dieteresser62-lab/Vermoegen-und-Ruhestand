@@ -14,7 +14,7 @@ export function resolveMinStartYearIndex(data, excludeEstimatedHistory = false) 
 /** @param {string} mode
  * @param {HistoricalYear[]} data
  * @returns {SamplingConfig|null} */
-export function buildYearSamplingConfig(mode, data, { startYearFilter = 1970, startYearHalfLife = 20, blockSize = 1, excludeEstimatedHistory = false } = {}) {
+export function buildYearSamplingConfig(mode, data, { startYearFilter = 1970, startYearHalfLife = 20, excludeEstimatedHistory = false } = {}) {
     if (!Array.isArray(data) || data.length === 0) return null;
 
     const cutoff = Number.isFinite(startYearFilter) ? startYearFilter : 1970;
@@ -45,11 +45,10 @@ export function buildYearSamplingConfig(mode, data, { startYearFilter = 1970, st
         ? buildCdfFromIndices(allowedIndices, weightsByIndex)
         : null;
 
-    // Block-Sampling: Der letzte Index data.length - blockSize ist noch ein
-    // vollstaendiger Blockstart und muss deshalb eingeschlossen bleiben.
-    const normalizedBlockSize = Math.max(1, Math.round(Number(blockSize) || 1));
-    const maxStartIndex = data.length - normalizedBlockSize;
-    const blockStartIndices = allowedIndices.filter(idx => idx <= maxStartIndex);
+    // MS-1 (NG-9): Feste Blöcke laufen am Fensterende zirkulär zum Fensteranfang weiter.
+    // Deshalb ist jedes Fensterjahr ein Blockstart, unabhängig von der Blocklänge.
+    const blockStartIndices = [...allowedIndices];
+    const maxStartIndex = allowedIndices[allowedIndices.length - 1];
     const blockSampler = (mode === 'FILTER' || mode === 'RECENCY')
         ? buildCdfFromIndices(blockStartIndices, weightsByIndex)
         : null;

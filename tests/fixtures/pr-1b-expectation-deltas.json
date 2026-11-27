@@ -1,0 +1,25 @@
+{
+  "reason": "PR-1b ordnet Geldmarkt und Tagesgeld der Pflegereserve dem persönlichen Reserveanteil zu. Basis cac4a436.",
+  "changes": [
+    {
+      "test": "tests/ff-g-regression.test.mjs",
+      "field": "Helga und Werner 2000–2025, vollständige Jahreszeilen und vollständiger Backtest (SHA-256)",
+      "old": {
+        "rows": "8576663e2ea37763547d11923ad47215b75ec85f033f4c6458b2b0065c7cece1",
+        "backtest": "1f14700819269efcda942e4272ed2a31a0e252f45c26bbb295fb5bd46a8e8ee5"
+      },
+      "new": {
+        "rows": "f5215dc5f515022b128f5e43b550e0ab84153c0e0b7b4050e0c884454cfdfe2d",
+        "backtest": "3f658ec2e0651b7dd098d7e6b3b7a9541da568239cbf41560204fa64221caed1"
+      },
+      "reason": "Je 20.000 € werden dem Tagesgeld der beiden entnommen. Das ändert persönliche Bestände, Zinserträge und Folgejahre. Der Laufbeleg enthält die beiden Zielbeträge. Die Jahressteuer 2000 bleibt auf Cent 1.600,18 €. Die sechs Kürzungsjahre ab 10 % bleiben gleich. Der größte absolute FlowDelta beträgt in beiden Läufen rund 0,00000000012 €."
+    },
+    {
+      "test": "tests/simulator-personal-accounts.test.mjs",
+      "field": "Freies Tagesgeld je Person ohne persönliche Ziele, in Euro auf Cent angezeigt",
+      "old": { "a": 0, "b": 100 },
+      "new": { "a": 33.33, "b": 66.67 },
+      "reason": "Für 200 € Reserve aus 100 € und 200 € Tagesgeld gibt jede Person zwei Drittel ihres Bestands ab. Der Auszahlungsbeleg führt weiterhin die vollen 200 € mit Herkunft."
+    }
+  ]
+}

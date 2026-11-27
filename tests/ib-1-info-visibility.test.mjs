@@ -4,7 +4,6 @@ import { renderBalanceOptionalAssets } from '../app/balance/balance-presentation
 import { renderManagerProfiles } from '../app/tranches/tranchen-manager-renderer.js';
 import { projectManagerProfiles } from '../app/tranches/tranchen-manager-profiles.js';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
-import { tableMarkup } from '../app/balance/balance-wealth-history-renderer.js';
 
 for (const [width, height] of [[1280, 720], [1920, 1080]]) {
     for (const anchor of [
@@ -74,8 +73,6 @@ for (const withGold of [false, true]) {
     renderManagerProfiles(doc, projection);
     assert(doc.getElementById('managerHousehold').innerHTML.includes('Pflegereserve-Ziel'), 'Aktive Pflegereserve behält ihre Zielzeilen');
 }
-assert(!tableMarkup([{ asOf: '2026-10-27', goldWert: 0, anleihen: 0 }]).includes('>Gold<'), 'Erfasste Stände ohne Gold haben keine Goldspalte');
-assert(tableMarkup([{ asOf: '2026-10-27', goldWert: 100, anleihen: 0 }]).includes('>Gold<'), 'Historischer Goldbestand bleibt in der Tabelle sichtbar');
 
 {
     const card = { left: 400, right: 1200 }, box = { width: 440, height: 220 };

@@ -1,5 +1,6 @@
 import { marketPriceAdapter, isSyntheticPriceMode } from '../shared/market-price-adapter.js';
 import { appNow } from '../shared/app-clock.js';
+import { boersenname, kurssymbole, waehle } from '../shared/kurswahl.js';
 
 export const LOCAL_YAHOO_PROXY = 'http://127.0.0.1:8787';
 export const QUOTE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
@@ -7,6 +8,7 @@ export const QUOTE_FUTURE_TOLERANCE_SECONDS = 5 * 60;
 
 const LOCAL_PROXY_RETRIES = 2;
 const LOCAL_PROXY_TIMEOUT_MS = 3500;
+const ALTERNATIVE_QUOTE_TIMEOUT_MS = 3000;
 const YAHOO_SYMBOL_PATTERN = /^[A-Z0-9.^=-]{1,32}$/;
 
 export class QuoteError extends Error {
@@ -81,7 +83,7 @@ async function fetchHeadersWithTimeout(url, options, timeoutMs) {
 
 // Der Timeout umfasst Headers UND Body; die Race beendet auch Abort ignorierende Provider.
 async function fetchWithTimeout(url, options, timeoutMs) {
-    if (!Number.isFinite(options.deadline)) {
+    if (!options.singleAttempt && !Number.isFinite(options.deadline)) {
         // Manuelle Abrufe behalten ihren bisherigen Abbruchende-/Headervertrag.
         const res = await fetchHeadersWithTimeout(url, { cache: 'no-store', signal: options.signal, fetchImpl: options.fetchImpl }, timeoutMs);
         try { return { res, data: await res.json() }; }
@@ -92,6 +94,8 @@ async function fetchWithTimeout(url, options, timeoutMs) {
     const externalSignal = options.signal;
     const schedule = options.schedule || setTimeout;
     const unschedule = options.unschedule || clearTimeout;
+    const now = options.now || Date.now;
+    const expiresAt = now() + timeoutMs;
     let timedOut = false, rejectBoundary;
     const boundary = new Promise((_, reject) => { rejectBoundary = reject; });
     const abortFromExternal = () => {
@@ -104,17 +108,21 @@ async function fetchWithTimeout(url, options, timeoutMs) {
         controller.abort();
         rejectBoundary(createQuoteError(remaining <= timeoutMs ? 'STARTUP_TIMEOUT' : 'REQUEST_TIMEOUT', 'Kursabruf antwortet nicht rechtzeitig.'));
     }, Math.min(timeoutMs, remaining));
+    const checkResponseTime = () => {
+        checkRequestBudget(options);
+        if (controller.signal.aborted || (options.singleAttempt && now() >= expiresAt)) {
+            throw createQuoteError('REQUEST_TIMEOUT', 'Proxy-Timeout.');
+        }
+    };
     const request = async () => {
         if (timedOut) throw createQuoteError('REQUEST_TIMEOUT', 'Proxy-Timeout.');
         checkRequestBudget(options);
         const res = await (options.fetchImpl || globalThis.fetch)(url, { cache: 'no-store', signal: controller.signal });
-        checkRequestBudget(options);
-        if (controller.signal.aborted) throw createQuoteError('REQUEST_TIMEOUT', 'Proxy-Timeout.');
+        checkResponseTime();
         let data;
         try { data = await res.json(); }
         catch { throw createQuoteError('INVALID_RESPONSE', 'Proxy-Antwort ist kein gueltiges JSON.'); }
-        checkRequestBudget(options);
-        if (controller.signal.aborted) throw createQuoteError('REQUEST_TIMEOUT', 'Proxy-Timeout.');
+        checkResponseTime();
         return { res, data };
     };
     try {
@@ -175,8 +183,10 @@ function isRetriableProxyError(error) {
 }
 
 async function fetchProxyJson(proxyUrl, options = {}) {
-    const retries = Number.isInteger(options.retries) ? Math.max(1, options.retries) : LOCAL_PROXY_RETRIES;
-    const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(1, options.timeoutMs) : LOCAL_PROXY_TIMEOUT_MS;
+    const retries = options.singleAttempt ? 1
+        : Number.isInteger(options.retries) ? Math.max(1, options.retries) : LOCAL_PROXY_RETRIES;
+    const requestedTimeout = Number.isFinite(options.timeoutMs) ? Math.max(1, options.timeoutMs) : LOCAL_PROXY_TIMEOUT_MS;
+    const timeoutMs = options.singleAttempt ? Math.min(requestedTimeout, ALTERNATIVE_QUOTE_TIMEOUT_MS) : requestedTimeout;
     const now = options.now || Date.now;
     for (let attempt = 0; attempt < retries; attempt += 1) {
         checkRequestBudget(options);
@@ -255,7 +265,7 @@ export function normalizeQuote(rawQuote, requestedSymbol, options = {}) {
         throw createQuoteError('QUOTE_FROM_FUTURE', 'Kursstichtag liegt unzulaessig weit in der Zukunft.');
     }
     if (nowSeconds - asOf > QUOTE_MAX_AGE_SECONDS) {
-        throw createQuoteError('QUOTE_STALE', 'Kurs ist aelter als sieben Kalendertage.');
+        throw createQuoteError('QUOTE_STALE', 'Kurs ist aelter als sieben Kalendertage.', { price, currency, asOf });
     }
 
     const source = typeof rawQuote.source === 'string' ? rawQuote.source.trim() : '';
@@ -268,7 +278,9 @@ export function normalizeQuote(rawQuote, requestedSymbol, options = {}) {
         price,
         currency,
         asOf,
-        source
+        source,
+        ...(rawQuote.exchangeName !== undefined ? { exchange: boersenname(responseSymbol, rawQuote.exchangeName) } : {}),
+        ...(Number.isFinite(rawQuote.previousClose) && rawQuote.previousClose > 0 ? { previousClose: rawQuote.previousClose } : {})
     });
 }
 
@@ -276,12 +288,42 @@ export async function fetchProxyPrice(symbol, proxyBase = LOCAL_YAHOO_PROXY, opt
     const synthetic = isSyntheticPriceMode();
     const requestedSymbol = normalizeYahooSymbol(symbol);
     const base = proxyBase.replace(/\/$/, '');
-    const url = `${base}/quote?symbol=${encodeURIComponent(requestedSymbol)}`;
+    const url = `${base}/quote?symbol=${encodeURIComponent(requestedSymbol)}${options.singleAttempt ? '&einmal=1' : ''}`;
     checkRequestBudget(options);
     const data = await marketPriceAdapter('quote', { symbol: requestedSymbol }, () => fetchProxyJson(url, options));
     checkRequestBudget(options);
     // ISIN-Aliase werden lokal zu einem kanonischen Kurssymbol aufgelöst.
     return normalizeQuote(data, synthetic ? data.symbol : requestedSymbol, options);
+}
+
+/** @param {string} symbol @param {(candidate: string, alternative: boolean) => ReturnType<typeof fetchProxyPrice>} load
+ * @param {{nowSeconds?: number, singleExchange?: boolean}} [options] */
+async function fetchDailyQuote(symbol, load, options = {}) {
+    const ticker = normalizeYahooSymbol(symbol);
+    const symbols = options.singleExchange || isSyntheticPriceMode() ? [ticker] : kurssymbole(ticker);
+    if (symbols.length === 1) {
+        const quote = await load(ticker, false);
+        return quote.exchange || !ticker.endsWith('.DE') ? quote : Object.freeze({ ...quote, exchange: boersenname(ticker, null) });
+    }
+    const results = await Promise.allSettled(symbols.map(async (candidate, index) => load(candidate, index > 0)));
+    const now = Number.isFinite(options.nowSeconds) ? new Date(options.nowSeconds * 1000) : appNow();
+    const selected = waehle(ticker, results.map(result => {
+        if (result.status === 'rejected') return null;
+        const quote = result.value;
+        return { quote, kurs: quote.price, zeit: new Date(quote.asOf * 1000).toISOString(),
+            waehrung: quote.currency, vortag: quote.previousClose ?? null };
+    }), now.toISOString());
+    if ('quote' in selected) {
+        const { quote, vortag } = selected;
+        if (quote.symbol === ticker) return quote;
+        // Der Nachtkurs ändert weder das gespeicherte Kürzel noch den Abruf der Historie.
+        return { ...quote, symbol: ticker, exchange: quote.exchange || boersenname(quote.symbol, null), previousClose: vortag };
+    }
+    const basis = results[0];
+    if (basis.status === 'rejected') throw basis.reason;
+    const { asOf, price, currency } = basis.value;
+    if (asOf * 1000 > now.getTime()) throw createQuoteError('QUOTE_FROM_FUTURE', 'Kursstichtag liegt in der Zukunft.');
+    throw createQuoteError('QUOTE_STALE', 'Kurs ist aelter als sieben Kalendertage.', { price, currency, asOf });
 }
 
 function normalizeSearchResultSymbol(result) {
@@ -330,18 +372,13 @@ function searchAssetClass(entry) {
  * Währung, kein Kursabruf in €) oder `failed` (kein Kurs). @param {string} symbol @param {any} [hint] @param {any} [options] */
 export async function probeSearchQuote(symbol, hint = null, options = {}) {
     if (hint?.currency && hint.currency !== 'EUR') return { status: 'currency', currency: hint.currency };
-    let raw;
     try {
-        raw = await marketPriceAdapter('quote', { symbol }, () => fetchProxyJson(`${LOCAL_YAHOO_PROXY}/quote?symbol=${encodeURIComponent(symbol)}`, options));
+        const quote = await fetchDailyQuote(symbol, (candidate, alternative) =>
+            fetchProxyPrice(candidate, LOCAL_YAHOO_PROXY, { ...options, singleAttempt: alternative }), options);
+        return { status: 'ok', price: quote.price, currency: quote.currency, asOf: quote.asOf, source: quote.source, quoteExchange: quote.exchange };
     } catch (error) {
-        return { status: 'failed', code: error?.code || 'QUOTE_FAILED' };
-    }
-    try {
-        const quote = normalizeQuote(raw, isSyntheticPriceMode() ? raw?.symbol : symbol, options);
-        return { status: 'ok', price: quote.price, currency: quote.currency, asOf: quote.asOf, source: quote.source };
-    } catch (error) {
-        if (error?.code === 'UNSUPPORTED_CURRENCY') return { status: 'currency', currency: error.details?.currency || raw?.currency || '' };
-        if (error?.code === 'QUOTE_STALE' && raw?.price > 0) return { status: 'stale', price: raw.price, currency: String(raw.currency || '').toUpperCase(), asOf: raw.asOf };
+        if (error?.code === 'UNSUPPORTED_CURRENCY' && error.details?.currency) return { status: 'currency', currency: error.details.currency };
+        if (error?.code === 'QUOTE_STALE' && error.details?.price > 0) return { status: 'stale', ...error.details };
         return { status: 'failed', code: error?.code || 'QUOTE_FAILED' };
     }
 }
@@ -366,7 +403,8 @@ export async function searchSecurities(query, { probe = probeSearchQuote, limit 
         const quote = await probe(symbol, entry, options);
         hits.push({ symbol, name: String(entry.shortname || entry.longname || entry.name || symbol), exchange: String(entry.exchDisp || entry.exchange || ''),
             type: String(entry.typeDisp || entry.quoteType || entry.type || ''), assetClass: searchAssetClass(entry), isin: entry.isin || isin,
-            currency: quote.currency || entry.currency || '', price: quote.price ?? null, asOf: quote.asOf ?? null, status: quote.status,
+            currency: quote.currency || entry.currency || '', price: quote.price ?? null, asOf: quote.asOf ?? null,
+            quoteExchange: quote.quoteExchange, status: quote.status,
             available: quote.status === 'ok' });
     }
     return { query: text, isin, hits };
@@ -434,10 +472,10 @@ function selectMostSpecificQuoteError(errors, fallbackSymbol) {
 }
 
 /** @param {AbortSignal} signal
- * @param {{deduplicateSearchNames?: boolean, now?: () => number, deadline?: number, schedule?: typeof setTimeout, unschedule?: typeof clearTimeout}} [options]
+ * @param {{deduplicateSearchNames?: boolean, singleExchange?: boolean, now?: () => number, deadline?: number, schedule?: typeof setTimeout, unschedule?: typeof clearTimeout}} [options]
  */
-export function createBatchQuoteFetcher(signal, { deduplicateSearchNames = false, ...options } = {}) {
-    const quoteRequests = new Map(), searchRequests = new Map();
+export function createBatchQuoteFetcher(signal, { deduplicateSearchNames = false, singleExchange = false, ...options } = {}) {
+    const quoteRequests = new Map(), alternativeRequests = new Map(), searchRequests = new Map();
     const now = options.now || Date.now;
     const check = () => {
         checkRequestBudget(options);
@@ -459,20 +497,27 @@ export function createBatchQuoteFetcher(signal, { deduplicateSearchNames = false
         }
         return map.get(key);
     };
-    const quoteEntry = symbol => request(quoteRequests, String(symbol || '').trim().toUpperCase(),
-        requestOptions => fetchProxyPrice(symbol, LOCAL_YAHOO_PROXY, requestOptions));
+    const quoteEntry = (symbol, alternative) => request(alternative ? alternativeRequests : quoteRequests, symbol,
+        requestOptions => fetchProxyPrice(symbol, LOCAL_YAHOO_PROXY, {
+            ...requestOptions, signal: AbortSignal.any([signal]), singleAttempt: alternative
+        }));
+    const dailyQuote = (symbol, onEntry = (_entry) => {}) => fetchDailyQuote(symbol, (candidate, alternative) => {
+        const entry = quoteEntry(candidate, alternative);
+        if (!alternative) onEntry(entry);
+        return entry.promise;
+    }, { singleExchange });
     const searchEntry = (query, nameHint) => request(searchRequests,
         `${String(query || '').trim().toUpperCase()}|${deduplicateSearchNames ? '' : String(nameHint || '').trim().toUpperCase()}`,
         requestOptions => fetchProxySymbol(query, LOCAL_YAHOO_PROXY, nameHint, requestOptions));
     return {
         check,
-        quote: symbol => quoteEntry(symbol).promise,
+        quote: symbol => dailyQuote(symbol),
         search: (query, nameHint) => searchEntry(query, nameHint).promise,
         // Diagnose je Gruppe, aber auf der geteilten tatsächlichen Anfrage, ohne Quote-/Speicherfelder.
         forGroup() {
             let last;
             return { check,
-                quote(symbol) { last = quoteEntry(symbol); return last.promise; },
+                quote(symbol) { return dailyQuote(symbol, entry => { last = entry; }); },
                 search(query, nameHint) { last = searchEntry(query, nameHint); return last.promise; },
                 duration() { return last?.pending && Number.isFinite(last.startedAt)
                     ? Math.max(0, now() - last.startedAt) : last?.durationMs; }

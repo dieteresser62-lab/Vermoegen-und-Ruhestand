@@ -8,24 +8,90 @@ export function normalizeSearch(value) {
 }
 
 // Suchnormalisierung kann die Länge ändern (ß → ss); Marken bleiben am Originaltext.
+// Leerraum wird zu einem Zeichen zusammengefasst, damit Wortgruppen über Zeilenumbrüche hinweg passen.
+/**
+ * @param {string} text
+ * @returns {{folded: string; starts: number[]; ends: number[]}} Suchtext mit Rückweg in den Originaltext.
+ */
+function foldSearchText(text) {
+    const starts = [], ends = [];
+    let folded = '', offset = 0;
+    for (const character of String(text)) {
+        const normalized = /\s/.test(character) ? ' ' : normalizeSearch(character);
+        if (!(normalized === ' ' && folded.endsWith(' '))) {
+            folded += normalized;
+            for (let i = 0; i < normalized.length; i++) { starts.push(offset); ends.push(offset + character.length); }
+        } else ends[ends.length - 1] = offset + character.length;
+        offset += character.length;
+    }
+    return { folded, starts, ends };
+}
+
 /**
  * @param {string} text
  * @param {string} query
  * @returns {{start: number; end: number}|null} Position im Originaltext.
  */
 export function findSearchRange(text, query) {
-    const starts = [], ends = [];
-    let folded = '', offset = 0;
-    for (const character of String(text)) {
-        const normalized = normalizeSearch(character);
-        folded += normalized;
-        for (let i = 0; i < normalized.length; i++) { starts.push(offset); ends.push(offset + character.length); }
-        offset += character.length;
-    }
-    const needle = normalizeSearch(query);
+    const needle = normalizeSearch(query).replace(/\s+/g, ' ');
     if (!needle) return null;
+    const { folded, starts, ends } = foldSearchText(text);
     const index = folded.indexOf(needle);
     return index < 0 ? null : { start: starts[index], end: ends[index + needle.length - 1] };
+}
+
+const searchWords = query => normalizeSearch(query).trim().split(/\s+/).filter(Boolean);
+const wordCharacter = /[\p{L}\p{N}]/u;
+
+/** Alle Fundstellen eines Suchbegriffs. Bei `preferWordStart` zählen Treffer am Wortanfang,
+ * solange es sie gibt („im“ nicht in „immer“); sonst auch Treffer mitten im Wort.
+ *
+ * @param {{folded: string; starts: number[]; ends: number[]}} fold
+ * @param {string} needle Normalisierter Suchbegriff.
+ * @param {boolean} preferWordStart
+ * @returns {{start: number; end: number}[]} Positionen im Originaltext.
+ */
+function searchOccurrences(fold, needle, preferWordStart) {
+    const all = [], atStart = [];
+    for (let index = fold.folded.indexOf(needle); index >= 0; index = fold.folded.indexOf(needle, index + 1)) {
+        const range = { start: fold.starts[index], end: fold.ends[index + needle.length - 1] };
+        all.push(range);
+        if (index === 0 || !wordCharacter.test(fold.folded[index - 1])) atStart.push(range);
+    }
+    return preferWordStart && atStart.length ? atStart : all;
+}
+
+const SNIPPET_LENGTH = 240, SNIPPET_LEAD = 70;
+
+// KS-1: Kommt die ganze Eingabe als Wortgruppe vor, sitzt der Ausschnitt dort. Sonst dort, wo die meisten
+// verschiedenen Suchwörter in ein Fenster von 240 Zeichen passen; bei Gleichstand die längeren Wörter
+// (so gewinnt ohne Nachbarn das längste Wort statt eines Füllworts), dann die kleinste Spanne, dann die frühere Stelle.
+/**
+ * @param {string} text Kapiteltext.
+ * @param {string[]} words Normalisierte Suchwörter.
+ * @param {boolean} phrase Ob die Wortgruppe im Text steht.
+ * @returns {{start: number; end: number}} Bereich, der im Ausschnitt sichtbar sein soll.
+ */
+function snippetFocus(text, words, phrase) {
+    const fold = foldSearchText(text);
+    const group = phrase && searchOccurrences(fold, words.join(' '), false)[0];
+    if (group) return group;
+    const occurrences = [...new Set(words)].flatMap(word => searchOccurrences(fold, word, true).map(range => ({ ...range, word })))
+        .sort((a, b) => a.start - b.start || b.end - a.end);
+    let best = null;
+    for (let i = 0; i < occurrences.length; i++) {
+        const seen = new Set();
+        let length = 0, end = 0;
+        for (let j = i; j < occurrences.length && occurrences[j].end - occurrences[i].start <= SNIPPET_LENGTH; j++) {
+            end = Math.max(end, occurrences[j].end);
+            if (seen.has(occurrences[j].word)) continue;
+            seen.add(occurrences[j].word); length += occurrences[j].word.length;
+            const candidate = { start: occurrences[i].start, end, count: seen.size, length };
+            if (!best || candidate.count > best.count || candidate.count === best.count && (candidate.length > best.length
+                || candidate.length === best.length && candidate.end - candidate.start < best.end - best.start)) best = candidate;
+        }
+    }
+    return best || { start: 0, end: 0 };
 }
 
 /**
@@ -34,17 +100,41 @@ export function findSearchRange(text, query) {
  * @returns Ergebnis der bestehenden Projektion.
  */
 export function searchChapters(records, query) {
-    const words = normalizeSearch(query).trim().split(/\s+/).filter(Boolean);
+    const words = searchWords(query);
     if (!words.length) return [];
+    const group = words.join(' ');
     return records.map(record => {
-        const text = normalizeSearch(record.text);
+        const text = normalizeSearch(record.text).replace(/\s+/g, ' ');
         if (!words.every(word => text.includes(word))) return null;
         const title = normalizeSearch(record.title);
         const score = words.reduce((sum, word) => sum + (title.includes(word) ? 2 : 0), 0);
-        const first = findSearchRange(record.text, words[0])?.start || 0;
-        const start = Math.max(0, first - 70);
-        return { ...record, score, snippet: (start ? '… ' : '') + record.text.slice(start, start + 240) + (start + 240 < record.text.length ? ' …' : '') };
-    }).filter(Boolean).sort((a, b) => b.score - a.score);
+        const phrase = text.includes(group);
+        const focus = snippetFocus(record.text, words, phrase);
+        const start = Math.max(0, focus.start - Math.min(SNIPPET_LEAD, Math.max(0, SNIPPET_LENGTH - (focus.end - focus.start))));
+        return { ...record, score, phrase, snippet: (start ? '… ' : '') + record.text.slice(start, start + SNIPPET_LENGTH) + (start + SNIPPET_LENGTH < record.text.length ? ' …' : '') };
+    }).filter(Boolean).sort((a, b) => Number(b.phrase) - Number(a.phrase) || b.score - a.score);
+}
+
+/** Markierungen im Trefferausschnitt: die ganze Wortgruppe, wo sie steht; sonst jedes Suchwort,
+ * längere zuerst und ohne Überlappung, Treffer am Wortanfang vor Treffern mitten im Wort.
+ *
+ * @param {string} snippet
+ * @param {string} query
+ * @returns {{start: number; end: number}[]} Sortierte Bereiche im Ausschnitt.
+ */
+export function searchMarkRanges(snippet, query) {
+    const words = searchWords(query);
+    if (!words.length) return [];
+    const fold = foldSearchText(snippet);
+    const group = searchOccurrences(fold, words.join(' '), false);
+    if (group.length) return group;
+    const ranges = [];
+    for (const word of [...new Set(words)].sort((a, b) => b.length - a.length)) {
+        for (const range of searchOccurrences(fold, word, true)) {
+            if (!ranges.some(other => range.start < other.end && other.start < range.end)) ranges.push(range);
+        }
+    }
+    return ranges.sort((a, b) => a.start - b.start);
 }
 
 const searchBlockTags = new Set('ARTICLE ASIDE BLOCKQUOTE BR DD DIV DL DT FIGCAPTION FIGURE H1 H2 H3 H4 H5 H6 HR LI OL P SECTION TABLE TBODY TD TH THEAD TR UL'.split(' '));
@@ -154,21 +244,25 @@ export function initHandbook(doc = globalThis.document, win = doc?.defaultView) 
             const empty = doc.createElement('p'); empty.className = 'hb-empty'; empty.textContent = 'Kein Treffer. Probiere einen kürzeren Begriff, zum Beispiel Tagesgeld oder Mindest-Flex.';
             hits.append(empty); return;
         }
-        const words = normalizeSearch(query).split(/\s+/);
+        const words = searchWords(query), group = words.join(' ');
+        const sectionText = item => normalizeSearch(handbookSearchText(/** @type {HTMLElement} */ (item))).replace(/\s+/g, ' ');
         for (const match of matches) {
             const chapter = doc.getElementById(match.id);
-            const section = [...chapter.querySelectorAll('.hb-section')].find(item => words.every(word => normalizeSearch(handbookSearchText(/** @type {HTMLElement} */ (item))).includes(word)));
+            // KS-1: Steht die Wortgruppe in einem Abschnitt, führt der Treffer dorthin; sonst wie bisher.
+            const sections = [...chapter.querySelectorAll('.hb-section')];
+            const section = (match.phrase && sections.find(item => sectionText(item).includes(group)))
+                || sections.find(item => words.every(word => sectionText(item).includes(word)));
             const link = doc.createElement('a'); link.className = 'hb-hit'; link.href = '#' + (section?.id || match.id);
             const heading = doc.createElement('h3'); heading.textContent = match.title;
             const snippet = doc.createElement('p');
             // Nur Textknoten; auch HTML-artige Suchbegriffe können kein Markup einfügen.
-            const range = findSearchRange(match.snippet, words[0]);
-            if (!range) snippet.textContent = match.snippet;
-            else {
-                snippet.append(doc.createTextNode(match.snippet.slice(0, range.start)));
+            let position = 0;
+            for (const range of searchMarkRanges(match.snippet, query)) {
+                snippet.append(doc.createTextNode(match.snippet.slice(position, range.start)));
                 const mark = doc.createElement('mark'); mark.textContent = match.snippet.slice(range.start, range.end); snippet.append(mark);
-                snippet.append(doc.createTextNode(match.snippet.slice(range.end)));
+                position = range.end;
             }
+            snippet.append(doc.createTextNode(match.snippet.slice(position)));
             link.append(heading, snippet); hits.append(link);
         }
     };

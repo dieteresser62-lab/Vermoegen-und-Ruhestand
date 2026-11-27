@@ -425,6 +425,8 @@ body:where(.personen-vermoegen-page) {
     border-bottom: 1px solid var(--border);
 }
 
+/* KS-1: top bleibt 0. Jede Tabelle hier liegt in einem eigenen Scrollrahmen (.table-scroll, .ds-table-box, ⓘ-Fenster);
+   der Kopf klebt in diesem Rahmen und nie unter dem festen Seitenkopf. Die Kopfhöhe würde ihn in die Tabelle schieben. */
 :where(.personen-vermoegen-page) th:where(:not(dialog, dialog *)) {
     background: var(--surface-sunken);
     font-weight: 600;

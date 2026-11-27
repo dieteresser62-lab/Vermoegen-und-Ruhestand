@@ -137,7 +137,11 @@
 .overview-year-budget-key[data-budget-status="provisional"] { border-top-style: dashed; }
 .overview-price-context { position: relative; min-width: 0; max-width: 100%; }
 .overview-price-context [hidden] { display: none; }
-.overview-price-context > .ds-info { vertical-align: middle; }
+.overview-price-context > .ds-info, .overview-price-context > .ds-info-button { vertical-align: middle; }
+/* OP-3 Nachtrag 1: Die Kurspille ist ein Knopf ohne Sprung; im Spielbereich gesperrt und dann reiner Text. */
+.overview-price-refresh { font: inherit; cursor: pointer; }
+.overview-price-refresh:disabled { cursor: default; }
+.overview-price-refresh:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .overview-price-details { position: absolute; top: calc(100% + 8px); left: 0; width: min(440px, calc(100vw - 48px)); z-index: 5; }
 .overview-price-details:not([open]) { display: none; }
 .overview-price-details[open] { padding: 16px 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: 0 6px 24px color-mix(in srgb, var(--text-main) 12%, transparent); overflow-wrap: anywhere; }

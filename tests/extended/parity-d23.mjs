@@ -1,15 +1,15 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { measure, checkObserved } from './parity-d23-probes.mjs';
+import { measure, checkObserved, testD23TaxReserve } from './parity-d23-probes.mjs';
 import { EngineAPI } from '../../engine/index.mjs';
 import { sealParityCase } from '../../app/balance/parity-case.js';
 import { hashParityReplayValue } from '../../app/simulator/parity-replay-contract.js';
 import { compareParityField, compareParityTree, parityMeasurement, PARITY_TOLERANCES, summarizeParityFields } from '../../app/shared/parity-compare.js';
 
 const directory = new URL('./fixtures/parity-d23/', import.meta.url);
-// FR-29/30: neue finanzielle Sollwerte, Originalbelege und Manifest bleiben unverändert.
-const ffdObservations = JSON.parse(fs.readFileSync(new URL('./fixtures/parity-d23-ff-d.json', import.meta.url), 'utf8'));
+// Fortgeschriebene Sollwerte zu den unveränderten Originalbelegen.
+const observations = JSON.parse(fs.readFileSync(new URL('./fixtures/parity-d23-ff-d.json', import.meta.url), 'utf8'));
 
 /** Original D23 evidence is pinned byte for byte; observation is never regenerated. */
 export function loadD23Fixtures() {
@@ -56,11 +56,13 @@ function expectedThreeBucketObservation(fixture) {
         simulatorPlannedAction: plannedAction, balancePlannedAction: plannedAction,
         simulatorBondBeforePayout: bonds, simulatorBondAtEnd: bonds,
         balanceBondAfterTransaction: bonds, deltaBondAfterTransaction: 0, deltaBondAtEnd: 0, flowDelta: 0,
+        // KR-1c (NG-5): Der Zins des Jahres (hier 0 %) steht vor der Entscheidung, direkt nach den Renditen.
         phases: [{ phase: 'after_returns', bonds: 50000, cash: 90000 },
+            { phase: 'after_cash_interest', bonds: 50000, cash: 90000 },
             { phase: 'after_action_sales', bonds: 0, cash },
             { phase: 'after_forced_sales', bonds: 0, cash },
             { phase: 'after_buys', bonds, cash },
-            ...['after_payout', 'after_cash_interest', 'after_tax_reconciliation']
+            ...['after_payout', 'after_tax_reconciliation']
                 .map(phase => ({ phase, bonds, cash: cash - payout }))] };
 }
 
@@ -69,7 +71,7 @@ export function createD23ParityCase(fixture) {
     const actual = measure(fixture);
     assert.equal(JSON.stringify(fixture), bytes, 'D23 source mutated');
     // Die Originalbytes bleiben als Ausgangsbeleg erhalten; entschiedene Regeln haben neue Sollwerte.
-    const expected = fixture.kind === 'household'
+    const expected = observations[fixture.id] ?? (fixture.kind === 'household'
         ? { ...fixture.observed, simulator: fixture.observed.balance,
             simulatorPersonalTax: fixture.observed.balancePeople.map(({ id, tax, lossCarry }) => ({ id, tax, lossCarry })),
             deltaTax: 0, deltaGross: 0,
@@ -103,8 +105,8 @@ export function createD23ParityCase(fixture) {
                         balanceInflation: fixture.observed.simulatorInflation, deltaInflationPctPoints: 0,
                         balanceCape: fixture.observed.simulatorCape, deltaCape: 0,
                         balanceEndPrice: fixture.observed.simulatorEndPrice, deltaEndPrice: 0 }
-                    : fixture.observed;
-    checkObserved(actual, ffdObservations[fixture.id] ?? expected, fixture.id);
+                    : fixture.observed);
+    checkObserved(actual, expected, fixture.id);
     const fields = [];
     const add = (id, a, b, tolerance = 'EUR', options = {}) => {
         const phase = options.phase || 'VOR_TRANSAKTION';
@@ -205,18 +207,29 @@ export function replayD23ParityCase(value) {
     return { reproduced: actual.caseHash === caseHash, case: actual };
 }
 
-export function testParityD23() {
-    const cases = loadD23Fixtures().map(createD23ParityCase);
-    assert.equal(cases.length, 13);
-    for (const value of cases) assert.equal(replayD23ParityCase(JSON.parse(JSON.stringify(value))).reproduced, true, value.id);
-    const reserve = cases.find(value => value.id === '11-drei-toepfe-steuerreserve');
-    assert.equal(reserve.summary.status, 'GLEICH');
-    for (const value of cases.filter(value => value !== reserve)) assert.notEqual(value.summary.status, 'TECHNISCHER_FEHLER', value.id);
-    assert.ok(!cases.some(value => value.fields.some(field => field.question === 3)), 'FR-10 ist entschieden');
-    assert.equal(cases.find(value => value.id === '2-haushalt').fields.find(field => field.id === 'personalPayout').status, 'GLEICH');
-    for (const id of ['2-haushalt', '4-drei-toepfe-rendite', '5-drei-toepfe-phase', '11-drei-toepfe-steuerreserve', '1-reset-2001', '1-reset-2002', '3-horizont', '6-jahresrentenrundung', '8-partnerrente', '9-ath-phase', '12-jahresfortschreibung-rundung', '7-cashaufteilung']) assert.equal(cases.find(value => value.id === id).summary.status, 'GLEICH', id);
-    assert.ok(!cases.some(value => value.fields.some(field => [1, 2, 5, 6, 7].includes(field.question))), 'FR-8/FR-9/FR-12/FR-13/FR-14 sind entschieden');
-    assert.equal(cases.find(value => value.id === '6-jahresrentenrundung').fields.find(field => field.id === 'monthlyBudget').withinTolerance, true);
-    console.log('Parität D23: 13 unveränderte Ausgangsbelege und Einzelreplays geprüft; FR-8 bis FR-15 und persönliche Auszahlung gleich; Steuerreserve gedeckt.');
+export async function testParityD23(check = async (_id, run) => run()) {
+    const fixtures = loadD23Fixtures();
+    const cases = [];
+    for (const fixture of fixtures) {
+        await check(fixture.id, () => {
+            const value = createD23ParityCase(fixture);
+            assert.equal(replayD23ParityCase(JSON.parse(JSON.stringify(value))).reproduced, true, 'Einzelreplay');
+            assert.equal(value.summary.status, 'GLEICH');
+            assert.ok(!value.fields.some(field => [1, 2, 3, 5, 6, 7].includes(field.question)),
+                'FR-8/FR-9/FR-10/FR-12/FR-13/FR-14 sind entschieden');
+            if (fixture.kind === 'household') {
+                assert.equal(value.fields.find(field => field.id === 'personalPayout').status, 'GLEICH');
+            }
+            if (fixture.kind === 'pension_rounding') {
+                assert.equal(value.fields.find(field => field.id === 'monthlyBudget').withinTolerance, true);
+            }
+            cases.push(value);
+        });
+    }
+    console.log(`Parität D23: ${cases.length} von ${fixtures.length} Einzelprüfungen bestanden.`);
+    await check('11-steuerreserve-ohne-anleiheverkauf', () => {
+        testD23TaxReserve();
+        console.log('Parität D23: Steuerreserve-Gegenprobe ohne Anleiheverkauf bestanden (tax_reserve).');
+    });
     return cases;
 }

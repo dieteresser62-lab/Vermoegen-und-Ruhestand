@@ -9,6 +9,7 @@ import {
 import { buildSimulatorEngineInput } from '../app/simulator/simulator-engine-input.js';
 import { simulateAccumulationYear } from '../app/simulator/simulator-accumulation-year.js';
 import { buildSimulatorYearResult } from '../app/simulator/simulator-year-result.js';
+import { PROTOCOL_COLUMNS, readProtocolValue } from '../app/simulator/protocol-columns.js';
 import { EngineAPI } from '../engine/index.mjs';
 
 // --- MOCKING GLOBAL STATE ---
@@ -23,7 +24,7 @@ function assert(condition, message) {
 }
 
 function assertClose(actual, expected, tolerance, message) {
-    if (Math.abs(actual - expected) > tolerance) {
+    if (!Number.isFinite(actual) || !Number.isFinite(expected) || Math.abs(actual - expected) > tolerance) {
         throw new Error(`${message}: Actual ${actual} != Expected ${expected}`);
     }
 }
@@ -496,7 +497,9 @@ try {
         isBadYear: true
     });
     assertClose(negativeCashResult.logData.cashInterestEarned, -500, 1e-9, 'Accumulation should retain signed negative cash interest');
-    assertClose(negativeCashResult.logData.liqEnd, 99500, 1e-9, 'Accumulation liqEnd must preserve its legacy post-interest meaning');
+    const liquidityColumn = PROTOCOL_COLUMNS.find(column => column.id === 'liqend');
+    assertClose(readProtocolValue(liquidityColumn, negativeCashResult.logData), 111500, 1e-9,
+        'Ansparjahr: Die Exportspalte enthält 100.000 € minus 500 € Zins plus 12.000 € Sparrate');
     assertClose(negativeCashResult.logData.liq_post_accumulation_end_of_year, 111500, 1e-9, 'Accumulation should expose final post-savings liquidity under an explicit field name');
     assertClose(negativeCashResult.newState.accumulationState.sparrateThisYear, 12000, 1e-9, 'Zero wage growth should preserve the annual savings rate');
     assertClose(negativeCashResult.newState.portfolio.liquiditaet, 111500, 1e-9, 'Accumulation should combine negative interest and unchanged savings');
@@ -590,6 +593,8 @@ try {
         goldAfterBuys: 0,
         cashZinsen: 0,
         liqNachZins: 20000,
+        // KR-1c (NG-5): liqNachZins liegt jetzt vor der Entscheidung; liqEnd liest das Jahresende vor der Steuerabrechnung.
+        liqJahresende: 20000,
         zielLiquiditaet: 0,
         bondBucketBefore: 0,
         bondRefillGross: 0,
@@ -625,7 +630,7 @@ try {
     assert(result.logData.liq_before_payout === 32000, 'Year result should expose liquidity before payout');
     assert(result.logData.liq_after_payout === 20000, 'Year result should expose liquidity after payout');
     assert(result.logData.liq_after_interest === 20000, 'Year result should expose liquidity after interest');
-    assert(result.logData.liqEnd === 20000, 'Year result liqEnd must preserve its legacy post-interest meaning');
+    assert(result.logData.liqEnd === 20000, 'Year result liqEnd is the year-end liquidity before the tax settlement');
     assert(result.logData.liq_post_payout_end_of_year === 20000, 'Year result should expose final post-payout liquidity under an explicit field name');
     assert(result.logData.portfolio_total_before_payout === 132000, 'Year result should expose portfolio total before payout');
     assert(result.logData.portfolio_active_end === 120000, 'Year result should expose active portfolio total at year end');

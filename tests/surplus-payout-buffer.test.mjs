@@ -1,3 +1,4 @@
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
 import { readQSCReferences } from './helpers/qs-c-expectations.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -22,7 +23,7 @@ for (const control of evidence.controls) {
         `${label}: ein Netto-Grundbedarfsmonat bleibt nach Auszahlung erhalten`);
     const hash = createHash('sha256').update(JSON.stringify(result)).digest('hex');
     if (inputs.liquidityRunwayYears === 2) {
-        assertEqual(hash, readQSCReferences(control.beforeHash), `${label}: vollständiges Ergebnis bytegleich zum Ausgangsstand`);
+        assertEqual(hash, readKR1cReferences(readQSCReferences(control.beforeHash)), `${label}: vollständiges Ergebnis bytegleich zum Ausgangsstand`);
     } else {
         assertEqual(control.beforeForcedSale, 5000, `${label}: Ausgangsstand benötigte einen Notverkauf`);
         assert(result.logData.kaufAkt < control.beforeEquityBuy, `${label}: kleinerer Kauf lässt den Auszahlungspuffer stehen`);

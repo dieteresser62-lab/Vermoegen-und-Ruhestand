@@ -7,7 +7,7 @@
 "use strict";
 
 import { previewTermsScope, rawAggregateForSources, householdSettlements, allocateSettlementTaxToSources, addRawAggregate, setPreviewTermsScope } from './tax.js';
-import { normalizeUses, sumUses, hasFiniteValue, TOLERANCE_EUR, isLiquiditySource, finiteNumber, sum, EPSILON, allocateCentsByWeights, actionAmountsChanged } from './amounts.js';
+import { normalizeUses, sumUses, hasFiniteValue, TOLERANCE_EUR, isLiquiditySource, finiteNumber, sum, EPSILON, splitUsesByPersonalNet, actionAmountsChanged } from './amounts.js';
 import { allocateLiquiditySources } from './liquidity.js';
 import { planAssetSources } from './asset-plan.js';
 import { reconcileUsesToAchievedNet } from '../../../engine/transactions/three-bucket-logic.mjs';
@@ -134,35 +134,8 @@ function attributeHouseholdActionScoped({ householdAction, profiles, mode = 'tax
         if (Math.abs(remaining) > 1e-7) throw new Error(`Profilverbund: Cent-Rest von ${remaining} EUR kann keiner Verwendung zugeordnet werden.`);
     }
     const profileNetWeights = settlements.map(settlement => sum(settlement.sources.map(source => source.netto)));
-    const usesByProfile = settlements.map(() => ({}));
-    Object.entries(uses).forEach(([key, amount]) => {
-        const allocations = allocateCentsByWeights(amount, settlements, (_, index) => profileNetWeights[index]);
-        allocations.forEach((allocation, index) => { usesByProfile[index][key] = allocation; });
-    });
-    // Zuerst jede Spaltensumme erhalten, dann persönliche Rundungsüberhänge
-    // innerhalb derselben Verwendung verschieben. Jeder Verkäufer trägt so
-    // seine eigenen Centbruchteile; der Haushalt bleibt in jedem Posten gleich.
+    const usesByProfile = splitUsesByPersonalNet(uses, profileNetWeights);
     const residual = index => profileNetWeights[index] - sumUses(usesByProfile[index]);
-    for (const [key, amount] of Object.entries(uses)) {
-        const difference = amount - sum(usesByProfile.map(row => row[key]));
-        if (Math.abs(difference) <= 1e-7) continue;
-        const candidates = settlements.map((_, index) => index)
-            .filter(index => profileNetWeights[index] > 0 && usesByProfile[index][key] + difference >= 0)
-            .sort((a, b) => Math.sign(difference) * (residual(b) - residual(a)) || a - b);
-        if (!candidates.length) throw new Error('Profilverbund: Persönlicher Cent-Rest kann keiner Verwendung zugeordnet werden.');
-        usesByProfile[candidates[0]][key] += difference;
-    }
-    for (let receiver = 0; receiver < settlements.length; receiver++) {
-        for (let donor = 0; donor < settlements.length && residual(receiver) > 1e-7; donor++) {
-            if (residual(donor) >= -1e-7) continue;
-            for (const key of ['liquiditaet', 'bonds', 'aktien', 'gold', ...Object.keys(uses)]) {
-                const transfer = Math.min(Math.max(0, residual(receiver)), Math.max(0, -residual(donor)), usesByProfile[donor][key]);
-                if (!(transfer > 0)) continue;
-                usesByProfile[donor][key] -= transfer;
-                usesByProfile[receiver][key] += transfer;
-            }
-        }
-    }
     if (settlements.some((_, index) => Math.abs(residual(index)) > 1e-7))
         throw new Error('Profilverbund: Persönliche Quellen und Verwendungen bleiben nach dem Cent-Ausgleich unausgeglichen.');
 

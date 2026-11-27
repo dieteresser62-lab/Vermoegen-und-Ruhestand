@@ -18,7 +18,7 @@ const actionNames = { aktien_alt: 'Aktien (Altbestand)', aktien_neu: 'Aktien (Ne
 const idsMatch = (a, b) => JSON.stringify([...(a || [])].sort()) === JSON.stringify([...(b || [])].sort());
 
 /** Overview nennt einen einzelnen Haushaltsangehörigen single; nur im belegten
- * Haushaltskontext ist dieser Alias zulässig. Außenpersonen bleiben single. */
+ * Haushaltskontext ist dieser Alias zulässig. */
 /**
  * @param scope Geprüfter Personen- oder Haushaltsbereich.
  * @param previewScope Personen- oder Haushaltsbereich der Vorschau.
@@ -134,13 +134,13 @@ export function roundedHouseholdPlanComparison(view, { planBudget = null, planWi
             const action = view.confirmedAction?.action;
             let plan = row.plan;
             if (row.plan !== '—' && action) {
-                // Ergänzung 2 FR-78: Verkaufsbetrag = Summe der angezeigten Planzeilen wie in „Was zu tun ist“.
+                // Ergänzung 2 FR-78: Verkaufsbetrag wie der Kopf von „Was zu tun ist“; HP-3 (Ergänzung 6): Summe der Zeilen auf den Euro, einmal aufgerundet.
                 const summary = summarizeBalanceAction(action, action);
                 const lines = (Array.isArray(action.quellen) ? action.quellen : []).filter((/** @type {any} */ source) => !source.internalCashRebalance
                     && !['liquiditaet', 'cash'].includes(source.kind) && source.source !== 'Liquidität' && source.netto > 0);
                 const exact = lines.reduce((/** @type {number} */ sum, /** @type {any} */ source) => sum + source.netto, 0);
                 const shown = lines.length && Number.isFinite(summary.amount) && Math.abs(exact - summary.amount) < 1
-                    ? lines.reduce((/** @type {number} */ sum, /** @type {any} */ source) => sum + displayUp(source.netto), 0) : null;
+                    ? displayUp(lines.reduce((/** @type {number} */ sum, /** @type {any} */ source) => sum + Math.round(source.netto), 0)) : null;
                 plan = shown === null ? describe(summary)
                     : describeBalanceActionSummary({ ...summary, amount: shown }, value => value === shown ? money(value) : up(value));
             }
@@ -160,6 +160,10 @@ export function roundedHouseholdPlanComparison(view, { planBudget = null, planWi
  */
 export function householdPlanComparisonHtml(view) {
     const e = escapeHtml;
+    const rowLabel = (/** @type {string} */ label) => label.startsWith('Liquidität')
+        ? `Liquiditätsdeckung (% des Ziels) ${infoPopoverHtml('Liquiditätsdeckung im Vergleich',
+            'Jede Spalte zeigt, wie viel vom Ziel ihre Handlungsanweisung decken würde. Bei „Nichts tun“ gilt der Stand ohne Kauf oder Verkauf.')}`
+        : e(label);
     const actionCell = (row, side) => `${e(row[side])}${row[`${side}Explanation`]
         ? ` ${infoPopoverHtml('Erläuterung zur Handlungsanweisung', row[`${side}Explanation`])}` : ''}${row[`${side}Amounts`]?.length
         ? `<details class="plan-comparison-amounts ds-technical-details"><summary>Einzelbeträge</summary><p>${row[`${side}Amounts`].map(e).join(' · ')}</p></details>` : ''}`;
@@ -173,6 +177,6 @@ export function householdPlanComparisonHtml(view) {
             <p class="plan-comparison-note ds-explanation">Vorschau für einen Jahresabschluss heute ${infoPopoverHtml('Erläuterung zur Vorschau', 'So sähe es aus, wenn heute Jahresabschluss wäre. Daraus entsteht keine neue Handlungsaufgabe.')}</p>
         </div>
         <div class="plan-comparison-table"><table class="ds-table"><thead><tr><th scope="col">Wert</th><th scope="col">Beschlossener Plan</th><th scope="col">Vorschau heute</th><th scope="col">Δ</th></tr></thead><tbody>
-        ${view.rows.map(row => `<tr><th scope="row">${e(row.label)}</th><td>${row.label === 'Handlungsanweisung' ? actionCell(row, 'plan') : e(row.plan)}</td><td>${row.label === 'Handlungsanweisung' ? actionCell(row, 'preview') : e(row.preview)}</td><td>${e(row.delta)}</td></tr>`).join('')}
+        ${view.rows.map(row => `<tr><th scope="row">${rowLabel(row.label)}</th><td>${row.label === 'Handlungsanweisung' ? actionCell(row, 'plan') : e(row.plan)}</td><td>${row.label === 'Handlungsanweisung' ? actionCell(row, 'preview') : e(row.preview)}</td><td>${e(row.delta)}</td></tr>`).join('')}
         </tbody></table></div></div>`;
 }

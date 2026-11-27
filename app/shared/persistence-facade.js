@@ -1,11 +1,11 @@
-export { blockSyncWrites, hasSyncWriteBlocks, blockDocumentWrites, holdWritesUntil, observeBeforeFlush, setProbelaufProtection } from './persistence-facade/state.js';
+export { blockSyncWrites, hasSyncWriteBlocks, syncWriteBlockMessage, blockDocumentWrites, holdWritesUntil, observeBeforeFlush, setProbelaufProtection } from './persistence-facade/state.js';
 export { configurePersistence, init, isInitialized } from './persistence-facade/initialization.js';
 export { withProbelaufOperation, flush } from './persistence-facade/writes.js';
 export { getItemSync, setItemSync, removeItemSync, keysSync, keySync, clearAllowedSync, clearSync } from './persistence-facade/cache.js';
 export { exportAllSync, readPersistedRecords, replaceRecordsTransactional, importAll, replaceLiveRecords } from './persistence-facade/exchange.js';
-export { listSnapshots, readSnapshot, readSnapshots, writeSnapshot, deleteSnapshot, migrateLegacySnapshotsIfNeeded } from './persistence-facade/snapshots.js';
+export { listSnapshots, readSnapshot, readSnapshots, writeSnapshot, deleteSnapshot } from './persistence-facade/snapshots.js';
 export { observeInputChanges, bindLifecycleFlush, bindTauriClose, unbindLifecycleFlush } from './persistence-facade/lifecycle.js';
-export { getDirtyState, getPersistenceStatus, getMetadata, captureNewBeginningPreferences, resetNewBeginningBrowserStorage, resetPersistenceForTests, resetPersistenceRuntimeForTests } from './persistence-facade/maintenance.js';
-export { readRealRecords, readRealSnapshots, activatePlayArea, discardPlayArea, adoptPlayArea } from './persistence-facade/play-area.js';
+export { getDirtyState, getPersistenceStatus, getMetadata, setMetadata, updateMetadata, resetNewBeginningBrowserStorage, resetPersistenceForTests, resetPersistenceRuntimeForTests } from './persistence-facade/maintenance.js';
+export { readRealRecords, activatePlayArea, discardPlayArea, adoptPlayArea } from './persistence-facade/play-area.js';
 export { createHousehold, switchHousehold, getHouseholds, renameHousehold, deleteHousehold, rebuildHousehold, createHouseholdFromRecords, readHouseholdRecords } from './persistence-facade/households.js';
 export { PersistenceFacade, persistenceStorage, default } from './persistence-facade/api.js';

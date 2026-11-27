@@ -23,6 +23,7 @@ const expected = {
     normalizeFullPersistenceBackup: format.normalizeFullPersistenceBackup,
     assertFullBackupAllowed: guard.assertFullBackupAllowed,
     downloadJsonFile: download.downloadJsonFile,
+    deliverBackupFile: download.deliverBackupFile,
     downloadFullPersistenceBackup: download.downloadFullPersistenceBackup,
     downloadRecoveryPersistenceBackup: download.downloadRecoveryPersistenceBackup,
     importFullPersistenceBackup: restore.importFullPersistenceBackup,
@@ -30,7 +31,7 @@ const expected = {
     bindFullBackupImport: bindings.bindFullBackupImport
 };
 assertEqual(JSON.stringify(Object.keys(facade).sort()), JSON.stringify(Object.keys(expected).sort()),
-    'Fassade erhält alle 20 öffentlichen Namen und hält interne Helfer privat');
+    'Fassade erhält alle 21 öffentlichen Namen und hält interne Helfer privat');
 for (const [name, value] of Object.entries(expected)) {
     assert(facade[name] === value, `${name}: Fassade und Definitionsmodul teilen dieselbe Bindung`);
 }

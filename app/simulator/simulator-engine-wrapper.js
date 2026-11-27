@@ -1,15 +1,13 @@
 /**
  * Module: Simulator Engine Wrapper
  * Purpose: Standardized facade for the simulation engine.
- *          Routes calls to the direct engine implementation (simulator-engine-direct.js)
- *          and handles performance monitoring.
+ *          Routes calls to the direct engine implementation (simulator-engine-direct.js).
  * Usage: Main entry point for running a simulation year.
- * Dependencies: feature-flags.js, simulator-engine-direct.js, simulator-engine-helpers.js
+ * Dependencies: simulator-engine-direct.js, simulator-engine-helpers.js
  */
 
 "use strict";
 
-import { featureFlags } from '../shared/feature-flags.js';
 import { simulateOneYear as simulateOneYearDirect } from './simulator-engine-direct.js';
 
 // Re-export full initMcRunState from helpers to ensure tests get valid state
@@ -46,45 +44,21 @@ export function simulateOneYear(
     preparedGuardrailPlan = null,
     preserveLogOrder = true
 ) {
-    const performanceMonitoring = featureFlags.getAllFlags().performanceMonitoring;
-    let startTime;
-
-    try {
-        if (performanceMonitoring) {
-            startTime = performance.now();
-        }
-
-        // Use Direct API version (Exclusive)
-        const engine = engineAPI || (typeof window !== 'undefined' ? window.EngineAPI : null);
-        const result = simulateOneYearDirect(
-            currentState,
-            inputs,
-            yearData,
-            yearIndex,
-            pflegeMeta,
-            careFloorAddition,
-            householdContext,
-            temporaryFlexFactor,
-            engine,
-            replayCollector,
-            preparedGuardrailPlan,
-            preserveLogOrder
-        );
-
-        if (performanceMonitoring && startTime) {
-            const elapsed = performance.now() - startTime;
-            featureFlags.recordPerformance('direct', elapsed, false);
-        }
-
-        return result;
-
-    } catch (error) {
-        if (performanceMonitoring && startTime) {
-            const elapsed = performance.now() - startTime;
-            featureFlags.recordPerformance('direct', elapsed, true);
-        }
-        throw error;
-    }
+    const engine = engineAPI || (typeof window !== 'undefined' ? window.EngineAPI : null);
+    return simulateOneYearDirect(
+        currentState,
+        inputs,
+        yearData,
+        yearIndex,
+        pflegeMeta,
+        careFloorAddition,
+        householdContext,
+        temporaryFlexFactor,
+        engine,
+        replayCollector,
+        preparedGuardrailPlan,
+        preserveLogOrder
+    );
 }
 
 /**

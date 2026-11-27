@@ -79,11 +79,11 @@ import { displayedWithdrawal } from '../app/shared/display-rounding.js';
 import { createTodoPlan } from '../app/shared/annual-todo-view.js';
 
 {
-    // Sollfall Max und Erika am 23.10.2026: 179.500 € zu 165.000 € → 109 %, Balance und Übersicht gleich (bisher 111 % bzw. 110,2 %).
+    // Sollfall Max und Erika am 23.10.2026: 180.000 € zu 165.000 € → 109 %, Balance und Übersicht gleich (bisher 111 % bzw. 110,2 %; HP-3: 179.500 → 180.000 €, Kopf aus der Summe der Zeilen).
     const date = '2026-10-23', records = createMusterHaushaltRecords(date, 'max-erika');
     const card = await renderCard({ ...records }, date);
     const text = id => clean(card.doc.getElementById(id)?.textContent || '');
-    assert(text('balanceReserveValues').includes('nach Umsetzung179.500 €') && text('balanceReserveTarget').includes('= 165.000 €'), `GN-1: Reserven 179.500 € zu Ziel 165.000 € (${text('balanceReserveValues')})`);
+    assert(text('balanceReserveValues').includes('nach Umsetzung180.000 €') && text('balanceReserveTarget').includes('= 165.000 €'), `GN-1: Reserven 180.000 € zu Ziel 165.000 € (${text('balanceReserveValues')})`);
     assert(text('balanceReserveCoverage').includes('nach Umsetzung 109 %') && text('balanceReserveCoverage').includes('heute 55 % gedeckt'),
         `GN-1: Balance „nach Umsetzung 109 %“ aus den angezeigten Beträgen (${text('balanceReserveCoverage')})`);
     const model = await overviewModel(records, date);
@@ -116,7 +116,8 @@ import { createTodoPlan } from '../app/shared/annual-todo-view.js';
         targets: [], target: 162000 };
     const todoPlan = { rows: [{ restNet: 9362 }, { restNet: 79950 }], purchases: [{ label: 'In Gold', amount: 2000, purchase: true }] };
     const result = displayedReserveView(view, todoPlan);
-    assertEqual(result.shown.after.liquidity, 90000 + 9500 + 80000 - 2000, 'GN-1: Liquidität nach Umsetzung = 90.000 + 9.500 + 80.000 − 2.000 €');
+    // HP-3 (Ergänzung 6 FR-78): Verkäufe wie der Kopf der Karte, 9.362 + 79.950 = 89.312 € einmal aufgerundet (vorher 9.500 + 80.000 €).
+    assertEqual(result.shown.after.liquidity, 90000 + 90000 - 2000, 'GN-1: Liquidität nach Umsetzung = 90.000 + 90.000 − 2.000 €');
 }
 
 // ---------------------------------------------------------------------------------------------------------------

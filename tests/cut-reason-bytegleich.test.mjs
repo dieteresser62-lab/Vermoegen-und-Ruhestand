@@ -1,6 +1,13 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { fz1References } from './helpers/fz-1-expectations.mjs';
+import { readJA1References } from './helpers/ja-1-expectations.mjs';
+import { readHP4References, hp4Evidence } from './helpers/hp-4-expectations.mjs';
+import { readKR1cReferences, kr1cEvidence } from './helpers/kr-1c-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
 import { readLE1References, le1Evidence } from './helpers/le-1-expectations.mjs';
 import { readGU1References } from './helpers/gu-1-expectations.mjs';
 import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
+const readFZ1Reference = fz1References(import.meta.url);
 const readEV1bReferences = value => readPFA1References(beforePFA1References(value));
 import { readEV1bReferences as beforePFA1References, ev1bEvidence } from './helpers/ev-1b-expectations.mjs';
 const readMD2References = value => readEV1bReferences(readBeforeEV1bReferences(value));
@@ -24,6 +31,8 @@ import { withLegacyCareProvenance } from './helpers/pm-1-expectations.mjs';
 import { nr1Evidence } from './helpers/nr-1-expectations.mjs';
 
 import { readFI1References, fi1Evidence } from './helpers/fi-1-expectations.mjs';
+import { readVB1References, vb1Evidence } from './helpers/vb-1-expectations.mjs';
+import { readRK1MergeReferences, rk1MergeEvidence } from './helpers/rk-1-merge-expectations.mjs';
 const readRNG1Hash = before => readQSCReferences(readAS1Hash(readEP1Hash(readBeforeEP1Hash(before))));
 const evidence = JSON.parse(readFileSync(new URL('./fixtures/kg-1-expectation-deltas.json', import.meta.url)));
 assertEqual(nr1Evidence.parameters.paths, 2000, 'NR-1: Anzeigevergleich mit 2.000 festen MC-Pfaden belegt');
@@ -69,12 +78,12 @@ for (const [key, result] of Object.entries({ ...samples, engineResults })) {
     assertEqual(historical.beforeNumericSha256, historical.afterNumericSha256, `${key}: historischer KG-1-Zahlenbeleg bleibt identisch`);
     assertEqual(display.before.numericSha256, expected.numericSha256, `${key}: NR-1-Ausgangsstand entspricht dem bisherigen Zahlenbeleg`);
     assertEqual(display.before.afterSha256, expected.afterSha256, `${key}: bisherige vollständige Referenz bleibt erhalten`);
-    assertEqual(numeric.count, fi1Evidence.numericLeaves[key] ?? le1Evidence.numericLeaves[key] ?? ev1bEvidence.numericLeaves[key] ?? md2Evidence.numericLeaves[key] ?? zg1Evidence.numericLeaves[key] ?? ev1Evidence.numericLeaves[key] ?? qscEvidence.numericLeaves[key] ?? vf2bEvidence.numericLeaves[key] ?? gl1Evidence.numericLeaves[key] ?? as1Evidence.numericLeaves[key] ?? ep1Evidence.numericLeaves[key] ?? rng1Evidence.numericLeaves[key] ?? an1Evidence.numericLeaves[key] ?? display.after.numericLeaves, `${key}: sämtliche Zahlenfelder einschließlich belegter Rentenreste`);
-    assertEqual(numeric.hash, readFI1References(readLE1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(display.after.numericSha256)))))))), `${key}: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder`);
-    assertEqual(hash(JSON.stringify(normalized, (field, value) => textFields.has(field) ? undefined : value)), readFI1References(readLE1References(gu1(key, readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(display.after.unchangedExceptTextsSha256))))))))), `${key}: vollständige Referenz ohne Grund und Anmerkung`);
+    assertEqual(numeric.count, readFZ1Reference(readJA1References(hp4Evidence.value('tests/cut-reason-bytegleich.test.mjs', `${key}: sämtliche Zahlenfelder einschließlich belegter Rentenreste`) ?? kr1cEvidence.value('tests/cut-reason-bytegleich.test.mjs', `${key}: sämtliche Zahlenfelder einschließlich belegter Rentenreste`) ?? rk1MergeEvidence.value('tests/cut-reason-bytegleich.test.mjs', `${key}: sämtliche Zahlenfelder einschließlich belegter Rentenreste`) ?? vb1Evidence.numericLeaves[key] ?? fi1Evidence.numericLeaves[key] ?? le1Evidence.numericLeaves[key] ?? ev1bEvidence.numericLeaves[key] ?? md2Evidence.numericLeaves[key] ?? zg1Evidence.numericLeaves[key] ?? ev1Evidence.numericLeaves[key] ?? qscEvidence.numericLeaves[key] ?? vf2bEvidence.numericLeaves[key] ?? gl1Evidence.numericLeaves[key] ?? as1Evidence.numericLeaves[key] ?? ep1Evidence.numericLeaves[key] ?? rng1Evidence.numericLeaves[key] ?? an1Evidence.numericLeaves[key] ?? display.after.numericLeaves)), `${key}: sämtliche Zahlenfelder einschließlich belegter Rentenreste`);
+    assertEqual(numeric.hash, readFZ1Reference(readJA1References(readHP4References(readKR1cReferences(readRK1MergeReferences(readVB1References(readFI1References(readLE1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(display.after.numericSha256)))))))))))))), `${key}: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder`);
+    assertEqual(hash(JSON.stringify(normalized, (field, value) => textFields.has(field) ? undefined : value)), readFZ1Reference(readJA1References(readHP4References(readKR1cReferences(readRK1MergeReferences(readVB1References(readFI1References(readLE1References(gu1(key, readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(display.after.unchangedExceptTextsSha256))))))))))))))), `${key}: vollständige Referenz ohne Grund und Anmerkung`);
     const unchangedHash = hash(JSON.stringify(normalized, (field, value) => field === 'vk' || textFields.has(field) ? undefined : value));
-    assertEqual(unchangedHash, readFI1References(readLE1References(gu1(key, readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(display.before.unchangedExceptDisplaySha256))))))))), `${key}: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen`);
-    assertEqual(hash(serialized), readFI1References(readLE1References(gu1(key, readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(display.after.afterSha256))))))))), `${key}: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste`);
+    assertEqual(unchangedHash, readFZ1Reference(readJA1References(readHP4References(readKR1cReferences(readRK1MergeReferences(readVB1References(readFI1References(readLE1References(gu1(key, readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(display.before.unchangedExceptDisplaySha256))))))))))))))), `${key}: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen`);
+    assertEqual(hash(serialized), readFZ1Reference(readJA1References(readHP4References(readKR1cReferences(readRK1MergeReferences(readVB1References(readFI1References(readLE1References(gu1(key, readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(display.after.afterSha256))))))))))))))), `${key}: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste`);
 }
 for (const row of [...samples.backtest.rows.map(entry => entry.row), ...samples.mc.runMeta.flatMap(meta => meta.logDataRows)]) {
     if (!row.entscheidung) continue;

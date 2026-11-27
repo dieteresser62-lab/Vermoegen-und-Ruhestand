@@ -3,7 +3,7 @@ import { setFieldState } from '../app/shared/field-state.js';
 import { renderBalanceOptionalAssets } from '../app/balance/balance-presentation-controls.js';
 import { UIUtils } from '../app/balance/balance-utils.js';
 import { readSources, validateBalance, validateFoundation, validateComponents, createPresentationTestDocument, rules } from './designsystem-source-contract.mjs';
-import { createAnnualModalHandlers } from '../app/balance/balance-annual-modal.js';
+import { createAnnualCloseDialog as createAnnualModalHandlers } from '../app/shared/annual-close-dialog.js';
 import { createDialogFixture } from './close-dialog.test.mjs?fixture';
 import { dialogElements } from '../app/shared/close-dialog.js';
 
@@ -14,7 +14,6 @@ assertEqual(validateComponents(sources).join('\n'), '', 'Balance-Symboltasten ha
 for (const [path, addition, validator] of [
     ['css/balance.css', '.summary-item { opacity: .5; }', validateBalance],
     ['css/balance.css', '.panel { color: #aaa; }', validateBalance],
-    ['app/balance/balance-annual-modal.js', "node.style.cssText = 'opacity:0.6';", validateBalance],
     ['app/balance/balance-diagnosis-keyparams.js', "node.style.color = '#aaa';", validateBalance],
     ['Balance.html', '<button class="ds-icon-button">X</button>', validateComponents]
 ]) {
@@ -123,17 +122,9 @@ try {
     assert(nodes.every(node => [...node.listeners.values()].every(set => !set.size)), 'Schließen entfernt sämtliche Dialoglistener');
 } finally { if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument; }
 
-// Die Kaskade schützt die tatsächlichen Profilzeilen einschließlich compact.
+// Die Kaskade schützt die tatsächlich verwendeten Balance-Regeln.
 const balanceRules = rules('css/balance.css', sources['css/balance.css']);
 const finalDeclarations = selector => Object.assign({}, ...balanceRules.filter(rule => rule.selector === selector).map(rule => rule.declarations));
-assertEqual(finalDeclarations('.profilverbund-profile-list.compact')['flex-wrap'], 'wrap', 'Kompakte Profilkacheln dürfen umbrechen');
-assertEqual(finalDeclarations('.profilverbund-profile-row')['max-width'], '100%', 'Profilkachel bleibt im verfügbaren Container');
-assertEqual(finalDeclarations('.profilverbund-profile-row > input[type="checkbox"]').flex, '0 0 auto', 'Checkbox wird nicht gequetscht');
-assertEqual(finalDeclarations('.profilverbund-profile-row > span')['white-space'], 'normal', 'Profilnamen brechen vollständig um');
-assertEqual(finalDeclarations('.profilverbund-profile-row > span')['overflow-wrap'], 'anywhere', 'Auch lange Einzelwörter bleiben in der Kachel');
-assertEqual(finalDeclarations('.profilverbund-profile-row > span')['word-break'], 'normal', 'Kurze passende Namen werden nicht erzwungen zerlegt');
-assertEqual(finalDeclarations('.profilverbund-profile-row > input[type="checkbox"]').width, 'auto', 'Checkbox übernimmt nicht die volle allgemeine Inputbreite');
-assertEqual(finalDeclarations('.profilverbund-header-group')['flex-wrap'], 'wrap', 'Schmaler Profilheader gibt Namen eine eigene Zeile statt sie zwischen Titel und Verteilung zu quetschen');
 
 // Reale Feldgründe und realer Balance-Adapter: keine Preset-/Finanzmutation.
 {
@@ -371,8 +362,3 @@ assertEqual(finalDeclarations('.balance-action-dialog-head h2').margin, '18px 0 
 assertEqual(finalDeclarations('.balance-action-table-scroll').margin, '0', 'Tabellen verdoppeln den bestehenden Inhaltsabstand nicht');
 assertEqual(finalDeclarations('#action-error-container .balance-message-close').order, '2', 'Schließen steht optisch rechts von der Folgeaktion');
 assertEqual(finalDeclarations('#action-error-container .balance-message-action').order, '1', 'Jahresfolgeaktion behält ihre optische Priorität');
-assertEqual(finalDeclarations('#updateResultModal .ds-eyebrow')['text-transform'], 'uppercase', 'Jahres-Eyebrow ist großgeschrieben');
-assertEqual(finalDeclarations('#updateResultModal .ds-eyebrow')['letter-spacing'], '.08em', 'Jahres-Eyebrow erhält die Referenzlaufweite');
-assertEqual(finalDeclarations('#updateResultModal #annualHandPriceHelp')['font-size'], '14px', 'Handkurshilfe ist lokal 14 px');
-assertEqual(finalDeclarations('#updateResultModal #annualHandPriceHelp').color, 'var(--text-muted)', 'Handkurshilfe ist gedämpft');
-assertEqual(finalDeclarations('#updateResultModal #annualHandPriceHelp').margin, '4px 0 0', 'Handkurshilfe steht direkt unter dem Feld');

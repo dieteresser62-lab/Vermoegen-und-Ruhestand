@@ -7,7 +7,6 @@ import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input
 import { HOUSEHOLD_PLAN_KEY, buildPlanRecord } from '../app/profile/household-plan.js';
 import { INFLATION_RESULT_METRIC } from '../app/balance/balance-annual-inflation.js';
 import { MockDocument } from './helpers/balance-page-fixture.mjs';
-import { isHiddenBearMarket } from '../app/balance/balance-market-preview.js';
 import { fjFixture, fixtureNow, stateKey, changeProfiles, setPrices } from './helpers/fj-1-fixtures.mjs';
 
 const project = (storage = fjFixture(), options = {}) => projectNextYearBudget({ storage, engineApi: EngineAPI, now: fixtureNow, ...options });
@@ -17,15 +16,15 @@ const all = node => [node, ...node.children.flatMap(all)];
 const tags = (node, tag) => all(node).filter(item => item.tagName.toLowerCase() === tag);
 const detail = key => all(get('balanceMarketPreviewBody')).find(item => Object.hasOwn(item.dataset, key));
 const view = project();
-assertEqual(view.state, 'same', 'Musterhaushalt hat keine Marktwirkung');
-const inflation = view.rule.components.find(item => item.kind === 'inflation');
-const rounding = view.rule.components.find(item => item.kind === 'rounding');
+assertEqual(view.state, 'ok', 'Musterhaushalt liefert die Projektion');
+const inflation = view.plan.components.find(item => item.kind === 'inflation');
+const rounding = view.plan.components.find(item => item.kind === 'rounding');
 assertEqual(inflation.amount, 1200, 'Inflation ist ungerundeter Bedarfsanstieg');
 assertEqual(rounding.amount, 0, 'GN-1: Genau gespeicherte Planwerte haben keine Rundungswirkung mehr');
 assertEqual(rounding.text, 'Rundung der Planwerte', 'Rundung heißt nicht Markt');
-assert(view.rule.components.every(item => !/Markt/.test(item.text)), 'Bei same wird keine Marktwirkung behauptet');
-assert(view.rule.reasons.every(item => Math.abs(item.amount) >= 1), 'Gründe unter einem Euro entfallen');
-assertEqual(view.rule.reasons[0].effect, 'income', 'Größere Einkommensänderung zuerst');
+assert(view.plan.components.every(item => !/Markt|Hoch/.test(item.text)), 'FR-89: kein eigener Grund aus einem Lesartenvergleich');
+assert(view.plan.reasons.every(item => Math.abs(item.amount) >= 1), 'Gründe unter einem Euro entfallen');
+assertEqual(view.plan.reasons[0].effect, 'income', 'Größere Einkommensänderung zuerst');
 const reasons = projectionReasons(view);
 for (const label of ['Rente Erika ab 07/2027', '+9.600 € Einkünfte', 'Inflation +1.200 € Bedarf']) assert(reasons.includes(label), 'Wirkungsart und Grund: ' + label);
 assert(!reasons.includes('Rundung der Planwerte'), 'GN-1: Rundung unter einem Euro erscheint nicht als Grund');
@@ -46,14 +45,13 @@ changeProfiles(tiny.records, profile => {
     profile.data[stateKey] = JSON.stringify(state);
 });
 const tinyView = project(tiny);
-assert(Math.abs(tinyView.rule.components.find(item => item.kind === 'inflation').amount) < 1, 'Probe enthält Bedarfsänderung unter einem Euro');
-assert(!tinyView.rule.reasons.some(item => item.kind === 'inflation'), 'Grund unter einem Euro wird weggelassen');
+assert(Math.abs(tinyView.plan.components.find(item => item.kind === 'inflation').amount) < 1, 'Probe enthält Bedarfsänderung unter einem Euro');
+assert(!tinyView.plan.reasons.some(item => item.kind === 'inflation'), 'Grund unter einem Euro wird weggelassen');
 
-// WT-1 (FR-77 Punkt 5): Ohne verdeckten Bärenmarkt zeigt die Balance nichts zum Jahreshoch; die Grundzeile bleibt.
+// FR-89: Mit belastbaren Kursen zeigt „Was zu tun ist“ nichts zum Allzeithoch; die Grundzeile bleibt.
 renderBalanceMarketPreview(doc, null, view);
 assert(text(get('balanceBudgetReasons')).startsWith('Warum anders als 2026:'), 'Grundzeile nennt Vergleichsjahr');
-assert(get('balanceMarketPreview').hidden && text(get('balanceMarketPreviewBody')) === '', 'Gleiche Lesarten: kein Block zum Jahreshoch');
-assert(get('balanceHighBudget').hidden, 'same ohne Zusatzzeile');
+assert(get('balanceMarketPreview').hidden && text(get('balanceMarketPreviewBody')) === '', 'Belastbare Kurse: keine Zeile zum Allzeithoch');
 const renderer = new SummaryRenderer({ outputs: {} });
 const previousDoc = globalThis.document;
 globalThis.document = doc;
@@ -81,10 +79,10 @@ changeProfiles(dated.records, (profile, id) => {
     else state.annualMarketDataMeta.ath.lastHighAsOf = '2023-01-10';
     profile.data[stateKey] = JSON.stringify(state);
 });
-setPrices(dated.records, [['2025-12-31', 150], ['2026-12-30', 140]]);
+setPrices(dated.records, [['2025-12-31', 149], ['2026-12-30', 140]]);
 const datedView = project(dated);
 assert(datedView.state !== 'not_reliable', 'Profilquelle mit Abschluss bleibt auswertbar: ' + datedView.reason);
-assertEqual(datedView.marketPreview.rule.high.asOf, '2024-06-17', 'Hochdatum wie p25 aus abgeschlossenem Profil');
+assertEqual(datedView.marketPreview.high.asOf, '2024-06-17', 'Hochdatum wie p25 aus abgeschlossenem Profil');
 
 const lowerStorage = fjFixture();
 changeProfiles(lowerStorage.records, profile => {
@@ -96,17 +94,11 @@ changeProfiles(lowerStorage.records, profile => {
 });
 setPrices(lowerStorage.records, [['2025-12-31', 100], ['2026-07-14', 140], ['2026-12-30', 103]]);
 const lower = project(lowerStorage);
-assertEqual(lower.state, 'budget_lower', 'Folgejahr mit höherem Hoch hat niedrigeres Budget');
-assertEqual(lower.high.components.find(item => item.kind === 'market').amount, lower.comparison.difference.annualBudget, 'Marktwirkung nur aus Variantenvergleich');
+assertEqual(lower.plan.market.inputs.ath, 140, 'Folgejahr rechnet mit dem Tageshoch 140');
+assert(!lower.plan.components.some(item => item.kind === 'market'), 'Keine Marktwirkung aus einem Variantenvergleich');
 renderBalanceMarketPreview(doc, null);
 renderBalanceMarketPreview(doc, null, lower);
-const lowerHidden = isHiddenBearMarket(lower.marketPreview);
-assertEqual(!get('balanceMarketPreview').hidden, lowerHidden, 'Block nur bei verdecktem Bärenmarkt');
-assertEqual(!get('balanceHighBudget').hidden, lowerHidden, 'Hochzeile beim Budget nur bei verdecktem Bärenmarkt');
-if (lowerHidden) assert(text(get('balanceMarketPreviewBody')).includes('Bärenmarkt, den die Jahresregel nicht sieht'), 'Verdeckter Bär nennt den Block');
-const calm = structuredClone(lower); calm.marketPreview.high.market = { ...calm.marketPreview.rule.market };
-renderBalanceMarketPreview(doc, null, calm);
-assert(get('balanceMarketPreview').hidden && get('balanceHighBudget').hidden, 'Anderes Budget ohne verdeckten Bären bleibt unsichtbar');
+assert(get('balanceMarketPreview').hidden, 'Belastbare Kurse: keine Zeile, auch bei Kürzung');
 
 const planned = fjFixture('renate');
 const calculation = buildBalanceEngineInputFromStorage({ storage: planned, referenceYear: 2026 });
@@ -118,14 +110,15 @@ const minimal = fjFixture('renate');
 const plan = buildBalanceEngineInputFromStorage({ storage: minimal, referenceYear: 2026 }).householdPlan;
 minimal.setItem(HOUSEHOLD_PLAN_KEY, buildPlanRecord(plan.raw, [{ scope: plan.scope, values: { ...plan.entry.values, floorBedarf: 0, flexBedarf: 0, minimumFlexAnnual: 0 } }], { now: fixtureNow }).raw);
 const zero = project(minimal);
-assert(zero.rule.reasons.every(reason => Math.abs(reason.amount) >= 1), 'Nulländerungen nicht als Gründe angezeigt');
+assert(zero.plan.reasons.every(reason => Math.abs(reason.amount) >= 1), 'Nulländerungen nicht als Gründe angezeigt');
 
 // Nicht möglich: Ergebnis mit Grund, keine Varianten; p25-Rechnung bleibt eigener Fallback.
 const failed = project(fjFixture(), { engineApi: { simulateSingleYear: () => { throw new Error('Projektionsprobe'); } } });
 renderBalanceMarketPreview(doc, lower.marketPreview, failed);
 assert(get('balanceMarketPreview').hidden && text(get('balanceMarketPreviewBody')) === '', 'Projektionsfehler: Balance zeigt nichts zum Jahreshoch');
-assert(get('balanceBudgetReasons').hidden && get('balanceHighBudget').hidden, 'Fehler entfernt alte Zusatzzeilen');
-assert(createAnnualMarketReadings(doc, view.marketPreview).hidden, 'Jahresabschluss: belastbare Kurse ohne verdeckten Bären zeigen nichts');
+assert(get('balanceBudgetReasons').hidden, 'Fehler entfernt alte Zusatzzeilen');
+const annualShown = text(createAnnualMarketReadings(doc, view.marketPreview));
+assert(annualShown.includes('Allzeithoch') && !annualShown.includes('Kurse auf Daten & Sicherung holen'), 'Jahresabschluss: belastbare Kurse zeigen das Hoch ohne Hinweis');
 const main = fs.readFileSync(new URL('../app/balance/balance-main.js', import.meta.url), 'utf8');
 assert(main.includes('annualInflation: options.annualInflation'), 'Balance reicht vorbereitete Januarquelle durch');
 assert(main.includes('projected?.modelResult || modelResult'), 'Fehler lässt bisherige Vorschau bestehen');

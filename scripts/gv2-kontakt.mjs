@@ -69,12 +69,6 @@ export async function captureGV2({ browser, baseUrl, newProbelauf, goto, tab, po
             await shot('simulator-ergebnis', 'Gesamtvermögen und Immobilienband im Ergebnis.');
             await tab(page, 'annahmen');
             await shot('simulator-annahmen', 'Anfangsbestand und Strategie mit eindeutiger Geldbasis.');
-            await tab(page, 'werkstatt');
-            await shot('werkstatt', 'Optimierung ausdrücklich Geldvermögen.');
-            for (const tool of ['replay', 'sweep', 'optimize']) {
-                await page.locator(`[data-workshop-tool="${tool}"]`).click();
-                await shot(`werkstatt-${tool}`, 'Werkzeug mit unveränderter Geld- und Strategiebasis.');
-            }
             await goto(session, 'Daten-Sicherung.html', '2026-10-23');
             await shot('daten-sicherung', 'Unveränderte Sicherungen und Datenmengen.');
             await page.goto(`${baseUrl}/Handbuch.html`);

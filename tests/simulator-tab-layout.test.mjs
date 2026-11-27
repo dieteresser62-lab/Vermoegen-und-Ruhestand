@@ -1,8 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import strict from 'node:assert/strict';
-import { rules } from './designsystem-source-contract.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const html = fs.readFileSync(path.join(root, 'Simulator.html'), 'utf8');
@@ -13,31 +11,17 @@ assert(JSON.stringify(tabButtons) === JSON.stringify([
     { id: 'ergebnis', label: 'Ergebnis' },
     { id: 'annahmen', label: 'Annahmen' },
     { id: 'backtesting', label: 'Backtest' },
-    { id: 'montecarlo', label: 'Monte-Carlo' },
-    { id: 'werkstatt', label: 'Werkstatt' }
-]), 'Simulator-Tab-Leiste enthält die fünf Tabs in der vorgesehenen Reihenfolge');
+    { id: 'montecarlo', label: 'Monte-Carlo' }
+]), 'Simulator-Tab-Leiste enthält die vier Tabs in der vorgesehenen Reihenfolge');
 
-const sweepStart = html.indexOf('<div id="tab-sweep" class="sim-workshop-panel ds-plan-card"');
-const optimizeStart = html.indexOf('<div id="tab-auto-optimize" class="sim-workshop-panel ds-plan-card"');
 const scriptsStart = html.indexOf('<script type="module" src="app/profile/profile-bridge.js">');
-assert(sweepStart >= 0 && optimizeStart > sweepStart && scriptsStart > optimizeStart,
-    'Sweep- und Auto-Optimize-Panels sind getrennt und in Tab-Reihenfolge vorhanden');
+assert(scriptsStart > 0, 'Simulator.html lädt die Seitenskripte nach dem Markup');
+assert(!/werkstatt|workshop|stressReplay|sweep|ao_/i.test(html.slice(0, scriptsStart)), 'Kein Markup der entfernten Werkstatt bleibt zurück');
 
-const sweepPanel = html.slice(sweepStart, optimizeStart);
-const optimizePanel = html.slice(optimizeStart, scriptsStart);
-for (const id of ['sweepRuns', 'sweepGridSize', 'sweepButton', 'sweepCancelButton', 'sweepResults', 'sweepHeatmap']) {
-    assert(sweepPanel.includes(`id="${id}"`), `${id} bleibt im Parameter-Sweep-Panel`);
-    assert(!optimizePanel.includes(`id="${id}"`), `${id} liegt nicht im Auto-Optimize-Panel`);
-}
-for (const id of ['ao_metric', 'ao_presets_container', 'ao_parameters_container', 'ao_run_btn', 'ao_progress', 'ao_result', 'ao_apply_btn']) {
-    assert(optimizePanel.includes(`id="${id}"`), `${id} liegt im Auto-Optimize-Panel`);
-    assert(!sweepPanel.includes(`id="${id}"`), `${id} liegt nicht mehr im Parameter-Sweep-Panel`);
-}
-
-const owners = ['ergebnis', 'annahmen', 'backtesting', 'montecarlo', 'werkstatt'];
+const owners = ['ergebnis', 'annahmen', 'backtesting', 'montecarlo'];
 const markup = html.slice(0, scriptsStart);
 const panelIds = [...markup.matchAll(/<div id="([^"]+)" class="tab-panel(?: active)?"/g)].map(m => m[1]);
-assertEqual(JSON.stringify(panelIds), JSON.stringify(owners.map(id => 'tab-' + id)), 'Genau fünf Hauptpanels in Zielreihenfolge');
+assertEqual(JSON.stringify(panelIds), JSON.stringify(owners.map(id => 'tab-' + id)), 'Genau vier Hauptpanels in Zielreihenfolge');
 assert(markup.includes('id="tab-ergebnis" class="tab-panel active"'), 'Ergebnis ist initial aktiv');
 assert(!markup.includes('sim-page-actions'), 'Kopfaktionen sind entfernt');
 assert(/class="mc-settings-actions"[^]*?id="mcButton"/.test(markup), 'Start liegt in Einstellungen außerhalb der geschlossenen Details');
@@ -46,9 +30,9 @@ assertEqual(ids.length, new Set(ids).size, 'Alle Bestandscontrols und Ergebnis-H
 const controls = {
     ergebnis: ['overviewBacktest', 'overviewMonteCarlo', 'overviewCrises', 'overviewRunHeads'],
     annahmen: ['simProfileList', 'startFloorBedarf', 'minimumFlexAnnual', 'pflegePanel', 'simPlanParameters'],
-    backtesting: ['simStartJahr', 'simEndJahr', 'btButton', 'simulationSummary', 'simulationLog', 'exportBacktestJson', 'parity-smoketest-card'],
-    montecarlo: [ 'mcButton', 'mcCancelButton', 'mcViewTabLogs', 'mcSetupDisclosure', 'mcAdvancedDisclosure', 'mcAnzahl', 'mcDauer', 'stressPreset'],
-    werkstatt: ['workshopReplayPanel', 'stressReplayWorkspace', 'mcReplayVariantBadge', 'sweepButton', 'sweepResults', 'ao_run_btn', 'ao_result', 'ao_apply_btn']
+    // AL-P: Die Parity-Entwicklerkarte (parity-smoketest-card) ist entfernt.
+    backtesting: ['simStartJahr', 'simEndJahr', 'btButton', 'simulationSummary', 'simulationLog', 'exportBacktestJson'],
+    montecarlo: [ 'mcButton', 'mcCancelButton', 'mcViewTabLogs', 'mcSetupDisclosure', 'mcAdvancedDisclosure', 'mcAnzahl', 'mcDauer', 'stressPreset']
 };
 for (let i = 0; i < owners.length; i++) {
     const start = markup.indexOf('<div id="tab-' + owners[i] + '"');
@@ -56,65 +40,11 @@ for (let i = 0; i < owners.length; i++) {
     const panel = markup.slice(start, end);
     for (const id of controls[owners[i]]) assert(panel.includes('id="' + id + '"'), id + ' gehört zum Hauptpanel ' + owners[i]);
 }
-assert(markup.includes('data-workshop-panel="optimize" tabindex="-1" hidden'), 'Auto-Optimize liegt in eigener initial verborgener Werkstattfläche');
 const assumptionSource = fs.readFileSync(path.join(root, 'app/simulator/simulator-assumptions-ui.js'), 'utf8');
 assert(assumptionSource.includes('input:not([type="hidden"]):not([type="checkbox"]), select') && assumptionSource.includes("host.addEventListener('input'") && assumptionSource.includes("host.addEventListener('change'"), 'Bestehende Füllindikatorbindung folgt den echten Annahmenfeldern');
 assertEqual((markup.match(/data-assumption-step="[1-5]"/g) || []).length, 5, 'Fünf bestehende Annahmenbereiche bleiben zugeordnet');
 assert(!markup.slice(markup.indexOf('id="tab-annahmen"'), markup.indexOf('id="tab-backtesting"')).includes('class="form-group"'), 'Annahmen verwenden Bausteinfelder');
 assert(!html.includes('#tab-rahmendaten'), 'Kein Inlinebinder verweist auf die entfernte Besitzfläche');
-const workshop = markup.slice(markup.indexOf('id="tab-werkstatt"'));
-assertEqual((workshop.match(/class="ds-plan-card sim-tool-card"/g) || []).length, 3, 'Werkstatt beginnt mit genau drei Werkzeugkarten');
-assert(!workshop.includes('id="workshopToolNavigation"') && !workshop.includes('id="workshopCloseTool"'), 'Nur die drei Karten steuern Öffnen und Schließen');
-assertEqual((workshop.match(/data-workshop-tool="/g) || []).length, 3, 'Genau ein Auswahlknopf pro Werkzeug');
-assert(workshop.includes('data-workshop-panel="replay" tabindex="-1" hidden'), 'Auch Replay ist vor Werkzeugöffnung verborgen');
-assert(!workshop.includes('class="form-group"'), 'Alle Werkstattfelder verwenden gemeinsame Feldrollen');
-assertEqual((workshop.match(/data-preset="/g) || []).length, 7, 'Sieben Presets bleiben als echte Bedienelemente erreichbar');
-assert(workshop.includes('id="ao_cancel_btn"') && workshop.includes('id="ao_c_sr99"') && workshop.includes('id="ao_c_noex"') && workshop.includes('id="ao_c_ts45"') && workshop.includes('id="ao_c_dd55"'), 'Optimize behält Abbruchzugang und alle vier Nebenbedingungen');
-
-// Quellvertrag für die erhaltenen Werkzeughosts; echte Sichtbarkeit prüft der Browser.
-function toolPrintDisplay(css, id, hidden) {
-    const printBlocks = [...css.matchAll(/@media print\s*\{([\s\S]*?)\n\}/g)];
-    const activeCss = css.replace(/@media print\s*\{[\s\S]*?\n\}/g, '')
-        + '\n' + printBlocks.map(match => match[1]).join('\n');
-    const selectors = [`#${id}`, '.sim-workshop-panel', '.ds-plan-card'];
-    const suffix = hidden ? '[hidden]' : ':not([hidden])';
-    const matching = new Set([...selectors, ...selectors.map(selector => selector + suffix), suffix]);
-    let winner = { important: false, specificity: -1, display: hidden ? 'none' : 'block' };
-    for (const rule of rules('simulator.css', activeCss)) {
-        if (!rule.declarations.display) continue;
-        for (const selector of rule.selector.split(',').map(value => value.trim())) {
-            if (!matching.has(selector)) continue;
-            const value = rule.declarations.display;
-            const important = value.includes('!important');
-            const specificity = (selector.match(/#/g) || []).length * 100
-                + (selector.match(/\.|\[/g) || []).length * 10;
-            if (Number(important) > Number(winner.important)
-                || (important === winner.important && specificity >= winner.specificity)) {
-                winner = { important, specificity, display: value.replace(/\s*!important/, '').trim() };
-            }
-        }
-    }
-    return winner.display;
-}
-function assertToolPrintContract(css, id) {
-    strict.equal(toolPrintDisplay(css, id, false), 'block', `${id} ohne hidden bleibt druckbar`);
-    strict.equal(toolPrintDisplay(css, id, true), 'block', `${id} mit hidden bleibt druckbar`);
-}
-const css = fs.readFileSync(path.join(root, 'simulator.css'), 'utf8');
-for (const id of ['tab-sweep', 'tab-auto-optimize']) {
-    assertEqual(toolPrintDisplay(css, id, false), 'block', `${id} ohne hidden bleibt im Druck offen`);
-    assertEqual(toolPrintDisplay(css, id, true), 'block', `${id} mit hidden bleibt im Druck offen`);
-    assertToolPrintContract(css, id);
-    const selector = `#${id}[hidden]`;
-    assert(css.includes(selector), `${id}: Gegenproben treffen den tatsächlichen Druckselektor`);
-    const hiddenHide = css + `\n@media print {\n#${id}[hidden] { display: none !important; }\n}\n`;
-    assert(strict.throws(() => assertToolPrintContract(hiddenHide, id), strict.AssertionError) === undefined,
-        `${id}: Ausblenden verborgener Werkzeuge scheitert am Druckvertrag`);
-    const unconditionalHide = css + `\n@media print {\n#${id} { display: none !important; }\n}\n`;
-    assert(strict.throws(() => assertToolPrintContract(unconditionalHide, id), strict.AssertionError) === undefined,
-        `${id}: pauschales Ausblenden scheitert am Druckvertrag`);
-}
-
 // Die echte Ausgabe gruppiert Kennzahlen vor dem Chart; Ruin/Recoverytexte bleiben.
 const { createPresentationTestDocument } = await import('./designsystem-source-contract.mjs');
 const { tokenizeHTML, matchesSelector } = await import('./funktionsinventar-contract.mjs');
@@ -142,7 +72,7 @@ try {
         assert(matchesSelector(output, '.sim-cut-metric .ds-hint'), 'Kürzungsdauer steht innerhalb der Kürzungskennzahl');
         assert(matchesSelector(output, '.sim-outcome-primary .sim-hero-amount') && matchesSelector(output, '.sim-outcome-primary .sim-outcome-start'), 'Betrag, Endbezeichnung und Startbetrag bleiben zusammen');
         assertEqual(host.children.at(-1).id, 'overviewPortfolioChart', 'Chart wird nach dem Kennzahlenblock eingefügt');
-        assert(host.innerHTML.includes(outcome === 'completed' ? 'Ja. Dein Plan' : 'Der Floor wäre'), 'Erfolg und Ruin behalten ihre bisherigen Aussagen');
+        assert(host.innerHTML.includes(outcome === 'completed' ? 'Ja. Dein Plan' : 'Der Grundbedarf wäre'), 'Erfolg und Ruin behalten ihre bisherigen Aussagen');
     }
     for (const [phase, text] of [['loading', 'Profil wird geladen'], ['blocked', 'nicht rechenbar'], ['missing', 'Daten fehlen'], ['technical_error', 'technischer Fehler']]) {
         setOverviewBacktestStatus(phase); renderSimulatorOverview();
@@ -163,7 +93,6 @@ try {
         && logs.indexOf('id="scenarioChartView"') < logs.indexOf('id="scenarioSelector"')
         && /id="scenarioSelectedChartPanel" data-scenario-chart-panel="selected" hidden/.test(logs), 'Szenario-Logs: Vergleich oben, ein Diagramm mit Umschalter neben der Auswahl');
     assert(/<details id="scenarioProtocolDisclosure" class="[^"]*"\s*>/.test(logs) && logs.indexOf('id="scenarioProtocolDisclosure"') < logs.indexOf('id="scenarioLogOutput"'), 'Szenario-Protokoll ist anfangs zugeklappt');
-    assert(logs.indexOf('id="mcShowReplayButton"') < logs.indexOf('id="scenarioLogContainer"') && logs.includes('im Stresspfad-Replay fixieren.</span>'), 'Replay-Knopf bleibt vor einem Lauf erreichbar, Hinweis im ⓘ');
     const backtest = html.slice(at('id="tab-backtesting"'), at('id="engine-mismatch-footer"'));
     assert(backtest.indexOf('id="simStartJahr"') < backtest.indexOf('id="backtestWealthMode"')
         && backtest.indexOf('id="backtestWealthMode"') < backtest.indexOf('id="simulationResults"'), 'Backtest: Zeitraum und Euro-Basis in einer Leiste');
@@ -186,7 +115,7 @@ try {
 {
     const { renderRiskKeyFigures } = await import('../app/simulator/results-renderers.js');
     const host = { innerHTML: '', hidden: true };
-    const dashboard = { drawdownKpis: [{ title: 'Max. Drawdown nominal (Median)', value: '27,00 %' }, { title: 'Max. Drawdown real (Median)', value: '34,00 %' }],
+    const dashboard = { drawdownKpis: [{ title: 'Max. Rückgang nominal (Median)', value: '27,00 %' }, { title: 'Max. Rückgang real (Median)', value: '34,00 %' }],
         detailSections: [{ title: 'Risiko-Details', kpis: [{ title: 'Zeitanteil realisierte Entnahmequote > 4,5 %', value: '6,0 %' }] }] };
     renderRiskKeyFigures(host, { available: true, mode: 'real', p10: 900000, p25: 1600000, p50: 2800000, p75: 5200000 }, dashboard);
     assert(!host.hidden && host.innerHTML.includes('Gesamtvermögen am Laufende · Median') && host.innerHTML.includes('Schwache Läufe · P10')

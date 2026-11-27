@@ -4,8 +4,6 @@ import { compileScenario, prepareHistoricalDataOnce } from '../app/simulator/sim
 import { annualData } from '../app/simulator/simulator-data.js';
 import { createMonteCarloBuffers, MC_HEATMAP_BINS, pickWorstRun, runMonteCarloChunk, buildMonteCarloAggregates } from '../app/simulator/monte-carlo-runner.js';
 import { MONTE_CARLO_OUTCOME_CODE } from '../app/simulator/monte-carlo-chunk-result.js';
-import { runSweepChunk } from '../app/simulator/sweep-runner.js';
-import { createStressReplayCaptureRequest } from '../app/simulator/stress-replay-path-materializer.js';
 
 // Engine API is expected to live on window in browser-mode code.
 if (typeof global.window === 'undefined') {
@@ -18,7 +16,7 @@ function assert(condition, message) {
 }
 
 function assertClose(actual, expected, tolerance, message) {
-    if (Math.abs(actual - expected) > tolerance) {
+    if (!Number.isFinite(actual) || !Number.isFinite(expected) || Math.abs(actual - expected) > tolerance) {
         throw new Error(`${message}: ${actual} != ${expected}`);
     }
 }
@@ -181,72 +179,9 @@ function assertMonteCarloListShapesEqual(fullLists, mergedLists, prefix) {
     }
 }
 
-const SWEEP_METRIC_KEYS = [
-    'successProbFloor',
-    'p10EndWealth',
-    'p25EndWealth',
-    'medianEndWealth',
-    'p75EndWealth',
-    'meanEndWealth',
-    'maxEndWealth',
-    'worst5Drawdown',
-    'minRunwayObserved'
-];
-
-function sortSweepResults(results) {
-    return [...(results || [])].sort((a, b) => a.comboIdx - b.comboIdx);
-}
-
-function assertSweepResultsEqual(fullResults, splitResults, prefix) {
-    const fullSorted = sortSweepResults(fullResults);
-    const splitSorted = sortSweepResults(splitResults);
-    assert(fullSorted.length === splitSorted.length, `${prefix} result length mismatch`);
-
-    for (let i = 0; i < fullSorted.length; i++) {
-        const full = fullSorted[i];
-        const split = splitSorted[i];
-        assertEqual(split.comboIdx, full.comboIdx, `${prefix} comboIdx mismatch at ${i}`);
-        assertEqual(JSON.stringify(split.params), JSON.stringify(full.params), `${prefix} params mismatch for combo ${full.comboIdx}`);
-        assertEqual(
-            Boolean(split.metrics?.invalidCombination),
-            Boolean(full.metrics?.invalidCombination),
-            `${prefix} invalid flag mismatch for combo ${full.comboIdx}`
-        );
-        assertEqual(
-            String(split.metrics?.invalidReason || ''),
-            String(full.metrics?.invalidReason || ''),
-            `${prefix} invalid reason mismatch for combo ${full.comboIdx}`
-        );
-        assertEqual(
-            split.metrics?.schemaVersion,
-            full.metrics?.schemaVersion,
-            `${prefix} metric schema mismatch for combo ${full.comboIdx}`
-        );
-        assertEqual(
-            JSON.stringify(split.metrics?.metricMetadata || null),
-            JSON.stringify(full.metrics?.metricMetadata || null),
-            `${prefix} metric metadata mismatch for combo ${full.comboIdx}`
-        );
-        assertEqual(
-            JSON.stringify(split.metrics?.comparison || null),
-            JSON.stringify(full.metrics?.comparison || null),
-            `${prefix} comparison diagnostics mismatch for combo ${full.comboIdx}`
-        );
-        assertEqual(
-            JSON.stringify(split.provenance?.comparisonRandomness || null),
-            JSON.stringify(full.provenance?.comparisonRandomness || null),
-            `${prefix} CRN provenance mismatch for combo ${full.comboIdx}`
-        );
-
-        for (const key of SWEEP_METRIC_KEYS) {
-            assertClose(split.metrics?.[key] || 0, full.metrics?.[key] || 0, 1e-6, `${prefix} metric ${key} mismatch for combo ${full.comboIdx}`);
-        }
-    }
-}
-
 console.log('--- Worker Parity Tests ---');
 
-// Ensure historical data is initialized before MC/sweep runs.
+// Ensure historical data is initialized before MC runs.
 prepareHistoricalDataOnce();
 
 const baseInputs = {
@@ -408,187 +343,6 @@ try {
     console.log('✅ Monte-Carlo merge parity passed');
 } catch (e) {
     console.error('❌ Monte-Carlo merge parity failed', e);
-    throw e;
-}
-
-// Test 2: Sweep chunk split parity
-try {
-    const sweepConfig = {
-        anzahlRuns: 20,
-        maxDauer: 25,
-        blockSize: 5,
-        baseSeed: 77,
-        methode: 'block',
-        rngMode: 'per-run-seed'
-    };
-
-    const paramCombinations = [
-        { liquidityRunwayYears: 2.5, goldRebalancingBand: 25, maxSkimPct: 10, maxBearRefillPct: 5, goldTargetPct: 0 },
-        { liquidityRunwayYears: 3, goldRebalancingBand: 30, maxSkimPct: 12, maxBearRefillPct: 6, goldTargetPct: 5 },
-        { liquidityRunwayYears: 3.5, goldRebalancingBand: 20, maxSkimPct: 8, maxBearRefillPct: 4, goldTargetPct: 0 }
-    ];
-
-    const fullSweep = runSweepChunk({
-        baseInputs,
-        paramCombinations,
-        comboRange: { start: 0, count: paramCombinations.length },
-        sweepConfig
-    });
-
-    const sweepA = runSweepChunk({
-        baseInputs,
-        paramCombinations,
-        comboRange: { start: 0, count: 2 },
-        sweepConfig
-    });
-
-    const sweepB = runSweepChunk({
-        baseInputs,
-        paramCombinations,
-        comboRange: { start: 2, count: 1 },
-        sweepConfig
-    });
-
-    const combinedResults = [...sweepA.results, ...sweepB.results].sort((a, b) => a.comboIdx - b.comboIdx);
-    assert(fullSweep.results.length === combinedResults.length, 'Sweep result length mismatch');
-
-    for (let i = 0; i < fullSweep.results.length; i++) {
-        const full = fullSweep.results[i];
-        const merged = combinedResults[i];
-        assert(full.comboIdx === merged.comboIdx, 'Sweep combo index mismatch');
-
-        assertClose(full.metrics.successProbFloor, merged.metrics.successProbFloor, 1e-6, 'Sweep successProb mismatch');
-        assertClose(full.metrics.p10EndWealth, merged.metrics.p10EndWealth, 1e-6, 'Sweep p10 mismatch');
-        assertClose(full.metrics.medianEndWealth, merged.metrics.medianEndWealth, 1e-6, 'Sweep median mismatch');
-        assertClose(full.metrics.worst5Drawdown, merged.metrics.worst5Drawdown, 1e-6, 'Sweep drawdown mismatch');
-    }
-
-    assert(fullSweep.p2VarianceCount === (sweepA.p2VarianceCount + sweepB.p2VarianceCount), 'Sweep p2 variance mismatch');
-
-console.log('✅ Sweep split parity passed');
-} catch (e) {
-    console.error('❌ Sweep split parity failed', e);
-    throw e;
-}
-
-// Test 2b: Sweep uneven split parity with invalid combinations and input isolation
-try {
-    const sweepConfig = {
-        anzahlRuns: 18,
-        maxDauer: 18,
-        blockSize: 4,
-        baseSeed: 2026,
-        methode: 'block',
-        rngMode: 'per-run-seed'
-    };
-    const paramCombinations = [
-        { liquidityRunwayYears: 2.5, goldRebalancingBand: 25, maxSkimPct: 10, maxBearRefillPct: 5, goldTargetPct: 0 },
-        { liquidityRunwayYears: 3, goldRebalancingBand: 30, maxSkimPct: 12, maxBearRefillPct: 6, goldTargetPct: 5 },
-        { liquidityRunwayYears: 11, goldRebalancingBand: 25, maxSkimPct: 10, maxBearRefillPct: 5, goldTargetPct: 0 },
-        { liquidityRunwayYears: 3.5, goldRebalancingBand: 20, maxSkimPct: 8, maxBearRefillPct: 4, goldTargetPct: 0 },
-        { liquidityRunwayYears: 3, goldRebalancingBand: 25, maxSkimPct: 10, maxBearRefillPct: 5, goldTargetPct: 35 },
-        { liquidityRunwayYears: 2, goldRebalancingBand: 40, maxSkimPct: 15, maxBearRefillPct: 8, goldTargetPct: 10 }
-    ];
-    const baseSnapshot = JSON.stringify(baseInputs);
-
-    const fullSweep = runSweepChunk({
-        baseInputs,
-        paramCombinations,
-        comboRange: { start: 0, count: paramCombinations.length },
-        sweepConfig
-    });
-    assertEqual(JSON.stringify(baseInputs), baseSnapshot, 'Sweep full run should not mutate baseInputs');
-
-    const splitRanges = [
-        { start: 0, count: 1 },
-        { start: 1, count: 3 },
-        { start: 4, count: 2 }
-    ];
-    const splitResults = [];
-    let splitP2VarianceCount = 0;
-    for (const range of splitRanges) {
-        const split = runSweepChunk({
-            baseInputs,
-            paramCombinations,
-            comboRange: range,
-            sweepConfig
-        });
-        splitResults.push(...split.results);
-        splitP2VarianceCount += split.p2VarianceCount;
-        assertEqual(JSON.stringify(baseInputs), baseSnapshot, `Sweep split ${range.start}:${range.count} should not mutate baseInputs`);
-    }
-
-    assertSweepResultsEqual(fullSweep.results, splitResults, 'Uneven Sweep');
-    assertEqual(fullSweep.p2VarianceCount, splitP2VarianceCount, 'Uneven Sweep p2VarianceCount mismatch');
-
-    const invalidReasons = sortSweepResults(splitResults)
-        .filter(item => item.metrics?.invalidCombination)
-        .map(item => String(item.metrics.invalidReason || ''));
-    assert(invalidReasons.length === 2, 'Uneven Sweep should retain two invalid combinations');
-    assert(invalidReasons.some(reason => reason.includes('liquidityRunwayYears')), 'Uneven Sweep should retain runway invalid reason');
-    assert(invalidReasons.some(reason => reason.includes('goldTargetPct')), 'Uneven Sweep should retain gold target invalid reason');
-
-    console.log('✅ Uneven Sweep split parity with invalid combinations passed');
-} catch (e) {
-    console.error('❌ Uneven Sweep split parity with invalid combinations failed', e);
-    throw e;
-}
-
-// Test 2c: Sweep Dynamic-Flex invalid shape parity across split ranges
-try {
-    const dynamicBase = {
-        ...baseInputs,
-        dynamicFlex: true,
-        horizonMethod: 'survival_quantile',
-        horizonYears: 30,
-        survivalQuantile: 0.85,
-        goGoActive: false,
-        goGoMultiplier: 1.0
-    };
-    const sweepConfig = {
-        anzahlRuns: 12,
-        maxDauer: 12,
-        blockSize: 4,
-        baseSeed: 3030,
-        methode: 'block',
-        rngMode: 'per-run-seed'
-    };
-    const paramCombinations = [
-        { liquidityRunwayYears: 2.5, goldRebalancingBand: 25, maxSkimPct: 10, maxBearRefillPct: 5, goldTargetPct: 0, survivalQuantile: 0.9 },
-        { liquidityRunwayYears: 2.5, goldRebalancingBand: 25, maxSkimPct: 10, maxBearRefillPct: 5, goldTargetPct: 0, survivalQuantile: 0.2 },
-        { liquidityRunwayYears: 2.5, goldRebalancingBand: 25, maxSkimPct: 10, maxBearRefillPct: 5, goldTargetPct: 0, goGoMultiplier: 1.2 },
-        { liquidityRunwayYears: 2.5, goldRebalancingBand: 25, maxSkimPct: 10, maxBearRefillPct: 5, goldTargetPct: 0, horizonYears: 45 }
-    ];
-
-    const fullSweep = runSweepChunk({
-        baseInputs: dynamicBase,
-        paramCombinations,
-        comboRange: { start: 0, count: paramCombinations.length },
-        sweepConfig
-    });
-    const splitA = runSweepChunk({
-        baseInputs: dynamicBase,
-        paramCombinations,
-        comboRange: { start: 0, count: 2 },
-        sweepConfig
-    });
-    const splitB = runSweepChunk({
-        baseInputs: dynamicBase,
-        paramCombinations,
-        comboRange: { start: 2, count: 2 },
-        sweepConfig
-    });
-
-    assertSweepResultsEqual(fullSweep.results, [...splitA.results, ...splitB.results], 'Dynamic Sweep invalid');
-    assertEqual(fullSweep.p2VarianceCount, splitA.p2VarianceCount + splitB.p2VarianceCount, 'Dynamic Sweep p2VarianceCount mismatch');
-    assert(fullSweep.results[1].metrics.invalidCombination === true, 'Dynamic Sweep should mark invalid quantile');
-    assert(fullSweep.results[2].metrics.invalidCombination === true, 'Dynamic Sweep should mark invalid go-go multiplier');
-    assert(fullSweep.results[0].metrics.invalidCombination !== true, 'Dynamic Sweep should keep valid quantile valid');
-    assert(fullSweep.results[3].metrics.invalidCombination !== true, 'Dynamic Sweep should keep valid horizon valid');
-
-    console.log('✅ Dynamic-Flex Sweep invalid-shape parity passed');
-} catch (e) {
-    console.error('❌ Dynamic-Flex Sweep invalid-shape parity failed', e);
     throw e;
 }
 
@@ -916,7 +670,7 @@ try {
     throw e;
 }
 
-// Test 6: Continuous CAPE policy stays deterministic across MC and Sweep chunking
+// Test 6: Continuous CAPE policy stays deterministic across MC chunking
 try {
     const previousPolicy = CONFIG.SPENDING_MODEL.DYNAMIC_FLEX.RETURN_POLICY;
     CONFIG.SPENDING_MODEL.DYNAMIC_FLEX.RETURN_POLICY = 'cape_continuous';
@@ -1008,45 +762,6 @@ try {
                 );
             }
         }
-
-        const sweepConfig = {
-            anzahlRuns: 10,
-            maxDauer: 10,
-            blockSize: 3,
-            baseSeed: 4040,
-            methode: 'block',
-            rngMode: 'per-run-seed'
-        };
-        const paramCombinations = [
-            { liquidityRunwayYears: 2.5, goldRebalancingBand: 25, maxSkimPct: 10, maxBearRefillPct: 5, goldTargetPct: 0, horizonYears: 25 },
-            { liquidityRunwayYears: 3, goldRebalancingBand: 30, maxSkimPct: 12, maxBearRefillPct: 6, goldTargetPct: 0, horizonYears: 30 },
-            { liquidityRunwayYears: 3.5, goldRebalancingBand: 35, maxSkimPct: 14, maxBearRefillPct: 7, goldTargetPct: 5, horizonYears: 35 }
-        ];
-
-        const fullSweep = runSweepChunk({
-            baseInputs: continuousInputs,
-            paramCombinations,
-            comboRange: { start: 0, count: paramCombinations.length },
-            sweepConfig,
-            engine: EngineAPI
-        });
-        const sweepA = runSweepChunk({
-            baseInputs: continuousInputs,
-            paramCombinations,
-            comboRange: { start: 0, count: 1 },
-            sweepConfig,
-            engine: EngineAPI
-        });
-        const sweepB = runSweepChunk({
-            baseInputs: continuousInputs,
-            paramCombinations,
-            comboRange: { start: 1, count: 2 },
-            sweepConfig,
-            engine: EngineAPI
-        });
-
-        assertSweepResultsEqual(fullSweep.results, [...sweepA.results, ...sweepB.results], 'Continuous CAPE Sweep');
-        assertEqual(fullSweep.p2VarianceCount, sweepA.p2VarianceCount + sweepB.p2VarianceCount, 'Continuous CAPE Sweep p2VarianceCount mismatch');
     } finally {
         CONFIG.SPENDING_MODEL.DYNAMIC_FLEX.RETURN_POLICY = previousPolicy;
     }
@@ -1402,194 +1117,7 @@ try {
 
 console.log('--- Worker Parity Tests Completed ---');
 
-console.log('Test: opt-in stress replay capture leaves normal MC financial outputs unchanged');
-{
-    const monteCarloParams = {
-        anzahl: 1,
-        maxDauer: 6,
-        blockSize: 3,
-        seed: 91234,
-        methode: 'block',
-        rngMode: 'per-run-seed'
-    };
-    const common = {
-        inputs: baseInputs,
-        monteCarloParams,
-        widowOptions,
-        useCapeSampling: false,
-        runRange: { start: 0, count: 1 },
-        logIndices: [0],
-        engine: EngineAPI
-    };
-    const normal = await runMonteCarloChunk(common);
-    const captured = await runMonteCarloChunk({
-        ...common,
-        stressReplayCapture: createStressReplayCaptureRequest([0])
-    });
-    assertEqual(
-        JSON.stringify(captured.buffers.finalOutcomes),
-        JSON.stringify(normal.buffers.finalOutcomes),
-        'Capture must not change terminal wealth'
-    );
-    assertEqual(
-        JSON.stringify(captured.pathSummaries),
-        JSON.stringify(normal.pathSummaries),
-        'Capture must not change path summary metrics'
-    );
-    assertEqual(
-        JSON.stringify(captured.runMeta[0].logDataRows),
-        JSON.stringify(normal.runMeta[0].logDataRows),
-        'Capture must not change source log rows'
-    );
-    const survivingCapture = captured.runMeta[0].stressReplayCapture;
-    const survivingYearIndices = survivingCapture?.years?.map(year => year.yearIndex) || [];
-    console.log('Stress replay surviving capture trace:', JSON.stringify({
-        continuationActive: survivingCapture?.continuation?.active,
-        yearIndices: survivingYearIndices
-    }));
-    assertEqual(
-        survivingCapture?.terminalStatus,
-        'horizon_exhausted',
-        'Surviving fixture must expose the canonical horizon terminal status'
-    );
-    assertEqual(survivingCapture?.continuation?.active, false, 'Surviving capture must not activate shadow continuation');
-    assertEqual(survivingCapture?.years?.length, monteCarloParams.maxDauer, 'Surviving capture must cover the full horizon');
-    assertEqual(
-        JSON.stringify(survivingYearIndices),
-        JSON.stringify([...Array(monteCarloParams.maxDauer).keys()]),
-        'Surviving capture year indices must be strictly increasing without duplicates'
-    );
-    assert(!Object.hasOwn(normal.runMeta[0], 'stressReplayCapture'), 'Normal run must not allocate replay capture output');
-
-    const ruinInputs = {
-        ...baseInputs,
-        startVermoegen: 150000,
-        depotwertAlt: 150000,
-        einstandAlt: 150000,
-        zielLiquiditaet: 0,
-        startFloorBedarf: 60000,
-        startFlexBedarf: 0
-    };
-    const ruined = await runMonteCarloChunk({
-        ...common,
-        inputs: ruinInputs,
-        stressReplayCapture: createStressReplayCaptureRequest([0])
-    });
-    const ruinedCapture = ruined.runMeta[0].stressReplayCapture;
-    const ruinedYearIndices = ruinedCapture?.years?.map(year => year.yearIndex) || [];
-    console.log('Stress replay ruin capture trace:', JSON.stringify({
-        continuationActive: ruinedCapture?.continuation?.active,
-        yearIndices: ruinedYearIndices
-    }));
-    assertEqual(ruinedCapture?.terminalStatus, 'ruin', 'Ruin fixture must expose the canonical terminal status');
-    assert(
-        ruinedCapture?.sourcePrefixLength > 1 && ruinedCapture.sourcePrefixLength < monteCarloParams.maxDauer,
-        'Ruin fixture must fail after at least one completed year and before the horizon'
-    );
-    assertEqual(ruinedCapture?.continuation?.active, true, 'Mid-horizon ruin must activate shadow continuation');
-    assertEqual(ruinedCapture?.years?.length, monteCarloParams.maxDauer, 'Ruin capture must continue through the full horizon');
-    assertEqual(
-        JSON.stringify(ruinedYearIndices),
-        JSON.stringify([...Array(monteCarloParams.maxDauer).keys()]),
-        'Ruin capture year indices must be strictly increasing without duplicates'
-    );
-}
-
-console.log('Test: stress replay advances the terminal ruin market year exactly once before shadow continuation');
-{
-    const monteCarloParams = {
-        anzahl: 1,
-        maxDauer: 7,
-        blockSize: 7,
-        seed: 91234,
-        methode: 'block',
-        rngMode: 'per-run-seed'
-    };
-    const ruinInputs = {
-        ...baseInputs,
-        startVermoegen: 150000,
-        depotwertAlt: 150000,
-        einstandAlt: 150000,
-        zielLiquiditaet: 0,
-        startFloorBedarf: 60000,
-        startFlexBedarf: 0
-    };
-    const request = {
-        inputs: ruinInputs,
-        monteCarloParams,
-        widowOptions,
-        useCapeSampling: false,
-        runRange: { start: 0, count: 1 },
-        logIndices: [0],
-        stressReplayCapture: createStressReplayCaptureRequest([0]),
-        engine: EngineAPI
-    };
-    const pilot = await runMonteCarloChunk(request);
-    const pilotCapture = pilot.runMeta[0].stressReplayCapture;
-    const ruinYearIndex = pilotCapture.sourcePrefixLength - 1;
-    const firstShadowYearIndex = pilotCapture.sourcePrefixLength;
-    const secondShadowYearIndex = firstShadowYearIndex + 1;
-    assert(
-        ruinYearIndex > 0 && secondShadowYearIndex < pilotCapture.years.length,
-        'Canonical ruin transition fixture must expose two shadow years after a non-initial ruin year'
-    );
-
-    const fixtureYears = [ruinYearIndex, firstShadowYearIndex, secondShadowYearIndex]
-        .map(yearIndex => pilotCapture.years[yearIndex].historicalYear);
-    const fixtureEntries = fixtureYears.map(historicalYear => annualData.find(entry => entry.jahr === historicalYear));
-    assert(fixtureEntries.every(Boolean), 'Canonical ruin transition fixture must resolve all sampled historical years');
-    const originals = new Map(fixtureEntries.map(entry => [entry, {
-        rendite: entry.rendite,
-        capeRatio: entry.capeRatio
-    }]));
-
-    try {
-        const [ruinEntry, firstShadowEntry, secondShadowEntry] = fixtureEntries;
-        ruinEntry.rendite = -0.8;
-        ruinEntry.capeRatio = 47;
-        firstShadowEntry.capeRatio = null;
-        secondShadowEntry.capeRatio = null;
-
-        const contrasted = await runMonteCarloChunk(request);
-        const capture = contrasted.runMeta[0].stressReplayCapture;
-        assertEqual(capture.terminalStatus, 'ruin', 'Contrasted fixture must retain the ruin terminal status');
-        assertEqual(
-            capture.sourcePrefixLength,
-            pilotCapture.sourcePrefixLength,
-            'Contrasted ruin year must not shift the source-prefix boundary'
-        );
-        assertClose(
-            capture.years[ruinYearIndex].equityReturnPct,
-            -80,
-            1e-9,
-            'Terminal ruin record must retain its effective contrast return'
-        );
-        assertClose(
-            capture.years[firstShadowYearIndex].capeRatio,
-            47,
-            1e-9,
-            'First shadow year must resolve CAPE from the terminal ruin market state'
-        );
-        assertClose(
-            capture.years[secondShadowYearIndex].capeRatio,
-            47,
-            1e-9,
-            'Later path-dependent CAPE must retain the once-advanced canonical state'
-        );
-        assertEqual(
-            JSON.stringify(capture.years.map(year => year.yearIndex)),
-            JSON.stringify([...Array(monteCarloParams.maxDauer).keys()]),
-            'Contrasted capture year indices must remain strictly increasing'
-        );
-    } finally {
-        for (const [entry, original] of originals) {
-            entry.rendite = original.rendite;
-            entry.capeRatio = original.capeRatio;
-        }
-    }
-}
-
-console.log('Test: stress replay capture isolates a technical-error run from sibling runs');
+console.log('Test: MC isolates a technical-error run from sibling runs');
 {
     let engineInvocationCount = 0;
     const faultingEngine = new Proxy(EngineAPI, {
@@ -1619,7 +1147,6 @@ console.log('Test: stress replay capture isolates a technical-error run from sib
         useCapeSampling: false,
         runRange: { start: 0, count: 2 },
         logIndices: [0, 1],
-        stressReplayCapture: createStressReplayCaptureRequest([0]),
         engine: faultingEngine
     });
 
@@ -1629,7 +1156,7 @@ console.log('Test: stress replay capture isolates a technical-error run from sib
     assertEqual(
         result.pathSummaries.outcomeCode[0],
         MONTE_CARLO_OUTCOME_CODE.TECHNICAL_ERROR,
-        'Captured faulting run must be classified as technical error'
+        'Faulting run must be classified as technical error'
     );
     assertEqual(
         result.pathSummaries.outcomeCode[1],
@@ -1640,13 +1167,9 @@ console.log('Test: stress replay capture isolates a technical-error run from sib
         result.runMeta.some(meta => meta.index === 1),
         'Sibling run must still publish its requested run metadata'
     );
-    assert(
-        result.runMeta.every(meta => !Object.hasOwn(meta, 'stressReplayCapture')),
-        'Technical-error capture must be omitted rather than published as a financial replay path'
-    );
 }
 
-console.log('Test: stress replay capture identity is invariant across worker-like chunk boundaries');
+console.log('Test: MC scenario log rows are invariant across worker-like chunk boundaries');
 {
     const monteCarloParams = {
         anzahl: 12,
@@ -1662,7 +1185,6 @@ console.log('Test: stress replay capture identity is invariant across worker-lik
         widowOptions,
         useCapeSampling: false,
         logIndices: [7],
-        stressReplayCapture: createStressReplayCaptureRequest([7]),
         engine: EngineAPI
     };
     const full = await runMonteCarloChunk({
@@ -1675,10 +1197,8 @@ console.log('Test: stress replay capture identity is invariant across worker-lik
     });
     const fullMeta = full.runMeta.find(meta => meta.index === 7);
     const splitMeta = split.runMeta.find(meta => meta.index === 7);
-    assert(fullMeta?.stressReplayCapture && splitMeta?.stressReplayCapture,
-        'Both chunk layouts must capture the selected absolute run index');
+    assert(fullMeta?.logDataRows && splitMeta?.logDataRows,
+        'Both chunk layouts must log the selected absolute run index');
     assertEqual(JSON.stringify(splitMeta.logDataRows), JSON.stringify(fullMeta.logDataRows),
         'Scenario log rows must be chunk-boundary invariant');
-    assertEqual(JSON.stringify(splitMeta.stressReplayCapture), JSON.stringify(fullMeta.stressReplayCapture),
-        'Materialized replay inputs and source identity must be chunk-boundary invariant');
 }

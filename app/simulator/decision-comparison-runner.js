@@ -3,7 +3,7 @@
 /** DOM-freier Vergleichsbereich; Maps und Ergebnis sind structured-clone-fähig. */
 import { runMonteCarloChunk } from './monte-carlo-runner.js';
 import { readMinimumFlexYear } from './minimum-flex-metrics.js';
-import { normalizeWidowOptions } from './simulator-sweep-utils.js';
+import { normalizeWidowOptions } from './simulator-run-utils.js';
 
 /** @param {CoreIntegrationTypes.DecisionComparisonRequest} request
  * @param {{engine?: typeof import('../../engine/index.mjs').EngineAPI | null; signal?: AbortSignal; onProgress?: AnalysisTypes.ComparisonProgress}} [options]

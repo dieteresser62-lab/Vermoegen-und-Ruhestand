@@ -125,7 +125,7 @@ assertEqual(css.includes('@container suite-shell (width < 82rem)'), true, 'Autom
 assertEqual(css.includes('grid-template-columns: 4rem minmax(0, 1fr)') && css.includes('grid-template-columns: 12rem minmax(0, 1fr)'), true, 'Breitenbudget gibt kompakt acht Rem Hauptinhalt zurück');
 assertEqual(sources['css/balance.css'].includes('@container suite-content (max-width: 1250px)'), true, 'Balance misst verfügbaren Inhalt');
 assertEqual(sources['css/personen-vermoegen-seite.css'].includes('@container manager (max-width: 980px)'), true, 'Manager misst seinen inneren Container');
-assertEqual(sources['simulator.css'].includes('@container simulator-panel (max-width: 1000px)') && sources['simulator.css'].includes('@container simulator-panel (max-width: 899px)'), true, 'Simulator misst betroffene Panels');
+assertEqual(sources['simulator.css'].includes('@container simulator-panel (max-width: 1000px)'), true, 'Simulator misst betroffene Panels');
 assertEqual(sources['Balance.html'].includes('id="print-footer"') && sources['css/balance.css'].includes('.suite-content > :not(.balance-action-dialog) { display: none; }'), true, 'Balance-Druckanker bleiben erhalten');
 assertEqual(sources['Simulator.html'].includes('id="monteCarloResults"') && sources['simulator.css'].includes('.mc-view-panel[hidden]'), true, 'Simulator-Druckanker bleiben erhalten');
 
@@ -311,7 +311,7 @@ for (const page of pages) {
 // Hilfe „?“ steht auf jeder App-Seite im Seitenkopf (im Simulator in jedem Reiter) und führt im selben Fenster zum passenden Kapitel.
 const handbook = fs.readFileSync(new URL('../Handbuch.html', import.meta.url), 'utf8');
 const helpTargets = { 'index.html': [''], 'depot-tranchen-manager.html': ['haushalt-plan'], 'Ausgaben.html': ['ausgaben'], 'Balance.html': ['balance'],
-    'Simulator.html': ['simulator', 'simulator-eingaben', 'simulator-backtest', 'monte-carlo', 'werkstatt'], 'Daten-Sicherung.html': ['daten-sicherung'] };
+    'Simulator.html': ['simulator', 'simulator-eingaben', 'simulator-backtest', 'monte-carlo'], 'Daten-Sicherung.html': ['daten-sicherung'] };
 for (const [page, targets] of Object.entries(helpTargets)) {
     const html = fs.readFileSync(new URL(`../${page}`, import.meta.url), 'utf8');
     const heads = html.match(/<header class="[^"]*ds-page-head[^"]*">[\s\S]*?<\/header>/g) || [];

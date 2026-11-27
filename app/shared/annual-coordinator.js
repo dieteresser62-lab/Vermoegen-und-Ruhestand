@@ -1,11 +1,11 @@
 import { areaSessionStorage } from './persistence-area-storage.js';
 import { deriveAnnualCloseEvidence, readAnnualCloseSnapshots } from './annual-close-evidence.js';
 import { appNow } from './app-clock.js';
-import { PersistenceFacade, persistenceStorage } from './persistence-facade.js';
+import { PersistenceFacade, persistenceStorage, syncWriteBlockMessage } from './persistence-facade.js';
 import { SnapshotArchive, SNAPSHOT_KINDS } from './snapshot-archive.js';
 import { annualEngineLoader } from './annual-engine-loader.js';
 import { createAnnualOperationLock } from './annual-operation-lock.js';
-import { prepareAnnualMarketData, createAnnualMarketDataReaders, createManualAnnualQuote } from './annual-marketdata.js';
+import { prepareAnnualMarketData, createAnnualMarketDataReaders, createManualAnnualQuote, validateAnnualPreparationValue } from './annual-marketdata.js';
 import { captureAnnualRecords, computeAnnualPlanUpdate } from '../balance/balance-annual-storage.js';
 import { commitAnnualPlanUpdate } from '../balance/balance-annual-storage-commit.js';
 import { buildBalanceEngineInputFromStorage } from '../balance/balance-input-storage.js';
@@ -126,10 +126,43 @@ function assertRetryShape(request, now) {
         || request.periodId !== `calendar-year:${request.targetYear}`
         || !Number.isFinite(request.createdAt) || now < request.createdAt
         || now - request.createdAt > RETRY_MAX_AGE_MS) throw new Error('ANNUAL_RETRY_INVALID');
-    const high = request.yearHigh;
-    if (high !== undefined && (!high || typeof high !== 'object' || !Number.isFinite(high.value) || high.value <= 0
-        || typeof high.asOf !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(high.asOf))) throw new Error('ANNUAL_RETRY_INVALID');
+    const manual = request.manualMarket;
+    if (manual !== undefined && (!manual || typeof manual !== 'object'
+        || Object.keys(manual).some(key => !['inflation', 'cape'].includes(key)))) throw new Error('ANNUAL_RETRY_INVALID');
+    for (const [key, value] of Object.entries(manual || {})) validateAnnualPreparationValue(key, value, request.targetYear);
     createManualAnnualQuote(request.price, request.periodId);
+}
+
+const isManualMarketValue = (key, value) => Boolean(value) && (key === 'inflation' ? value.fetchStatus === 'ok_manual'
+    : value.capeSource === 'Manuelle Ergänzung');
+
+/** JW-1a (Neon P3-3): Die Wiederaufnahme übernimmt Handwerte für Inflation und CAPE, statt sie neu abzurufen.
+ *
+ * @param {{targetYear: number; manualMarket?: {inflation?: object; cape?: object}}} request Bestätigte Wiederaufnahme.
+ * @param {{prepareInflation: (options: object)=>Promise<any>; prepareCape: (options: object)=>Promise<any>}} readers Abrufe der Seite.
+ * @param {AbortSignal} signal Abbruch der Wiederaufnahme.
+ * @returns {Promise<any[]>} Inflation und CAPE.
+ */
+export function readAnnualResumeMarket(request, readers, signal) {
+    const manual = request?.manualMarket || {}, targetYear = request?.targetYear;
+    return Promise.all([manual.inflation ? Promise.resolve(structuredClone(manual.inflation)) : readers.prepareInflation({ targetYear, signal }),
+        manual.cape ? Promise.resolve(structuredClone(manual.cape)) : readers.prepareCape({ targetYear, signal })]);
+}
+
+/** JW-1a (Fable P2-4): Das Auswahljahr der Ausgaben wird vor dem Dialog geprüft, nicht erst nach allen Schritten.
+ *
+ * @param storage Speicherzugriff des Aufrufers.
+ * @param {number} targetYear Abzuschließendes Jahr.
+ * @param {Date} date Heutiges Fachdatum.
+ * @returns {Error|{code: string; message: string}|null} Fehler, wenn das Auswahljahr nicht passt.
+ */
+export function annualExpensesYearError(storage, targetYear, date) {
+    const expenses = loadExpensesStoreResult(storage);
+    // ST6-FIX (P2-3): Ohne Ausgabenspeicher gibt es kein falsches Auswahljahr; Ausgaben sind für den Abschluss nicht Pflicht.
+    if (expenses.status === 'empty') return null;
+    if (expenses.status === 'ok' && Number.isInteger(expenses.store.activeYear)
+        && expenses.store.activeYear >= targetYear && expenses.store.activeYear <= date.getFullYear()) return null;
+    return expenses.error || new Error(`Das Auswahljahr der Ausgaben passt nicht zum Jahresabschluss ${targetYear}.`);
 }
 
 /** Synchron im bereits aufgelösten Speicherbereich konsumieren.
@@ -152,11 +185,14 @@ export function consumeAnnualRetry(storage = areaSessionStorage(), now = Date.no
     } catch { return null; }
 }
 
+export const CORRUPT_BALANCE_STATE_MESSAGE = 'Der gespeicherte Balance-Stand ist beschädigt. Hole unter „Daten & Sicherung“ einen früheren Stand zurück.';
 function readState(storage) {
     const raw = storage.getItem(CONFIG.STORAGE.LS_KEY);
     if (!raw) throw new Error('Der bestätigte Balancestand fehlt.');
-    const state = JSON.parse(raw);
-    if (!state || typeof state !== 'object' || Array.isArray(state)) throw new Error('Der Balancestand ist ungültig.');
+    let state;
+    // JW-1a (Neon P1-2): Ein beschädigter Stand führt zur Wiederherstellung statt zu einem Syntaxfehler.
+    try { state = JSON.parse(raw); } catch { state = null; }
+    if (!state || typeof state !== 'object' || Array.isArray(state)) throw Object.assign(new Error(CORRUPT_BALANCE_STATE_MESSAGE), { code: 'balance_state_corrupt' });
     return state;
 }
 const profileIdentity = storage => storage.getItem('rs_current_profile');
@@ -207,8 +243,7 @@ export async function createAnnualSnapshot({ storage, archive, profileId, label,
     check();
     // Mehrere nachgeholte Jahre können dasselbe festgehaltene Fachdatum haben.
     const created = await archive.createSnapshot({ id: snapshotId || `snapshot_annual_${globalThis.crypto.randomUUID()}`, label,
-        createdAt: date.toISOString(), kind: SNAPSHOT_KINDS.annualClosePreMutation, records: captured, activeProfileId: profileId,
-        restoreScope: { profileRegistryMode: 'replace-all-rollback', profileLiveDataMode: 'replace-all-rollback', liveKeyMode: 'snapshot-full' }
+        createdAt: date.toISOString(), kind: SNAPSHOT_KINDS.annualClosePreMutation, records: captured, activeProfileId: profileId
     }, { navigationOperation });
     check();
     const saved = created?.id && await archive.readSnapshot(created.id);
@@ -217,6 +252,11 @@ export async function createAnnualSnapshot({ storage, archive, profileId, label,
         || JSON.stringify(saved.records) !== JSON.stringify(captured)) throw new Error('Der Wiederherstellungspunkt wurde nicht bytegleich bestätigt.');
     return saved.id;
 }
+
+const manualMarket = prepared => {
+    const entries = ['inflation', 'cape'].filter(key => isManualMarketValue(key, prepared?.[key])).map(key => [key, prepared[key]]);
+    return entries.length ? { manualMarket: Object.fromEntries(entries) } : {};
+};
 
 /** Einziger produktiver Jahresablauf. Alle Seitenaktionen sind injizierte Anschlüsse.
  *
@@ -228,7 +268,7 @@ export function createAnnualCoordinator({ storage = persistenceStorage, persiste
     navigationLifecycle = createAnnualNavigationLifecycle(), scope,
     getProfileId = () => profileIdentity(storage),
     getPlanningStatus = date => projectOverviewFromRecords({ registry: JSON.parse(storage.getItem('rs_profiles_v1')), activeId: getProfileId(),
-        liveData: captureAnnualRecords(storage), now: date, balanceSingleFallback: true }),
+        liveData: captureAnnualRecords(storage), now: date }),
     confirmAnnual = async () => null, getLegacyDecision = async () => 'cancel',
     flushLiveState = () => persistence.flush(), validateLiveState = () => ({ ok: true }),
     prepareMarketData = options => prepareAnnualMarketData({ ...options, now, readers: createAnnualMarketDataReaders({ storage, now }) }),
@@ -271,13 +311,14 @@ export function createAnnualCoordinator({ storage = persistenceStorage, persiste
         const scopeKey = JSON.stringify(evidenceScope);
         const checkSources = () => {
             operation.check();
+            if (persistence.hasSyncWriteBlocks?.()) throw new Error(syncWriteBlockMessage());
             if (before !== JSON.stringify(captureAnnualRecords(storage)) || profileId !== getProfileId()
-                || deriveCompletedCalendarYear(date) !== deriveCompletedCalendarYear(now()) || persistence.hasSyncWriteBlocks?.()
+                || deriveCompletedCalendarYear(date) !== deriveCompletedCalendarYear(now())
                 || scopeKey !== JSON.stringify(scope || getPlanningStatus(now()).scope)) {
                 throw new Error('Die Jahresquellen wurden während der Belegprüfung geändert. Bitte erneut vorbereiten.');
             }
         };
-        const snapshots = await readAnnualCloseSnapshots({ archive, targetYear, activeId: profileId,
+        const snapshots = await readAnnualCloseSnapshots({ archive, targetYear, activeId: profileId, scope: evidenceScope,
             excludeSnapshotId: options.resume?.snapshotId, check: checkSources });
         const evidence = deriveAnnualCloseEvidence({ targetYear, scope: evidenceScope, activeId: profileId,
             records: sourceRecords, snapshots });
@@ -320,9 +361,13 @@ export function createAnnualCoordinator({ storage = persistenceStorage, persiste
         const date = now();
         const context = () => JSON.stringify([getProfileId(), storage.getItem('rs_active_profile'), scope?.key]);
         const capturedContext = context();
-        const check = () => { operation.check(); if (context() !== capturedContext
-            || deriveCompletedCalendarYear(now()) !== deriveCompletedCalendarYear(date)
-            || persistence.hasSyncWriteBlocks?.()) throw new Error('Der Jahreskontext ist geändert oder für Recovery gesperrt.'); };
+        const check = () => {
+            operation.check();
+            if (persistence.hasSyncWriteBlocks?.()) throw new Error(syncWriteBlockMessage());
+            if (context() !== capturedContext || deriveCompletedCalendarYear(now()) !== deriveCompletedCalendarYear(date)) {
+                throw new Error('Die Daten für den Jahresabschluss haben sich geändert.');
+            }
+        };
         const persistMetadata = async next => {
             check();
             storage.setItem(CONFIG.STORAGE.LS_KEY, JSON.stringify({ ...readState(storage), annualPeriodMetadata: next }));
@@ -349,10 +394,8 @@ export function createAnnualCoordinator({ storage = persistenceStorage, persiste
                 if (storedPeriod.status !== 'already_committed') report(new Error(storedPeriod.errors?.map(error => error.message).join(' ')));
                 return storedPeriod;
             }
-            const expenses = loadExpensesStoreResult(storage);
-            if (expenses.status !== 'ok' || !Number.isInteger(expenses.store.activeYear)
-                || expenses.store.activeYear < targetYear
-                || expenses.store.activeYear > date.getFullYear()) throw expenses.error || new Error('Der Ausgabenstore passt nicht zur Jahresperiode.');
+            const expensesError = annualExpensesYearError(storage, targetYear, date);
+            if (expensesError) throw expensesError;
             const input = buildBalanceEngineInputFromStorage({ storage, scope, referenceYear: targetYear });
             if (input.householdPlan.status !== 'valid') throw new Error('Der gemeinsame Plan muss bestätigt sein.');
             metadata = evidence.metadata;
@@ -374,7 +417,8 @@ export function createAnnualCoordinator({ storage = persistenceStorage, persiste
             if (!confirmation) return { status: 'cancelled' };
             // Nur den bestätigten Beschluss mitnehmen, keine Abrufresultate oder UI-Sitzung.
             confirmedDecision = structuredClone({ cash: confirmation.cash, careValues: confirmation.careValues, careToday: confirmation.careToday,
-                ...(confirmation.yearHigh ? { yearHigh: confirmation.yearHigh } : {}),
+                ...(confirmation.propertyValues ? { propertyValues: confirmation.propertyValues } : {}),
+                ...manualMarket(confirmation.preparedMarketData),
                 adoptedPlanPatch: options.adoptedPlanPatch ?? confirmation.adoptedPlanPatch });
             if (base !== JSON.stringify(captureAnnualRecords(storage))) throw new Error('Die Jahresquellen wurden während der Bestätigung geändert.');
             clearError();
@@ -403,8 +447,8 @@ export function createAnnualCoordinator({ storage = persistenceStorage, persiste
             if (!prepared?.ok) throw prepared?.error || new Error('Die Jahresdaten konnten nicht vollständig vorbereitet werden.');
             metadata = { ...metadata, pendingCommit: { ...metadata.pendingCommit, phase: 'validating' } };
             operation.commit('validating'); await persistMetadata(metadata);
-            const draft = prepareAnnualDraft({ targetYear, marketData: prepared.marketData, yearHigh: confirmation.yearHigh, scope, storage, now: () => date });
-            const committed = await commit(/** @type {import("../../typcheck/speicher-integration.js").AnnualCommitOptions} */ ({ draft, cash: confirmation.cash, careValues: confirmation.careValues, careToday: confirmation.careToday, adoptedPlanPatch: options.adoptedPlanPatch ?? confirmation.adoptedPlanPatch,
+            const draft = prepareAnnualDraft({ targetYear, marketData: prepared.marketData, scope, storage, now: () => date });
+            const committed = await commit(/** @type {import("../../typcheck/speicher-integration.js").AnnualCommitOptions} */ ({ draft, cash: confirmation.cash, careValues: confirmation.careValues, careToday: confirmation.careToday, propertyValues: confirmation.propertyValues, adoptedPlanPatch: options.adoptedPlanPatch ?? confirmation.adoptedPlanPatch,
                 engineApi: api, navigationOperation: operation, now: () => date, isCurrent: () => context() === capturedContext }));
             if (!committed.completed?.metadata || JSON.stringify(readState(storage).annualPeriodMetadata) !== JSON.stringify(committed.completed.metadata)) throw new Error('Der Jahresreadback wurde nicht bestätigt.');
             const calculation = committed.result;

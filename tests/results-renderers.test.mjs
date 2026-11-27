@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { tokenizeHTML } from './funktionsinventar-contract.mjs';
 import { buildMonteCarloOutcomeInventoryV1 } from '../app/simulator/monte-carlo-chunk-result.js';
 import { buildMonteCarloAnswers, buildSummaryData, buildKpiDashboard, buildStressMetrics, buildCareMetrics } from '../app/simulator/results-metrics.js';
 import {
@@ -262,7 +263,7 @@ try {
     const riskDashboard = new MockElement('div', documentRef);
     const splitModel = {
         reportingReferenceNotice: '4,5 % bleibt reine Berichtsreferenz.', primary: [card('Primary split')], drawdownKpis: [card('Drawdown split')],
-        detailSections: [{ title: 'Tail-Risk-Overlay', kpis: [card('Tail split')] }]
+        detailSections: [{ title: 'Zusätzliche Extremereignisse', kpis: [card('Tail split')] }]
     };
     const beforeSplit = JSON.stringify(splitModel);
     renderKpiDashboard(dashboard, splitModel, riskDashboard);
@@ -274,7 +275,7 @@ try {
     renderKpiDashboard(dashboard, splitModel, riskDashboard, { stressMetrics: { presetLabel: 'Crash fixture', years: 3 } });
     assert(/data-risk-row="stress" open/.test(riskDashboard.innerHTML) && riskDashboard.innerHTML.includes('sim-risk-stress-anchor')
         && riskDashboard.innerHTML.includes('Crash fixture · betrifft die ersten 3 Jahre'), 'Mit aktivem Stress ist die Stresszeile aufgeklappt und nimmt die Stresskarten auf');
-    assert(riskDashboard.innerHTML.includes('▸ Alle Details zeigen'), 'Kopf bietet „Alle Details zeigen“');
+    assert(!riskDashboard.innerHTML.includes('Alle Details') && !riskDashboard.innerHTML.includes('data-risk-all'), 'OP-3: Kopf ohne „Alle Details zeigen“; jede Zeile klappt einzeln');
     assert(dashboard.innerHTML.includes('Primary split') && dashboard.innerHTML.includes('Drawdown split')
         && dashboard.innerHTML.includes('Tail split'), 'Überblick erhält Hauptwerte, Drawdown und aufklappbare Detailkarten');
     assert(riskDashboard.innerHTML.includes('Tail split') && !riskDashboard.innerHTML.includes('Primary split'),
@@ -300,12 +301,15 @@ try {
     renderStressSection(stressReference, {
         presetLabel: 'Crash fixture',
         years: 4,
-        kpis: toneCards
+        kpis: buildStressMetrics({ presetKey: 'SYNTHETIC', years: 4 }).kpis
     });
     assertEqual(stressParent.insertions.length, 1, 'Stress renderer should insert exactly one current section');
     const insertedStress = stressParent.insertions[0];
     assertEqual(insertedStress.referenceNode, stressReference.nextSibling, 'Stress renderer should insert after the reference container');
     assert(insertedStress.node.innerHTML.includes('Crash fixture') && insertedStress.node.innerHTML.includes('ersten 4 Jahre'), 'Stress renderer should expose preset and duration');
+    const stressGrids = tokenizeHTML(insertedStress.node.innerHTML).document.children.filter(node => node.attrs.class === 'kpi-grid');
+    assertEqual(stressGrids.map(grid => grid.children.filter(node => node.attrs.class?.split(' ').includes('kpi-card')).length).join(', '),
+        '6', 'HL-5: Alle sechs Stress-Kennzahlen stehen im selben Raster');
     const insertionCount = stressParent.insertions.length;
     renderStressSection(null, { presetLabel: 'ignored', years: 1, kpis: [] });
     assertEqual(stressParent.insertions.length, insertionCount, 'Stress renderer should ignore a missing reference container');

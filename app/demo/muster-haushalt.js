@@ -1,4 +1,3 @@
-import { WEALTH_CAPTURES_KEY, CAPTURE_AMOUNT_FIELDS, assertWealthCaptures } from '../../types/wealth-capture-contract.js';
 import { INCOME_KEY, INCOME_MIGRATION_KEY, writeIncome } from '../profile/profile-income.js';
 import { rebuildSyntheticPriceRecords, validateMusterTestDate } from './muster-haushalt-prices.js';
 export { rebuildSyntheticPriceRecords, validateMusterTestDate } from './muster-haushalt-prices.js';
@@ -7,8 +6,7 @@ import { CONFIG } from '../balance/balance-config.js';
 import { parseCalendarDate } from '../shared/app-clock.js';
 import { syntheticQuote, syntheticAnnualQuote, withSyntheticMarketScenario } from '../shared/probelauf-prices.js';
 import { normalizeTrancheCollection } from '../../types/tranche-contract.js';
-import { createManualWealthHistoryEntry, createAnnualWealthHistoryEntry } from '../../types/wealth-history-contract.js';
-import { captureWealthLots } from '../profile/profile-wealth-history.js';
+import { captureSaleWealthLots, captureWealthLots } from '../profile/profile-wealth-history.js';
 import { overviewScope, summaryEntryKey } from '../overview/overview-storage.js';
 import { previousOverviewMonth } from '../overview/overview-model.js';
 import { validatePersistenceDomainRecords } from '../shared/persistence-backup.js';
@@ -28,6 +26,7 @@ const STECKBRIEFE = {
     'max-erika': {
         floorBedarf: 30000, flexBedarf: 30000, minimumFlexAnnual: 7500,
         categories: { Wohnen: 50, Alltag: 34, Reisen: 16 },
+        partnership: { schemaVersion: 1, status: 'married', inheritance: {} },
         people: [
             { id: 'muster_a', name: 'Max', birthDate: '1958-03-14', sex: 'm', pensionStart: '2023-01-01', pension: 2300,
                 cash: 18000, lots: [180000, 180000, 36000], newPurchaseDate: '2020-05-18' },
@@ -53,6 +52,7 @@ const STECKBRIEFE = {
         valuationAtYearStart: true,
         dynamicFlex: true, gold: { target: 10, floor: 5, band: 20 },
         categories: { Wohnen: 45, Alltag: 30, Reisen: 25 },
+        partnership: { schemaVersion: 1, status: 'married', inheritance: {} },
         people: [
             { id: 'muster_jan', name: 'Jan', birthDate: '1968-01-01', sex: 'm', pensionStart: '2035-01-01', pension: 2100,
                 inflows: [{ offset: 2, amount: 40000, label: 'Erbe' }],
@@ -101,6 +101,7 @@ const STECKBRIEFE = {
         decumulation: { mode: '3_bucket_jilge', bondTargetFactor: 5, drawdownTrigger: 15, bondRefillThreshold: null },
         gold: { target: 20, floor: 10, band: 20 }, churchTax: 9, careReserve: 30000,
         categories: { Wohnen: 50, Alltag: 40, Reisen: 10 },
+        partnership: { schemaVersion: 1, status: 'married', inheritance: {} },
         people: [
             { id: 'muster_helga', name: 'Helga', birthDate: '1952-01-01', sex: 'w', pensionStart: '2017-01-01', pension: 900,
                 cash: 40000, lots: [60000, 65000, 10000], bonds: 75000, gold: 50000, newPurchaseDate: '2020-05-18' },
@@ -198,6 +199,19 @@ function addMusterAnnualPlan(records, year, values, scope) {
     records.rs_profiles_v1 = JSON.stringify(currentRegistry);
 }
 
+/** Gutschrift am Buchungstag in den Tagesgeld-Verlauf einfügen; Einträge ab diesem Tag steigen um den Betrag.
+ * @param {{version: number, baselineValue: number, entries: {date: string, value: number}[]}} history
+ * @param {string} date @param {number} amount */
+function withCashCredit(history, date, amount) {
+    const entries = history.entries.map(entry => entry.date >= date ? { ...entry, value: entry.value + amount } : entry);
+    if (!entries.some(entry => entry.date === date)) {
+        const before = history.entries.filter(entry => entry.date < date).at(-1)?.value ?? history.baselineValue;
+        entries.push({ date, value: before + amount });
+        entries.sort((a, b) => a.date.localeCompare(b.date));
+    }
+    return { ...history, entries };
+}
+
 /** WT-1 (FR-77): Variante „Plan teilweise umgesetzt“. Die erste Person hat ihre Planzeile verkauft und gutgeschrieben, die zweite
  * ein gutes Drittel ihrer Zeile, die Gutschrift aufs Tagesgeld ist noch offen. Verkaufsbelege wie nach „Verkauf eintragen“
  * (Stücke weniger, bestätigter Verkauf in der Registry); Datum spätestens am Testdatum.
@@ -220,12 +234,18 @@ function addMusterPlanSales(records, testDate) {
         const data = registry.profiles[sale.profileId].data;
         const cash = Number(data.profile_tagesgeld) + (sale.pending ? 0 : sale.net);
         data.profile_tagesgeld = String(cash);
-        const tranches = JSON.parse(data.depot_tranchen), lot = tranches.find((/** @type {any} */ item) => item.trancheId === sale.trancheId);
+        // VS-2: Die bestätigte Gutschrift steht datiert im Tagesgeld-Verlauf; spätere Stände tragen sie weiter.
+        if (!sale.pending) data.profile_cash_history_v1 = JSON.stringify(withCashCredit(JSON.parse(data.profile_cash_history_v1), sale.executedAt, sale.net));
+        const beforeTranches = JSON.parse(data.depot_tranchen), tranches = structuredClone(beforeTranches);
+        const lot = tranches.find((/** @type {any} */ item) => item.trancheId === sale.trancheId);
         if (!lot) continue;
         const gross = Math.round((sale.net + sale.taxes) * 100) / 100, sold = gross / lot.currentPrice, before = lot.shares;
         lot.shares = before - sold;
         if ('marketValue' in lot) lot.marketValue = lot.shares * lot.currentPrice;
         data.depot_tranchen = JSON.stringify(tranches);
+        // VS-3a: Die Verlaufsstammdaten folgen dem Verkauf wie bei „Verkauf eintragen“, sonst gilt die Tranche als unbelegt.
+        // Wie dort erhält die Kopie normalisierte Nachher-Tranchen, also den Einstandswert nach dem Verkauf.
+        data.profile_wealth_history_lots_v1 = JSON.stringify(captureSaleWealthLots(data.profile_wealth_history_lots_v1, beforeTranches, normalizeTrancheCollection(tranches, { mode: 'persisted' }), sale.trancheId, sale.executedAt));
         actions.push({ schemaVersion: 1, eventType: 'sale_reconciled', actionId: `muster-plan-verkauf-${index + 1}`, profileId: sale.profileId, trancheId: sale.trancheId,
             executedAt: sale.executedAt, actual: { sharesSold: sold, grossProceeds: gross, fees: 0, taxes: sale.taxes, netProceeds: sale.net },
             ...(sale.pending ? { cashStatus: 'pending_manual_posting' } : { cashStatus: 'confirmed_already_reflected', cashBalanceAfterPostingEur: cash,
@@ -235,6 +255,8 @@ function addMusterPlanSales(records, testDate) {
     registry.trancheReconciliation = { schemaVersion: 1, actions };
     const active = registry.profiles[records.rs_current_profile].data;
     records.profile_tagesgeld = active.profile_tagesgeld; records.depot_tranchen = active.depot_tranchen;
+    records.profile_cash_history_v1 = active.profile_cash_history_v1;
+    records.profile_wealth_history_lots_v1 = active.profile_wealth_history_lots_v1;
     records.rs_profiles_v1 = JSON.stringify(registry);
 }
 
@@ -295,7 +317,6 @@ function createRecords(testDate, householdId, variantId) {
         geldmarktEtf: sum.geldmarktEtf + person.lots[2] }), { tagesgeld: 0, depotwertAlt: 0, depotwertNeu: 0, geldmarktEtf: 0 });
     if (household.gold) Object.assign(totals, { goldBestand: household.people.reduce((sum, person) => sum + person.gold, 0),
         goldWert: household.people.reduce((sum, person) => sum + person.gold, 0) });
-    const capturesByDate = new Map();
     for (const person of household.people) {
         const { id, name, cash } = person;
         const tranches = [
@@ -326,31 +347,6 @@ function createRecords(testDate, householdId, variantId) {
             ...(household.gold ? { goldWert: market('gold'), goldSteuerfrei: true } : {}) };
         for (let n = 0; n < 4; n++) inputs[n ? `endeVJ_${n}` : 'endeVJ'] = Math.round(syntheticAnnualQuote('VWCE.DE', year - 1 - n, testDate).price);
         inputs.ath = Math.max(inputs.endeVJ, inputs.endeVJ_1, inputs.endeVJ_2, inputs.endeVJ_3);
-        // Historische Stände verwenden dieselben Stücke, aber die damaligen Kurse und Cashwerte.
-        const historicalInputs = (date, historicalCash) => {
-            const value = type => tranches.filter(lot => lot.type === type && lot.purchaseDate <= date)
-                .reduce((sum, lot) => sum + lot.shares * syntheticQuote(lot.ticker, date).price, 0);
-            return { tagesgeld: historicalCash, geldmarktEtf: value('geldmarkt'),
-                depotwertAlt: value('aktien_alt'), depotwertNeu: value('aktien_neu') + value('anleihe'), goldBestand: value('gold'),
-                ...(household.gold ? { goldWert: value('gold') } : {}) };
-        };
-        const entries = [];
-        const historicalEntry = (date, historicalCash, annualYear = null) => {
-            const historical = historicalInputs(date, historicalCash);
-            const entry = annualYear === null ? createManualWealthHistoryEntry(historical, date)
-                : createAnnualWealthHistoryEntry(historical, annualYear);
-            if (!person.bonds && !person.gold) return entry;
-            const anleihen = tranches.filter(lot => lot.category === 'bonds' && lot.purchaseDate <= date)
-                .reduce((sum, lot) => sum + lot.shares * syntheticQuote(lot.ticker, date).price, 0);
-            return { ...entry, depotwertNeu: entry.depotwertNeu - anleihen, aktienEtf: entry.aktienEtf - anleihen,
-                goldWert: historical.goldBestand, anleihen, total: entry.total + historical.goldBestand };
-        };
-        if (year > 2026) entries.push(historicalEntry(`${year - 1}-12-31`, cash - 1000, year - 1));
-        entries.push(historicalEntry(januaryDate, cash));
-        for (const entry of entries) {
-            if (!capturesByDate.has(entry.asOf)) capturesByDate.set(entry.asOf, { capturedAt: now.toISOString(), people: {} });
-            capturesByDate.get(entry.asOf).people[id] = entry;
-        }
         const summary = { year, scope, monthlyWithdrawal: 0, monthlyBudget: 0, status: 'fest', createdAt: now.toISOString() };
         const state = { inputs, profilverbundHouseholdInputs: { ...inputs, ...totals },
             annualPeriodMetadata: { schemaVersion: 1, lastCommittedPeriod: `calendar-year:${year - 1}`, pendingCommit: null },
@@ -387,14 +383,7 @@ function createRecords(testDate, householdId, variantId) {
         ...registry.profiles[ids[0]].data, rs_wealth_history_start_v1: JSON.stringify({ version: 1, startDate }), balance_expenses_v1: JSON.stringify(expenses),
         household_simulator_needs_v1: JSON.stringify({ schemaVersion: 1, mode: 'override', source: 'manual', overriddenFields: ['startFloorBedarf', 'startFlexBedarf', 'minimumFlexAnnual'],
             values: { startFloorBedarf: String(planValues.floorBedarf), startFlexBedarf: String(planValues.flexBedarf), minimumFlexAnnual: String(planValues.minimumFlexAnnual) } }) }, testDate);
-    records[WEALTH_CAPTURES_KEY] = JSON.stringify(assertWealthCaptures({ schemaVersion: 1,
-        captures: [...capturesByDate.values()].map(capture => {
-            const first = Object.values(capture.people)[0];
-            // Alt-Eintragskonstruktoren lassen optionale Anlagearten weg.
-            for (const person of Object.values(capture.people)) for (const field of CAPTURE_AMOUNT_FIELDS) person[field] ??= 0;
-            return { ...capture, household: { ...first, ...Object.fromEntries(CAPTURE_AMOUNT_FIELDS.map(field =>
-                [field, Object.values(capture.people).reduce((sum, person) => sum + person[field], 0)])) } };
-        }) }));
+    // VS-2: Beispielhaushalte legen keine erfassten Vermögensstände mehr an; der Verlauf kommt aus Tageskursen und Tagesgeld-Historie.
     if (household.plannedExpenses) records[PLANNED_EXPENSES_KEY] = JSON.stringify({ version: 1, entries: {
         [annualScope.key]: { scope: annualScope, items: household.plannedExpenses.map(entry => entry.monat ? { ...entry, monat: shiftedDate(entry.monat) }
             : { ...entry, ab: entry.ab && shiftedDate(entry.ab), bis: entry.bis && shiftedDate(entry.bis) }) }

@@ -1,5 +1,4 @@
-import { viridis, computeHeatmapStats, renderHeatmapSVG, renderSweepHeatmapSVG } from '../app/simulator/simulator-heatmap.js';
-import { aggregateSweepMetrics } from '../app/simulator/simulator-results.js';
+import { viridis, computeHeatmapStats, renderHeatmapSVG } from '../app/simulator/simulator-heatmap.js';
 
 console.log('--- Simulator Heatmap Tests ---');
 
@@ -38,7 +37,7 @@ console.log('--- Simulator Heatmap Tests ---');
     const cellCount = (svg.match(/class="heatmap-cell"/g) || []).length;
     assertEqual(cellCount, 4, 'Heatmap should render one cell per year/bin');
     assert(svg.includes('realisierte Entnahmequote ≥ 4,5 % (gezählt je Quotenstufe)'), 'Heatmap header should name realized-rate basis and bin-based >= operator');
-    assert(svg.includes('nur eine Berichtsreferenz') && svg.includes('keine Alarm- oder Guardrail-Schwelle'), 'Heatmap should state the reporting-only role visibly');
+    assert(svg.includes('nur eine Berichtsreferenz') && svg.includes('keine Alarm- oder Leitplanken-Schwelle'), 'Heatmap should state the reporting-only role visibly');
     assert(svg.includes('Realisierte Entnahmequote:'), 'Heatmap cell tooltip should name the realized withdrawal-rate basis');
 
     const svgWithFooter = renderHeatmapSVG(heat, bins, 2, { timeShareQuoteAbove45: 0.1 }, { showLegend: false, showFooterStats: true });
@@ -60,83 +59,18 @@ console.log('--- Simulator Heatmap Tests ---');
     assertClose(shareStats.shares[0][1], 0.75, 0.0001, 'Versioned share input should not divide by the run denominator');
 }
 
-// --- TEST 6: renderSweepHeatmapSVG edge cases ---
-{
-    // Empty sweep should emit a placeholder message (no grid).
-    const empty = renderSweepHeatmapSVG([], 'successProbFloor', 'targetEq', 'runwayMin', [], []);
-    assert(empty.includes('Keine Sweep-Ergebnisse'), 'Empty sweep should show placeholder');
 
-    const sweepResults = [
-        {
-            params: { targetEq: 60, runwayMin: 24 },
-            metrics: aggregateSweepMetrics([
-                {
-                    finalVermoegen: 10000,
-                    maxDrawdown: 20,
-                    minRunway: 24,
-                    failed: false
-                }
-            ], {
-                commonRandomNumbers: true,
-                randomPolicyVersion: 'SweepCommonRandomNumbersV2'
-            })
-        }
-    ];
-    const svg = renderSweepHeatmapSVG(sweepResults, 'successProbFloor', 'targetEq', 'runwayMin', [60], [24], { showLegend: false });
-    const midColor = viridis(0.5);
-    assert(svg.includes(midColor), 'Single-value sweep should use mid-color for zero range');
-    assert(svg.includes('1 Lauf je Kombination'), 'Sweep heatmap should expose the singular run count');
-    assert(svg.includes('Common Random Numbers: aktiv'), 'Sweep heatmap should expose active CRN comparison');
-    assert(svg.includes('Quantilrankings sind experimentelle Punktschätzer'), 'Sweep heatmap should expose quantile uncertainty');
-
-    const saturatedOutcomes = Array.from({ length: 200 }, (_, index) => ({
-        finalVermoegen: index < 11 ? 0 : 10000,
-        maxDrawdown: index < 11 ? 100 : 34,
-        minRunway: index < 11 ? 0 : 24,
-        failed: index < 11
-    }));
-    const saturated = renderSweepHeatmapSVG([
-        {
-            params: { targetEq: 60, runwayMin: 24 },
-            metrics: aggregateSweepMetrics(saturatedOutcomes)
-        }
-    ], 'worst5Drawdown', 'targetEq', 'runwayMin', [60], [24], { showLegend: false });
-    assert(
-        saturated.includes('Drawdown-P95 ist durch terminale Ruine gesättigt'),
-        'Sweep heatmap visibly explains a terminal-ruin-saturated drawdown metric'
-    );
-
-    const legacyOnly = renderSweepHeatmapSVG([
-        {
-            params: { targetEq: 60, runwayMin: 24 },
-            metrics: { successProbFloor: 100 }
-        }
-    ], 'successProbFloor', 'targetEq', 'runwayMin', [60], [24], { showLegend: false });
-    assert(
-        legacyOnly.includes('veralteten oder unversionierten Ergebnisvertrag'),
-        'Sweep heatmap should reject an unversioned metric shape with a migration hint'
-    );
-}
 
 console.log('✅ Simulator heatmap tests passed');
 console.log('--- Simulator Heatmap Tests Completed ---');
 
-// Sonderwerte einzeln: echte Null, Kleinstwert, leere Zelle und Invalidität.
+// Sonderwerte einzeln: echte Null, Kleinstwert und leere Heatmap.
 const tiny = renderHeatmapSVG([[1, 1999, 0]], [0, 3, 4.5, 100], 2000, {}, { showFooterStats: false });
 assert(tiny.includes('&lt;0,1\u00a0%</text>'), 'Kleinstwert wird deutsch und SVG-sicher beschriftet');
 assert(tiny.includes('Anteil: 0,05\u00a0% (1 Läufe)'), 'Tooltip behält zwei Dezimalstellen und die ursprüngliche Laufzahl');
 assert(tiny.includes('Anteil: 0,00\u00a0% (0 Läufe)'), 'Echte Null bleibt im Tooltip sichtbar');
 assert(tiny.includes('∞\u00a0%'), 'Offene vorhandene Intervallgrenze bleibt unendlich');
 assertEqual(renderHeatmapSVG([], [0, 4.5], 0), '', 'Leere Heatmap wird nicht zu einer Nullzelle');
-const sweepData = [{ params: { liquidityRunwayYears: 3.5, goldTargetPct: 0 }, metrics: aggregateSweepMetrics([{ finalVermoegen: 0, failed: true, maxDrawdown: 100, minRunway: 0 }]) }];
-const beforeSweep = JSON.stringify(sweepData);
-const sweepZero = renderSweepHeatmapSVG(sweepData, 'successProbFloor', 'liquidityRunwayYears', 'goldTargetPct', [3.5, 4], [0]);
-assert(sweepZero.includes('>0,0\u00a0%</text>'), 'Echte Sweep-Null bleibt numerische Null');
-assert(sweepZero.includes('>—</text>') && sweepZero.includes('Keine Daten'), 'Fehlende Sweep-Zelle zeigt keinen kopierten Palettenminimalwert');
-assert(sweepZero.includes('>3,5</text>') && sweepZero.includes('Liquiditäts-Runway: 3,5'), 'Achse und Tooltip lokalisieren Parameter ohne neue Rundung');
-const invalidSweep = renderSweepHeatmapSVG([{ ...sweepData[0], metrics: { ...sweepData[0].metrics, invalidCombination: true, invalidReason: 'Synthetischer Grund' } }, { ...sweepData[0], params: { liquidityRunwayYears: 4, goldTargetPct: 0 } }], 'successProbFloor', 'liquidityRunwayYears', 'goldTargetPct', [3.5, 4], [0]);
-assert(invalidSweep.includes('>N/A</text>') && invalidSweep.includes('Synthetischer Grund'), 'Ungültige Kombination bleibt von fehlend und Null getrennt');
-assertEqual(JSON.stringify(sweepData), beforeSweep, 'Beschriftung verändert weder Sweepwerte noch Parameter');
 
 // Native Maße, getrennte Zeilen, HTML-Fußpaare und vorhandene Optionen.
 for (const width of [980, 1180]) {
@@ -152,8 +86,6 @@ for (const width of [980, 1180]) {
     const hidden = renderHeatmapSVG(matrix, bins, 2, {}, { width, showFooterStats: false, showLegend: false, showCriticalOverlay: false });
     assert(!hidden.includes('class="heatmap-footer"') && !hidden.includes('class="legend"') && !hidden.includes('class="critical-overlay"'), 'Alle Sichtbarkeitsoptionen bleiben wirksam');
     assert(renderHeatmapSVG(matrix, bins, 2).includes('<strong>N/A</strong>'), 'Fehlendes Zusatz-KPI bleibt N/A');
-    const sweep = renderSweepHeatmapSVG(sweepData, 'successProbFloor', 'liquidityRunwayYears', 'goldTargetPct', [3.5, 4], [0], { width });
-    assert(sweep.includes(`width="${width}" height="${Math.round(500 * width / 980)}" viewBox="0 0 ${width} ${Math.round(500 * width / 980)}"`) && sweep.includes('x="23"'), 'Sweep: native Maße und lokale Legendentexte');
     assertEqual(JSON.stringify({ matrix, bins }), before, 'Heatmaplayout erhält Matrix und Bingrenzen bytegleich');
 }
 const { HEATMAP_V4_STYLE } = await import('../app/simulator/simulator-heatmap.js');
@@ -177,10 +109,11 @@ host.clientWidth = 1800; resize();
 assert(host.innerHTML.includes('width="1760" height="754"'), 'Resize vergrößert Raster und Höhe');
 host.clientWidth = 740; resize();
 assert(host.innerHTML.includes('width="820"') && host.innerHTML.includes('class="ds-scroll-hint"'), 'Nur tatsächliche Überbreite zeigt den Scrollhinweis');
-renderSizedSimulatorChart(host, options => renderSweepHeatmapSVG(sweepData, 'successProbFloor', 'liquidityRunwayYears', 'goldTargetPct', [3.5], [0], options));
+renderSizedSimulatorChart(host, options => renderHeatmapSVG([[2, 1]], [0, 4.5, 10], 3, {}, options));
 assertEqual(observerCount, 1, 'Neue Projektion verwendet denselben Resize-Anschluss');
 host.clientWidth = 1400; resize();
-assert(host.innerHTML.includes('width="1360" height="694"') && !host.innerHTML.includes('class="ds-scroll-hint"'), 'Sweep verwendet die aktuelle Containerbreite und blendet den Scrollhinweis wieder aus');
+assert(host.innerHTML.includes('width="1360" height="583"') && host.innerHTML.includes('Anteil: 66,67')
+    && !host.innerHTML.includes('class="ds-scroll-hint"'), 'Neue Projektion verwendet die aktuelle Containerbreite und blendet den Scrollhinweis wieder aus');
 const beforeResize = host.innerHTML;
 resize();
-assertEqual(host.innerHTML, beforeResize, 'Unveränderte Breite erhält dieselbe Sweepdarstellung');
+assertEqual(host.innerHTML, beforeResize, 'Unveränderte Breite erhält dieselbe Darstellung');

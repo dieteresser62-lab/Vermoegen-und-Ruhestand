@@ -6,6 +6,7 @@ import { compileScenario, getDataVersion } from '../simulator-engine-helpers.js'
 import { createMonteCarloChunkAccumulatorV1, mergeMonteCarloChunkResultV1, finalizeMonteCarloChunkAccumulatorV1 } from '../monte-carlo-chunk-result.js';
 import { WorkerJobRunner, WorkerRunCancelledError } from '../worker-job-runner.js';
 import { attachMonteCarloBatchOutcome, buildMonteCarloAggregates } from '../monte-carlo-runner.js';
+import { mergePersonOutcomeCounts } from '../mc-person-outcomes.js';
 
 let globalMonteCarloPool = null;
 
@@ -70,6 +71,7 @@ export async function runMonteCarloWithWorkers({
     const logIndices = scenarioAnalyzer?.getRandomSampleIndices?.() || null;
 
     const chunkAccumulator = createMonteCarloChunkAccumulatorV1(anzahl);
+    let personOutcomeCounts = null;
     const timeBudgetMs = workerConfig?.timeBudgetMs ?? 200;
     const chunkConfiguration = {
         strategy: 'adaptive-time-budget-v1',
@@ -89,6 +91,7 @@ export async function runMonteCarloWithWorkers({
         buildPayload: (start, count) => ({
             type: 'job',
             collectWealthFan: true,
+            collectPersonOutcomes: true,
             scenarioKey,
             runRange: { start, count },
             monteCarloParams: {
@@ -114,6 +117,9 @@ export async function runMonteCarloWithWorkers({
                 releaseWealthFan: true,
                 allowWealthFanFailure: true
             });
+            if (result.personOutcomeCounts) {
+                personOutcomeCounts = mergePersonOutcomeCounts(personOutcomeCounts, result.personOutcomeCounts);
+            }
         },
         generationId,
         signal
@@ -176,8 +182,10 @@ export async function runMonteCarloWithWorkers({
         lists: finalized.lists,
         pathSummaries: finalized.pathSummaries,
         pathMissingness: finalized.pathMissingness,
-        allRealWithdrawalsSample: finalized.allRealWithdrawalsSample, wealthFan: finalized.wealthFan, displayHomeValueFan: finalized.displayHomeValueFan
-    }), finalized.technicalInventory);
+        allRealWithdrawalsSample: finalized.allRealWithdrawalsSample, wealthFan: finalized.wealthFan, displayHomeValueFan: finalized.displayHomeValueFan,
+        careAid: finalized.careAid || null,
+        droppedExpense: finalized.droppedExpense || null
+    }), finalized.technicalInventory, personOutcomeCounts);
 
     onProgress(100, { phase: 'evaluating', completedRuns: anzahl, totalRuns: anzahl });
 

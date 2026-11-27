@@ -1,7 +1,5 @@
 import { readFileSync } from 'node:fs';
 import { renderSimulatorPortfolioTiles } from '../app/simulator/simulator-portfolio-display.js';
-import { renderParetoFrontier, renderSensitivityChart } from '../app/simulator/simulator-visualization.js';
-import { aggregateSweepMetrics } from '../app/simulator/simulator-results.js';
 
 const nodes = new Map(['simMoneyWealth', 'simBondWealth', 'simGoldTile', 'simBondTile', 'simPortfolioParameters']
     .map(id => [id, { hidden: false, textContent: '' }]));
@@ -24,8 +22,3 @@ assert(tiles.includes('for="geldmarktEtf">Geldmarkt</label>') && tiles.includes(
 assertEqual((html.match(/id="geldmarktEtf"/g) || []).length, 1, 'Geldmarkt erscheint nur einmal in den Annahmen');
 assert(!html.split('id="simPortfolioParameters"')[1].split('</details>')[0].includes('geldmarktEtf'), 'Alle Parameter wiederholt Geldmarkt nicht');
 
-const points = [1, 2].map(n => ({ params: { n }, metrics: aggregateSweepMetrics([{ finalVermoegen: 1000 * n, failed: false, maxDrawdown: n, minRunway: 24 }]) }));
-const pareto = renderParetoFrontier(points, points, 'medianEndWealth', 'worst5Drawdown', { containerWidth: 1400 });
-assert(pareto.includes('width="1400" height="933" viewBox="0 0 1400 933"'), 'Auch Pareto nutzt die gemessene Breite mit wachsender Höhe');
-assert(!pareto.includes('class="ds-scroll-hint"'), 'Pareto zeigt bei passender Breite keinen Scrollhinweis');
-assert(renderSensitivityChart({ n: { impact: 1, normalized: 50, min: 1, max: 2, range: 1 } }, 'medianEndWealth').includes('width: 50%;'), 'Sensitivitätsbalken behalten ihre Anteile bei wechselnder Kartenbreite');

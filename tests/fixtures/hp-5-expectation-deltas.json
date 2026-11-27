@@ -1,0 +1,26 @@
+{
+  "reason": "HP-5 Punkt 3 (Befund 2026-11-21_1141, TX-2-Umschau): Restliche englische Wörter heißen wie die Begriffe der App. „Seed“ wird „Zufallsstartwert“ (Handbuch-Glossar), „Tail-Risk-Overlay“ wird „Zusätzliche Extremereignisse“ (so heißt der Schalter in den Monte-Carlo-Einstellungen). Punkt 1 und 2 ändern keine bestehende Erwartung; ihre neuen Sollfälle stehen in tests/hp-5-sollfaelle.test.mjs. Nur synthetische Testdaten, an der Rechnung ändert sich nichts.",
+  "changes": [
+    {
+      "test": "tests/decision-comparison-pool.test.mjs",
+      "field": "Laufzeile des Vergleichs bei 300 Läufen",
+      "old": "300 Läufe je Plan · Seed",
+      "new": "300 Läufe je Plan · Zufallsstartwert",
+      "reason": "Die Zeile nennt den Zufallsstartwert jetzt mit dem deutschen Wort aus dem Glossar."
+    },
+    {
+      "test": "tests/simulator-result-overview.test.mjs",
+      "field": "Monte-Carlo-Karte im Ergebnis: „Gerechnet am … · …“",
+      "old": "Seed 12345",
+      "new": "Zufallsstartwert 12345",
+      "reason": "Wie oben; weiter ohne Tausenderpunkt (SE-1b)."
+    },
+    {
+      "test": "tests/results-renderers.test.mjs",
+      "field": "Eingabe der Detailsektion für die Zeile „tail“ unter „Weitere Kennzahlen“",
+      "old": "Tail-Risk-Overlay",
+      "new": "Zusätzliche Extremereignisse",
+      "reason": "Die Testeingabe folgt dem neuen Titel aus results-metrics/dashboard.js, unter dem der Renderer die Sektion sucht. Die Prüfungen selbst bleiben gleich."
+    }
+  ]
+}

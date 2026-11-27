@@ -99,6 +99,47 @@ function resolveHealthBucketConfig(inputs = {}) {
     return normalizeProfileHealthBucket(source);
 }
 
+function personalReserveTargets(accounts, owners, requested) {
+    if (!Array.isArray(accounts) || accounts.length < 2 || !Array.isArray(owners) || !owners.length) return null;
+    const targets = new Map(owners.map(row => [row?.profileId, row?.amount]));
+    if (targets.size !== owners.length || !owners.every(row => Number.isFinite(row?.amount) && row.amount > 0
+        && accounts.some(account => account.profileId === row.profileId))
+        || Math.abs(owners.reduce((sum, row) => sum + row.amount, 0) - requested) >= .01) return null;
+    if (targets.size === 1) targets.set(owners[0].profileId, requested);
+    return targets;
+}
+
+function carveOutReserveCash(portfolio, amount, targets, remainingTarget) {
+    const accounts = portfolio.personAccounts;
+    if (!Array.isArray(accounts) || accounts.length === 0) return amount;
+    const account = accounts.length === 1 ? accounts[0]
+        : targets?.size === 1 ? accounts.find(item => targets.has(item.profileId)) : null;
+    if (account) {
+        const take = Math.min(account.tagesgeld, amount);
+        account.tagesgeld -= take;
+        portfolio.healthBucketCashOwners.push({ profileId: account.profileId, amount: take });
+        return take;
+    }
+
+    // Nicht zuordenbarer Geldmarkt deckt die noch offenen persönlichen Ziele im selben Verhältnis.
+    const targetTotal = targets ? [...targets.values()].reduce((sum, target) => sum + target, 0) : 0;
+    const cashShare = targetTotal > 0 ? Math.min(1, remainingTarget / targetTotal) : 0;
+    const personalCash = accounts.map(account => {
+        const take = Math.min(account.tagesgeld, (targets?.get(account.profileId) ?? 0) * cashShare);
+        account.tagesgeld -= take;
+        return take;
+    });
+    const cashRemaining = amount - personalCash.reduce((sum, take) => sum + take, 0);
+    const available = accounts.reduce((sum, account) => sum + account.tagesgeld, 0);
+    const sharedCashShare = available > 0 ? Math.max(0, Math.min(1, cashRemaining / available)) : 0;
+    portfolio.healthBucketCashOwners = accounts.map((account, index) => {
+        const take = account.tagesgeld * sharedCashShare;
+        account.tagesgeld -= take;
+        return { profileId: account.profileId, amount: personalCash[index] + take };
+    });
+    return amount;
+}
+
 /**
  * @param portfolio Veränderlicher Portfoliozustand.
  * @param [inputs] Wirksame Simulationseingaben.
@@ -141,19 +182,40 @@ export function carveOutHealthBucketFromPortfolio(portfolio, inputs = {}) {
 
     moneyMarketTranches.sort((a, b) => toSortableDateMs(a?.purchaseDate) - toSortableDateMs(b?.purchaseDate));
 
-    for (const tranche of moneyMarketTranches) {
-        if (remaining <= 0) break;
-        const result = reduceTrancheByAmount(tranche, remaining);
-        if (!result) continue;
+    const reserveFromTranche = (tranche, limit) => {
+        const result = reduceTrancheByAmount(tranche, Math.min(limit, remaining));
+        if (!result) return 0;
         portfolio.healthBucketTranches.push(result.carved);
         remaining -= result.take;
+        return result.take;
+    };
+    const targets = personalReserveTargets(portfolio.personAccounts, inputs.healthBucketOwners, requested);
+    const singleOwner = targets?.size === 1;
+    let sharedTranches = moneyMarketTranches;
+    if (targets) {
+        sharedTranches = [];
+        // Ein aus dem Haushaltsaggregat erzeugtes Lot führt die ID des Hauptprofils nur technisch.
+        const aggregateLotId = `simbase:${encodeURIComponent(portfolio.simulationSourceProfileId)}:geldmarkt`;
+        for (const tranche of moneyMarketTranches) {
+            const profileId = tranche.sourceProfileId;
+            if (targets.has(profileId) && tranche.trancheId !== aggregateLotId) {
+                const target = targets.get(profileId);
+                targets.set(profileId, target - reserveFromTranche(tranche, target));
+            } else if (!singleOwner) {
+                sharedTranches.push(tranche);
+            }
+        }
+    }
+    for (const tranche of sharedTranches) {
+        if (remaining <= 0) break;
+        reserveFromTranche(tranche, remaining);
     }
 
-    portfolio.depotTranchesGeldmarkt = moneyMarketTranches.filter(t => (Number(t.marketValue) || 0) > 0.01);
+    portfolio.depotTranchesGeldmarkt = moneyMarketTranches.filter(t => (Number(t.marketValue) || 0) > (singleOwner ? 0 : .01));
 
     const usedFromTranches = requested - remaining;
     const untranchedMoneyMarket = Math.max(0, initialMoneyMarket - initialTrancheMoneyMarket);
-    const usedFromUntranchedMoneyMarket = Math.min(remaining, untranchedMoneyMarket);
+    const usedFromUntranchedMoneyMarket = singleOwner ? 0 : Math.min(remaining, untranchedMoneyMarket);
     if (usedFromUntranchedMoneyMarket > 0) {
         portfolio.healthBucketTranches.push({
             marketValue: usedFromUntranchedMoneyMarket,
@@ -169,18 +231,9 @@ export function carveOutHealthBucketFromPortfolio(portfolio, inputs = {}) {
     }
 
     const usedFromMoneyMarket = usedFromTranches + usedFromUntranchedMoneyMarket;
-    const usedFromCash = Math.min(remaining, initialCash);
+    const usedFromCash = carveOutReserveCash(portfolio, Math.min(remaining, initialCash), targets, remaining);
     remaining -= usedFromCash;
 
-    if (Array.isArray(portfolio.personAccounts)) {
-        let cashRemaining = usedFromCash;
-        for (const account of portfolio.personAccounts) {
-            const take = Math.min(account.tagesgeld, cashRemaining);
-            account.tagesgeld -= take;
-            portfolio.healthBucketCashOwners.push({ profileId: account.profileId, amount: take });
-            cashRemaining -= take;
-        }
-    }
     const used = requested - remaining;
     portfolio.healthBucketGeldmarkt = used;
     portfolio.healthBucketCashAmount = usedFromCash;
@@ -202,6 +255,7 @@ export function carveOutHealthBucketFromPortfolio(portfolio, inputs = {}) {
 }
 
 function withHealthBucketCarveOut(portfolio, inputs) {
+    if (inputs.simulatedEquityPurchases === 'separate') portfolio.simulatedEquityPurchases = 'separate';
     ensurePersonalAccounts(portfolio, inputs);
     if (portfolio.personAccounts.length === 1) {
         portfolio.simulationSourceProfileId = portfolio.personAccounts[0].profileId;
@@ -213,9 +267,9 @@ function withHealthBucketCarveOut(portfolio, inputs) {
     const detailed = Array.isArray(inputs.detailledTranches);
     const hasConfiguredTqf = Number.isFinite(Number(inputs.tqfNeu));
     const templates = Object.fromEntries(portfolio.personAccounts.map(person => {
-        const template = !detailed && hasConfiguredTqf ? { tqf: portfolio.simulationEquityTqf }
+        const template = !detailed && hasConfiguredTqf ? { tqf: portfolio.simulationEquityTqf, isin: '' }
             : equityPurchaseTemplate(portfolio.depotTranchesAktien, person.profileId);
-        return [person.profileId, { tqf: template?.tqf ?? .3 }];
+        return [person.profileId, { tqf: template?.tqf ?? .3, ...(template?.isin ? { isin: template.isin } : {}) }];
     }));
     // Einheitliche Vorlagen passen in den bisherigen Skalar; nur Unterschiede brauchen die Personenmap.
     const needsTemplates = detailed ? new Set(Object.values(templates).map(template => template.tqf)).size > 1

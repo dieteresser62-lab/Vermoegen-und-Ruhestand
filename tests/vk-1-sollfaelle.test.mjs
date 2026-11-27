@@ -187,9 +187,9 @@ await freshArea(createMusterHaushaltRecords(DATE, 'max-erika', 'grund'));
 
 // 8 · Neuer Schlüssel in Allowlists und Sicherungsprüfer (VKR Abschnitt 2, Gate-Check).
 {
-    const { isAllowedPersistenceImportKey, isSnapshotGlobalDomainKey } = await import('../app/shared/persistence-key-policy.js');
+    const { isAllowedPersistenceImportKey, isAllowedSnapshotCaptureKey } = await import('../app/shared/persistence-key-policy.js');
     assert(isAllowedPersistenceImportKey(ANNUAL_PLAN_RESOLUTIONS_KEY), 'Import-Allowlist kennt annual_plan_resolutions_v1');
-    assert(isSnapshotGlobalDomainKey(ANNUAL_PLAN_RESOLUTIONS_KEY), 'Sicherungsabbild erfasst annual_plan_resolutions_v1');
+    assert(isAllowedSnapshotCaptureKey(ANNUAL_PLAN_RESOLUTIONS_KEY), 'Sicherungsabbild erfasst annual_plan_resolutions_v1');
     strict.throws(() => assertAnnualPlanResolutions('{"version":1,"entries":{"x":{}}}'), /Entscheidung/);
     strict.throws(() => assertAnnualPlanResolutions({ version: 1, entries: { '[2026,["a"]]': { year: 2026, ids: ['a'], lines: { k: { decision: 'keep_in_depot', decidedAt: 'gestern' } } } } }), /Planzeile/);
 }

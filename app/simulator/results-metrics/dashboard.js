@@ -9,7 +9,7 @@ import { buildStressMetrics } from './stress.js';
 import { buildCareMetrics } from './care.js';
 import { withdrawalMoney, directMetricReason, missingMoney, WITHDRAWAL_CARD_TITLE, formatConservativeCurrency, otherBasisLine, unavailableStatus, formatObservationCount, observationCount, nonNegativeInteger, drawdownObservationCount, activeMissingnessReason, roundConservatively } from './display-values.js';
 
-export const WITHDRAWAL_RATE_REPORTING_REFERENCE_NOTICE = 'Die Auswertung bei 4,5 % bezieht sich auf die realisierte Entnahmequote. Sie ist nur eine Berichtsreferenz und keine Alarm- oder Guardrail-Schwelle.';
+export const WITHDRAWAL_RATE_REPORTING_REFERENCE_NOTICE = 'Die Auswertung bei 4,5 % bezieht sich auf die realisierte Entnahmequote. Sie ist nur eine Berichtsreferenz und keine Alarm- oder Leitplanken-Schwelle.';
 
 /**
  * Baut die Kern-KPI-Karten inkl. Detail-Sektionen.
@@ -36,9 +36,9 @@ export function buildKpiDashboard(results, inputs = {}, moneyBasis = DEFAULT_EUR
             tone: 'default'
         },
         {
-            title: 'Ruin oder Aktien/Gold ≤ 100 €',
+            title: 'Vermögen aufgebraucht oder Aktien/Gold ≤ 100 €',
             value: formatPercentage(deQuote),
-            description: 'Anteil der Läufe mit Ruin oder einem Aktien-plus-Gold-Endbestand von höchstens 100 €. Freie Liquidität und Pflegereserve zählen nicht zur 100-€-Schwelle.',
+            description: 'Anteil der Läufe mit aufgebrauchtem Vermögen oder einem Aktien-plus-Gold-Endbestand von höchstens 100 €. Freie Liquidität und Pflegereserve zählen nicht zur 100-€-Schwelle.',
             tone: depotTone
         },
         (() => {
@@ -71,9 +71,9 @@ export function buildKpiDashboard(results, inputs = {}, moneyBasis = DEFAULT_EUR
                 tone: 'default'
             },
             {
-                title: 'Median-Alter: Ruin oder Aktien/Gold ≤ 100 €',
+                title: 'Median-Alter: Vermögen aufgebraucht oder Aktien/Gold ≤ 100 €',
                 value: formatNumberWithUnit(safeAge(results?.alterBeiErschoepfung?.p50), 'Jahre'),
-                description: 'Medianes Alter beim ersten Ruin oder beim ersten Aktien-plus-Gold-Bestand von höchstens 100 € (nur entsprechend markierte Läufe).',
+                description: 'Medianes Alter im ersten Jahr mit aufgebrauchtem Vermögen oder mit einem Aktien-plus-Gold-Bestand von höchstens 100 € (nur entsprechend markierte Läufe).',
                 tone: 'default'
             },
             {
@@ -96,7 +96,7 @@ export function buildKpiDashboard(results, inputs = {}, moneyBasis = DEFAULT_EUR
     const tailRiskKpis = buildTailRiskKpis(results, inputs);
     if (tailRiskKpis.length > 0) {
         detailSections.push({
-            title: 'Tail-Risk-Overlay',
+            title: 'Zusätzliche Extremereignisse',
             kpis: tailRiskKpis
         });
     }
@@ -162,7 +162,7 @@ function buildDecisionCriticalKpis(results, moneyBasis) {
             statusLine: withdrawalP10Available ? '' : unavailableStatus(withdrawal, 'no_observations'),
             secondaryStatusLine: withdrawalMedianAvailable ? '' : unavailableStatus(withdrawal, 'no_observations'),
             description: 'Jährliche Entnahme aus dem Vermögen, ohne Renten.',
-            tooltip: `Je Lauf wird ab der ersten Entnahme das Niveau der schwächsten 10 % der Jahre bestimmt. Nach einem Ruin zählen verbleibende Jahre bis Tod oder Zeitraumende mit 0 €. Die große Zahl ist das untere Zehntel dieser Laufwerte (P10 über alle Läufe). Darunter steht der Median dieser Laufwerte: im typischen Lauf. ${euroBasisLabel(moneyBasis)}. Auswertbare Läufe: ${formatObservationCount(observationCount(withdrawal))}; ausgeschlossen: ${nonNegativeInteger(withdrawal.excludedRuns)}. Kein Konfidenzintervall geschätzt.`,
+            tooltip: `Je Lauf wird ab der ersten Entnahme das Niveau der schwächsten 10 % der Jahre bestimmt. Ist das Vermögen aufgebraucht, zählen die verbleibenden Jahre bis Tod oder Zeitraumende mit 0 €. Die große Zahl ist das untere Zehntel dieser Laufwerte (P10 über alle Läufe). Darunter steht der Median dieser Laufwerte: im typischen Lauf. ${euroBasisLabel(moneyBasis)}. Auswertbare Läufe: ${formatObservationCount(observationCount(withdrawal))}; ausgeschlossen: ${nonNegativeInteger(withdrawal.excludedRuns)}. Kein Konfidenzintervall geschätzt.`,
             tone: 'default',
             layout: 'exact-risk',
             decisionCritical: true
@@ -189,10 +189,10 @@ function buildDecisionCriticalKpis(results, moneyBasis) {
  */
 function buildDrawdownKpis(nominalDrawdowns, realDrawdowns) {
     return [
-        buildDrawdownCard(nominalDrawdowns, 'p50', 'Max. Drawdown nominal (Median)', 'Nominaler positiver Verlustbetrag vom vorherigen Depot-Hoch; gleicher Laufpfad und Zeitraum wie beim realen Drawdown.', 'default'),
-        buildDrawdownCard(realDrawdowns, 'p50', 'Max. Drawdown real (Median)', 'Kaufkraftbereinigter positiver Verlustbetrag zu Preisen des Simulationsstarts; gleicher Laufpfad und Zeitraum wie beim nominalen Drawdown.', 'default'),
-        buildDrawdownCard(nominalDrawdowns, 'p90', 'Max. Drawdown nominal (P90)', 'Nominaler positiver Verlustbetrag; nur 10 % der beobachteten Läufe hatten einen größeren nominalen Drawdown.', 'default'),
-        buildDrawdownCard(realDrawdowns, 'p90', 'Max. Drawdown real (P90)', 'Kaufkraftbereinigter positiver Verlustbetrag zu Preisen des Simulationsstarts; nur 10 % der beobachteten Läufe hatten einen größeren realen Drawdown.', 'default')
+        buildDrawdownCard(nominalDrawdowns, 'p50', 'Max. Rückgang nominal (Median)', 'Nominaler positiver Verlustbetrag vom vorherigen Depot-Hoch; gleicher Laufpfad und Zeitraum wie beim realen Rückgang.', 'default'),
+        buildDrawdownCard(realDrawdowns, 'p50', 'Max. Rückgang real (Median)', 'Kaufkraftbereinigter positiver Verlustbetrag zu Preisen des Simulationsstarts; gleicher Laufpfad und Zeitraum wie beim nominalen Rückgang.', 'default'),
+        buildDrawdownCard(nominalDrawdowns, 'p90', 'Max. Rückgang nominal (P90)', 'Nominaler positiver Verlustbetrag; nur 10 % der beobachteten Läufe hatten einen größeren nominalen Rückgang.', 'default'),
+        buildDrawdownCard(realDrawdowns, 'p90', 'Max. Rückgang real (P90)', 'Kaufkraftbereinigter positiver Verlustbetrag zu Preisen des Simulationsstarts; nur 10 % der beobachteten Läufe hatten einen größeren realen Rückgang.', 'default')
     ];
 }
 
@@ -222,7 +222,7 @@ function buildRiskKpis(results) {
             statusLine: Number.isFinite(timeShare)
                 ? ''
                 : 'Grund: no_observations · Beobachtungen: unbekannt Jahre',
-            description: 'Anteil aller finanziell auswertbaren simulierten Dekumulationsjahre mit realisierter Entnahmequote strikt größer als 4,5 %. Reine Berichtsreferenz; keine Alarm- oder Guardrail-Schwelle.',
+            description: 'Anteil aller finanziell auswertbaren simulierten Dekumulationsjahre mit realisierter Entnahmequote strikt größer als 4,5 %. Reine Berichtsreferenz; keine Alarm- oder Leitplanken-Schwelle.',
             tone: 'warning'
         });
         const safety = results?.extraKPI?.dynamicFlexSafety;
@@ -231,15 +231,15 @@ function buildRiskKpis(results) {
             const stage2Years = isFinite(safety.yearShareStage2) ? safety.yearShareStage2 * 100 : 0;
             const stage2Runs = isFinite(safety.runShareStage2) ? safety.runShareStage2 * 100 : 0;
             kpis.push({
-                title: 'Safety aktiv (Jahre)',
+                title: 'Sicherheitsstufe aktiv (Jahre)',
                 value: formatPercentage(stage1Years),
-                description: 'Anteil aller Simulationsjahre mit aktivem Dynamic-Flex-Sicherheitsmodus (Stufe 1/2).',
+                description: 'Anteil aller Simulationsjahre, in denen Sicherheitsstufe 1 oder 2 von Dynamic Flex aktiv ist.',
                 tone: stage1Years > 25 ? 'warning' : 'default'
             });
             kpis.push({
-                title: 'Safety Stufe 2 (Jahre)',
+                title: 'Sicherheitsstufe 2 (Jahre)',
                 value: formatPercentage(stage2Years),
-                description: 'Anteil aller Simulationsjahre mit Fallback auf statischen Flex.',
+                description: 'Anteil aller Simulationsjahre mit statischem Flex als Ersatz.',
                 tone: stage2Years > 10 ? 'danger' : (stage2Years > 0 ? 'warning' : 'default')
             });
             kpis.push({
@@ -249,6 +249,28 @@ function buildRiskKpis(results) {
                 tone: stage2Runs > 20 ? 'danger' : (stage2Runs > 0 ? 'warning' : 'default')
             });
         }
+    }
+    // FR-84: Pflegekosten, die das Geldvermögen nicht mehr trägt, zahlt der Staat; die Karte erscheint nur mit solchen Läufen.
+    const careAid = results?.careAid;
+    if (careAid?.runCount > 0) {
+        const sum = Number.isFinite(careAid.sumMedianNominalEur) ? `${Math.round(careAid.sumMedianNominalEur).toLocaleString('de-DE')} €` : '—';
+        kpis.push({
+            title: 'Läufe mit Hilfe zur Pflege',
+            value: formatPercentage(careAid.runSharePct),
+            description: `Anteil der Läufe, in denen der Staat Pflegekosten übernimmt, weil das Geldvermögen sie nicht mehr trägt; dazu zählt der Pflegeanteil der Steuer aus Verkäufen oder Zinsen für die Pflege. Nur über diese Läufe: im Median ab Simulationsjahr ${Number.isFinite(careAid.firstYearMedian) ? Math.round(careAid.firstYearMedian) : '—'}, Summe je Lauf im Median ${sum} (nominal). Die Hilfe beendet keinen Lauf; scheitern kann er nur, wenn das Geld den Grundbedarf ohne Pflege nicht mehr deckt.`,
+            tone: 'warning'
+        });
+    }
+    // NK-2 (FR-84 Punkt 16): Läufe, in denen eine geplante Einmalausgabe ganz entfällt; die Karte erscheint nur mit solchen Läufen.
+    const dropped = results?.droppedExpense;
+    if (dropped?.runCount > 0) {
+        const sum = Number.isFinite(dropped.sumMedianNominalEur) ? `${Math.round(dropped.sumMedianNominalEur).toLocaleString('de-DE')} €` : '—';
+        kpis.push({
+            title: 'Läufe mit entfallener Ausgabe',
+            value: formatPercentage(dropped.runSharePct),
+            description: `Anteil der Läufe, in denen eine geplante Einmalausgabe ganz entfällt, weil das Geld nach Grundbedarf und Pflege nicht mehr reicht. Über diese Läufe im Median ab Simulationsjahr ${Number.isFinite(dropped.firstYearMedian) ? Math.round(dropped.firstYearMedian) : '—'}, entfallene Summe je Lauf im Median ${sum} (nominal). Solange der Grundbedarf gedeckt ist, zählt der Lauf als Erfolg.`,
+            tone: 'warning'
+        });
     }
     return kpis;
 }
@@ -276,7 +298,7 @@ function buildDrawdownCard(metric, quantileKey, title, description, tone) {
         title,
         value: valid ? formatConservativePercentagePoints(value) : '—',
         statusLine: valid ? '' : `Grund: ${reason} · Beobachtungen: ${formatObservationCount(count)} Läufe`,
-        description: `${description} Prozentpunkte aus dem validierten Aggregat werden mit mindestens zwei Nachkommastellen angezeigt und bei weiterer Präzision als Verlustbetrag konservativ aufgerundet; Beobachtungen: ${formatObservationCount(count)} Läufe. Gültige Domäne: 0 bis 100 %.`,
+        description: `${description} Ein Lauf mit aufgebrauchtem Vermögen zählt mit 100 %. Prozentpunkte aus dem validierten Aggregat werden mit mindestens zwei Nachkommastellen angezeigt und bei weiterer Präzision als Verlustbetrag konservativ aufgerundet; Beobachtungen: ${formatObservationCount(count)} Läufe. Gültige Domäne: 0 bis 100 %.`,
         tone,
         layout: 'exact-risk',
         decisionCritical: true

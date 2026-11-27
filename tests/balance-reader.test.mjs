@@ -13,12 +13,6 @@ import {
 } from '../app/balance/balance-reader.js';
 import { ValidationError } from '../app/balance/balance-config.js';
 import { PersistenceFacade } from '../app/shared/persistence-facade.js';
-import {
-    createBalanceExportDocument,
-    createManualMarketCsvImportPlan,
-    MarketCsvImportError,
-    parseMarketDataCsv
-} from '../app/balance/balance-binder-imports.js';
 import { MarketAnalyzer } from '../engine/analyzers/MarketAnalyzer.mjs';
 
 /**
@@ -318,7 +312,7 @@ global.localStorage = mockLocalStorage;
 // ===== TESTS =====
 
 // Test 0: Produktiver Zahlen- und Markt-CSV-Parser arbeitet strikt und fail-closed.
-console.log('Test 0: Striktes Zahlen- und Markt-CSV-Parsing');
+console.log('Test 0: Striktes Zahlenparsing');
 {
     const validNumbers = [
         ['1.234,56 €', 1234.56],
@@ -380,201 +374,29 @@ console.log('Test 0: Striktes Zahlen- und Markt-CSV-Parsing');
         'floorBedarf',
         '12abc',
         NUMBER_PARSE_ERROR_CODES.INVALID_FORMAT,
-        'Floor-Bedarf p.a. enthaelt keine gueltige vollstaendige Zahl.'
+        'Grundbedarf p.a. enthaelt keine gueltige vollstaendige Zahl.'
     );
     assertEqual(parseBalanceCurrencyInput('tagesgeld', ''), 0, 'Leeres optionales Waehrungsfeld bleibt kompatibel bei 0');
     assertEqual(parseBalanceCurrencyInput('minimumFlexAnnual', '0'), 0, 'Gueltige Mindest-Flex-Null bleibt von Missing unterscheidbar');
 
-    const parsedMarket = parseMarketDataCsv([
-        'Datum;Schluss',
-        '14.07.2023;100,00',
-        '14.07.2024;120,00',
-        '14.07.2025;150,00',
-        '14.07.2026;140,00'
-    ].join('\n'));
-    assertEqual(parsedMarket.rowCount, 4, 'Markt-CSV zaehlt alle validierten Datenzeilen');
-    assertEqual(parsedMarket.values.endeVJ, 140, 'Markt-CSV uebernimmt den letzten Schlusswert');
-    assertEqual(parsedMarket.values.endeVJ_1, 150, 'Markt-CSV bindet VJ-1 an das korrekte Zieljahr');
-    assertEqual(parsedMarket.values.endeVJ_2, 120, 'Markt-CSV bindet VJ-2 an das korrekte Zieljahr');
-    assertEqual(parsedMarket.values.endeVJ_3, 100, 'Markt-CSV bindet VJ-3 an das korrekte Zieljahr');
-    assertEqual(parsedMarket.values.ath, undefined, 'Vier CSV-Zeilen werden nicht als historisches ATH ausgegeben');
-    assertEqual(parsedMarket.high.value, 150, 'Das Maximum bleibt als lokales Fensterhoch verfügbar');
-    assertEqual(parsedMarket.high.scope, 'windowHigh', 'Das lokale Maximum ist explizit als windowHigh klassifiziert');
-    assertEqual(parsedMarket.high.verifiedAllTimeHighAvailable, false,
-        'Das Fensterhoch darf nicht als verifiziertes Allzeithoch gelten');
-
-    const currentImportPlan = createManualMarketCsvImportPlan(parsedMarket, {
-        mode: 'current',
-        targetYear: 2026,
-        expectedAsOf: '2026-07-14',
-        instrument: 'vwce.de',
-        sourceFileName: 'markt-2026.csv',
-        currentPeriodYear: 2026,
-        importedAt: '2026-07-27T10:00:00.000Z'
-    });
-    assertEqual(currentImportPlan.engineValues.ath, 150,
-        'Das Fensterhoch wird intern als konservative ATH-Untergrenze verwendet');
-    assertEqual(currentImportPlan.engineValues.jahreSeitAth, 0,
-        'Die Engine-Referenz übernimmt ausschließlich die beobachteten Jahre seit dem Fensterhoch');
-    assertEqual(currentImportPlan.provenance.instrument, 'VWCE.DE', 'Instrument wird normalisiert und persistierbar');
-    assertEqual(currentImportPlan.provenance.asOf, '2026-07-14', 'Provenienz bindet den bestätigten Stichtag');
-    assertEqual(currentImportPlan.provenance.periodMode, 'current', 'Provenienz unterscheidet aktuellen Importmodus');
-    assertEqual(currentImportPlan.provenance.highScope, 'windowHigh', 'Provenienz konserviert die eingeschränkte Hoch-Semantik');
-    assertEqual(
-        currentImportPlan.provenance.engineReference.policy,
-        'window_high_as_conservative_ath_lower_bound',
-        'Die konservative Engine-Nutzung ist maschinenlesbar von einer echten ATH-Behauptung getrennt'
-    );
-    assertEqual(currentImportPlan.provenance.engineReference.applied, true,
-        'Ein positives Fensterhoch-Gefälle wird als gerichtete Engine-Untergrenze angewendet');
-
-    const bearParsedMarket = parseMarketDataCsv([
-        'Datum;Schluss',
-        '14.07.2023;100,00',
-        '14.07.2024;90,00',
-        '14.07.2025;80,00',
-        '14.07.2026;55,00'
-    ].join('\n'));
-    const bearImportPlan = createManualMarketCsvImportPlan(bearParsedMarket, {
-        mode: 'current',
-        targetYear: 2026,
-        expectedAsOf: '2026-07-14',
-        instrument: 'VWCE.DE',
-        sourceFileName: 'markt-bear-2026.csv',
-        currentPeriodYear: 2026,
-        importedAt: '2026-07-27T10:00:00.000Z'
-    });
     const bearAnalysis = MarketAnalyzer.analyzeMarket({
-        ...bearImportPlan.engineValues,
+        endeVJ: 55, endeVJ_1: 80, endeVJ_2: 90, endeVJ_3: 100, ath: 100, jahreSeitAth: 3,
         inflation: 2,
         capeRatio: 25
     });
     assertEqual(bearAnalysis.sKey, 'bear_deep',
-        'Ein belegter 45-Prozent-Einbruch aus dem CSV-Fenster aktiviert weiterhin die Baerenmarkterkennung');
+        'Ein belegter 45-Prozent-Einbruch aus dem Kursfenster aktiviert weiterhin die Baerenmarkterkennung');
 
-    const risingParsedMarket = parseMarketDataCsv([
-        'Datum;Schluss',
-        '14.07.2023;80,00',
-        '14.07.2024;95,00',
-        '14.07.2025;110,00',
-        '14.07.2026;130,00'
-    ].join('\n'));
-    const risingImportPlan = createManualMarketCsvImportPlan(risingParsedMarket, {
-        mode: 'current',
-        targetYear: 2026,
-        expectedAsOf: '2026-07-14',
-        instrument: 'VWCE.DE',
-        sourceFileName: 'markt-steigend-2026.csv',
-        currentPeriodYear: 2026,
-        importedAt: '2026-07-27T10:00:00.000Z'
-    });
     const risingAnalysis = MarketAnalyzer.analyzeMarket({
-        ...risingImportPlan.engineValues,
+        endeVJ: 130, endeVJ_1: 110, endeVJ_2: 95, endeVJ_3: 80, ath: 0, jahreSeitAth: 0,
         inflation: 2,
         capeRatio: 25
     });
-    assertEqual(risingImportPlan.engineValues.ath, 0,
-        'Ein Fensterhoch am letzten Datenpunkt wird nicht als Allzeithoch an die Engine gereicht');
-    assertEqual(risingImportPlan.engineValues.jahreSeitAth, 0,
-        'Ohne anwendbare ATH-Untergrenze bleibt auch das Referenzalter neutral');
-    assertEqual(risingImportPlan.provenance.engineReference.applied, false,
-        'Die Provenienz kennzeichnet die nicht tragende Untergrenze explizit als nicht angewendet');
-    assertEqual(risingImportPlan.provenance.engineReference.value, null,
-        'Eine nicht angewendete Engine-Referenz behauptet keinen ATH-Wert');
     assertEqual(risingAnalysis.sKey, 'side_long',
-        'Ein steigendes CSV-Fenster ohne Vollhistorie nutzt den neutralen Markt-Fallback');
+        'Ein steigendes Kursfenster ohne Vollhistorie nutzt den neutralen Markt-Fallback');
     assertEqual(risingAnalysis.reasons.includes('Neues Allzeithoch'), false,
-        'Der steigende CSV-Fall behauptet kein unbelegtes Allzeithoch');
-
-    let staleCurrentError = null;
-    try {
-        createManualMarketCsvImportPlan(parsedMarket, {
-            mode: 'current',
-            targetYear: 2025,
-            expectedAsOf: '2025-07-14',
-            instrument: 'VWCE.DE',
-            sourceFileName: 'markt-alt.csv',
-            currentPeriodYear: 2026
-        });
-    } catch (error) {
-        staleCurrentError = error;
-    }
-    assertEqual(staleCurrentError?.code, 'market_csv_period_mismatch', 'Veraltete CSV wird im aktuellen Modus periodenscharf blockiert');
-
-    const historicalImportPlan = createManualMarketCsvImportPlan(parsedMarket, {
-        mode: 'historical',
-        targetYear: 2026,
-        expectedAsOf: '2026-07-14',
-        instrument: 'VWCE.DE',
-        sourceFileName: 'markt-historisch.csv',
-        currentPeriodYear: 2027,
-        importedAt: '2026-07-27T10:00:00.000Z'
-    });
-    assertEqual(historicalImportPlan.provenance.periodMode, 'historical', 'Expliziter historischer Modus erlaubt eine abgeschlossene Vorperiode');
-    assertEqual(historicalImportPlan.provenance.periodId, 'calendar-year:2026', 'Historische Zielperiode bleibt eindeutig');
-
-    let wrongAsOfError = null;
-    try {
-        createManualMarketCsvImportPlan(parsedMarket, {
-            mode: 'historical',
-            targetYear: 2026,
-            expectedAsOf: '2026-07-13',
-            instrument: 'VWCE.DE',
-            sourceFileName: 'markt-historisch.csv',
-            currentPeriodYear: 2027
-        });
-    } catch (error) {
-        wrongAsOfError = error;
-    }
-    assertEqual(wrongAsOfError?.code, 'market_csv_asof_mismatch', 'Abweichender erwarteter Stichtag wird vor jeder Mutation blockiert');
-
-    const leapDayMarket = parseMarketDataCsv([
-        'Datum;Schluss',
-        '28.02.2021;100',
-        '28.02.2022;110',
-        '28.02.2023;120',
-        '01.03.2023;999',
-        '29.02.2024;140'
-    ].join('\n'));
-    assertEqual(leapDayMarket.values.endeVJ_1, 120, 'Schalttag-Stichtag faellt im Nicht-Schaltjahr auf den 28. Februar zurueck');
-
-    const expectMarketError = (csv, code, message) => {
-        let error = null;
-        try {
-            parseMarketDataCsv(csv);
-        } catch (caught) {
-            error = caught;
-        }
-        assertEqual(error instanceof MarketCsvImportError, true, message);
-        assertEqual(error.code, code, `${message}: stabiler Fehlercode`);
-        return error;
-    };
-
-    const invalidDate = expectMarketError([
-        'Datum;Schluss',
-        '14.07.2023;100',
-        '14.07.2024;120',
-        '14.07.2025;130',
-        '31.02.2026;140'
-    ].join('\n'), 'market_csv_invalid_rows', 'Ungueltige Kalenderdaten werden abgewiesen');
-    assertEqual(invalidDate.details.rejectedRows[0].lineNumber, 5, 'Kalenderfehler nennt die exakte CSV-Zeile');
-
-    const missingYear = expectMarketError([
-        'Datum;Schluss',
-        '14.07.2023;100',
-        '14.07.2025;130',
-        '14.07.2026;140'
-    ].join('\n'), 'market_csv_missing_years', 'Unvollstaendige Jahresreihen werden abgewiesen');
-    assertEqual(missingYear.details.missingYears.join(','), '2024', 'Fehler nennt exakt das fehlende Zieljahr');
-
-    expectMarketError([
-        'Datum;Schluss',
-        '14.07.2023;100',
-        '14.07.2024;120',
-        '14.07.2025;130',
-        '14.07.2026;12abc'
-    ].join('\n'), 'market_csv_invalid_rows', 'Teilstrings in Marktdaten werden nicht akzeptiert');
-    console.log('✓ Striktes Zahlen- und Markt-CSV-Parsing OK');
+        'Der steigende Fall behauptet kein unbelegtes Allzeithoch');
+    console.log('✓ Striktes Zahlenparsing OK');
 }
 
 // Test 1: readAllInputs - Basis mit DOM-Werten
@@ -623,12 +445,6 @@ console.log('Test 1: readAllInputs - Basis mit DOM-Werten');
     assertEqual(result.depotwertAlt, 200000, 'depotwertAlt sollte 200000 sein');
     assertEqual(result.renteAktiv, true, 'renteAktiv sollte true sein');
     assertEqual(result.renteMonatlich, 1500, 'renteMonatlich sollte 1500 sein');
-    const readerExport = createBalanceExportDocument({ inputs: result });
-    assertEqual(readerExport.schemaVersion, 2, 'Realer Reader-Zustand wird im aktuellen Exportvertrag gesichert');
-    assert(
-        readerExport.validationWarnings?.[0]?.message.includes('kirchensteuerSatz'),
-        'Erreichbare, aber ausserhalb des Importvertrags liegende Reader-Werte bleiben exportierbar und feldgenau markiert'
-    );
     console.log('✓ readAllInputs Basis OK');
 }
 
@@ -1007,7 +823,11 @@ console.log('Test 14: Produktionsreader für Gold-Nullgrenzen');
         goldAktiv: new MockElement('checkbox', '', true),
         goldZielProzent: new MockElement('input', '0'),
         goldFloorProzent: new MockElement('input', '1'),
-        rebalancingBand: new MockElement('input', '0')
+        rebalancingBand: new MockElement('input', '0'),
+        endeVJ: new MockElement('input', '170'),
+        endeVJ_1: new MockElement('input', '150'),
+        ath: new MockElement('input', '200'),
+        jahreSeitAth: new MockElement('input', '1')
     };
     global.document = createDocumentMock(inputs);
     global.window = { __profilverbundTranchenOverride: null };
@@ -1016,6 +836,11 @@ console.log('Test 14: Produktionsreader für Gold-Nullgrenzen');
     const domZero = ProductionUIReader.readAllInputs();
     assertEqual(domZero.goldZielProzent, 0, 'Production reader should preserve DOM gold target zero');
     assertEqual(domZero.rebalancingBand, 0, 'Production reader should preserve DOM gold band zero');
+    assertEqual(MarketAnalyzer.analyzeMarket(domZero).sKey, 'recovery', 'FR-90: Hoch vor einem Jahr');
+    inputs.jahreSeitAth.value = '0.75';
+    const correctedMarket = ProductionUIReader.readAllInputs();
+    assertEqual(correctedMarket.jahreSeitAth, 0.75, 'FR-90: Marktdaten-Korrektur übernimmt das Hochalter als Bruchteil');
+    assertEqual(MarketAnalyzer.analyzeMarket(correctedMarket).sKey, 'corr_young', 'FR-90: Manuell korrigiertes Hochalter ergibt junge Korrektur');
 
     mockLocalStorage.setItem('profile_gold_aktiv', 'true');
     mockLocalStorage.setItem('profile_gold_ziel_pct', '0');
@@ -1115,6 +940,56 @@ console.log('Test 15: Strikte Boolean-Anwendung und Marktdaten-Provenienz');
     if (previousDocument === undefined) delete global.document;
     else global.document = previousDocument;
     console.log('✓ Strikte Boolean-Anwendung und Marktdaten-Provenienz OK');
+}
+
+// Test 16: Marktfelder zeigen gerundet, der gespeicherte Rohwert bleibt bei unveraendertem Feld.
+console.log('Test 16: Marktfelder gerundet angezeigt, Rohwert erhalten');
+{
+    mockLocalStorage.clear();
+    PersistenceFacade.resetPersistenceRuntimeForTests();
+    mockLocalStorage.setItem('profile_kirchensteuer_pct', '9');
+    mockLocalStorage.setItem('profile_person_schema_version', '1');
+    mockLocalStorage.setItem('profile_aktuelles_alter', '67');
+    const previousWindow = global.window;
+    const previousDocument = global.document;
+    const inputs = {
+        endeVJ: new MockElement('input', ''),
+        endeVJ_1: new MockElement('input', ''),
+        ath: new MockElement('input', ''),
+        jahreSeitAth: new MockElement('input', '')
+    };
+    for (const el of Object.values(inputs)) el.dataset = {};
+    global.document = createDocumentMock(inputs);
+    global.window = { __profilverbundTranchenOverride: null };
+    initProductionUIReader({ inputs, controls: {} });
+    ProductionUIReader.applyStoredInputs({ endeVJ: 140.781804, endeVJ_1: 143, ath: 145.890673, jahreSeitAth: 0.38604488798537956 });
+    assertEqual(inputs.endeVJ.value, '140.78', 'Kurs zeigt zwei Nachkommastellen');
+    assertEqual(inputs.endeVJ_1.value, '143', 'Ganzzahl bleibt ganzzahlig');
+    assertEqual(inputs.ath.value, '145.89', 'Allzeithoch zeigt zwei Nachkommastellen');
+    assertEqual(inputs.jahreSeitAth.value, '0.4', 'Jahre seit Hoch zeigt eine Nachkommastelle');
+    const unchanged = ProductionUIReader.readAllInputs();
+    assertEqual(unchanged.endeVJ, 140.781804, 'Unveraendertes Feld liefert den Rohwert');
+    assertEqual(unchanged.ath, 145.890673, 'Unveraendertes Allzeithoch liefert den Rohwert');
+    assertEqual(unchanged.jahreSeitAth, 0.38604488798537956, 'Unveraenderte Jahre liefern den Rohwert');
+    inputs.endeVJ.value = '150.5';
+    inputs.jahreSeitAth.value = '2';
+    const changed = ProductionUIReader.readAllInputs();
+    assertEqual(changed.endeVJ, 150.5, 'Geaenderter Kurs wird uebernommen');
+    assertEqual(changed.jahreSeitAth, 2, 'Geaenderte Jahre werden uebernommen');
+    assertEqual(changed.ath, 145.890673, 'Anderes unveraendertes Feld behaelt den Rohwert');
+    // Hauptpfad update(): captureStorageDraft liest die Marktfelder ebenfalls exakt.
+    inputs.endeVJ.value = '140.78'; inputs.endeVJ.dataset.shownValue = '140.78'; inputs.endeVJ.dataset.rawValue = '140.781804';
+    inputs.ath.value = '145.89'; inputs.ath.dataset.shownValue = '145.89'; inputs.ath.dataset.rawValue = '145.890673';
+    inputs.jahreSeitAth.value = '0.4'; inputs.jahreSeitAth.dataset.shownValue = '0.4'; inputs.jahreSeitAth.dataset.rawValue = '0.38604488798537956';
+    const draft = ProductionUIReader.captureStorageDraft();
+    assertEqual(draft.fields.endeVJ.value, '140.781804', 'Entwurf (PERSIST_INPUTS) speichert den Rohwert');
+    assertEqual(draft.fields.ath.value, '145.890673', 'Entwurf speichert das Allzeithoch exakt');
+    assertEqual(draft.fields.jahreSeitAth.value, '0.38604488798537956', 'Entwurf speichert die Jahre exakt');
+    inputs.endeVJ.value = '150';
+    assertEqual(ProductionUIReader.captureStorageDraft().fields.endeVJ.value, '150', 'Geänderter Wert geht in den Entwurf');
+    if (previousWindow === undefined) delete global.window; else global.window = previousWindow;
+    if (previousDocument === undefined) delete global.document; else global.document = previousDocument;
+    console.log('✓ Marktfelder gerundet, Rohwert erhalten OK');
 }
 
 // Cleanup

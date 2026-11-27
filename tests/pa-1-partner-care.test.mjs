@@ -44,7 +44,7 @@ assert(allLivingInExternalCare(inputs, { p1Alive: false, p2Alive: true, care: { 
 
 for (const [row, text] of [[death[0], 'Helga verstorben ist'], [progression[0], 'Helga selbst Pflegegrad 3 hat']]) {
     const html = renderProtocolTable([row], { source: 'mc', inputs, logDetailLevel: 'detailed' });
-    assert(html.includes('Pflegeform: externe Unterstützung, weil ' + text), 'PA-1: Protokoll-ⓘ erklärt den wirklichen Wechselgrund');
+    assert(html.includes('Externe Unterstützung übernimmt die Pflege, weil ' + text), 'PA-1: Protokoll-ⓘ erklärt den wirklichen Wechselgrund');
 }
 const single = structuredClone(inputs);
 single.careToday = { grade: 2, form: 'family', progression: 'usual' };

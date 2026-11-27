@@ -2,7 +2,7 @@ import { EngineAPI } from '../engine/index.mjs';
 import { CONFIG } from '../engine/config.mjs';
 import InputValidator from '../engine/validators/InputValidator.mjs';
 import { prepareBalanceEngineAssets } from '../app/balance/balance-health-bucket.js';
-import { evaluateBalanceFileInputs } from '../app/balance/balance-file-service.js';
+import { evaluateBalanceInputs } from '../app/balance/balance-evaluation.js';
 import { evaluateStoredAnnualHousehold } from '../app/balance/balance-main-profilverbund.js';
 import { buildProfilverbundAssetSummary } from '../app/profile/profilverbund-balance.js';
 import { initializePortfolio } from '../app/simulator/simulator-portfolio.js';
@@ -26,7 +26,7 @@ const input = { depotwertAlt: 0, depotwertNeu: 800000, costBasisNeu: 800000,
         { trancheId: 'eq', sourceProfileId: 'a', type: 'aktien_neu', category: 'equity', marketValue: 800000, costBasis: 800000, taxExempt: false, shares: 8000, purchaseDate: '2020-01-01', tqf: .3 },
         { trancheId: 'mm', sourceProfileId: 'a', type: 'geldmarkt', category: 'money_market', marketValue: 100000, costBasis: 100000, taxExempt: false, shares: 1000, purchaseDate: '2020-01-01', tqf: 0 }
     ] };
-const balance = data => evaluateBalanceFileInputs({ inputData: data, persistentState: {}, profiles: [],
+const balance = data => evaluateBalanceInputs({ inputData: data, persistentState: {}, profiles: [],
     profileId: 'a', engineApi: EngineAPI, publish: false }).modelResult;
 const simulatorInput = data => buildInputsCtxFromPortfolio(data,
     initializePortfolio({ ...data, startVermoegen: 1000000, startAlter: 65, startSPB: 0 }),
@@ -37,7 +37,8 @@ assertEqual(operative.geldmarktEtf, 0, 'Pflege-Rücklage sperrt zuerst Geldmarkt
 assertEqual(operative.tagesgeld, 50000, 'Pflege-Rücklage sperrt danach Tagesgeld');
 const result = balance(input), sim = EngineAPI.simulateSingleYear(simulatorInput(input), null);
 assert(!result.error && !sim.error, 'Beide Rechenpfade liefern gültige Ergebnisse');
-assertEqual(result.ui.spending.monatlicheEntnahme * 12, 46800, 'FR-33: freie Vermögensbasis ergibt 46.800 EUR Jahresentnahme');
+// FR-88 (vorschüssige VPW-Rate): vorher 46.800 EUR und 51.600 EUR.
+assertEqual(result.ui.spending.monatlicheEntnahme * 12, 45600, 'FR-33: freie Vermögensbasis ergibt 45.600 EUR Jahresentnahme');
 assertEqual(result.ui.spending.monatlicheEntnahme, sim.ui.spending.monatlicheEntnahme, 'Balance und Simulator: gleiche Entnahme mit Pflege-Rücklage');
 assertEqual(result.ui.runway.months, sim.ui.runway.months, 'Balance und Simulator: gleiche Reichweite am selben Entscheidungszeitpunkt');
 assertEqual(result.input.tagesgeld + result.input.geldmarktEtf, 50000, 'Engine sieht nur freie Liquidität');
@@ -45,7 +46,7 @@ assertEqual(JSON.stringify(input), before, 'Rechenkopie erhält Bruttowerte für
 assertEqual(JSON.stringify(balance(input)), JSON.stringify(result), 'Erneute Vorschau zieht die Rücklage nicht doppelt ab');
 const disabled = { ...input, healthBucket: { enabled: false } };
 assert(prepareBalanceEngineAssets(disabled).input === disabled, 'Ohne Rücklage und Anleihen bleibt das Eingabeobjekt unverändert');
-assertEqual(balance(disabled).ui.spending.monatlicheEntnahme * 12, 51600, 'FR-33: ohne Rücklage ergeben sich 51.600 EUR bei 2 Prozent Inflation');
+assertEqual(balance(disabled).ui.spending.monatlicheEntnahme * 12, 49200, 'FR-33: ohne Rücklage ergeben sich 49.200 EUR bei 2 Prozent Inflation');
 const noTranches = { ...input, detailledTranches: undefined };
 assertEqual(prepareBalanceEngineAssets(noTranches).input.tagesgeld, 50000, 'Auch aggregierte Bestände sperren die Rücklage');
 const capped = prepareBalanceEngineAssets({ ...input, healthBucket: { enabled: true, initialAmount: 300000 }, aktuelleLiquiditaet: 200000 }).input;

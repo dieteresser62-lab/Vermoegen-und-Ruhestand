@@ -1,6 +1,6 @@
 # Rechenweg des Jahresbudgets
 
-Wie aus deinem Bedarf eine monatliche Entnahme wird. Für fachlich Interessierte. Codeprüfung: 29.10.2026.
+Wie aus deinem Bedarf eine monatliche Entnahme wird. Für fachlich Interessierte. Codeprüfung: 22.11.2026.
 
 ## Auf einen Blick
 
@@ -14,7 +14,7 @@ Wie aus deinem Bedarf eine monatliche Entnahme wird. Für fachlich Interessierte
 
 ### Einkommen
 
-Alle Beträge gelten für das Planjahr. Es gilt der [Haushalt aus „Personen & Vermögen“](FACHKONZEPT.md#haushalt). „Grundbedarf“ und „Wunsch-Flex“ beschreiben den Haushalt vor Einkommen; „Mindest-Flex“ ist die gewünschte Untergrenze des Haushalts-Flex. Im Jahresabschluss ist der Plan mit Inflation vorausgewählt; bei Grundbedarf und Wunsch-Flex steht zusätzlich der Ist-Wert aus aufgeteilten Monaten mit Inflation zur Wahl. Beide Vorschläge und der hochgerechnete Mindest-Flex werden genau in ganzen Euro gespeichert und im nächsten Jahr von diesem Wert aus fortgeschrieben. Aus 24.000 € werden mit 2,5 % Inflation 24.600 €. Der Jahresabschluss zeigt sie nach der Anzeigestaffel aufgerundet, hier 25.000 €; Haushalt & Plan zeigt den genauen Wert. Eigene Eingaben gelten so, wie du sie tippst. Ist-Ausgaben ersetzen den Plan nur nach Auswahl und Abschluss. Eine importierte Floor/Flex-Aufteilung ordnet die App nicht selbst zu; sie verändert keine Budgetstufe. Die Ausgabenhochrechnung verwendet den Mittelwert positiver, vollständiger und abgelaufener Monate. Floor/Flex mitteln davon nur Monate mit Aufteilung; Gesamt bleibt die Hochrechnung aller gezählten Monate.
+Alle Beträge gelten für das Planjahr. Es gilt der [Haushalt aus „Personen & Vermögen“](FACHKONZEPT.md#haushalt). „Grundbedarf“ und „Wunsch-Flex“ beschreiben den Haushalt vor Einkommen; „Mindest-Flex“ ist die gewünschte Untergrenze des Haushalts-Flex. Im Jahresabschluss ist der Plan mit Inflation vorausgewählt; bei Grundbedarf und Wunsch-Flex steht zusätzlich der Ist-Wert aus aufgeteilten Monaten mit Inflation zur Wahl. Beide Vorschläge und der hochgerechnete Mindest-Flex werden genau in ganzen Euro gespeichert und im nächsten Jahr von diesem Wert aus fortgeschrieben. Aus 24.000 € werden mit 2,5 % Inflation 24.600 €. Der Jahresabschluss zeigt sie nach der Anzeigestaffel aufgerundet, hier 25.000 €; Haushalt & Plan zeigt den genauen Wert. Eigene Eingaben gelten so, wie du sie tippst. Ist-Ausgaben ersetzen den Plan nur nach Auswahl und Abschluss. Eine importierte Floor/Flex-Aufteilung ordnet die App nicht selbst zu; sie verändert keine Budgetstufe. Die Ausgabenhochrechnung mittelt vollständige, abgelaufene Monate mit einem Saldo ungleich null. Für den Ist-Vorschlag verwendet die App daraus die Monate mit Aufteilung. Sie verrechnet die Erstattungen über alle Kategorien je Person und zieht die geplanten Zahlungen ab. Danach begrenzt sie die Summen für Grundbedarf und Flex getrennt auf mindestens null (FR-92).
 
 Mit Jahreseinkommen R, offenem Grundbedarf F und berechnetem Flex-Bedarf X gilt vor Rundung:
 
@@ -24,13 +24,13 @@ Offener Wunsch-Flex = max(0, Wunsch-Flex − max(0, R − Grundbedarf))
 Jahresentnahme = F + X × Flex-Rate / 100
 ```
 
-R umfasst Rente und feste persönliche Einkünfte mit ihren gültigen Monaten. Nettomieten sind [Immobilieneinkünfte](IMMOBILIEN.md#miete). [Pflege](PFLEGE.md#kosten-im-bedarf), auch der [Heimaufenthalt](PFLEGE.md#heim), und [Tod](TOD_UND_ERBE.md#einkommen-und-bedarf) verändern die Eingangsbedarfe und Einkommen vor dieser Rechnung. Ihre Regeln stehen im jeweiligen Thema. Die [Erbschaftsteuerzahlung](TOD_UND_ERBE.md#zahlung) folgt nach dem Budget und ändert dessen Beschluss nicht.
+R umfasst Rente und feste persönliche Einkünfte mit ihren gültigen Monaten. Nettomieten sind [Immobilieneinkünfte](IMMOBILIEN.md#miete). [Pflege](PFLEGE.md#pflege-im-bedarf), auch der [Heimaufenthalt](PFLEGE.md#heimkosten-und-jahresabschluss), und [Tod](TOD_UND_ERBE.md#einkommen-und-bedarf) verändern die Eingangsbedarfe und Einkommen vor dieser Rechnung. Ihre Regeln stehen im jeweiligen Thema. Die [Erbschaftsteuerzahlung](TOD_UND_ERBE.md#zahlung) folgt nach dem Budget und ändert dessen Beschluss nicht.
 
 ### Dynamik
 
 Ohne „Dynamic Flex“ ist X der offene Wunsch-Flex. Mit Dynamik entsteht ein Entnahmerahmen aus aktivem Geldvermögen, angenommener Realrendite und Resthorizont. Nach „Go-Go“, Sicherheitsstufen und Haushaltsdeckel bleibt X übrig. Eine geringe Flex-Rate kann auf dieser größeren Basis trotzdem mehr als den Wunschbetrag liefern.
 
-Das aktive Geldvermögen umfasst freie Liquidität, Aktien, Anleihen und aktives Gold; eine gesperrte Pflege-Rücklage gehört nicht dazu. Immobilien zählen zum Gesamtvermögen, aber nicht zur Budget- oder Strategiequote.
+Das aktive Geldvermögen umfasst freie Liquidität, Aktien, Anleihen und aktives Gold; eine gesperrte Pflegereserve gehört nicht dazu. Immobilien zählen zum Gesamtvermögen, aber nicht zur Budget- oder Strategiequote.
 
 ```mermaid
 flowchart TD
@@ -44,7 +44,7 @@ flowchart TD
 
 ### Ansparjahr
 
-Einkommen über dem beschlossenen Bedarf wird gespart. Mit Dynamik kann daneben eine Depotentnahme anfallen; der gesamte Haushalts-Flex bleibt begrenzt. Der beschlossene Einkommens-Flex entscheidet über den Überschuss. Ohne wirksame Dynamik entspricht er dem Wunsch-Flex. Mit wirksamer Dynamik ist er höchstens der dynamische Bedarf vor Einkommensverrechnung und höchstens doppelter Wunsch-Flex minus Depot-Flex, mindestens null. Gespart wird max(0, R − Grundbedarf − beschlossener Einkommens-Flex). Der Simulator schreibt den Rest dem persönlichen Tagesgeld gut. Balance zählt tatsächliche Eingänge im erfassten Tagesgeld. Die anschließende [Anlage](HANDLUNGSANWEISUNG.md#c9) folgt eigenen Regeln.
+Einkommen über dem beschlossenen Bedarf wird gespart. Mit Dynamik kann daneben eine Depotentnahme anfallen; der gesamte Haushalts-Flex bleibt begrenzt. Der beschlossene Einkommens-Flex entscheidet über den Überschuss. Ohne wirksame Dynamik entspricht er dem Wunsch-Flex. Mit wirksamer Dynamik ist er höchstens der dynamische Bedarf vor Einkommensverrechnung und höchstens doppelter Wunsch-Flex minus Depot-Flex, mindestens null. Gespart wird max(0, R − Grundbedarf − beschlossener Einkommens-Flex). Der Simulator schreibt den Rest dem persönlichen Tagesgeld gut. Balance zählt tatsächliche Eingänge im erfassten Tagesgeld. Die anschließende [Anlage](HANDLUNGSANWEISUNG.md#c9) folgt eigenen Regeln. Bei simulierten Aktienzukäufen bestimmt die [Haushaltswahl](STEUERN.md#simulierte-zukäufe) die Zuordnung zum Wertpapier.
 
 Feste geplante Ausgaben zählen in ihren Monaten zum Grundbedarf und werden nie gekürzt. Das Monatsbudget eines Monats ist (Jahresbudget − feste Ausgaben des Jahres) / 12 plus die festen Ausgaben dieses Monats. Einmalige geplante Ausgaben stehen außerhalb von Grundbedarf und Flex. Ihre Jahresreserve erhöht erst nach dem Budgetbeschluss das [Liquiditätsziel](HANDLUNGSANWEISUNG.md#c1). Einmalige Einkünfte verändern dieses Monatsbudget nicht.
 
@@ -65,18 +65,18 @@ w = t² × (3 − 2t)
 
 ### Marktphasen
 
-Der Hochabstand ist der nominale Rückgang vom verwendeten Hoch. Im Jahresabschluss stehen Jahresendregel und Jahreshoch nur bei einem verdeckten Bärenmarkt ohne Vorauswahl zur Wahl: Gemessen am Jahreshoch kürzt die Engine den Flex (tiefer Bär, Erholung im Bärenmarkt), nach der Jahresendregel nicht (FR-71, geändert durch FR-77). Das Jahreshoch ist der höchste gespeicherte Schluss des Referenz-ETF seit Ende des Vorjahrs. Nur die ausdrückliche Jahreshochwahl speichert Wert, Datum und Bruchteilsalter für die Folgejahre. Ohne Wahlmöglichkeit oder belastbaren Vergleich gilt die Jahresendregel. Simulator, Backtest und Monte Carlo behalten Jahresendstände. Die App prüft diese Marktphasen in Tabellenfolge:
+Der Hochabstand ist der nominale Rückgang vom verwendeten Hoch. In der Balance, also in Vorschau und Jahresabschluss, ist das Hoch der höchste bekannte Wert aus gespeichertem Hoch, Jahresendkurs beziehungsweise heutigem Kurs und allen gespeicherten Tagesschlüssen des Referenz-ETF bis zum Stichtag, auch aus früheren Jahren (FR-89). Bei gleichen Höchstwerten gilt der jüngste Tag; das Hoch sinkt nie. Stammt es aus einem Tagesschluss oder hat das gespeicherte Hoch ein belegtes Datum, zählt sein Alter in Bruchjahren ab diesem Tag, in der Vorschau bis zum Kursdatum, im Jahresabschluss bis zum 31.12. Sonst gilt die Jahresendregel: Ein neues Hoch am Stichtag setzt das Alter auf null, ein älteres Hoch ohne Datum altert je Jahr um eins. Der Jahresabschluss speichert Wert, Datum und Alter für die Folgejahre; eine Wahl gibt es nicht. Stichtag ist der letzte Tagesschluss bis einschließlich 31.12. Fehlen Tageskurse, gilt das Hoch aus den bekannten Werten; fehlen sie ab Beginn der Kurshistorie, ist das Hoch nicht belastbar. Einen automatischen Filter gibt es nicht: Ein als „nicht verwenden“ markierter Tagesschluss zählt nicht, ein eingetragener Split teilt Hoch und Jahresschlüsse einmal, und Tagesschlüsse vor dem Splitdatum zählen danach nicht mehr. Hinweise auf einen Ausreißer (mehr als 5 % über den Nachbartagen) oder einen Einbruch (mehr als 30 % an einem Tag) verwerfen nichts. Liegt der Kurs höchstens 5 % unter einem Hoch, das jünger als ein Jahr ist, rechnet die Balance die Marktphase am Hoch (Grundrauschen): Die Engine erhält Kurs als Hoch und Alter null, gespeichert bleibt das echte Hoch. Die 5 % sind an Tageskursen 2015 bis 2026 gemessen. Die Schwelle 20 % für den tiefen Bären bleibt eine bewusste Setzung, weil Tagesdaten für 2000 bis 2003 und 2008 fehlen. Simulator, Backtest und Monte Carlo behalten Jahresendstände. Die App prüft diese Marktphasen in Tabellenfolge:
 
 | Phase | Bedingung |
 |---|---|
 | Heißer / stabiler Höchststand | Am Hoch oder darüber; heiß ab 10 % Jahresgewinn. |
 | Tiefer Bär | Mehr als 20 % unter dem Hoch. |
-| Bestätigte Erholung | Sonst mehr als 10 % Abstand, über 10 % Jahresgewinn, mehr als sechs Monate seit dem Hoch. |
-| Junge Korrektur | Sonst höchstens 15 % Abstand und sechs Monate seit dem Hoch. |
+| Bestätigte Erholung | Mehr als 10 % bis 20 % Hochabstand, über 10 % Jahresgewinn und mindestens 11,95 Monate seit dem Hoch. |
+| Junge Korrektur | Derselbe Hochabstand und Jahresgewinn wie bei bestätigter Erholung, aber mehr als sechs und weniger als 11,95 Monate seit dem Hoch. Sonst höchstens 15 % Hochabstand und höchstens sechs Monate seit dem Hoch. |
 | Lange Seitwärtsphase | Übrige Fälle; auch Ersatz bei fehlender Hochbasis. |
-| Erholung im Bär | Ersetzt tiefen Bär oder bestätigte Erholung: mindestens 15 % Jahresgewinn oder 30 % über dem tiefsten der bis zu vier verfügbaren Jahresendstände, weiter mehr als 15 % Hochabstand. |
+| Erholung im Bär | Ersetzt den tiefen Bär oder eine der beiden Phasen mit mehr als sechs Monaten seit dem Hoch und über 10 % Jahresgewinn. Sie verlangt mehr als 15 % Hochabstand und entweder mindestens 15 % Jahresgewinn oder mindestens 30 % Zuwachs seit dem tiefsten der bis zu vier verfügbaren Jahresendstände. |
 
-Bei Abstand und null Jahren seit dem Hoch setzt die App zwölf Monate an. Junge Korrektur erfordert deshalb eine positive Jahresbruchzahl bis 0,5. Stagflation ist ein zusätzliches Handelssignal, keine achte Budgetphase.
+Die Grenze von 11,95 Monaten zählt den 31. Dezember des Vorjahres bei der Tagesrechnung zur bestätigten Erholung (FR-90). Bei Abstand und null Jahren seit dem Hoch gelten ersatzweise zwölf Monate, weil das Hochdatum unbekannt ist. Stagflation bleibt ein zusätzliches Handelssignal.
 
 ### Alarm
 
@@ -98,7 +98,7 @@ Die App rundet die Monatsentnahme ab und rechnet sie wieder aufs Jahr hoch. Der 
 
 ### Fortschreibung
 
-Die App übernimmt Ratenanker, tatsächliche reale Entnahme, realen Höchststand, Alarm, Flex-Budget-Vorrat, Sicherheitsstufe und geglättete Rendite ins Folgejahr. Höchststand und Rückgang beziehen sich auf aktives Geldvermögen. Eine geänderte Pflege-Rücklage verschiebt auch die Höchststandsbasis; sie gilt dadurch nicht als Marktverlust.
+Die App übernimmt Ratenanker, tatsächliche reale Entnahme, realen Höchststand, Alarm, Flex-Budget-Vorrat, Sicherheitsstufe und geglättete Rendite ins Folgejahr. Höchststand und Rückgang beziehen sich auf aktives Geldvermögen. Eine geänderte Pflegereserve verschiebt auch die Höchststandsbasis; sie gilt dadurch nicht als Marktverlust.
 
 Normale Jahres-, Inflations-, Renten- und Marktwechsel bewahren dieses Gedächtnis. Balance schreibt den Inflationsfaktor des berechneten Bereichs einmal je Abschluss fort, im Zweipersonenhaushalt auch in allen Kopien des gemeinsamen Zustands. Balance rechnet mit erfassten Daten, der Simulator mit seinem jeweiligen Vorjahr. Dessen Jahreszeile zeigt den Beschluss nach der Jahresrendite.
 
@@ -108,7 +108,7 @@ Eine bewusste Planänderung setzt das Budgetgedächtnis zurück: etwa Bedarf, Mi
 
 ### Beschluss
 
-Der Abschluss von J beschließt den Plan für J+1. Offene Jahre werden nacheinander verarbeitet; jeder Beschluss verwendet die zugehörigen Jahresdaten und persönlichen Tagesgeldstände. Empfehlung und eigener Beschluss bleiben getrennt belegt. „Monatsbudget“ umfasst Einkommen plus Vermögensentnahme abzüglich gesparten Einkommens; die Vermögensentnahme allein ist ein anderer Betrag. Der [Jahresbeleg](HANDLUNGSANWEISUNG.md#beleg) hält die Empfehlung fest. Der Schritt „Pflegewerte“ zeigt die [fortgeschriebenen Pflegepreise](PFLEGE.md#heim) für J+1, sobald die Inflation des Jahres vorliegt; „Unverändert bestätigen“ übernimmt sie, eigene Werte bleiben ohne weitere Erhöhung. Bedienung: [Jahr abschließen](../../Handbuch.html#jahr-abschliessen).
+Der Abschluss von J beschließt den Plan für J+1. Offene Jahre werden nacheinander verarbeitet; jeder Beschluss verwendet die zugehörigen Jahresdaten und persönlichen Tagesgeldstände. Empfehlung und eigener Beschluss bleiben getrennt belegt. „Monatsbudget“ umfasst Einkommen plus Vermögensentnahme abzüglich gesparten Einkommens; die Vermögensentnahme allein ist ein anderer Betrag. Der [Jahresbeleg](HANDLUNGSANWEISUNG.md#beleg) hält die Empfehlung fest. Der Schritt „Pflegewerte“ zeigt die [fortgeschriebenen Pflegepreise](PFLEGE.md#heimkosten-und-jahresabschluss) für J+1, sobald die Inflation des Jahres vorliegt; „Unverändert bestätigen“ übernimmt sie, eigene Werte bleiben ohne weitere Erhöhung. Bedienung: [Jahr abschließen](../../Handbuch.html#jahr-abschliessen).
 
 ## Nachschlagen
 
@@ -121,8 +121,8 @@ Die tatsächliche Bedarfsfolge ist A4-Schalter → A1 → A2 → A3 → A4-Boden
 
 - Zweck: Nur ungedeckten Bedarf aus Geldvermögen finanzieren.
 - Wann sie greift: Vor jeder Budgetrechnung.
-- Rechnung: R deckt zuerst Grundbedarf, danach Wunsch-Flex; negative Bedarfe werden null. Die Eingangsprojektion berücksichtigt [Pflege](PFLEGE.md#reserve-und-flex) und [Hinterbliebene](TOD_UND_ERBE.md#einkommen-und-bedarf). Im Heim ersetzen in Monte Carlo [Heimkosten und eigene Ausgaben](PFLEGE.md#heim) den Grundbedarfsanteil der Person. Endet akute Heimpflege, gilt wieder der Grundbedarf zu Hause, auch in der Folgejahresvorschau für das Liquiditätsziel. Die [Erbschaftsteuerzahlung](TOD_UND_ERBE.md#zahlung) bleibt außerhalb des Budgets.
-- Parameter: Grundbedarf, Wunsch-Flex und gültige Einkünfte der einen oder zwei Haushaltspersonen. Im Simulator ergänzt die gemeinsame [Pflegerechnung](PFLEGE.md#kosten-im-bedarf) heutige und künftige Pflege automatisch; der Grundbedarf beschreibt alle Personen zu Hause ohne Pflege. Heimpflege ersetzt ihren Anteil, Flex und Mindest-Flex folgen dem absoluten Pflege-Level. Das Liquiditätsziel nutzt bei Pflege den vollen Folgejahresbedarf. Balance rechnet seit FR-73 mit derselben Funktion wie der Simulator im ersten Jahr: Grundbedarf zu Hause, Pflege zu Hause, Heimkosten und eigene Ausgaben im Heim aus dem bestätigten Plan (Grundbedarf und Flex ohne Pflege), dem heutigen Pflegezustand der Personen und den Pflegepreisen des Haushalts; Wunsch- und Mindest-Flex folgen dem absoluten Pflege-Level, das Pflegegeld zählt nach dem Angehörigenausfall als Einkunft. Das Liquiditätsziel und die Vorschau des Folgejahres nutzen Heimjahr + 1, Folgejahrespreise und die Einkünfte des Folgejahrs mit Kalendergrenzen und Fortschreibung (Rentenanpassung des Hauptprofils für beide Renten wie im Simulator, Anpassung fester Einkünfte, Pflegegeld mit Inflation). Ohne bestätigten Plan bleibt die gespeicherte Bedarfsbasis.
+- Rechnung: R deckt zuerst Grundbedarf, danach Wunsch-Flex; negative Bedarfe werden null. Die Eingangsprojektion berücksichtigt [Pflege](PFLEGE.md#pflegereserve-und-flex) und [Hinterbliebene](TOD_UND_ERBE.md#einkommen-und-bedarf). Nach dem Erbfall-Verkauf zählt die [Rente aus dem Erbe](TOD_UND_ERBE.md#verkauf-und-miete-auf-lebenszeit) ab dem Folgejahr zum Einkommen. Die gleich hohe Miete zählt ungekürzt zum Grundbedarf und endet bei dauerhafter Heimpflege. Nach dem [Verkauf mit Wohnkapital](TOD_UND_ERBE.md#verkauf-mit-wohnkapital) zählt die selbst bezahlte Miete zum Grundbedarf. Bei 0 Jahren beginnt sie im Folgejahr des Todes. Bei verzögertem Auszug beginnt sie im Verkaufsjahr nach den eingetragenen mietfreien Folgejahren. Ab Mietbeginn belastet sie auch Ansparjahre. Lebt die Person beim vorgesehenen Verkauf dauerhaft im Heim, entfällt die Miete. Im Heim ersetzen in Monte Carlo [Heimkosten und eigene Ausgaben](PFLEGE.md#heimkosten-und-jahresabschluss) den Grundbedarfsanteil der Person. Endet akute Heimpflege, gilt wieder der Grundbedarf zu Hause, auch in der Folgejahresvorschau für das Liquiditätsziel. Die [Erbschaftsteuerzahlung](TOD_UND_ERBE.md#zahlung) und die [Erbaufteilung](TOD_UND_ERBE.md#nachlass) folgen außerhalb des Budgets. Bei Bestattungs- und Abwicklungskosten oder eingeschalteter Pflichtteil-Sicherung bleibt das Geld der verstorbenen Person bei Kauf und Auffüllung bis zur Erbaufteilung außer Ansatz. Bei der Pflichtteilsprüfung im Simulator mindert eine offene Steuerschuld den Nachlasswert. FR-84: Pflegekosten, die Einkünfte und Geldvermögen nach dem Grundbedarf nicht mehr tragen, zählen in Balance und Jahresabschluss als [Hilfe zur Pflege](PFLEGE.md#schätzung-in-balance-und-jahresabschluss) nicht zum Bedarf; bei Unverheirateten je Person, im Planjahr wie in der Folgejahresvorschau für Liquiditätsziel und Verkäufe.
+- Parameter: Grundbedarf, Wunsch-Flex und gültige Einkünfte der einen oder zwei Haushaltspersonen. Für den Ist-Vorschlag im Jahresabschluss gilt der [Erstattungssaldo je Person](#einkommen). Im Simulator ergänzt die gemeinsame [Pflegerechnung](PFLEGE.md#pflege-im-bedarf) heutige und künftige Pflege automatisch; der Grundbedarf beschreibt alle Personen zu Hause ohne Pflege. Heimpflege ersetzt ihren Anteil, Flex und Mindest-Flex folgen dem absoluten Pflege-Level. Das Liquiditätsziel nutzt bei Pflege den vollen Folgejahresbedarf. Balance rechnet seit FR-73 mit derselben Funktion wie der Simulator im ersten Jahr: Grundbedarf zu Hause, Pflege zu Hause, Heimkosten und eigene Ausgaben im Heim aus dem bestätigten Plan (Grundbedarf und Flex ohne Pflege), dem heutigen Pflegezustand der Personen und den Pflegepreisen des Haushalts; Wunsch- und Mindest-Flex folgen dem absoluten Pflege-Level, das Pflegegeld zählt nach dem Angehörigenausfall als Einkunft. Das Liquiditätsziel und die Vorschau des Folgejahres nutzen Heimjahr + 1, Folgejahrespreise und die Einkünfte des Folgejahrs mit Kalendergrenzen und Fortschreibung (Rentenanpassung des Hauptprofils für beide Renten wie im Simulator, Anpassung fester Einkünfte, Pflegegeld mit Inflation). Die Vorschau verwendet die Inflation aus Balance. Für lohngebundene Einkünfte gilt die Annahme der Planübersicht, also der eingetragene Wert oder das Mittel der Lohnreihe. Ohne bestätigten Plan bleibt die gespeicherte Bedarfsbasis.
 - Beispiel: [Max und Erika](#max-und-erika-im-jahresvergleich).
 - Gedächtnis: Einkommen und Bedarf werden fürs Folgejahr fortgeschrieben.
 - Name: Offener Grundbedarf und Wunsch-Flex.
@@ -133,7 +133,7 @@ Die tatsächliche Bedarfsfolge ist A4-Schalter → A1 → A2 → A3 → A4-Boden
 
 - Zweck: Vermögen über die verbleibenden Jahre verteilen.
 - Wann sie greift: Angefordert, zugelassen, mit positivem Horizont.
-- Rechnung: Annuitätenfaktor bei Realrendite r und h Jahren: r / (1 − (1 + r)^(−h)); bei |r| < 0,001 gilt 1/h. Die Aktienrendite e folgt linear den CAPE-Stützpunkten. Davon gehen die Fondskosten k ab, (1 + e) × (1 − k) − 1, danach die langfristige Inflation. Tatsächliche Anlageanteile gewichten Aktien, Gold und sichere Anlagen einschließlich Anleihen. Grenzen und Vorjahresglättung folgen vor der Annuität. Der alternative stetige CAPE-Pfad verwendet eigene Grenzen und zieht k ebenso ab.
+- Rechnung: Vorschüssiger Annuitätenfaktor bei Realrendite r und h Jahren (FR-88): r / ((1 + r) × (1 − (1 + r)^(−h))); bei |r| < 0,001 gilt 1/h. Die Aktienrendite e folgt linear den CAPE-Stützpunkten. Davon gehen die Fondskosten k ab, (1 + e) × (1 − k) − 1, danach die langfristige Inflation. Tatsächliche Anlageanteile gewichten Aktien, Gold und sichere Anlagen einschließlich Anleihen. Grenzen und Vorjahresglättung folgen vor der Annuität. Der alternative stetige CAPE-Pfad verwendet eigene Grenzen und zieht k ebenso ab.
 - Parameter: Renditeannahmen, Fondskosten aus Haushalt & Plan (Vorgabe 0,5 % pro Jahr), Zusammensetzung und Horizont. Sterbetafel (seit FR-75 die Kohortentafel V2 des Geburtsjahrs), Überlebensquantil oder direkte Eingabe bestimmen h; optionale Langlebigkeitsaufschläge gelten einmal im Haushalt. Bei Tod kann der Simulator den Horizontübergang glätten.
 - Beispiel: [Dynamischer Haushalt](#dynamic-flex-mit-greifender-haushaltsobergrenze).
 - Gedächtnis: Geglättete Rendite und letzter dynamischer Bedarf.
@@ -221,7 +221,7 @@ Vier Quoten haben unterschiedliche Nenner. Die reale Vorjahresquote steuert w; d
 - Zweck: Marktabhängigen Ausgangswert bilden.
 - Wann sie greift: Ohne Alarm.
 - Rechnung: Im tiefen Bär 100 − (50 + max(0, Hochabstand − 20)) × w, sonst 100 %.
-- Parameter: Marktphase und w.
+- Parameter: [Marktphase](#marktphasen) und w. Junge Korrektur und bestätigte Erholung nutzen dieselben Budgetregeln.
 - Beispiel: [Normaljahr](#max-und-erika-im-jahresvergleich).
 - Gedächtnis: Keines.
 - Name: „Bärenmarkt“.
@@ -302,11 +302,11 @@ Vier Quoten haben unterschiedliche Nenner. Die reale Vorjahresquote steuert w; d
 
 - Zweck: Erholung vorsichtig behandeln und Kaufkraft stützen.
 - Wann sie greift: Ohne Alarm.
-- Rechnung: Erholung im Bär liefert einen hochabstandsabhängigen Deckel; unter 30 Monaten Reichweite mindestens 20 Punkte Kürzung, jeweils mit w gedämpft. Eine bindende Erholungsregel sperrt die Budgetanhebung. Deren Ziel entsteht aus laufendem Bedarf: F/i×(1+b)+X/i+R, mit i = 1+max(0, Inflation)/100 und b = begrenzter Anhebungswert/100. w dämpft den Zielabstand; die vorsichtige Depotquote begrenzt das Anhebungsziel. Über 1 € Abstand darf die Rate bis 100 % steigen. In Bärenphasen verlangt die Anhebung höchstens 10 % Hochabstand, keinen neuen niedrigeren Jahresendstand und mindestens max(30 Monate, harte Mindestreichweite + 6 Monate) Reichweite; die heutigen Phasengrenzen schließen sie dort aus.
+- Rechnung: Erholung im Bär liefert einen hochabstandsabhängigen Deckel; unter 30 Monaten Reichweite mindestens 20 Punkte Kürzung, jeweils mit w gedämpft. Eine bindende Erholungsregel sperrt die Budgetanhebung. Deren Ziel entsteht aus laufendem Bedarf: F/i×(1+b)+X/i+R, mit i = 1+max(0, Inflation)/100 und b = begrenzter Anhebungswert/100. w dämpft den Zielabstand; diese Richtung, Anhebung × w, ist gewollt (Nutzer 19.11.2026). Die vorsichtige Depotquote begrenzt das Anhebungsziel. Über 1 € Abstand darf die Rate bis 100 % steigen. In Bärenphasen verlangt die Anhebung höchstens 10 % Hochabstand, keinen neuen niedrigeren Jahresendstand und mindestens max(30 Monate, harte Mindestreichweite + 6 Monate) Reichweite; die heutigen Phasengrenzen schließen sie dort aus.
 - Parameter: Erholungsstaffel, Vorsichtsquote und Anhebungswert.
 - Beispiel: [Dynamischer Haushalt](#dynamic-flex-mit-greifender-haushaltsobergrenze).
 - Gedächtnis: Ziel ist kein garantiertes Vorjahresbudget.
-- Name: „Leitplanken“, begrenzt auch „Guardrail (Vorsicht)“.
+- Name: „Leitplanken“, begrenzt auch „Leitplanke (Vorsicht)“.
 - Quelle: [Stufenbesitz](TECHNICAL.md#stufen-und-codebesitz).
 
 <!-- docs:parameter {"target":"#b8","keys":["THRESHOLDS.CAUTION.withdrawalRate","RECOVERY_GUARDRAILS.description","RECOVERY_GUARDRAILS.CURB_RULES.0.minGap","RECOVERY_GUARDRAILS.CURB_RULES.0.maxGap","RECOVERY_GUARDRAILS.CURB_RULES.0.curbPercent","RECOVERY_GUARDRAILS.CURB_RULES.1.minGap","RECOVERY_GUARDRAILS.CURB_RULES.1.maxGap","RECOVERY_GUARDRAILS.CURB_RULES.1.curbPercent","RECOVERY_GUARDRAILS.CURB_RULES.2.minGap","RECOVERY_GUARDRAILS.CURB_RULES.2.maxGap","RECOVERY_GUARDRAILS.CURB_RULES.2.curbPercent","RECOVERY_GUARDRAILS.CURB_RULES.3.minGap","RECOVERY_GUARDRAILS.CURB_RULES.3.maxGap","RECOVERY_GUARDRAILS.CURB_RULES.3.curbPercent","RECOVERY_GUARDRAILS.getCurb"]} -->
@@ -473,8 +473,8 @@ Synthetische Musterbestände vom 17.10.2026, historischer Lauf 2000–2025. Die 
 | Rente | 27.600,00 € | 48.356,57 € |
 | Offener Grundbedarf | 2.400,00 € | 0,00 € |
 | Offener Wunsch-Flex | 30.000,00 € | 13.639,03 € |
-| Depot | 701.754,79 € | 393.927,22 € |
-| Freie Liquidität | 90.000,00 € | 96.971,30 € |
+| Depot | 701.754,79 € | 396.453,32 € |
+| Freie Liquidität | 93.708,00 € | 94.924,93 € |
 | Vermögensentnahme pro Monat | 2.700,00 € | 1.000,00 € |
 | Haushaltsbudget pro Monat mit Rente | 5.000,00 € | 5.029,71 € |
 
@@ -487,8 +487,8 @@ Synthetischer Jahresbeschluss, geprüft am 27.10.2026: 1.000.000,00 € Depot, 2
 | Schritt | Ergebnis |
 | --- | ---: |
 | Portfoliorealrendite | 3,39 % |
-| Annuität vor Go-Go | 83.591,93 € |
-| Dynamischer Depot-Flex vor / nach Haushaltsdeckel | 100.310,32 / 54.000,00 € |
+| Annuität vor Go-Go | 80.851,40 € |
+| Dynamischer Depot-Flex vor / nach Haushaltsdeckel | 97.021,69 / 54.000,00 € |
 | Geschützte Geldvermögensquote | 2,00 % |
 | B5 S-Kurve · Rate danach | 44,44 % |
 | B8 Leitplanken · Rate danach | 83,33 % |

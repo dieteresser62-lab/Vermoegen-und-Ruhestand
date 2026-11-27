@@ -1,13 +1,14 @@
-import { renderBalanceMarketPreview } from './balance-market-preview-renderer.js';
+import { renderBalanceMarketPreview, withMarketHighRows } from './balance-market-preview-renderer.js';
 import { balanceIncomeDetails, projectBalanceMonthlyFlow } from './balance-monthly-flow.js';
 import { renderIncomeDetails, renderMonthlyFlowBar, roundedIncomeDetails } from '../shared/monthly-flow.js';
 import { balanceCareSettings } from '../shared/person-data-status.js';
 import { effectiveCareFormToday, noCareAllowanceReason } from '../shared/care-benefits.js';
 import { careTodayFromRecord } from '../profile/profile-care.js';
 import { projectBalanceFlexTrace } from './balance-flex-trace.js';
+import { translateEngineTerms } from '../shared/transaction-display-text.js';
 import { createPlannedPostsView } from './balance-planned-posts-renderer.js';
 import { fixedPlannedTotal } from './balance-planned-posts.js';
-import { bindBalanceBudgetWhy, renderBalanceStrategyValues } from './balance-presentation-controls.js';
+import { bindBalanceBudgetWhy, renderBalanceStrategyValues, storedMarketYear, renderMarketYearLabels } from './balance-presentation-controls.js';
 import { householdPlanFieldSpec, withdrawalModeText, planModeChangeText } from '../shared/household-plan-fields.js';
 import { readBalanceInflationSource } from './balance-inflation-source.js';
 import { readBalanceHouseholdPlan, memberPlanScope } from '../profile/household-plan.js';
@@ -18,6 +19,7 @@ import { appNow } from '../shared/app-clock.js';
 import { projectBalanceReserves, displayedReserveView } from './balance-reserves.js';
 import { withAnnualActionProgress } from './annual-action-progress.js';
 import { projectAnnualTodoPlan, projectCashRefill, cashRefillPeople, cashRefillMonthlyBase, cashRefillIronReserve, heldBelowCashTarget } from './annual-todo.js';
+import { careAidHintText } from '../shared/care-aid.js';
 import { todoMoney, createTodoPlan, createCashRefill, createPlanDetails, carrierNoteText, createOpenDebitsNote, createHeldCashNotes } from '../shared/annual-todo-view.js';
 import { CARRIER_MISSING_TEXT, CARRIER_RESERVE_SHORT_TEXT } from '../profile/household-withdrawal-mode.js';
 import { saleFlowPlanFromConfirmed, projectSaleFlowCard, bindSaleFlowCard, readSaleFlowPlan } from '../tranches/sale-flow-dialog.js';
@@ -50,6 +52,14 @@ import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
 import { createDiagnosisInfo } from './balance-diagnosis-guardrails.js';
 
 export { confirmedCarrier };
+
+function createAnnualOverviewLink(doc, label) {
+    const link = doc.createElement('a');
+    link.href = 'index.html#overviewFocus';
+    link.setAttribute('data-profile-handoff', '');
+    link.textContent = label;
+    return link;
+}
 
 /**
  * @param value Eingabe für die bestehende Projektion.
@@ -122,6 +132,7 @@ export class SummaryRenderer {
     constructor(domRefs, storageManager) {
         this.dom = domRefs;
         this.storageManager = storageManager;
+        this.annualDueYear = null;
     }
 
     getPresentationOutput(key) {
@@ -177,7 +188,7 @@ export class SummaryRenderer {
         const explanation = doc.createElement('p'); explanation.className = 'ds-hint balance-flex-explanation';
         explanation.textContent = 'Die Treppe zeigt den Flex-Anteil der Vermögensentnahme pro Monat. ';
         if (projection.reason) {
-            explanation.textContent += `Kürzungsgrund: ${projection.reason}. `;
+            explanation.textContent += `Kürzungsgrund: ${translateEngineTerms(projection.reason)}. `;
         }
         explanation.appendChild(createDiagnosisInfo('Vermögensentnahme und Haushalts-Flex',
             'Der Grundbedarf nach Renten bleibt außerhalb der Treppe. Der finanzierte Haushalts-Flex umfasst zusätzlich den Rentenanteil über dem Grundbedarf. Eine Einschränkung liegt erst vor, wenn der tatsächlich bezahlte Haushalts-Flex einschließlich Rentenbeitrag unter dem angewandten positiven Mindest-Flex liegt.'));
@@ -254,7 +265,7 @@ export class SummaryRenderer {
                     const person = projectPerson(entry.data, status.referenceYear, settings);
                     if (care.grade && !person.pflegegeld) {
                         const careHint = document.createElement('p'); careHint.className = 'ds-help';
-                        careHint.textContent = `${entry.name}: ${noCareAllowanceReason({ grade: care.grade, careForm: effectiveCareFormToday(care, settings), preset: settings.preset })}`;
+                        careHint.textContent = noCareAllowanceReason({ grade: care.grade, careForm: effectiveCareFormToday(care, settings), preset: settings.preset, name: entry.name });
                         pensionHints.push(careHint);
                     }
                     if (person.renteMonatlich <= 0) continue;
@@ -267,6 +278,12 @@ export class SummaryRenderer {
                     pensionHints.push(hint);
                 }
             }
+        }
+        // FR-84 Punkt 11: Budgeterklärung mit dem voraussichtlichen staatlichen Anteil an den Pflegekosten.
+        if (input.careAid?.total > 0.005 || input.careAid?.floorGap > 0.005) {
+            const hint = document.createElement('p'); hint.className = 'ds-help'; hint.dataset.careAid = '';
+            hint.textContent = careAidHintText(input.careAid, currency);
+            pensionHints.push(hint);
         }
         renderIncomeDetails(this.getPresentationOutput('balanceIncomeDetails'),
             roundedIncomeDetails(matchingIncome ? incomeDetails : [], flow?.euros.income ?? 0), currency, pensionHints);
@@ -345,18 +362,20 @@ export class SummaryRenderer {
                 + (person.residentialSince ? ` (seit ${person.residentialSince.slice(5)}/${person.residentialSince.slice(0, 4)})` : ' (ohne „seit“)') + ` · Zuschuss der Kasse ${formatDisplayNumber(person.subsidy * 100, { fractionDigits: 0 })} %`, 'Plan']
             : [`Pflege ${person.name}`, need(person.homeCareAddition / 12), '€ / Monat',
                 // Argon FR73A B4: das ⓘ nennt, womit gerechnet wurde – amtlicher Durchschnitt, eigener Wert oder Staffel.
-                `Pflegegrad ${person.grade} zu Hause: ${care.preset === 'amtlich' ? 'Beim amtlichen Durchschnitt gilt die Netto-Konvention (0 € Zusatz, kein Pflegegeld).' : `${Number.isFinite(person.homeCostsMonthly) ? 'eigener Wert „Pflegekosten heute über die Kasse hinaus“' : 'Staffelbetrag des Grads'}, höchstens bis zum Deckel „Maximaler Pflege-Floor“.`}`, 'Plan']);
+                `Pflegegrad ${person.grade} zu Hause: ${care.preset === 'amtlich' ? 'Beim amtlichen Durchschnitt gilt die Netto-Konvention (0 € Zusatz, kein Pflegegeld).' : `${Number.isFinite(person.homeCostsMonthly) ? 'eigener Wert „Pflegekosten heute über die Kasse hinaus“' : 'Staffelbetrag des Grads'}, höchstens bis zum Deckel „Maximaler Grundbedarf mit Pflege“.`}`, 'Plan']);
         // FR-73 Punkt 10: Hinweis bei Pflegegrad heute unter den Bedarfszeilen; „Erledigt“ schreibt den Haushaltsrecord (einmal gebunden).
         const careHint = this.getPresentationOutput('balanceCareHint');
         if (careHint) { renderCareHint(careHint, overviewUi.careHint ?? ui.careHint ?? null); bindCareHintDone(careHint); }
         const shownNeed = shownMonthlyNeed(ui).shown;
+        const fixedMonthly = fixedPlannedTotal(input.plannedPosts) / 12;
         rows('balanceNeedRows', [
             [householdPlanFieldSpec('floorBedarf').label, finite(input.floorBedarf) ? need((care ? care.current.homeFloor : input.floorBedarf) / 12) : null, '€ / Monat',
                 [care && care.current.homeFloorFactor < 1 ? `Grundbedarf zu Hause: ${formatDisplayNumber(care.current.homeFloorFactor * 100, { fractionDigits: 0 })} % des Plans, weil nicht alle zu Hause leben` : null,
-                    !care && fixedPlannedTotal(input.plannedPosts) > 0 ? `enthält feste geplante Ausgaben von ${need(fixedPlannedTotal(input.plannedPosts) / 12)} im Monatsmittel` : null].filter(Boolean).join(' · ') || null, 'Plan'],
+                    fixedMonthly > 0 ? care ? 'Feste geplante Ausgaben kommen dazu.'
+                        : `Enthält feste geplante Ausgaben von ${need(fixedMonthly)} im Monatsmittel.` : null].filter(Boolean).join(' · ') || null, 'Plan'],
             ...careRows,
             // FR-43: Mit Pflege zeigt der Grundbedarf nur den Anteil zu Hause; die festen Ausgaben stehen in eigener Zeile.
-            ...(care && fixedPlannedTotal(input.plannedPosts) > 0 ? [['Feste geplante Ausgaben', need(fixedPlannedTotal(input.plannedPosts) / 12), '€ / Monat',
+            ...(care && fixedMonthly > 0 ? [['Feste geplante Ausgaben', need(fixedMonthly), '€ / Monat',
                 'im Monatsmittel, gehören zum Grundbedarf und werden nie gekürzt', 'Plan']] : []),
             [householdPlanFieldSpec('flexBedarf').label, householdFlex === null ? null : need(householdFlex), '€ / Monat',
                 dynamic && finite(input.flexBedarf) ? `Dynamik erlaubt bis ${available(input.flexBedarf * 2 / 12)}/Monat` : null, 'Plan'],
@@ -377,11 +396,11 @@ export class SummaryRenderer {
         const needProfiles = outputs.balanceNeedProfiles;
         if (needProfiles) { needProfiles.replaceChildren(); needProfiles.hidden = true; }
         // GN-2b (Gemini 3): Der frühere Satz „Danach … des Ziels“ hat kein Element auf der Seite; die Deckung steht nur in „Deine Reserven“.
-        rows('balanceMarketFacts', [
+        rows('balanceMarketFacts', withMarketHighRows(input, market.sKey, overviewUi.marketPreview, [
             ['Abstand zum Allzeithoch', finite(market.abstandVomAthProzent) ? formatDisplayNumber(market.abstandVomAthProzent, { unit: 'percent' }) : null],
             ['Seit dem Hoch', finite(input.jahreSeitAth) ? formatDisplayNumber(input.jahreSeitAth, { unit: 'years' }) : null],
             ['CAPE (Shiller)', finite(input.marketCapeRatio) ? formatDisplayNumber(input.marketCapeRatio) : null]
-        ]);
+        ]));
         // Projektion der bereits bestimmten Engine-Phase, keine neue Marktentscheidung.
         const phases = ['peak_hot', 'peak_stable', 'recovery', 'corr_young', 'side_long', 'recovery_in_bear', 'bear_deep'];
         const scale = outputs.balanceMarketScale;
@@ -455,6 +474,11 @@ export class SummaryRenderer {
         } catch { openDebits = []; }
         this.todoPlan = plan;
         this.planDetails = null;
+        if (this.annualDueYear !== null) {
+            const note = doc.createElement('p'); note.className = 'ds-note';
+            note.append(doc.createTextNode(`Der Jahresabschluss ${this.annualDueYear} ist fällig. `), createAnnualOverviewLink(doc, 'Zur Abschlusskarte auf der Übersicht'));
+            host.appendChild(note);
+        }
         if (chip) { chip.hidden = !plan; chip.textContent = plan ? `Plan ${plan.year}` : ''; }
         if (plan) {
             const carrier = confirmedCarrier(confirmed);
@@ -478,9 +502,11 @@ export class SummaryRenderer {
                 host.appendChild(note);
             }
         } else {
-            const text = doc.createElement('p'); text.className = 'todo-empty';
-            text.textContent = `Noch keine Handlungsanweisung aus dem Jahresabschluss. Den Plan beschließt du im Jahresabschluss Anfang ${origin.previewYear + 1}; bis dahin zeigt die Vorschau unten, was die App heute vorschlagen würde.`;
-            host.appendChild(text);
+            if (this.annualDueYear === null) {
+                const text = doc.createElement('p'); text.className = 'todo-empty';
+                text.textContent = `Noch keine Handlungsanweisung aus dem Jahresabschluss. Den Plan beschließt du im Jahresabschluss Anfang ${origin.previewYear + 1}; bis dahin zeigt die Vorschau unten, was die App heute vorschlagen würde.`;
+                host.appendChild(text);
+            }
             if (origin.notice) {
                 const notice = doc.createElement('p'); notice.setAttribute('role', 'alert'); notice.textContent = origin.notice; host.appendChild(notice);
             }
@@ -499,6 +525,13 @@ export class SummaryRenderer {
         if (reserveShort?.amount > 0) {
             const note = doc.createElement('p'); note.className = 'ds-note ds-note-warning todo-carrier-note'; note.dataset.todoCarrierReserveShort = '';
             note.textContent = CARRIER_RESERVE_SHORT_TEXT(reserveShort.name, todoMoney(reserveShort.amount));
+            host.appendChild(note);
+        }
+        // FR-84 Punkt 11: Hilfe zur Pflege, voraussichtlich (aus dem Beleg, sonst aus der heutigen Rechnung).
+        const careAid = /** @type {any} */ (confirmed)?.careAid || this.careAid;
+        if (careAid?.total > 0.005 || careAid?.floorGap > 0.005) {
+            const note = doc.createElement('p'); note.className = 'ds-note ds-note-warning todo-carrier-note'; note.dataset.todoCareAid = '';
+            note.textContent = careAidHintText(careAid, todoMoney);
             host.appendChild(note);
         }
         if (globalThis.window?.__profilverbundCarrierMissing) {
@@ -524,7 +557,8 @@ export class SummaryRenderer {
             // RK-2: Mit Beleg gilt sein Modus („Eine Person trägt“); die andere Person bekommt keine Zeile, nur den Hinweis.
             const people = trial ? [] : cashRefillPeople(currentYear, () => loadProfileRegistry().value, persistenceStorage.getItem('rs_current_profile'),
                 this.actionOrigin?.confirmed || null);
-            held = heldBelowCashTarget(people);
+            // NK-2 (Befund 2153): kein Hinweis für eine Person mit Hilfe zur Pflege.
+            held = heldBelowCashTarget(people, ((/** @type {any} */ (this.actionOrigin?.confirmed)?.careAid || this.careAid)?.persons || []).map((/** @type {any} */ row) => row.profileId));
             refill = trial ? null : projectCashRefill({ people,
                 monthlyBase: cashRefillMonthlyBase(currentYear), cashMonths: currentYear.input?.liquidityCashMonths, planOpen,
                 ironReserve: cashRefillIronReserve(currentYear) });
@@ -563,10 +597,10 @@ export class SummaryRenderer {
         const preview = projectBalanceFlexTrace(ui);
         const date = appNow().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
         for (const [previewKey, planKey, field, amount] of [
-            ['balanceBudgetPreview', 'balanceBudgetPlan', 'monthlyBudget', ui.nextYearBudget?.rule?.monthlyBudget ?? preview.budget]
+            ['balanceBudgetPreview', 'balanceBudgetPlan', 'monthlyBudget', ui.nextYearBudget?.plan?.monthlyBudget ?? preview.budget]
         ]) {
             const label = this.getPresentationOutput(previewKey);
-            if (label) { label.hidden = false; label.textContent = ui.nextYearBudget?.rule
+            if (label) { label.hidden = false; label.textContent = ui.nextYearBudget?.plan
                 ? `Budget ${ui.nextYearBudget.targetYear} · Projektion mit heutigen Werten` : `Vorschau heute · ${date}`; }
             const host = this.getPresentationOutput(planKey);
             if (!host) continue;
@@ -601,16 +635,21 @@ export class SummaryRenderer {
         const outputs = this.dom?.outputs || {};
         const set = (key, text) => { if (outputs[key]) outputs[key].textContent = text; };
         const targetYear = deriveCompletedCalendarYear(appNow());
-        renderBalanceStrategyValues(globalThis.document, { ...input, ...ui.marketPreview?.stored?.inputs }, targetYear);
-        renderBalanceMarketPreview(globalThis.document, ui.marketPreview || null, ui.nextYearBudget || null);
+        this.careAid = ui.careAid || null; // NK-2: kein globaler Wert mehr, jede Rechnung bringt ihre Schätzung mit.
         const state = this.storageManager?.loadState?.();
+        // FIX-ST9 (Befund 1604): „Ende …“ trägt das Jahr des gespeicherten Standes, nicht das Kalenderjahr.
+        const marketYear = storedMarketYear({ view: ui.marketPreview, state, fallback: targetYear });
+        renderBalanceStrategyValues(globalThis.document, { ...input, ...ui.marketPreview?.stored?.inputs }, marketYear, { state, view: ui.marketPreview });
+        renderBalanceMarketPreview(globalThis.document, ui.marketPreview || null, ui.nextYearBudget || null);
         const metadata = state?.annualPeriodMetadata;
         const liveData = Object.fromEntries(Array.from({ length: persistenceStorage.length }, (_, i) => persistenceStorage.key(i)).map(key => [key, persistenceStorage.getItem(key)]));
         const model = /** @type {import('../../typcheck/balance-ui.js').ProjectOverviewWithArchive} */ (projectOverviewWithAnnualArchive)({ registry: loadProfileRegistry().value, activeId: persistenceStorage.getItem('rs_current_profile'), liveData,
-            balanceSingleFallback: true, recovery: Boolean(globalThis.window?.__profileRecoveryBlocker) }, { onChange: () => this.renderContext(input, ui) });
+            recovery: Boolean(globalThis.window?.__profileRecoveryBlocker) }, { onChange: () => this.renderContext(input, ui) });
         this.renderBudgetOrigin(model, ui);
         const annualState = model.occasion?.annualState;
         const notApplicable = annualState === 'not_applicable';
+        const recovery = annualState === 'recovery' || Boolean(metadata?.pendingCommit);
+        this.annualDueYear = annualState === 'open' && !recovery ? model.occasion.closingYear ?? null : null;
         set('balancePlanningYear', String(targetYear + 1));
         // Der Berechnungsumfang steht einmal im Suite-Kopf. Die Auswahlprojektion
         // liefert den frühen Lade-/Recoveryzustand; die Summary den Rechenumfang.
@@ -633,7 +672,7 @@ export class SummaryRenderer {
                 const ids = model.scope?.ids || [];
                 // N4 (GN-1): derselbe Planbereich wie auf der Ausgaben-Seite; eine Einzelperson mit eigenem Plan liest ihren Beleg,
                 // nicht die neu gerechnete Balance-Zusammenfassung.
-                const receiptScope = memberPlanScope(ids, persistenceStorage, ids.some(id => registry?.profiles[id]?.meta.belongsToHousehold !== false));
+                const receiptScope = memberPlanScope(ids, persistenceStorage);
                 const budget = readExpensesBudget({ year, scope: model.scope, receiptScope, registry, activeId: model.activeId, storage: persistenceStorage });
                 const result = loadExpensesStoreResult(persistenceStorage);
                 if (result.status === 'corrupt') throw new Error('Ausgaben nicht lesbar');
@@ -651,7 +690,7 @@ export class SummaryRenderer {
         this.planModes = { decided: '', current: '' };
         try {
             const decided = model.planComparison?.confirmedAction?.withdrawalMode || model.planComparison?.confirmedSnapshot?.plan?.householdWithdrawalMode || '';
-            const plan = readBalanceHouseholdPlan({ storage: persistenceStorage, profileId: model.activeId });
+            const plan = readBalanceHouseholdPlan({ storage: persistenceStorage });
             this.planModes = { decided, current: plan.status === 'valid' ? plan.entry.values.householdWithdrawalMode || '' : '' };
         } catch { this.planModes = { decided: '', current: '' }; }
         this.renderAnnualAction(this.actionOrigin, model.members);
@@ -660,26 +699,29 @@ export class SummaryRenderer {
         // WT-1b: Die Vorschau zeigt den Plan, den der nächste Jahresabschluss beschließt: „Jahr J abschließen“ beschließt den Plan J+1.
         if (previewTitle) previewTitle.textContent = `Vorschau auf den Plan ${origin.previewYear + 1}`;
         const disclaimer = this.getPresentationOutput('balanceActionDisclaimer');
-        if (disclaimer) disclaimer.textContent = `So sähe der Plan aus, wenn heute der 31.12. wäre. Verbindlich wird er erst im Jahresabschluss im Januar.${notApplicable ? ` ${firstYearText}.` : ''}`;
-        for (const [id, offset] of /** @type {[string, number][]} */ ([['endeVJ', 0], ['endeVJ_1', 1], ['endeVJ_2', 2], ['endeVJ_3', 3]])) {
-            const label = globalThis.document?.querySelector?.(`label[for="${id}"]`);
-            if (label) label.textContent = `Ende ${targetYear - offset}`;
-        }
+        if (disclaimer) disclaimer.textContent = this.annualDueYear === null
+            ? `So sähe der Plan aus, wenn heute der 31.12. wäre. Verbindlich wird er erst im Jahresabschluss im Januar.${notApplicable ? ` ${firstYearText}.` : ''}`
+            : `Die Vorschau bleibt vorläufig, bis du den Plan im Jahresabschluss ${this.annualDueYear} beschließt.`;
+        renderMarketYearLabels(globalThis.document, marketYear, targetYear);
         const marketView = getMarketDataProvenanceViewModel(state?.annualMarketDataMeta);
         set('balanceMarketSource', ui.marketPreview?.quote
-            ? `Vorschau nach Regel · VWCE.DE · Schlusskurs ${ui.marketPreview.quote.asOf.split('-').reverse().join('.')}`
+            ? `Vorschau nach Regel · VWCE.DE · Schlusskurs ${ui.marketPreview.quote.asOf.split('-').reverse().join('.')} · Der Kurs gilt als Jahresende, die Korrekturwerte zählen als Vorjahre.`
             : `Jahresmarktdaten · ${marketView.available ? `${marketView.instrument} · ${marketView.asOf} · ${marketView.source}` : 'Quelle und Stand noch nicht bestätigt.'}`);
         set('balanceMarketDate', marketView.available && /^\d{4}-\d{2}-\d{2}$/.test(marketView.asOf) ? marketView.asOf.split('-').reverse().join('.') : 'nicht verfügbar');
-        const recovery = annualState === 'recovery' || Boolean(metadata?.pendingCommit);
         if (outputs.balanceBudgetChips) {
             const chip = outputs.balanceBudgetChips.querySelector?.('[data-period-chip]') || document.createElement('p');
             chip.className = 'ds-help balance-period-status';
-            chip.textContent = notApplicable ? firstYearText : annualState === 'done' ? `Jahr ${targetYear} abgeschlossen`
-                : recovery ? 'Recovery erforderlich' : annualState === 'open' ? `vorläufig · bis zum Jahresabschluss ${targetYear}` : 'Jahresstatus ungeklärt';
+            if (this.annualDueYear !== null) {
+                const doc = chip.ownerDocument;
+                chip.replaceChildren(doc.createTextNode('vorläufig · '), createAnnualOverviewLink(doc, `Jahresabschluss ${this.annualDueYear}`), doc.createTextNode(' ist fällig'));
+            } else {
+                chip.textContent = notApplicable ? firstYearText : annualState === 'done' ? `Jahr ${targetYear} abgeschlossen`
+                    : recovery ? 'Recovery erforderlich' : 'Jahresstatus ungeklärt';
+            }
             chip.setAttribute('data-period-chip', '');
             if (!chip.parentNode) outputs.balanceBudgetChips.appendChild(chip);
         }
-        const recoveryText = recovery ? metadata?.pendingCommit ? `Jahresabschluss ${metadata.pendingCommit.periodId} unterbrochen. Bitte zuerst den Recovery-Snapshot ${metadata.pendingCommit.snapshotId} unter Bedarf & Strategie → Snapshots wiederherstellen.` : 'Bitte zuerst die vorhandene Wiederherstellung verwenden.' : '';
+        const recoveryText = recovery ? metadata?.pendingCommit ? `Jahresabschluss ${metadata.pendingCommit.periodId} unterbrochen. Bitte zuerst den Recovery-Snapshot ${metadata.pendingCommit.snapshotId} unter Daten & Sicherung → Wiederherstellungspunkte wiederherstellen.` : 'Bitte zuerst die vorhandene Wiederherstellung verwenden.' : '';
         if (outputs.balanceAnnualRecovery) { outputs.balanceAnnualRecovery.hidden = !recovery; outputs.balanceAnnualRecovery.textContent = recoveryText; }
     }
 
@@ -719,7 +761,7 @@ export class SummaryRenderer {
         const money = UIUtils.formatBalanceCurrency;
         const make = (tag, text, cls) => { const node = doc.createElement(tag); node.textContent = text; if (cls) node.className = cls; return node; };
         // Ergänzungen 2 und 3 FR-78: Folgewerte und Deckung aus angezeigten Beträgen, dieselbe Rechnung wie in der Übersicht.
-        const { shown, targets, coverage: { today, after } } = displayedReserveView(view, this.todoPlan);
+        const { shown, targets, coverage: { today, after } } = displayedReserveView(view, options.todoPlan);
         const values = get('balanceReserveValues');
         if (values) {
             values.replaceChildren();
@@ -730,14 +772,14 @@ export class SummaryRenderer {
             };
             values.append(value('Liquidität heute', view.before.liquidity));
             // FR-78: „heute“ ist ein Kontostand und bleibt genau; „nach Umsetzung“ entsteht aus den angezeigten Beträgen und kann über dem genauen Wert liegen.
-            if (view.after) values.append(make('span', '→', 'balance-reserve-arrow'), value('nach Umsetzung', shown.after.liquidity, true));
+            if (shown.after) values.append(make('span', '→', 'balance-reserve-arrow'), value('nach Umsetzung', shown.after.liquidity, true));
         }
         const parts = get('balanceReserveParts');
         if (parts) {
-            parts.replaceChildren(); parts.setAttribute('data-proposal', String(Boolean(view.after)));
+            parts.replaceChildren(); parts.setAttribute('data-proposal', String(Boolean(shown.after)));
             for (const [label, key] of [['Tagesgeld', 'tagesgeld'], ['Geldmarkt', 'geldmarkt']]) {
                 parts.append(make('span', label, 'ds-source'), make('strong', money(view.before[key])));
-                if (view.after) parts.append(make('span', '→', 'ds-source'), make('strong', money(shown.after[key])));
+                if (shown.after) parts.append(make('span', '→', 'ds-source'), make('strong', money(shown.after[key])));
             }
         }
         // WT-1 (Gutachten GU1B-FABLE Befund 2): Ein eingetragener Verkauf mit offener Gutschrift fehlt heute im Tagesgeld und gilt
@@ -753,15 +795,15 @@ export class SummaryRenderer {
         // FR-78: Ziele werden aufgerundet; die Summe der Tagesgeldziele ist die Summe der angezeigten Ziele.
         set('balanceReserveTarget', `Ziel: ${number(months)} Monate Entnahme = ${money(displayUp(view.target))}, davon ${number(input.liquidityCashMonths)} Monate im Tagesgeld`);
         set('balancePersonalCashTargets', targets.length > 1
-            ? `Tagesgeldziel: ${targets.map(row => `${row.name || 'Person'} ${money(displayUp(row.target))}`).join(' · ')} · Summe ${money(targets.reduce((sum, row) => sum + displayUp(row.target), 0))}` : '');
+            ? `Tagesgeldziel: ${targets.map(row => `${row.name || 'Person'} ${money(row.shown ?? displayUp(row.target))}`).join(' · ')} · Summe ${money(targets.reduce((sum, row) => sum + (row.shown ?? displayUp(row.target)), 0))}` : '');
         const pct = value => formatDisplayNumber(value, { unit: 'percent', fractionDigits: 0 });
-        const label = `heute ${pct(today)} gedeckt${view.after ? ` · nach Umsetzung ${pct(after)}` : ''}`;
+        const label = `heute ${pct(today)} gedeckt${shown.after ? ` · nach Umsetzung ${pct(after)}` : ''}`;
         const bar = get('balanceReserveBar');
         const scale = Math.max(120, today || 0, after || 0);
         if (bar) bar.setAttribute('aria-label', `${label} · Ziel 100 %`);
         for (const [key, percent] of /** @type {[string, number][]} */ ([['liquiditaetBalken', today], ['balanceReserveAfterBar', after], ['balanceReserveGoalMark', 100]])) {
             const node = get(key); if (!node) continue;
-            if (key === 'balanceReserveAfterBar') node.hidden = !view.after;
+            if (key === 'balanceReserveAfterBar') node.hidden = !shown.after;
             node.style[key === 'balanceReserveGoalMark' ? 'left' : 'width'] = `${Math.max(0, percent || 0) / scale * 100}%`;
         }
         const labels = get('balanceReserveCoverage');
@@ -769,13 +811,13 @@ export class SummaryRenderer {
             const goal = make('span', 'Ziel', 'balance-reserve-goal-label');
             goal.style.left = `${100 / scale * 100}%`;
             labels.replaceChildren(make('span', `heute ${pct(today)} gedeckt`), goal);
-            if (view.after) labels.append(make('span', `nach Umsetzung ${pct(after)}`, 'balance-reserve-after-label'));
+            if (shown.after) labels.append(make('span', `nach Umsetzung ${pct(after)}`, 'balance-reserve-after-label'));
         }
         const runway = amount => Number.isFinite(amount) && Number.isFinite(ui.spending?.monatlicheEntnahme)
             ? ui.spending.monatlicheEntnahme > 0 ? amount / ui.spending.monatlicheEntnahme : Infinity : null;
         const range = amount => formatDisplayNumber(runway(amount), { allowInfinity: true, fractionDigits: 0 });
         const reach = get('balanceReserveRunway');
-        if (reach) reach.replaceChildren(make('span', 'Reichweite'), make('strong', `${range(view.before.liquidity)}${view.after ? ` → ${range(view.after.liquidity)}` : ''} Monate`));
+        if (reach) reach.replaceChildren(make('span', 'Reichweite'), make('strong', `${range(view.before.liquidity)}${shown.after ? ` → ${range(view.after.liquidity)}` : ''} Monate`));
         const gold = input.goldAktiv === true || input.goldWert > 0;
         const rows = get('balanceReserveRows');
         if (rows) { rows.replaceChildren(); if (gold) { const row = make('div', '', 'balance-row ds-row'); row.append(make('span', 'Gold-Bestand'), make('strong', money(input.goldWert))); rows.append(row); } }
@@ -813,13 +855,13 @@ export class SummaryRenderer {
             ? formatDisplayNumber(null, { applicable: false, reason: 'kein positiver Zielbetrag' })
             : formatDisplayNumber(diagnostics.targetCoveragePct, { unit: 'percent', fractionDigits: 0 });
         container.append(
-            makeItem('Pflegebucket', UIUtils.formatBalanceCurrency(diagnostics.lockedAmount), `Ziel: ${UIUtils.formatBalanceCurrency(diagnostics.targetInflationAdjusted)}`),
+            makeItem('Pflegereserve', UIUtils.formatBalanceCurrency(diagnostics.lockedAmount), `Ziel: ${UIUtils.formatBalanceCurrency(diagnostics.targetInflationAdjusted)}`),
             makeItem('Operative Liquidität', UIUtils.formatBalanceCurrency(diagnostics.operativeLiquidity), `Brutto: ${UIUtils.formatBalanceCurrency(diagnostics.grossLiquidity)}`),
             makeItem('Zieldeckung', coverage, diagnostics.targetGap > 0 ? `Lücke: ${UIUtils.formatBalanceCurrency(diagnostics.targetGap)}` : 'Ziel gedeckt')
         );
         const policy = document.createElement('div');
         policy.className = 'health-bucket-policy';
-        policy.textContent = diagnostics.releaseReason || 'Keine automatische Pflegebucket-Freigabe in Balance.';
+        policy.textContent = diagnostics.releaseReason || 'Keine automatische Freigabe der Pflegereserve in Balance.';
         container.appendChild(policy);
         if (diagnostics.warning) {
             const warning = document.createElement('div');

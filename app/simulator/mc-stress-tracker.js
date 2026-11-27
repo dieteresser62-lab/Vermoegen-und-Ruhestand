@@ -13,10 +13,15 @@ export function createMonteCarloStressTracker(stressCtxMaster, initialPortfolioV
         yearsAbove45: 0,
         cutYears: 0,
         realWithdrawals: stressYears > 0 ? [] : null,
-        postStressRecoveryYears: null
+        postStressRecoveryYears: null,
+        ruinedInStress: false
     };
 }
 
+/** NG-W (W3): Rückgang eines Laufs, dessen Vermögen aufgebraucht ist. */
+export const RUIN_DRAWDOWN_PCT = 100;
+/** NG-W (W4): Ein Lauf, dessen Entnahmerate bis zu seinem Ende nicht wieder unter 3,5 % fällt, hat keine Erholungsdauer. */
+export const STRESS_NO_RECOVERY = -1;
 
 /** @param {StressTracker} tracker
  * @param {number} simulationsJahr
@@ -51,6 +56,13 @@ export function recordMonteCarloStressYear(
     }
 }
 
+/** NG-W (W3): Ist das Vermögen in der Stressphase aufgebraucht, zählt der Lauf dort mit 100 % Rückgang.
+ * @param {StressTracker} tracker
+ * @param {number} simulationsJahr */
+export function recordMonteCarloStressRuin(tracker, simulationsJahr) {
+    if (tracker?.stressYears > 0 && simulationsJahr < tracker.stressYears) tracker.ruinedInStress = true;
+}
+
 /** @param {StressTracker} tracker
  * @param {number} simulationsJahr */
 export function recordMonteCarloStressZeroWithdrawal(tracker, simulationsJahr) {
@@ -77,14 +89,14 @@ export function writeMonteCarloStressMetrics(
 ) {
     if (tracker.stressYears > 0) {
         const { maxDDpct: stressMaxDD } = computeRunStatsFromSeries(tracker.portfolioValues);
-        stress_maxDrawdowns[index] = stressMaxDD;
+        stress_maxDrawdowns[index] = tracker.ruinedInStress ? RUIN_DRAWDOWN_PCT : stressMaxDD;
         stress_timeQuoteAbove45[index] = (tracker.yearsAbove45 / tracker.stressYears) * 100;
         stress_cutYears[index] = tracker.cutYears;
         stress_CaR_P10_Real[index] = /** @type {number[]} */ (tracker.realWithdrawals).length > 0
             ? /** @type {import('../../typcheck/rechenkern-integration').Quantile} */ (quantile)(/** @type {number[]} */ (tracker.realWithdrawals), 0.10)
             : 0;
         stress_recoveryYears[index] = tracker.postStressRecoveryYears === null
-            ? tracker.stressYears
+            ? STRESS_NO_RECOVERY
             : tracker.postStressRecoveryYears;
         return;
     }
@@ -94,4 +106,17 @@ export function writeMonteCarloStressMetrics(
     stress_cutYears[index] = 0;
     stress_CaR_P10_Real[index] = 0;
     stress_recoveryYears[index] = 0;
+}
+
+/** NG-W (W4): Nur erholte Läufe gehen in den Median der Erholungsdauer ein; Läufe ohne Erholung zählen getrennt.
+ * Ohne Stressphase bleibt das bisherige Ergebnis (Median 0).
+ * @param {NumericArray} values Erholungsjahre je Lauf aus writeMonteCarloStressMetrics.
+ * @param {boolean} stressActive
+ * @returns {{p50: number|null, recoveredCount?: number, noRecoveryCount?: number}} */
+export function summarizeStressRecovery(values, stressActive) {
+    const median = /** @type {import('../../typcheck/rechenkern-integration').Quantile} */ (quantile);
+    if (!stressActive) return { p50: median(values, 0.50) };
+    const recovered = Array.from(values).filter(value => value > 0);
+    const noRecoveryCount = Array.from(values).filter(value => value === STRESS_NO_RECOVERY).length;
+    return { p50: recovered.length > 0 ? median(recovered, 0.50) : null, recoveredCount: recovered.length, noRecoveryCount };
 }

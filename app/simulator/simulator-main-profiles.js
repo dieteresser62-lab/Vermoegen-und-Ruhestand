@@ -41,24 +41,12 @@ import { renderSuiteHousehold } from '../shared/suite-frame.js';
 
 const PROFILE_RECOVERY_CONTROL_IDS = Object.freeze([
     'mcButton',
-    'btButton',
-    'sweepButton',
-    'sweepSelfTestButton',
-    'findBestButton',
-    'sensitivityButton',
-    'paretoButton',
-    'ao_run_btn',
-    'ao_apply_btn'
+    'btButton'
 ]);
 
 const PROFILE_RECOVERY_GUARDED_ACTIONS = Object.freeze([
     'runMonteCarlo',
-    'runBacktest',
-    'runParameterSweep',
-    'runSweepSelfTest',
-    'findAndDisplayBest',
-    'showSensitivityAnalysis',
-    'showParetoDialog'
+    'runBacktest'
 ]);
 
 function setProfileRecoveryControlsBlocked(blocked) {
@@ -104,39 +92,6 @@ function installProfileRecoveryActionGuards(updateStatus) {
     window.__profileRecoveryActionGuardsInstalled = true;
 }
 
-function installProfileRecoveryLocalActionGuards(updateStatus) {
-    if (typeof window === 'undefined' || window.__profileRecoveryLocalActionGuardsInstalled) return;
-    document.addEventListener('click', event => {
-        const action = /** @type {HTMLElement} */ (/** @type {HTMLElement} */ (event.target)?.closest?.('#ao_run_btn, #ao_apply_btn'));
-        const blocker = window.__profileRecoveryBlocker || window.__personDataBlocker;
-        if (!action || !blocker) return;
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        setProfileRecoveryControlsBlocked(true);
-        window.__profileRecoveryBlockedActionCount =
-            (window.__profileRecoveryBlockedActionCount || 0) + 1;
-        updateStatus(
-            blocker.status && blocker.status !== 'corrupt' ? blocker.message : `Profil-Recovery erforderlich: ${blocker.message || 'Profildaten konnten nicht sicher geladen werden.'}`,
-            'error'
-        );
-    }, true);
-
-    const runButton = /** @type {HTMLButtonElement} */ (document.getElementById('ao_run_btn'));
-    if (runButton && typeof MutationObserver === 'function') {
-        const observer = new MutationObserver(() => {
-            if ((window.__profileRecoveryBlocker || window.__personDataBlocker) && !runButton.disabled) {
-                setProfileRecoveryControlsBlocked(true);
-            }
-        });
-        observer.observe(runButton, {
-            attributes: true,
-            attributeFilter: ['disabled']
-        });
-        window.__profileRecoveryAutoOptimizeObserver = observer;
-    }
-    window.__profileRecoveryLocalActionGuardsInstalled = true;
-}
-
 /**
  * @returns Ergebnis der Operation.
  */
@@ -159,8 +114,7 @@ export function initSimulatorProfileSelection() {
         return;
     }
     const renderList = profiles => {
-        listContainer.textContent = 'Haushalt: ' + profiles.filter(profile => profile.belongsToHousehold !== false)
-            .map(profile => profile.name || profile.id).join(', ');
+        listContainer.textContent = 'Haushalt: ' + profiles.map(profile => profile.name || profile.id).join(', ');
     };
 
     const updateStatus = (message, kind = '') => {
@@ -181,7 +135,6 @@ export function initSimulatorProfileSelection() {
             };
         }
         setProfileRecoveryControlsBlocked(true);
-        renderSimulatorProfileRecovery(`Profil-Recovery erforderlich: ${window.__profileRecoveryBlocker.message || 'Profildaten konnten nicht sicher geladen werden.'}`);
     };
 
     const unblockProfileSimulation = () => {
@@ -193,7 +146,6 @@ export function initSimulatorProfileSelection() {
     };
 
     installProfileRecoveryActionGuards(updateStatus);
-    installProfileRecoveryLocalActionGuards(updateStatus);
 
     const applySelectionUnchecked = () => {
         let readiness = readHouseholdPersonStatus();
@@ -214,12 +166,11 @@ export function initSimulatorProfileSelection() {
 
         const plan = readSimulatorHouseholdPlan();
         const planValues = plan.status === 'valid' ? plan.entry.values : null;
-        const selected = profiles.filter(p => p.belongsToHousehold !== false);
         const currentId = getCurrentProfileId();
         readiness = readHouseholdPersonStatus();
         setDocumentPersonStatus(document, readiness);
         window.__personDataBlocker = readiness.ready ? null : readiness;
-        renderSuiteHousehold(selected);
+        renderSuiteHousehold(profiles);
         showPersonDataStatus(readiness);
 
         if (readiness.status === 'demo') {
@@ -241,10 +192,10 @@ export function initSimulatorProfileSelection() {
         // Convert each profile into simulator inputs before aggregation.
         const balanceRaw = persistenceStorage.getItem(CONFIG.STORAGE.LS_KEY);
         const referenceYear = personReferenceYear(balanceRaw ? JSON.parse(balanceRaw).annualPeriodMetadata : null);
-        const profileInputs = selected.map(meta => {
+        const profileInputs = profiles.map(meta => {
             const data = getProfileData(meta.id);
             try {
-                const inputs = buildSimulatorInputsFromProfileData(data, { referenceYear, planValues, profileId: meta.id });
+                const inputs = buildSimulatorInputsFromProfileData(data, { referenceYear, planValues });
                 const legacyHouseholdNeeds = planValues ? null : Object.fromEntries(
                     HOUSEHOLD_SIMULATOR_NEED_FIELD_IDS.map(fieldId => [
                         fieldId,
@@ -273,15 +224,15 @@ export function initSimulatorProfileSelection() {
             }
         });
 
-        const primaryId = getHouseholdPrimaryProfileId(selected);
+        const primaryId = getHouseholdPrimaryProfileId(profiles);
 
-        const { combined, warnings } = combineSimulatorProfiles(profileInputs, primaryId, { planValues });
+        const { combined, warnings, errorCode } = combineSimulatorProfiles(profileInputs, primaryId, { planValues });
 
         if (!combined) {
             const blockingMessage = Array.isArray(warnings) && warnings.length
                 ? warnings.join(' ')
                 : 'Profil-Daten fuer Simulator fehlen.';
-            blockProfileSimulation({ message: blockingMessage });
+            blockProfileSimulation({ message: blockingMessage, status: errorCode === 'SIMULATOR_PROFILE_ASSET_PROVENANCE_MISSING' ? 'missing' : undefined });
             updateStatus(blockingMessage, 'error');
             return false;
         }
@@ -313,7 +264,7 @@ export function initSimulatorProfileSelection() {
                 : null;
         }
 
-        applyCombinedInputsToUI(combined, selected.length, householdNeedOverrides, planValues);
+        applyCombinedInputsToUI(combined, profiles.length, householdNeedOverrides, planValues);
         renderSimulatorPlanTrial(document, { project: true });
         unblockProfileSimulation();
         initializePersonOverrides(profileInputs, primaryId, referenceYear);
@@ -330,7 +281,7 @@ export function initSimulatorProfileSelection() {
         if (statusWarnings.length > 0) {
             updateStatus(statusWarnings.join(' '), 'error');
         } else {
-            updateStatus(`Haushalt: ${selected.length} ${selected.length === 1 ? 'Person' : 'Personen'}`, 'ok');
+            updateStatus(`Haushalt: ${profiles.length} ${profiles.length === 1 ? 'Person' : 'Personen'}`, 'ok');
         }
         return true;
     };

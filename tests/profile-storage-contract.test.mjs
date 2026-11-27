@@ -14,6 +14,7 @@ import { hasProfileScopedDataInLocalStorage } from '../app/profile/profile-live-
 // Jede öffentliche Bindung muss dasselbe Objekt wie am Definitionsort liefern.
 const expected = {
     HOUSEHOLD_OWNED_BALANCE_STATE_KEYS: ownership.HOUSEHOLD_OWNED_BALANCE_STATE_KEYS,
+    HOUSEHOLD_BALANCE_STATE_FIELDS: ownership.HOUSEHOLD_BALANCE_STATE_FIELDS,
     createProfileOwnedBalanceState: ownership.createProfileOwnedBalanceState,
     mergeProfileLiveData: ownership.mergeProfileLiveData,
     PROFILE_LIVE_BASE_KEY: liveBase.PROFILE_LIVE_BASE_KEY,
@@ -31,7 +32,6 @@ const expected = {
     getProfileData: registry.getProfileData,
     createProfile: registry.createProfile,
     renameProfile: registry.renameProfile,
-    setProfileVerbundMembership: registry.setProfileVerbundMembership,
     updateProfileData: registry.updateProfileData,
     getActiveProfileId: registry.getActiveProfileId,
     ensureProfileRegistry: registry.ensureProfileRegistry,

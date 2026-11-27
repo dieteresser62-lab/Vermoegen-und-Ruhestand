@@ -10,7 +10,6 @@ import { exportProfilesBundle, importProfilesBundle } from '../app/profile/profi
 import { buildSimulatorInputsFromProfileData, combineSimulatorProfiles } from '../app/simulator/simulator-profile-inputs.js';
 import { playFixture } from './helpers/probelauf-area-fixture.mjs';
 import { PersistenceFacade as P, resetPersistenceForTests } from '../app/shared/persistence-facade.js';
-import { previewPersonExport, previewPersonImport, importPersonFile } from '../app/profile/profile-person-file.js';
 import { syncManagerCareToday } from '../app/tranches/tranchen-manager-care.js';
 import { renderCareTodaySummary } from '../app/simulator/simulator-care-today-ui.js';
 import { projectPersonPension } from '../app/profile/profile-person-data.js';
@@ -81,11 +80,6 @@ assertEqual(after.engineInput.renteMonatlich, before.engineInput.renteMonatlich 
 }
 {
     const f = await playFixture('tauri', storage.records); let controller = await f.boot();
-    const realBytes = f.realBytes();
-    const exported = await previewPersonExport(id);
-    assertEqual(exported.file.registry.profiles[id].data[CARE_VALUE_KEYS.grade], '2', 'Ein-Person-Datei enthält den heutigen Grad');
-    const draft = await previewPersonImport(exported.file); const imported = await importPersonFile(draft);
-    assertEqual(JSON.parse(P.getItemSync('rs_profiles_v1')).profiles[imported.id].data[CARE_VALUE_KEYS.progression], 'slower', 'Personenimport erhält den Verlauf');
     const baseline = f.realBytes();
     await controller.start(() => ({ source: 'copy', testDate: '2026-12-15' })); controller = await f.boot();
     assertEqual(P.getItemSync(CARE_VALUE_KEYS.grade), '2', 'Spielbereich kopiert den heutigen Grad');
@@ -100,7 +94,6 @@ assertEqual(after.engineInput.renteMonatlich, before.engineInput.renteMonatlich 
     assertEqual(P.getItemSync(CARE_VALUE_KEYS.grade), '2', 'Nach Spielbereichende ist der echte Pflegegrad wieder da');
     assertEqual(P.getItemSync('sim_pflegeStufe2Form'), 'family', 'Spielbereichende stellt die echte Pflegeform wieder her');
     assertEqual(f.realBytes(), baseline, 'Rückkehr erhält alle echten Bytes');
-    assert(realBytes !== baseline, 'Vorheriger Personenimport wurde tatsächlich dauerhaft gespeichert');
     resetPersistenceForTests();
 }
 

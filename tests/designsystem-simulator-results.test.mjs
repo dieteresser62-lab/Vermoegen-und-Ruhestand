@@ -1,7 +1,6 @@
 import { prepareMonteCarloViewModel, buildSummaryData } from '../app/simulator/results-metrics.js';
 import { buildMonteCarloOutcomeInventoryV1 } from '../app/simulator/monte-carlo-chunk-result.js';
 import { renderKpiCard, renderKpiDashboard, renderSummary } from '../app/simulator/results-renderers.js';
-import { renderStressReplayComparisonV1, renderStressReplayPatchPreviewV1, renderStressReplayVariantListV1 } from '../app/simulator/stress-replay-renderer.js';
 import { renderWorstRunLog } from '../app/simulator/simulator-results.js';
 import { readSources, validateSimulatorResults, validateSimulatorResultMarkup, validateFoundation, createPresentationTestDocument, rules, variables, resolveValue, contrast } from './designsystem-source-contract.mjs';
 import { crisisPercent, projectBacktestOverview, renderSimulatorOverview, setOverviewBacktestStatus } from '../app/simulator/simulator-result-overview.js';
@@ -107,16 +106,9 @@ try {
         renderKpiDashboard(dashboard, vm.kpiDashboard); fragments.push(dashboard.innerHTML);
         fragments.push(...vm.kpiDashboard.primary.map(renderKpiCard));
     }
-    for (const options of [{}, { error: new Error('Synthetischer Patchfehler') }, { preview: { materialChangeGroups: ['dynamicFlex'], warnings: ['multi_factor'] } }]) fragments.push(renderStressReplayPatchPreviewV1(options));
-    fragments.push(renderStressReplayVariantListV1({ workspace: { variants: [{ id: 'baseline', role: 'baseline', label: 'Baseline' }, { id: 'alternative', role: 'alternative', label: 'Variante', materialChangeGroups: ['dynamicFlex'] }] } }));
-    fragments.push(renderStressReplayComparisonV1({}), renderStressReplayComparisonV1({ comparisonState: { status: 'error', error: { code: 'SYNTHETIC_ERROR', message: 'Synthetischer Fehler' } } }));
-    fragments.push(renderStressReplayComparisonV1({ comparison: {
-        overallStatus: 'blocked_technical_error', variants: [{ variantId: 'baseline', label: 'Baseline', summary: {} }, { variantId: 'alternative', label: 'Variante', summary: {} }],
-        pairwise: [{ variantId: 'alternative', comparable: false }]
-    }, results: [{ variantId: 'baseline', yearResults: [{ yearIndex: 0, nominalValueEur: 100 }] }] }));
     fragments.push(renderWorstRunLog([{ jahr: 1, dynamik: { refillAmount: 12, goldTradeAmount: -3 } }], undefined));
     const sources = readSources();
-    assertEqual(validateSimulatorResults(sources, fragments).join('\n'), '', 'Originale Quellen und tatsächlich erzeugte Ergebnis-/Replay-/Logstile bestehen');
+    assertEqual(validateSimulatorResults(sources, fragments).join('\n'), '', 'Originale Quellen und tatsächlich erzeugte Ergebnis- und Logstile bestehen');
     assertEqual(validateFoundation(sources).join('\n'), '', 'Ergebniserzeuger behalten den Grundvertrag');
     for (const [path, mutate, expected] of [
         ['simulator.css', s => s.replace('.kpi-card .kpi-description {', '.kpi-card .kpi-description { opacity: 0.6;'), 'Textdeckkraft'],
@@ -134,7 +126,6 @@ try {
     for (const bad of [
         renderKpiCard({ title: 'Test', value: '0 %', tone: 'default' }).replace('ds-metric', ''),
         fragments.find(s => s.includes('mc-wealth-summary')).replace('summary-item ds-card', 'summary-item'),
-        renderStressReplayPatchPreviewV1({ error: 'Fehler' }).replace('ds-note-error', ''),
         '<p style="color: #777">Text</p>', '<p style="opacity: .8">Text</p>'
     ]) assert(validateSimulatorResultMarkup(bad).length > 0, 'Gegenprobe im tatsächlich erzeugten Markup abgewiesen');
 } finally {
@@ -242,18 +233,18 @@ try {
         && rule.declarations['min-width'] === '760px'), 'Verteilungsdiagramm behält seine bisherige Mindestbreite');
     // SE-2: Die Auswahl steht in einer eigenen Karte; die Liste scrollt in einem Kasten fester Höchsthöhe.
     assert(css.includes('.scenario-selection-pane { position: relative; min-height: 0; }')
-        && css.includes('.scenario-list { flex: 1; min-height: 0; max-height: 300px; overflow-y: auto;'), 'Liste scrollt in einem eigenen begrenzten Kasten');
+        && css.includes('.scenario-list { flex: 1; min-height: 0; max-height: 480px; overflow-y: auto;'), 'Liste scrollt in einem eigenen begrenzten Kasten');
     const selectionInOwnCard = source => {
         const declarations = selector => rules('simulator.css', source).find(rule => rule.selector === selector)?.declarations;
         const disclosure = declarations('#scenarioSelectionDisclosure');
         const content = declarations('.scenario-selection-content');
         const list = declarations('.scenario-list');
         return disclosure?.position === 'static' && content?.position === 'static'
-            && content.display === 'flex' && content['flex-direction'] === 'column' && list?.['max-height'] === '300px';
+            && content.display === 'flex' && content['flex-direction'] === 'column' && list?.['max-height'] === '480px';
     };
-    assert(selectionInOwnCard(css), 'R-02: Auswahl fließt in ihrer Karte, die Liste ist auf 300 px begrenzt');
+    assert(selectionInOwnCard(css), 'R-02: Auswahl fließt in ihrer Karte, die Liste ist auf 480 px begrenzt');
     for (const regression of [
-        css.replace('.scenario-list { flex: 1; min-height: 0; max-height: 300px;', '.scenario-list { flex: 1; min-height: 0;'),
+        css.replace('.scenario-list { flex: 1; min-height: 0; max-height: 480px;', '.scenario-list { flex: 1; min-height: 0;'),
         css.replace('#scenarioSelectionDisclosure { position: static;', '#scenarioSelectionDisclosure { position: absolute;')
     ]) assert(regression !== css && !selectionInOwnCard(regression), 'R-02: fehlende Listenbegrenzung oder absolute Auswahl verletzen den Quelltextvertrag');
     assert(/@media print\s*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\.scenario-selection-content\s*\{ position: static; inset: auto; height: auto; max-height: none; \}/.test(css),
@@ -271,8 +262,7 @@ try {
     for (const [id, label] of [['toggle-log-detail', 'Detailliert'], ['toggle-care-details', 'Pflege-Spalten']]) {
         assert(new RegExp(`id="${id}"[^>]*><span class="ds-slider" aria-hidden="true"></span><span>${label}</span>`).test(html), `${id}: native Checkbox und kompakte Beschriftung erhalten`);
     }
-    for (const format of ['Json', 'Csv']) assert(new RegExp(`id="exportScenarioLog${format}"[^>]*aria-label="${format.toUpperCase()} herunterladen"><svg aria-hidden="true"`).test(html), `${format}: eindeutiger Downloadknopf mit verborgenem Symbol`);
-    assert(html.includes('Den hier gewählten Lauf kannst du anschließend im Stresspfad-Replay fixieren.'), 'Replayhinweis verwendet Du-Form');
+    for (const format of ['Json', 'Csv']) assert(new RegExp(`id="exportScenarioLog${format}"[^>]*aria-label="${format.toUpperCase()} exportieren"><svg aria-hidden="true"`).test(html), `${format}: eindeutiger Downloadknopf mit verborgenem Symbol`);
 }
 
 // Begrenztes Kaskadenorakel für die vier Altregeln und die lokalen Buttonregeln.
@@ -337,7 +327,7 @@ try {
             const actual = cascade(css, node, state);
             const expected = { 'background-color': selected || state === 'active' ? 'var(--accent-soft)' : 'var(--surface)',
                 color: state === 'disabled' ? 'var(--text-muted)' : 'var(--text-main)',
-                width: '100%', padding: '8px',
+                width: '100%', padding: 'var(--space-1) var(--space-2)',
                 margin: '0 0 4px', 'font-size': 'var(--text-dense)' };
             for (const [key, value] of Object.entries(expected)) if (actual[key] !== value) errors.push(`${node.attrs['data-scenario-id']}/${state}/${key}`);
             if (actual.transform || actual['margin-top']) errors.push(`${state}: alter Knopfversatz`);

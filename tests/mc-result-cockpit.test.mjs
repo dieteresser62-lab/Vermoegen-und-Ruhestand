@@ -1,13 +1,11 @@
-import { bindScenarioLogView, disposeScenarioLogView } from '../app/simulator/scenario-log-view.js';
 import fs from 'node:fs';
 import { tokenizeHTML } from './funktionsinventar-contract.mjs';
 import {
     activateMonteCarloResultView,
-    activateStressReplayComparisonView,
     completeMonteCarloCockpitRun,
     initMonteCarloResultCockpit,
+    revealMonteCarloResult,
     syncMonteCarloCockpitStartState,
-    updateMonteCarloReplayVariantBadge,
     updateMonteCarloSetupSummary
 } from '../app/simulator/mc-result-cockpit.js';
 
@@ -83,8 +81,6 @@ function createDocument() {
     register('mcWorkerBudget', { value: '500' });
     register('mcCompareMode', { checked: false });
     register('telemetryToggle', { checked: false });
-    register('mcShowReplayButton');
-    register('mcShowScenarioLogsButton');
     register('mcAnzahl', { value: '10000' });
     register('mcDauer', { value: '35' });
     register('mcSeed', { value: '12345' });
@@ -96,8 +92,6 @@ function createDocument() {
     for (const id of ['mcSetupSummaryRuns', 'mcSetupSummaryDuration', 'mcSetupSummaryMethod', 'mcSetupSummarySeed']) {
         register(id);
     }
-    const mainPanels = ['montecarlo', 'werkstatt'].map(id => register('tab-' + id));
-    const toolPanels = ['replay', 'sweep', 'optimize'].map(id => register(id === 'replay' ? 'workshopReplayPanel' : id === 'sweep' ? 'tab-sweep' : 'tab-auto-optimize', { hidden: id !== 'replay' }));
     const selectorElements = new Map();
     for (const viewId of ['overview', 'risk', 'care', 'logs', 'decision']) {
         const capitalized = viewId[0].toUpperCase() + viewId.slice(1);
@@ -106,16 +100,10 @@ function createDocument() {
         selectorElements.set(`[role="tab"][data-mc-view="${viewId}"]`, tab);
         selectorElements.set(`[role="tabpanel"][data-mc-view-panel="${viewId}"]`, panel);
     }
-    register('mcReplayVariantBadge', { hidden: true });
-    register('stressReplayVariantList', { variantItems: 0 });
-    register('stressReplayComparison', { queryResults: new Map() });
-    register('stressReplayStatus');
-    register('stressReplaySelectedScenario');
-    register('stressReplayFixButton', { disabled: true });
     return {
         elements,
         getElementById: id => elements.get(id) || null,
-        querySelectorAll: selector => selector === '.tab-panel' ? mainPanels : selector === '[data-workshop-panel]' ? toolPanels : [],
+        querySelectorAll: () => [],
         querySelector: selector => selectorElements.get(selector) || null
     };
 }
@@ -123,15 +111,11 @@ function createDocument() {
 console.log('Test 1: cockpit initialization is idempotent and projects raw setup values');
 {
     const documentRef = createDocument();
-    const first = initMonteCarloResultCockpit({ documentRef, MutationObserverCtor: null });
-    const second = initMonteCarloResultCockpit({ documentRef, MutationObserverCtor: null });
+    const first = initMonteCarloResultCockpit({ documentRef });
+    const second = initMonteCarloResultCockpit({ documentRef });
     assert(first === second, 'cockpit is initialized exactly once per document');
     assertEqual(documentRef.getElementById('mcViewTabOverview').listeners.get('click').length, 1,
         'repeated initialization does not duplicate result-tab listeners');
-    assertEqual(documentRef.getElementById('mcShowReplayButton').listeners.get('click').length, 1,
-        'repeated initialization does not duplicate the replay-link listener');
-    assertEqual(documentRef.getElementById('mcShowScenarioLogsButton').listeners.get('click').length, 1,
-        'repeated initialization does not duplicate the scenario-log-link listener');
     assertEqual(documentRef.getElementById('mcSetupSummaryRuns').textContent, '10.000', 'Laufzahl wird im Kopf deutsch formatiert');
     assertEqual(documentRef.getElementById('mcSetupSummaryDuration').textContent, '35', 'duration is projected without normalization');
     assertEqual(documentRef.getElementById('mcSetupSummaryMethod').textContent, 'Regime-Sampling (Markov-Chain)', 'selected method label is projected');
@@ -152,7 +136,7 @@ console.log('Test 1: cockpit initialization is idempotent and projects raw setup
 console.log('Test 2: ein Kopfknopf und technische Abweichungen');
 {
     const documentRef = createDocument();
-    assert(initMonteCarloResultCockpit({ documentRef, MutationObserverCtor: null }), 'Cockpit benötigt keinen zweiten Startknopf');
+    assert(initMonteCarloResultCockpit({ documentRef }), 'Cockpit benötigt keinen zweiten Startknopf');
     assertEqual(documentRef.getElementById('mcRecalculateButton'), null, 'Keine delegierende Startaktion');
     assert(!documentRef.getElementById('mcSetupDisclosure').open && !documentRef.getElementById('mcAdvancedDisclosure').open, 'Initialisierung schließt beide Klappen');
     const output = documentRef.getElementById('mcAdvancedSummary');
@@ -173,7 +157,7 @@ console.log('Test 2: ein Kopfknopf und technische Abweichungen');
 console.log('Test 3: only successful completion closes setup and refreshes its summary');
 {
     const documentRef = createDocument();
-    initMonteCarloResultCockpit({ documentRef, MutationObserverCtor: null });
+    initMonteCarloResultCockpit({ documentRef });
     const disclosure = documentRef.getElementById('mcSetupDisclosure');
     disclosure.open = true;
     syncMonteCarloCockpitStartState({ documentRef });
@@ -188,8 +172,7 @@ console.log('Test 4: Simulator DOM keeps cockpit contracts and ordering');
 {
     const html = fs.readFileSync(new URL('../Simulator.html', import.meta.url), 'utf8');
     const css = fs.readFileSync(new URL('../simulator.css', import.meta.url), 'utf8');
-    const resultsSource = fs.readFileSync(new URL('../app/simulator/simulator-results.js', import.meta.url), 'utf8');
-    for (const id of ['mcButton', 'mcCancelButton', 'mcRunStatus', 'monteCarloResults', 'stressReplayWorkspace', 'scenarioSelector', 'print-footer']) {
+    for (const id of ['mcButton', 'mcCancelButton', 'mcRunStatus', 'monteCarloResults', 'scenarioSelector', 'print-footer']) {
         assertEqual((html.match(new RegExp(`id="${id}"`, 'g')) || []).length, 1, `${id} remains unique`);
     }
     assert(!/<details id="mcSetupDisclosure"[^>]* open>/.test(html), 'Einstellungen starten geschlossen');
@@ -202,8 +185,7 @@ console.log('Test 4: Simulator DOM keeps cockpit contracts and ordering');
         && tree.elements.some(node => node.attrs.id === 'mcDauer' && insideSetup(node)), 'Anzahl und Zeitraum stehen im Monte-Carlo-Parameterbereich');
     assert(!setup.includes('id="mcButton"') && !html.includes('id="mcRecalculateButton"') && !html.includes('id="overviewRunMonteCarlo"'), 'Einzige Startaktion liegt im Seitenkopf');
     assert(!setup.includes('max-height'), 'setup disclosure has no fixed clipping height');
-    assert(html.indexOf('id="monteCarloResults"') < html.indexOf('id="stressReplayWorkspace"'), 'results precede replay deep-dive');
-    assertEqual((html.match(/class="[^"]*\btab-btn\b[^"]*"/g) || []).length, 5, 'Simulator keeps exactly five main tabs');
+    assertEqual((html.match(/class="[^"]*\btab-btn\b[^"]*"/g) || []).length, 4, 'Simulator keeps exactly four main tabs');
     assertEqual((html.match(/class="(?:[^"]*\s)?mc-view-tab(?:\s[^"]*)?"/g) || []).length, 5, 'cockpit exposes exactly five dedicated result tabs');
     assertEqual((html.match(/class="mc-view-panel"/g) || []).length, 5, 'cockpit exposes exactly five dedicated result panels');
     const logsPanel = html.match(/id="mcViewPanelLogs"[\s\S]*?<\/section>\s*<section id="mcViewPanelDecision"/)?.[0] || '';
@@ -214,29 +196,10 @@ console.log('Test 4: Simulator DOM keeps cockpit contracts and ordering');
     assert(!html.includes('data-mc-view="replay"') && !html.includes('mcViewPanelReplay'), 'Kein fünftes Replaypanel verbleibt');
     const printRules = [...css.matchAll(/@media print\s*\{([\s\S]*?)\n\}/g)]
         .map(match => match[1]).join('\n');
-    assert(/#tab-montecarlo, #tab-werkstatt, #workshopReplayPanel\[hidden\], #workshopReplayPanel, #tab-sweep, #tab-sweep\[hidden\], #tab-auto-optimize, #tab-auto-optimize\[hidden\]\s*\{\s*display:\s*block\s*!important;/s.test(printRules),
-        'Druck öffnet MC-/Werkstattahnen und Replay auch mit hidden');
-    assert(/#tab-werkstatt > \.sim-page-head, #tab-werkstatt button\s*\{\s*display:\s*none\s*!important;/s.test(printRules),
-        'Druck blendet Werkzeugkopf und Aktionen aus');
-    assert(/#tab-sweep\[hidden\].*#tab-auto-optimize\[hidden\].*display: block !important/.test(printRules),
-        'Druck zeigt auch geschlossene Werkzeuge; DOM-Auswahl bleibt erhalten');
-    assert(html.includes('id="mcShowReplayButton"'), 'scenario logs expose the replay navigation action');
-    assert(logsPanel.indexOf('id="mcShowReplayButton"') < logsPanel.indexOf('id="scenarioLogContainer"'),
-        'replay navigation remains visible before the legacy scenario-log container is populated');
-    for (const id of ['stressReplaySelectedScenario', 'stressReplaySelectedScenarioLabel',
-        'stressReplaySelectedScenarioWealth', 'stressReplaySelectedScenarioCare', 'mcShowScenarioLogsButton']) {
-        assertEqual((html.match(new RegExp(`id="${id}"`, 'g')) || []).length, 1, `${id} remains unique`);
-    }
+    assert(/#tab-montecarlo\s*\{\s*display:\s*block\s*!important;/s.test(printRules), 'Druck öffnet den Monte-Carlo-Reiter auch verborgen');
+    assert(!/werkstatt|workshop|stress-replay|tab-sweep|auto-optimize/.test(printRules), 'Druckregeln enthalten keine entfernten Werkstattflächen');
+    assert(!html.includes('mcShowReplayButton') && !html.includes('stressReplay'), 'Szenario-Logs bieten keinen Weg in die entfernte Werkstatt');
     assert(html.includes('id="mcSettingsToggle" aria-expanded="false" aria-controls="mcSetupDisclosure"'), 'Nativer Einstellungenkopf behält ID und ARIA ohne verschachtelten Knopf');
-    assertEqual((html.match(/<dt>/g) || []).length >= 7, true, 'replay banner retains all diagnostic terms');
-    assert(/id="stressReplayVariantFields"[\s\S]*?<div class="stress-replay-editor-grid">/.test(html),
-        'focused replay editor grid remains a direct fieldset child');
-    assert(/\.stress-replay-editor-grid\s+\[data-active-when\]\[hidden\]\s*\{[^}]*display:\s*none;/s.test(css),
-        'conditional replay fields keep their hidden state against the editor label layout');
-    assert(/projectStressReplayScenario\(scenario, moneyBasis, results\?\.wealthView\?\.realByRun\);\s*selectStressReplayScenario\(scenario\);/s.test(resultsSource),
-        'the read-only projection and replay controller consume the same resolved scenario in one path');
-    assert((resultsSource.match(/projectStressReplayScenario\(null\)/g) || []).length >= 4,
-        'initial, empty, unresolved and logless paths all clear the read-only projection');
 }
 
 console.log('Test 5: result tabs use one activation path for view ids and contained targets');
@@ -244,7 +207,7 @@ console.log('Test 5: result tabs use one activation path for view ids and contai
     const documentRef = createDocument();
     const overviewTarget = new FakeElement('overviewTarget');
     documentRef.getElementById('mcViewPanelOverview').containedElements.add(overviewTarget);
-    initMonteCarloResultCockpit({ documentRef, MutationObserverCtor: null });
+    initMonteCarloResultCockpit({ documentRef });
 
     assertEqual(activateMonteCarloResultView('logs', { documentRef }), 'logs', 'view id activates logs');
     assertEqual(documentRef.getElementById('mcViewTabLogs').getAttribute('aria-selected'), 'true', 'active tab is selected');
@@ -264,122 +227,13 @@ console.log('Test 5: result tabs use one activation path for view ids and contai
     assertEqual(documentRef.getElementById('mcViewTabOverview').focusCount, 2, 'ArrowRight wraps and focuses the first result tab');
 }
 
-console.log('Test 6: replay variant badge reports alternatives only');
-{
-    const documentRef = createDocument();
-    const list = documentRef.getElementById('stressReplayVariantList');
-    const badge = documentRef.getElementById('mcReplayVariantBadge');
-    list.variantItems = 1;
-    assertEqual(updateMonteCarloReplayVariantBadge({ documentRef }), 0, 'baseline alone is not counted as a variant');
-    assert(badge.hidden, 'zero alternatives keep the badge hidden');
-    list.variantItems = 3;
-    assertEqual(updateMonteCarloReplayVariantBadge({ documentRef }), 2, 'alternatives are derived from the rendered workspace list');
-    assert(!badge.hidden, 'positive alternative count exposes the badge');
-    assertEqual(badge.textContent, '2', 'badge displays the alternative count');
-}
-
-console.log('Test 7: cross-panel scenario navigation focuses only targets in the activated panel');
-{
-    const documentRef = createDocument();
-    const replayPanel = documentRef.getElementById('workshopReplayPanel');
-    const logsPanel = documentRef.getElementById('mcViewPanelLogs');
-    const option = new FakeElement('option');
-    option.setAttribute('data-scenario-id', 'char_worst');
-    const list = new FakeElement('scenarioList');
-    list.queryResults = new Map([['[role="option"]', [option]]]);
-    const disclosure = new FakeElement('scenarioSelectionDisclosure');
-    documentRef.elements.set('scenarioList', list);
-    documentRef.elements.set('scenarioSelectionDisclosure', disclosure);
-    logsPanel.containedElements.add(option);
-    bindScenarioLogView({ document: documentRef, logs: { characteristic: [{ key: 'worst', label: 'Worst', logDataRows: [] }] }, onSelect() {}, onMode() {} });
-    disclosure.open = false;
-    initMonteCarloResultCockpit({ documentRef, MutationObserverCtor: null });
-    activateMonteCarloResultView('logs', { documentRef });
-    const querySelector = documentRef.querySelector;
-    delete documentRef.querySelector;
-    documentRef.getElementById('mcShowReplayButton').click();
-    documentRef.querySelector = querySelector;
-    assert(!replayPanel.hidden && documentRef.getElementById('tab-werkstatt').classList.contains('active'), 'backlink opens the workshop before focusing replay');
-    assertEqual(documentRef.getElementById('stressReplaySelectedScenario').focusCount, 1,
-        'backlink focuses the replay projection before a selectable run exists');
-    assertEqual(option.focusCount, 0, 'backlink never focuses the Option hidden in the logs panel');
-
-    documentRef.getElementById('stressReplayFixButton').disabled = false;
-    activateMonteCarloResultView('logs', { documentRef });
-    documentRef.getElementById('mcShowReplayButton').click();
-    assertEqual(documentRef.getElementById('stressReplayFixButton').focusCount, 1,
-        'backlink prefers the enabled fixation action for a valid run');
-
-    option.focusCalls = [];
-    option.scrollCalls = [];
-    option.onFocus = () => {
-        assert(!logsPanel.hidden && documentRef.getElementById('tab-montecarlo').classList.contains('active'),
-            'Beim Fokusaufruf sind MC und Logs bereits aktiviert');
-        assert(disclosure.open, 'Beim Fokusaufruf ist die Aufklappliste bereits geöffnet');
-    };
-    documentRef.getElementById('mcShowScenarioLogsButton').click();
-    assert(!logsPanel.hidden && documentRef.getElementById('tab-montecarlo').classList.contains('active'), 'return opens Monte-Carlo and the scenario logs before focusing');
-    assertEqual(option.focusCount, 1, 'replay return action focuses the aktuelle Option');
-    assertEqual(option.focusCalls.length, 1, 'Rückweg fokussiert genau die gewählte Option');
-    assert(option.focusCalls[0]?.preventScroll !== true,
-        'Replay-Rückweg erlaubt dem Browser, die Option im Seitenviewport sichtbar zu scrollen');
-
-    assert(disclosure.open, 'Replayrückweg öffnet die schmale Auswahl');
-    disposeScenarioLogView(documentRef);
-    documentRef.getElementById('mcShowReplayButton').click();
-    documentRef.getElementById('mcShowScenarioLogsButton').click();
-    assertEqual(documentRef.getElementById('mcShowReplayButton').focusCount, 1,
-        'replay return action focuses a visible logs-panel fallback before a run');
-}
-
-console.log('Test 8: delegated comparison tabs survive rerender and keep an independent roving focus');
-{
-    const documentRef = createDocument();
-    const root = documentRef.getElementById('stressReplayComparison');
-    const tabSelector = '[role="tab"][data-stress-replay-comparison-view]';
-    const panelSelector = '[role="tabpanel"][data-stress-replay-comparison-panel]';
-    const renderComparison = suffix => {
-        const tabs = ['kpi', 'delta', 'year'].map(viewId => new FakeElement(`${viewId}-${suffix}`, {
-            dataset: { stressReplayComparisonView: viewId }
-        }));
-        const panels = ['kpi', 'delta', 'year'].map((viewId, index) => new FakeElement(`${viewId}-panel-${suffix}`, {
-            dataset: { stressReplayComparisonPanel: viewId }, hidden: index !== 0
-        }));
-        for (const tab of tabs) tab.closest = selector => selector === tabSelector ? tab : null;
-        root.queryResults.set(tabSelector, tabs);
-        root.queryResults.set(panelSelector, panels);
-        return { tabs, panels };
-    };
-
-    const firstRender = renderComparison('first');
-    const first = initMonteCarloResultCockpit({ documentRef, MutationObserverCtor: null });
-    const second = initMonteCarloResultCockpit({ documentRef, MutationObserverCtor: null });
-    assert(first === second, 'comparison delegation shares the cockpit document initialization guard');
-    assertEqual(root.listeners.get('click').length, 1, 'comparison click delegation is registered exactly once');
-    assertEqual(root.listeners.get('keydown').length, 1, 'comparison keyboard delegation is registered exactly once');
-    root.dispatch('click', { target: firstRender.tabs[1] });
-    assert(!firstRender.panels[1].hidden && firstRender.panels[0].hidden, 'pointer activation exposes only Delta');
-
-    const secondRender = renderComparison('second');
-    root.dispatch('keydown', { target: secondRender.tabs[0], key: 'End' });
-    assert(!secondRender.panels[2].hidden && secondRender.panels[0].hidden, 'delegated End resolves the current rerendered panels');
-    assertEqual(secondRender.tabs[2].focusCount, 1, 'keyboard activation focuses the current rerendered tab');
-    root.dispatch('keydown', { target: secondRender.tabs[2], key: 'ArrowRight' });
-    assert(!secondRender.panels[0].hidden, 'comparison ArrowRight wraps independently to Kennzahlen');
-    assertEqual(secondRender.tabs[0].focusCount, 1, 'wrapped comparison tab receives focus');
-    assertEqual(documentRef.getElementById('mcViewTabOverview').getAttribute('aria-selected'), 'true',
-        'comparison keyboard handling does not change the Monte-Carlo view tabs');
-    assertEqual(activateStressReplayComparisonView('unknown', { documentRef }), null,
-        'unknown comparison views fail closed');
-}
-
 updateMonteCarloSetupSummary({ documentRef: null });
 assert(true, 'summary update tolerates an unavailable document');
 
 {
     const documentRef = createDocument();
-    initMonteCarloResultCockpit({ documentRef, MutationObserverCtor: null });
-    initMonteCarloResultCockpit({ documentRef, MutationObserverCtor: null });
+    initMonteCarloResultCockpit({ documentRef });
+    initMonteCarloResultCockpit({ documentRef });
     const toggle = documentRef.getElementById('mcSettingsToggle'), setup = documentRef.getElementById('mcSetupDisclosure');
     assertEqual(setup.listeners.get('toggle').length, 1, 'Nativer Klappkopf wird je Dokument einmal gebunden');
     assertEqual(documentRef.getElementById('mcSettingsAction').textContent, '▸ zeigen', 'Frische Initialisierung zeigt geschlossenen Zustand');
@@ -395,4 +249,31 @@ assert(true, 'summary update tolerates an unavailable document');
     assertEqual(setup.open, true, 'Derselbe Knopf öffnet die vorhandenen Einstellungen');
     completeMonteCarloCockpitRun({ documentRef });
     assertEqual(toggle.getAttribute('aria-expanded'), 'false', 'Erfolgreicher Abschluss synchronisiert den Knopf auch vor dem nativen toggle-Ereignis');
+}
+
+// OP-1 (Punkt 3): Nach dem Lauf stehen Reiterzeile des Simulators, Ergebnisreiter und Überschrift des Ergebnisses gleichzeitig im Bild.
+// Lagen wie gemessen bei Max und Erika (Seitenkoordinaten): Reiter 309–358, Ergebnisreiter 668–714, Ergebnis ab 746, Überschrift bis 799.
+for (const height of [1080, 1440, 400, 60]) {
+    const box = (top, bottom) => ({ getBoundingClientRect: () => ({ top: top - win.scrollY, bottom: bottom - win.scrollY, height: bottom - top }) });
+    const win = { scrollY: 746, innerHeight: height, scrollTo({ top }) { this.scrollY = top; } };
+    const tabs = box(309, 358), nav = box(668, 714), heading = box(771, 799);
+    const result = { ...box(746, 2339), querySelector: selector => selector === 'h2' ? heading : null };
+    const documentRef = { defaultView: win, querySelector: selector => ({ '.tab-buttons': tabs, '.mc-view-nav': nav })[selector] || null };
+    const moved = revealMonteCarloResult(result, { documentRef });
+    const visible = element => { const rect = element.getBoundingClientRect(); return rect.top >= 0 && rect.bottom <= height; };
+    if (height >= 1080) assert(moved && visible(tabs) && visible(nav) && visible(heading), `OP-1 Punkt 3: ${height} px zeigt Reiterzeile, Ergebnisreiter und Überschrift zugleich`);
+    else if (height === 400) assert(moved && !visible(tabs) && visible(nav) && visible(heading), 'OP-1 Punkt 3: niedriges Fenster beginnt bei den Ergebnisreitern');
+    else assertEqual(moved, false, 'OP-1 Punkt 3: passt nichts davon, bleibt das bisherige Fokus-Scrollen');
+}
+
+// OP-1 Nachtrag 3 (P2-1): Endet der Lauf, während ein anderer Simulator-Reiter offen ist, bleibt die Seite stehen.
+for (const [active, height, expected, label] of [[false, 0, false, 'anderer Reiter offen'], [true, 0, false, 'Ergebnis verborgen'], [true, 1593, true, 'Monte-Carlo-Reiter offen']]) {
+    const win = { scrollY: 120, innerHeight: 1080, scrollTo({ top }) { this.scrollY = top; } };
+    const box = (top, bottom) => ({ getBoundingClientRect: () => ({ top: top - win.scrollY, bottom: bottom - win.scrollY, height: bottom - top }) });
+    const panel = { classList: { contains: name => name === 'active' && active } };
+    const result = { getBoundingClientRect: () => ({ top: 746 - win.scrollY, bottom: 746 + height - win.scrollY, height }),
+        closest: selector => selector === '.tab-panel' ? panel : null, querySelector: () => null };
+    const documentRef = { defaultView: win, querySelector: selector => ({ '.tab-buttons': box(309, 358), '.mc-view-nav': box(668, 714) })[selector] || null };
+    assertEqual(revealMonteCarloResult(result, { documentRef }), expected, `OP-1 P2-1: ${label}`);
+    assertEqual(win.scrollY, expected ? 293 : 120, `OP-1 P2-1: Scrollstand bei „${label}“`);
 }

@@ -1,8 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input-storage.js';
 import { resolveDynamicFlexRunnerHorizon } from '../app/simulator/dynamic-flex-runner-horizon.js';
-import { createBalanceExportDocument, normalizeBalanceImportDocument } from '../app/balance/balance-binder-imports.js';
-import { HOUSEHOLD_PLAN_KEY, buildPlanRecord, planScope, stripBalancePlanInputs } from '../app/profile/household-plan.js';
+import { HOUSEHOLD_PLAN_KEY } from '../app/profile/household-plan.js';
 import { CONFIG } from '../app/balance/balance-config.js';
 import { setAppTestDate } from '../app/shared/app-clock.js';
 
@@ -44,27 +43,7 @@ for (const variant of fixture.variants) for (const yearIndex of [0, 1, 10]) {
         if (settings.longevityMode !== 'none') assertEqual(json(calc.engineInput.longevityHorizonDiagnostics), json(sim.diagnostics),
             label + ': gleiche Rohdauer und einmaliger Aufschlag');
         assertEqual(json(records), before, 'Lesender Altbestands- und Jahresbelegpfad');
-        const payload = { ...calc.persistentState, inputs: stripBalancePlanInputs(calc.inputData) };
-        const exported = createBalanceExportDocument(payload, { householdPlan: calc.householdPlan });
-        assertEqual(exported.validationWarnings, undefined, label + ': bestehender Dateivertrag bleibt gültig');
-        assertEqual(normalizeBalanceImportDocument(exported).payload.inputs.horizonYears, variant.runnerInput.horizonYears,
-            'Export und Wiederherstellung behalten die konfigurierte Planvorgabe');
     }
-}
-
-{
-    const variant = fixture.variants[0], records = structuredClone(variant.records);
-    const registry = JSON.parse(records.rs_profiles_v1);
-    registry.profiles.muster_a.meta.belongsToHousehold = false;
-    records.rs_profiles_v1 = json(registry);
-    const values = Object.values(JSON.parse(records[HOUSEHOLD_PLAN_KEY]).entries)[0].values;
-    records[HOUSEHOLD_PLAN_KEY] = buildPlanRecord(null, [{ scope: planScope('household', ['muster_b']), values }]).raw;
-    const before = json(records);
-    const single = buildBalanceEngineInputFromStorage({ storage: storage(records), referenceYear: 2027 });
-    const survivor = resolveDynamicFlexRunnerHorizon(variant.runnerInput, { yearIndex: 1, p1Alive: false, p2Alive: true });
-    assertEqual(single.engineInput.horizonYears, survivor.horizonYears, 'Allein ausgewählte Erika entspricht dem überlebenden Partner');
-    assertEqual(single.inputData.aktuellesAlter, 65, 'Geöffneter Außen-Max bestimmt weder Alter noch Horizont');
-    assertEqual(json(records), before, 'Auswahlwechsel schreibt keine Altbestände');
 }
 
 {

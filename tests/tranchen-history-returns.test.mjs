@@ -52,8 +52,7 @@ const lot = (id, type, purchaseDate, shares, purchasePrice = 10, ticker = 'TEST'
 const prices = { symbols: { TEST: { currency: 'EUR', days: ['2025-12-31', '2026-01-02', '2026-01-05', '2026-01-06'].map(d),
     closes: [10, 11, 11, 12.1], queried: [[d('2025-12-31'), d('2026-01-06')]] } } };
 const input = freeze({ profiles: [{ id: 'max', currentCash: 999999, lots: [lot('alt', 'aktien_alt', '2025-12-01', 10), lot('neu', 'aktien_neu', '2026-01-05', 10, 11)] },
-    { id: 'erika', currentCash: 100, lots: [lot('gold', 'gold', '2025-12-01', 10)] },
-    { id: 'outside', belongsToHousehold: false, lots: [lot('outside', 'geldmarkt', '2025-12-01', 999)] }],
+    { id: 'erika', currentCash: 100, lots: [lot('gold', 'gold', '2025-12-01', 10)] }],
     prices, startDate: '2025-12-31', today: '2026-01-07' });
 const bytes = JSON.stringify(input), household = evaluateHistoryReturns(input);
 near(household.metrics.twr, 0.21, 'Haushalt nutzt alle Anlagen ohne Tagesgeld, einschließlich neuer Anlageform');
@@ -240,7 +239,7 @@ nodes.managerHistoryReturns.querySelectorAll = selector => selector.startsWith('
 const uiDoc = { getElementById: id => nodes[id], querySelector: () => null, querySelectorAll: () => [], addEventListener() {} };
 const registry = { profiles: Object.fromEntries(input.profiles.map(profile => [profile.id, { data: { depot_tranchen: JSON.stringify(profile.lots) } }])) };
 const projection = { historyContext: { status: 'ready', prices, events: [], startDate: input.startDate, today: input.today },
-    profiles: input.profiles.map(profile => ({ id: profile.id, valid: true, belongs: profile.belongsToHousehold !== false })) };
+    profiles: input.profiles.map(profile => ({ id: profile.id, valid: true })) };
 const show = (kind = 'history', historyScope = 'household') => renderManagerHistoryReturns(uiDoc, projection, registry, 'max', { kind, historyScope });
 show();
 assert(nodes.managerHistoryRisk.innerHTML.includes('data-history-return-period="year" aria-pressed="true"'), 'Reiter startet mit Dieses Jahr');

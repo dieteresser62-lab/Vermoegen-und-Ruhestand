@@ -8,7 +8,6 @@ import { readBalanceHouseholdPlan } from '../app/profile/household-plan.js';
 import { buildSimulatorInputsFromProfileData, combineSimulatorProfiles } from '../app/simulator/simulator-profile-inputs.js';
 import { initMcRunState, simulateOneYear } from '../app/simulator/simulator-engine-wrapper.js';
 import { fixedCareTodayForYear } from '../app/simulator/simulator-care-today.js';
-import { OWN_CARE_PRICES_KEY, resolveCarePrices } from '../app/shared/care-prices.js';
 import { PersistenceFacade as P, resetPersistenceForTests } from '../app/shared/persistence-facade.js';
 import { createTranchenPageDom, createLocalStorageMock, installGlobals, waitFor, MockElement } from './tranchen-manager-page.test.mjs';
 import { initTranchenManagerPage, switchManagerProfile } from '../app/tranches/tranchen-manager-page.js';
@@ -23,7 +22,6 @@ import { syncManagerCareToday } from '../app/tranches/tranchen-manager-care.js';
 import { renderCareTodaySummary } from '../app/simulator/simulator-care-today-ui.js';
 import { SummaryRenderer } from '../app/balance/balance-renderer-summary.js';
 import { createPresentationTestDocument } from './designsystem-source-contract.mjs';
-import { previewPersonExport, confirmPersonExport, previewPersonImport, importPersonFile } from '../app/profile/profile-person-file.js';
 setAppTestDate('2026-10-23');
 
 const today = (grade, form, residentialSince) => ({ grade, form, ...(residentialSince ? { residentialSince } : {}) });
@@ -37,27 +35,14 @@ function balance(records, scope) {
 }
 const listen = (node, type, fn) => node.addEventListener(type, fn);
 const metadata = { schemaVersion: 1, lastCommittedPeriod: null, pendingCommit: { periodId: 'calendar-year:2026', snapshotId: 'test-before', phase: 'writes_started' } };
-const ownBlock = { costs: { 1: 3600, 2: 6000, 3: 21000, 4: 32000, 5: 60000 }, maximumFloor: 120000, ownExpensesMonthly: 500, driftPercent: 3.5, origin: 'von Hand', priceYear: 2026 };
-/** Abschlussfähige Records mit offener Periode 2026 (wie in PFA-4/5); optional zuletzt geöffnete Außenperson mit eigenem Preisblock. */
-function closable(options, { outside = false, outsideOnly = false } = {}) {
+/** Abschlussfähige Records mit offener Periode 2026 (wie in PFA-4/5). */
+function closable(options) {
     const { records, scope } = pfa2Records(options);
     const state = JSON.parse(records[CONFIG.STORAGE.LS_KEY]); state.annualPeriodMetadata = metadata;
     records[CONFIG.STORAGE.LS_KEY] = JSON.stringify(state); records[CONFIG.STORAGE.MIGRATION_FLAG] = '1';
     records.balance_expenses_v1 = JSON.stringify({ version: 1, activeYear: 2026, years: {} });
     const registry = JSON.parse(records.rs_profiles_v1);
     for (const id of IDS) if (registry.profiles[id]) { const own = JSON.parse(registry.profiles[id].data[CONFIG.STORAGE.LS_KEY]); own.annualPeriodMetadata = metadata; registry.profiles[id].data[CONFIG.STORAGE.LS_KEY] = JSON.stringify(own); }
-    if (outsideOnly) {
-        // Einzelprofil einer Außenperson: es gibt keinen Haushalt, Helga ist als Außenperson markiert.
-        registry.profiles[IDS[0]].meta.belongsToHousehold = false;
-        registry.profiles[IDS[0]].data[OWN_CARE_PRICES_KEY] = records[OWN_CARE_PRICES_KEY] = JSON.stringify(ownBlock);
-    }
-    if (outside) {
-        const data = { ...registry.profiles[IDS[0]].data, [OWN_CARE_PRICES_KEY]: JSON.stringify(ownBlock) };
-        for (const key of Object.keys(data)) if (key.startsWith('profile_care')) delete data[key];
-        registry.profiles.aussen = { meta: { id: 'aussen', name: 'Außen', belongsToHousehold: false }, data };
-        for (const key of Object.keys(records)) if (/^(profile_|sim_|depot_)/.test(key)) delete records[key];
-        Object.assign(records, data, { rs_current_profile: 'aussen', rs_active_profile: 'aussen' });
-    }
     records.rs_profiles_v1 = JSON.stringify(registry);
     return { records, scope, marketData: { ...annualTestMarketData, inflation: { ...annualTestMarketData.inflation, rate: 2 } } };
 }
@@ -108,43 +93,6 @@ function simulatorYearOne(records, yearData) {
     assertEqual(sim.captured.ui.zielLiquiditaet, 180400, 'PFA5-B1 Simulator-Zielliquidität 180.400 €');
 }
 
-// PFA5-B2: Export und Import einer einzelnen Außenperson nehmen ihren eigenen Preisblock mit.
-{
-    const { records } = pfa2Records({ care: [null, today(3, 'home-support')] });
-    const registry = JSON.parse(records.rs_profiles_v1);
-    const own = { costs: { 1: 3600, 2: 6000, 3: 21000, 4: 32000, 5: 60000 }, maximumFloor: 130000, ownExpensesMonthly: 600, driftPercent: 3.5, origin: 'von Hand', priceYear: 2026 };
-    const outside = { ...registry.profiles[IDS[0]].data, [OWN_CARE_PRICES_KEY]: JSON.stringify(own) };
-    registry.profiles.aussen = { meta: { id: 'aussen', name: 'Außen', belongsToHousehold: false }, data: outside };
-    // Ein liegengebliebener Block an einem Haushaltsmitglied wirkt nicht und reist nicht mit.
-    registry.profiles[IDS[1]].data[OWN_CARE_PRICES_KEY] = JSON.stringify(own);
-    records.rs_profiles_v1 = JSON.stringify(registry);
-    const store = { ...records };
-    P.resetPersistenceForTests({ name: 'PFA-6 PFA5-B2', async loadAll() { return { ...store }; },
-        async saveBatch({ upserts, deletes }) { for (const key of deletes) delete store[key]; Object.assign(store, Object.fromEntries(upserts)); } });
-    try {
-        await P.init({ installLifecycleHooks: false, installTauriCloseHook: false });
-        const file = await confirmPersonExport(await previewPersonExport('aussen'));
-        assertEqual(file.registry.profiles.aussen.data[OWN_CARE_PRICES_KEY], JSON.stringify(own), 'PFA5-B2 die Exportdatei enthält den Preisblock der Außenperson');
-        const member = await confirmPersonExport(await previewPersonExport(IDS[1]));
-        assertEqual(member.registry.profiles[IDS[1]].data[OWN_CARE_PRICES_KEY], undefined, 'PFA5-B2 Haushaltsmitglied: Export unverändert ohne Preisblock');
-        const before = JSON.parse(store.rs_profiles_v1).profiles;
-        const preview = await previewPersonImport(file);
-        assertEqual((await importPersonFile(preview)).status, 'imported', 'PFA5-B2 Import bestätigt');
-        const after = JSON.parse(store.rs_profiles_v1).profiles, imported = after[preview.id].data;
-        const prices = resolveCarePrices(null, imported, { shared: false });
-        assertEqual(`${prices.driftPercent / 100} ${prices.costs[3]}`, '0.035 21000', 'PFA5-B2 nach dem Import 3,5 % und Grad 3 21.000 € (nicht 5 % / 18.000 €)');
-        assertEqual(`${prices.driftMarked} ${prices.maximumFloor} ${prices.ownExpensesMonthly} ${prices.origin}`, 'true 130000 600 von Hand', 'PFA5-B2 Markierung, Deckel, eigene Heimausgaben und Herkunft erhalten');
-        assertEqual(JSON.stringify(JSON.parse(imported[OWN_CARE_PRICES_KEY]).costs), JSON.stringify(own.costs), 'PFA5-B2 Staffel erhalten');
-        const inputs = buildSimulatorInputsFromProfileData(imported, { storage: { getItem: key => store[key] ?? null }, referenceYear: 2026, planValues: null, profileId: preview.id });
-        assertEqual(`${inputs.pflegeKostenDrift} ${inputs.pflegeGradeConfigs[3].zusatz}`, '0.035 21000', 'PFA5-B2 der Simulator rechnet die importierte Außenperson mit ihren Preisen');
-        for (const id of IDS) assertEqual(JSON.stringify(after[id]), JSON.stringify(before[id]), `PFA5-B2 Haushaltsmitglied ${id} bleibt unverändert`);
-        let error = '';
-        const broken = structuredClone(file); broken.registry.profiles.aussen.data[OWN_CARE_PRICES_KEY] = '{"costs":{}}';
-        try { await previewPersonImport(broken); } catch (e) { error = e.message; }
-        assert(error.includes('ungültige Pflegepreise'), 'PFA5-B2 ein unlesbarer Preisblock in der Datei wird abgewiesen');
-    } finally { await resetPersistenceForTests(); }
-}
-
 // Argon-B1: „Im Heim seit“ übersteht Laden → anderes Feld ändern → Speichern und wird beim Personenwechsel nicht verschleppt.
 {
     const globals = Object.fromEntries(['document', 'window', 'localStorage', 'confirm', 'alert', 'URL', 'Blob'].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
@@ -186,26 +134,16 @@ function simulatorYearOne(records, yearData) {
     }
 }
 
-// Argon-B2: Jahresabschluss mit zuletzt geöffneter Außenperson schreibt die Haushaltspreise aus dem Haushalt fort.
+// Argon-B2: Der Jahresabschluss schreibt die Haushaltspreise aus dem Haushalt fort.
 {
-    const household = () => closable({ care: [null, today(3, 'home-support')] }, { outside: true });
+    const household = () => closable({ care: [null, today(3, 'home-support')] });
     const viaDialog = await closeYear(household());
-    assertEqual(viaDialog.proposal.costs[3], 19278, 'Argon-B2 Dialogvorschlag Grad 3 = 18.000 × 1,02 × 1,05 = 19.278 € (nicht 22.170 aus der Außenperson)');
+    assertEqual(viaDialog.proposal.costs[3], 19278, 'Argon-B2 Dialogvorschlag Grad 3 = 18.000 × 1,02 × 1,05 = 19.278 €');
     const stored = JSON.parse(viaDialog.after.household_care_values_v1).prices;
-    assertEqual(`${stored.costs[3]} ${stored.driftPercent}`, '19278 undefined', 'Argon-B2 Haushaltsrecord: 19.278 € ohne den Kostenanstieg der Außenperson');
-    assertEqual(viaDialog.floor, 55998, 'Argon-B2 Haushalts-Floor 36.720 + 19.278 = 55.998 € (nicht 58.890)');
-    assertEqual(JSON.parse(viaDialog.after.rs_profiles_v1).profiles.aussen.data[OWN_CARE_PRICES_KEY], JSON.stringify(ownBlock), 'Argon-B2 Außenpreise im Registry unverändert');
-    assertEqual(viaDialog.after[OWN_CARE_PRICES_KEY], JSON.stringify(ownBlock), 'Argon-B2 Außenpreise in der Livequelle unverändert');
+    assertEqual(`${stored.costs[3]} ${stored.driftPercent}`, '19278 undefined', 'Argon-B2 Haushaltsrecord: 19.278 € ohne markierten Kostenanstieg');
+    assertEqual(viaDialog.floor, 55998, 'Argon-B2 Haushalts-Floor 36.720 + 19.278 = 55.998 €');
     const direct = await closeYear(household(), { dialog: false });
     assertEqual(`${JSON.parse(direct.after.household_care_values_v1).prices.costs[3]} ${direct.floor}`, '19278 55998', 'Argon-B2 auch ohne Dialogentwurf 19.278 € / 55.998 €');
-    // Zweite Hälfte: Einzelprofil einer Außenperson – der Abschluss schreibt ihren eigenen Preisblock fort.
-    const single = await closeYear(closable({ single: true, care: [today(3, 'home-support'), null] }, { outsideOnly: true }));
-    assertEqual(single.proposal.costs[3], 22170, 'Argon-B2 Einzelprofil: Vorschlag aus dem eigenen Block 21.000 × 1,02 × 1,035 = 22.170 €');
-    const block = JSON.parse(JSON.parse(single.after.rs_profiles_v1).profiles[IDS[0]].data[OWN_CARE_PRICES_KEY]);
-    assertEqual(`${block.costs[3]} ${block.driftPercent} ${block.priceYear}`, '22170 3.5 2027', 'Argon-B2 Einzelprofil: eigener Preisblock fortgeschrieben, Markierung bleibt');
-    assertEqual(single.after[OWN_CARE_PRICES_KEY], JSON.stringify(block), 'Argon-B2 Einzelprofil: Livequelle trägt denselben Block');
-    assertEqual(single.floor, 58890, 'Argon-B2 Einzelprofil: Folgejahr 36.720 + 22.170 = 58.890 € (nicht 57.720 mit verpuffter Fortschreibung)');
-    assertEqual(JSON.parse(single.after.household_care_values_v1).prices, undefined, 'Argon-B2 Einzelprofil: der Haushaltsrecord bekommt keine Außenpreise');
 }
 
 // Argon-B3: Personenkarte nennt das Pflegegeld der wirksamen Form (Sollfall R: Helga Grad 3, Werner Grad 2 durch Angehörige).

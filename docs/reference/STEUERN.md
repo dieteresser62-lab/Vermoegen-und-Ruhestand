@@ -1,6 +1,6 @@
 # Steuern
 
-Steuervereinfachungen und Zahlungsfinanzierung im Appmodell. Für fachlich Interessierte. Codeprüfung 11.11.2026; Rechtsquellen geprüft am 27.10.2026.
+Steuervereinfachungen und Zahlungsfinanzierung im Appmodell. Für fachlich Interessierte. Codeprüfung 23.11.2026; Rechtsquellen geprüft am 27.10.2026.
 
 ## Auf einen Blick
 
@@ -16,6 +16,17 @@ Steuervereinfachungen und Zahlungsfinanzierung im Appmodell. Für fachlich Inter
 Steuer entsteht auf den Gewinnanteil eines Verkaufs, nicht auf seinen gesamten Erlös. Die App erhält beim Teilverkauf die anteiligen Anschaffungskosten. Neue Aktienkäufe übernehmen die Teilfreistellung aus dem Aktien-Neubestand derselben Person, sonst aus deren vorhandenem Aktienfonds; ohne Vorlage gilt der Aktien-ETF mit 30 %. Balance und Simulator wählen dieselbe Vorlage. Ein negativer Gewinn geht mit Vorzeichen in die Jahresrechnung ein.
 
 Teilfreistellung vermindert den steuerlich berücksichtigten Gewinn oder Verlust. Für private Aktienfonds nennt [§ 20 InvStG](https://www.gesetze-im-internet.de/invstg_2018/__20.html) 30 %; in der App ist das ein Verhältnis von 0,30. Die Produkteinordnung bleibt deine Aufgabe. Steuerfrei markierte Bestände gehen mit null in die Steuerbasis ein. Bei Gold ist die Steuerfreiheit eine Eingabe; die App prüft keine individuelle rechtliche Berechtigung.
+
+### Simulierte Zukäufe
+
+Die Einstellung „Simulierte Zukäufe“ gilt für den Haushalt in Backtest und Monte Carlo (FR-97). Beide Varianten übernehmen die Teilfreistellung aus der Vorlage derselben Person.
+
+| Einstellung | Steuermodell |
+|---|---|
+| „in dasselbe Papier“ (Vorgabe) | Der Zukauf übernimmt die ISIN der Vorlage, sofern sie eine hat. Bei derselben Person und ISIN kommen die Stücke aus dem Anfangsbestand zuerst. Danach zählt die Kaufreihenfolge im Pfad. |
+| „in ein eigenes Papier“ | Der Zukauf bleibt ohne ISIN. Er konkurriert bei der steueroptimierten Auswahl nach Steuer je Euro mit anderen verfügbaren Tranchen. Das passt etwa zu einem zweiten ETF auf denselben Index. |
+
+Vorlage ist die älteste Neubestandstranche der Person, sonst ihre älteste Aktientranche. Fehlt der Vorlage die ISIN, bleibt sie auch am Zukauf leer. Für vorhandene Tranchen derselben Person und ISIN gilt in beiden Varianten die [Bankreihenfolge (FR-82)](HANDLUNGSANWEISUNG.md#verkaufsreihenfolge).
 
 ### Verlusttopf und Pauschbetrag
 
@@ -35,7 +46,7 @@ Das ergibt ohne Kirchensteuer 26,375 %, bei 8 % Kirchensteuer 27,8186 % und bei 
 
 Verkaufsgewinne und Steuer bleiben beim Eigentümer. Bei aktiver Zusammenveranlagung und genau zwei Personen werden zunächst persönliche Verluste, dann Verluste gegen positive Partnererträge und schließlich eigene sowie ungenutzte Partner-Pauschbeträge verrechnet. Restverluste bleiben beim ursprünglichen Eigentümer. Bei „Nicht verheiratet“ rechnet die App stets getrennt. Dasselbe gilt ohne aktiven Schalter. Der gemeinsame Plan hält diese Wahl; die [Bedienung](../../Handbuch.html#partnerschaft-todesfall) erfolgt unter Partnerschaft.
 
-Im Simulator zählen reguläre Verkäufe, verbrauchte Geldmarktbestände, zusätzliche Deckungsverkäufe und positive Guthabenzinsen zum selben Steuerjahr. Negative Zinsen mindern das Guthaben, erzeugen aber keinen steuerlichen Verlust. Gegenläufige Käufe und Verkäufe derselben Person werden vor der Buchung und der Steuerfortschreibung verrechnet. Ein aufgehobener Verlustverkauf erzeugt keinen Verlustvortrag. Der Jahresabschluss gleicht bereits reservierte Steuer ab. Auch Verkäufe für Erbschaft- oder Wohnrechtsteuer gehen in dieses Jahresbuch; der Pauschbetrag wird nicht je Verkauf neu gewährt. Reicht die Finanzierung einschließlich Folgesteuer nicht, scheitert die Deckung. Die [Handlungsanweisung](HANDLUNGSANWEISUNG.md#c16) erklärt den Übergang von Plansteuer zu endgültiger Steuer.
+Im Simulator zählen reguläre Verkäufe, verbrauchte Geldmarktbestände, zusätzliche Deckungsverkäufe und positive Guthabenzinsen zum selben Steuerjahr. Zinsen auf den bar gehaltenen Teil der Pflegereserve zählen bei den Eigentümern wie Tagesgeldzinsen. Negative Zinsen mindern das Guthaben, erzeugen aber keinen steuerlichen Verlust. Gegenläufige Käufe und Verkäufe derselben Person werden vor der Buchung und der Steuerfortschreibung verrechnet. Ein aufgehobener Verlustverkauf erzeugt keinen Verlustvortrag. Der Jahresabschluss gleicht bereits reservierte Steuer ab. Auch Verkäufe für Erbschaft- oder Wohnrechtsteuer gehen in dieses Jahresbuch; der Pauschbetrag wird nicht je Verkauf neu gewährt. Reicht die Finanzierung einschließlich Folgesteuer nicht, scheitert die Deckung. Die [Handlungsanweisung](HANDLUNGSANWEISUNG.md#c16) erklärt den Übergang von Plansteuer zu endgültiger Steuer.
 
 ## Erbe
 
@@ -46,15 +57,19 @@ Die App kennt für die Partnerrechnung zwei Fälle. Persönliche Freibeträge or
 | Appstatus | Freibetrag | Tarif auf den steuerpflichtigen Gesamterwerb |
 |---|---:|---|
 | Verheiratet | 500.000 € | Klasse I: 7 / 11 / 15 / 19 / 23 / 27 / 30 % |
-| Nicht verheiratet | 20.000 € | Klasse III: 30 % bis einschließlich 6 Mio. €, darüber 50 % |
+| Nicht verheiratet oder Status fehlt | 20.000 € | Klasse III: 30 % bis einschließlich 6 Mio. €, darüber 50 % |
 
-Die Grenzen der Klasse I sind 75.000 / 300.000 / 600.000 / 6 Mio. / 13 Mio. / 26 Mio. €. Der Stufensatz gilt für den ganzen steuerpflichtigen Erwerb; an Übergängen begrenzt der Härteausgleich den Sprung. Auch 100 % Erbquote bedeutet keine Steuerfreiheit. Die [Zahlungsfolge](TOD_UND_ERBE.md#zahlung) erklärt die Finanzierung sofortiger Erbschaftsteuer.
+Fehlt die Angabe oder der ganze Partnerschaftsdatensatz, rechnet die App ohne Versorgungsfreibetrag, Familienheim-Befreiung und Zugewinnabzug. Erbvorschau und Protokoll zeigen „Partnerschaftsstatus fehlt“.
+
+Bestattungs- und Abwicklungskosten mindern den Geldnachlass vor der Aufteilung. Kürzt die [Pflichtteil-Sicherung](TOD_UND_ERBE.md#pflichtteil-der-kinder) den Geldanteil, zählt der gekürzte Erwerb für die Steuer der überlebenden Person. Das gilt auch für die Sofortzahlung und den Steuersatz bei jährlicher Besteuerung nach § 23 ErbStG.
+
+Die Grenzen der Klasse I sind 75.000 / 300.000 / 600.000 / 6 Mio. / 13 Mio. / 26 Mio. €. Den steuerpflichtigen Erwerb rundet die App nach allen Abzügen auf volle 100 € ab, wie [§ 10 Abs. 1 Satz 6 ErbStG](https://www.gesetze-im-internet.de/erbstg_1974/__10.html) es vorschreibt. Der Stufensatz gilt für den ganzen steuerpflichtigen Erwerb; an Übergängen begrenzt der Härteausgleich den Sprung. Auch 100 % Erbquote bedeutet keine Steuerfreiheit. Die [Zahlungsfolge](TOD_UND_ERBE.md#zahlung) erklärt die Finanzierung sofortiger Erbschaftsteuer.
 
 Bei Ehe nimmt die App je verstorbener Person nur die wertvollste erworbene selbst genutzte Immobilie als steuerfreies Familienheim an. Weitere selbst genutzte und vermietete Immobilien bleiben steuerpflichtig. Sie zeigt „Familienheim-Befreiung angenommen“. [§ 13 Abs. 1 Nr. 4b ErbStG](https://www.gesetze-im-internet.de/erbstg_1974/__13.html) verlangt unter anderem Selbstnutzung durch den Erwerber und sieht eine zehnjährige Bindung mit Ausnahmen vor. Die App prüft diese Voraussetzungen nicht. Beispiel ohne weitere Abzüge: 500.000 € Geld, Familienheim 600.000 € und Ferienwohnung 300.000 €, vollständig an den Ehepartner, ergeben 300.000 € steuerpflichtigen Erwerb und 33.000 € Steuer.
 
 ### Zugewinnausgleich
 
-Bei Ehe gilt ohne andere Vorgabe Zugewinngemeinschaft, auch für alte Pläne und Sicherungen. Anfangsvermögen ist das Geldvermögen einschließlich Pflege-Rücklage und der eigene Immobilienwert beim Planstart („Heirat = heute“); Ehejahre davor zählen nicht, deshalb kann die echte Steuer bei langer Ehe niedriger oder höher sein. Das Anfangsvermögen wächst bis zum Todesjahr mit der Inflation des Pfads.
+Bei Ehe gilt ohne andere Vorgabe Zugewinngemeinschaft, auch für alte Pläne und Sicherungen. Anfangsvermögen ist das Geldvermögen einschließlich Pflegereserve und der eigene Immobilienwert beim Planstart („Heirat = heute“); Ehejahre davor zählen nicht, deshalb kann die echte Steuer bei langer Ehe niedriger oder höher sein. Das Anfangsvermögen wächst bis zum Todesjahr mit der Inflation des Pfads.
 
 Jeder geplante Zufluss erhöht ab seinem Jahr das Anfangsvermögen der empfangenden Person. Nur die Pfadinflation ab diesem Zuflussjahr wird darauf angewendet. [§ 1374 Abs. 2 BGB](https://www.gesetze-im-internet.de/bgb/__1374.html) ordnet Erbschaften und Schenkungen dem Anfangsvermögen zu; die App behandelt alle geplanten Zuflüsse so, weil andere Zuflüsse meist bereits beim Planstart vorhandene Werte abbilden.
 
@@ -64,9 +79,21 @@ Hat die verstorbene Person mehr Zugewinn, bildet die halbe Differenz die Ausglei
 
 `Steuerfreier Zugewinnbetrag = Ausgleichsforderung × (Endvermögen − steuerfreier Familienheimanteil) / Endvermögen`
 
-Das Endvermögen umfasst Geld und Immobilien der verstorbenen Person vor der Erbaufteilung. Bei Teilquoten zählt der steuerfreie Familienheimanteil. Beispiel: 2,2 Mio. € Geld, 2 Mio. € Familienheim und 500.000 € Ausgleichsforderung ergeben 261.905 € steuerfreien Zugewinnbetrag und 273.238 € Steuer. Der Betrag wirkt zusätzlich zu Freibetrag und Familienheim. Gütertrennung und unverheiratete Haushalte erhalten diesen Abzug nicht. Die heutige Vorschau enthält keinen Zugewinn.
+Das Endvermögen umfasst Geld und Immobilien der verstorbenen Person vor der Erbaufteilung. Bei Teilquoten zählt der steuerfreie Familienheimanteil. Beispiel: 2,2 Mio. € Geld, 2 Mio. € Familienheim und 500.000 € Ausgleichsforderung ergeben 261.905 € steuerfreien Zugewinnbetrag und 273.220 € Steuer. Der Betrag wirkt zusätzlich zu Freibetrag und Familienheim. Gütertrennung und unverheiratete Haushalte erhalten diesen Abzug nicht. Die heutige Vorschau enthält keinen Zugewinn.
 
-Der Zugewinnausgleich bleibt vereinfacht. Versorgungsfreibetrag, frühere Ehejahre, Vorerwerbe, Nachlasskosten und weitere Befreiungen fehlen. Die Immobilienbewertung ist der fortgeschriebene eingegebene Wert, keine steuerliche Grundstücksbewertung.
+Der Zugewinnausgleich bleibt vereinfacht. Frühere Ehejahre, Vorerwerbe und weitere Befreiungen fehlen. Bestattungs- und Abwicklungskosten mindern den Geldnachlass, während der Zugewinn aus dem Vermögenszuwachs vor dem Kostenabzug berechnet wird. Für Immobilien verwendet die App den fortgeschriebenen eingegebenen Wert.
+
+### Versorgungsfreibetrag
+
+Bei Ehe oder eingetragener Partnerschaft erhält die überlebende Person neben dem persönlichen Freibetrag einen Versorgungsfreibetrag nach [§ 17 ErbStG](https://www.gesetze-im-internet.de/erbstg_1974/__17.html). Der Güterstand spielt keine Rolle, auch Gütertrennung erhält ihn. Ohne Ehe gibt es ihn nicht. Die App kürzt ihn vorsichtig um die eingetragene Hinterbliebenenrente:
+
+`Versorgungsfreibetrag = max(0, 256.000 € − Jahreswert × BMF-Faktor − Sterbevierteljahr)`
+
+Jahreswert ist die Hinterbliebenenrente für ein volles Jahr, so wie die App sie rechnet: der eingestellte Prozentsatz der Rente der verstorbenen Person abzüglich der Anrechnung der eigenen Rente. Beginnt die eigene Rente erst im Laufe des Todesjahrs, zählt sie für die Anrechnung schon ganz. Der BMF-Faktor ist derselbe wie beim Wohnrecht, mit vollendetem Alter am 1. Juli des Todesjahrs. Die drei Monate volle Rente des Sterbevierteljahrs kommen als Einmalbetrag dazu ([R E 17 Abs. 3 ErbStR](https://ao.bundesfinanzministerium.de/erbsth/2020/A-ErbStG-ErbStDV-BewG/ErbStG/III-Berechnung-der-Steuer/Paragraf-17/inhalt.html)). Rechnet die App im Todesjahr keine Hinterbliebenenrente, etwa beim Tod vor dem Rentenbeginn der verstorbenen Person, bleibt der Freibetrag ungekürzt. Fehlt bei eingetragener Rente das Alter, rechnet sie ohne Versorgungsfreibetrag.
+
+Der Betrag mindert den steuerpflichtigen Erwerb zusätzlich zu Familienheim und Zugewinnabzug, vor Tarif und Härteausgleich. Bei der jährlichen Wohnrechtsteuer mindert er auch Satz und Freibetragsrest. Die heutige Vorschau rechnet ihn nicht.
+
+Beispiel ohne Sterbevierteljahr: Eine Witwe ist 70 Jahre alt und erhält 300 € Hinterbliebenenrente im Monat. Nach dem persönlichen Freibetrag bleiben 750.000 € Erwerb. 3.600 € Jahreswert × 11,107 ergeben 39.985,20 € Kapitalwert und 216.014,80 € Versorgungsfreibetrag. Steuerpflichtig sind 533.985,20 €, abgerundet 533.900 €. Die Steuer beträgt 15 % = 80.085 €. Andere Hinterbliebenenbezüge, etwa aus Betriebsrente oder Beamtenversorgung, kürzen in der App nicht.
 
 ### Wohnrecht und jährliche Zahlung
 
@@ -74,7 +101,9 @@ Ein Wohnrecht erzeugt im Modell einen steuerlichen Kapitalwert, aber kein Immobi
 
 `Jahreswert = min(12 × ortsübliche Monatsmiete, Immobilienwert / 18,6)`
 
-Ohne Mietangabe gelten 4 % des Werts; ausdrücklich 0 € bleiben null. Wert und Miete wachsen bis zum Erbfall mit derselben Inflation. Kapitalwert = Jahreswert × amtlicher BMF-Faktor nach vollendetem Alter und Geschlecht der berechtigten Person. Die Vorschau leitet das Alter aus dem Geburtsdatum am heutigen Tag ab, die Simulation am modellierten Todestag, dem 1. Juli des Todesjahrs. Ohne Geburtsdatum gilt das bisherige Planungsalter; fehlt das Geschlecht, gelten Frauenwerte. Die eingebaute Tabelle gilt ab 01.01.2026, auch für spätere Todesjahre als Modellgrenze. [Quelle und Stand](DATA_SOURCES.md#wohnrechtbewertung) sind von der Simulationssterbetafel getrennt. Die Jahreswertgrenze folgt [§ 16 BewG](https://www.gesetze-im-internet.de/bewg/__16.html).
+Ohne Mietangabe gelten 4 % des Werts. Eine eingetragene Miete von 0 € ergibt einen Jahreswert von 0 €. Wert und Miete wachsen bis zum Erbfall mit derselben Inflation. Kapitalwert = Jahreswert × amtlicher BMF-Faktor nach vollendetem Alter und Geschlecht der berechtigten Person. Die Vorschau leitet das Alter aus dem Geburtsdatum zum aktuellen Datum ab, die Simulation am modellierten Todestag, dem 1. Juli des Todesjahrs. Ohne Geburtsdatum gilt das bisherige Planungsalter. Fehlt das Geschlecht, gelten Frauenwerte.
+
+Die Erbvorschau wählt die BMF-Tabelle nach dem laufenden Jahr, im Spielbereich nach dem Testdatum. Im Rechenlauf gilt das Todesjahr. Für 2026 und früher gilt die Tabelle 2026, ab 2027 die Tabelle 2027 bis zur nächsten mitgelieferten Anlage. [Quelle und Stand der BMF-Tabellen](DATA_SOURCES.md#wohnrechtbewertung). Die Jahreswertgrenze folgt [§ 16 BewG](https://www.gesetze-im-internet.de/bewg/__16.html).
 
 | Wahl „Wohnrechtsteuer“ | Todesjahr | Folgejahre |
 |---|---|---|
@@ -83,13 +112,27 @@ Ohne Mietangabe gelten 4 % des Werts; ausdrücklich 0 € bleiben null. Wert und
 
 Beide Wahlen verwenden dieselbe Tarifermittlung mit Härteausgleich (§ 19 Abs. 3 ErbStG). Der effektive Satz ist die Steuer auf den steuerpflichtigen Gesamterwerb geteilt durch diesen Erwerb. Ohne Wohnrechtswert sind beide Wahlen identisch; es entsteht keine Jahressteuer. [Entstehung und Ende des Wohnrechts](TOD_UND_ERBE.md#wohnrecht-und-eigentum) richten sich nach dem Pflege- und Lebenszustand.
 
-Bei der jährlichen Wahl werden persönlicher Freibetrag und steuerfreier Zugewinnausgleich zuerst vom Geld-/Eigentumserwerb verbraucht. Der Rest wird von den kommenden Jahreswerten aufgezehrt. Ist der Gesamterwerb steuerfrei, sind Satz und Jahressteuer null. Die nominal feste Vorauszahlung beginnt im Folgejahr vor Renditen, Zinsen und Budgetrechnung. Sie endet mit Tod oder Heimpflege der berechtigten Person, unabhängig vom Pflegegrad; es gibt keine anteilige Erstattung im Endjahr. Finanzierung: persönliches Tagesgeld beziehungsweise Verkäufe samt deren Kapitalertragsteuer. Ungedeckte Zahlung führt zu Ruin; sie steht außerhalb des Jahresbudgets.
+Bei der jährlichen Wahl werden persönlicher Freibetrag, steuerfreier Zugewinnausgleich und Versorgungsfreibetrag zuerst vom Geld-/Eigentumserwerb verbraucht. Der Rest wird von den kommenden Jahreswerten aufgezehrt. Ist der Gesamterwerb steuerfrei, sind Satz und Jahressteuer null. Die nominal feste Vorauszahlung beginnt im Folgejahr vor Renditen, Zinsen und Budgetrechnung. Sie endet mit Tod oder Heimpflege der berechtigten Person, unabhängig vom Pflegegrad; es gibt keine anteilige Erstattung im Endjahr. Finanzierung: persönliches Tagesgeld beziehungsweise Verkäufe samt deren Kapitalertragsteuer. Die Zahlung steht außerhalb des Jahresbudgets. Was am Jahresende offen bleibt, wird als [Steuerschuld](PFLEGE.md#steuerschuld-und-tod) im Folgejahr fällig.
 
 [§ 23 ErbStG](https://www.gesetze-im-internet.de/erbstg_1974/__23.html) beschreibt die Jahresversteuerung im Voraus; [BMF H E 23](https://erbsth.bundesfinanzministerium.de/erbsth/2020/A-ErbStG-ErbStDV-BewG/ErbStG/IV-Steuerfestsetzung-und-Erhebung/Paragraf-23/h-23.html) erläutert den Restfreibetrag. Die Appwahl ist keine allgemeine Stundung. Unterjährige Fälligkeiten, Ablösung, Kürzungsmethode und nachträgliche Berichtigung werden nicht simuliert. Die [Nachlassseite](TOD_UND_ERBE.md#nachlass) erklärt Eigentum und Verteilung.
 
+### Rente aus dem Erbe
+
+Bei „Verkauf, Miete auf Lebenszeit“ ist der steuerliche Jahreswert der zwölffache Monatsbetrag, mit Inflation vom Planstart bis zum Ende des Todesjahrs fortgeschrieben. Der Immobilienwert begrenzt den Jahreswert der Geldrente nicht. Für den Kapitalwert verwendet die App dieselben Alters- und Geschlechtsfaktoren wie beim Wohnrecht. Die Familienheim-Befreiung entfällt für das verkaufte Haus.
+
+Die Wahl „sofort“ rechnet die Steuer im Todesjahr. „Jährlich (§ 23 ErbStG)“ verwendet denselben Satz und Freibetragsverzehr wie beim Wohnrecht. Der im Todesjahr festgehaltene Jahreswert bleibt für die Vorauszahlungen nominal fest. Er wird auch im Heim weiter versteuert, bis die berechtigte Person stirbt. Die Lebenszeit-Zahlung selbst folgt der Inflation im jeweiligen Jahr. Eine Einkommensteuer auf diese Rente bildet die App nicht ab.
+
+### Wohnkapital
+
+Bei „Verkauf mit Wohnkapital“ ist das Wohnkapital ein Geldvermächtnis. Bei „Auszug nach 0 Jahren“ zählt es im Todesjahr zusammen mit dem Geldanteil und geerbten vermieteten Anteilen zum Erwerb. Bei Ehe mit 700.000 € Geld und 54.000 € Wohnkapital sind nach 500.000 € Freibetrag 254.000 € steuerpflichtig. Die Steuer beträgt 27.940 €.
+
+Beim späteren Auszug berechnet die App die Steuer auf den Erwerb aus dem Todesjahr und das Wohnkapital zusammen. Der Freibetrag zählt einmal. Die App zieht von der Gesamtsteuer die bereits im Todesjahr angesetzte Steuer ab. Den Rest behält sie vom Wohnkapital ein und weist ihn in der Steuersumme des Auszugsjahrs aus. Im Beispiel oben fallen bei unveränderten Werten zuerst 22.000 € und im Auszugsjahr weitere 5.940 € an. Grundlage ist die [Zusammenrechnung nach § 14 ErbStG](https://www.gesetze-im-internet.de/erbstg_1974/__14.html).
+
+Der Verkauf lässt die Familienheim-Befreiung entfallen. Die [Nachlassseite](TOD_UND_ERBE.md#verkauf-mit-wohnkapital) erklärt den Zeitpunkt von Verkauf und Mietbeginn.
+
 ### Wohnrechtbeispiel
 
-Synthetische Rechenvariante Max und Erika, geprüft am 27.10.2026, ohne Ehe und Inflation: Erika ist im Todesjahr 70. Max hinterlässt 600.000 € Geld und ein Haus für 600.000 €. Sie erhält ein Drittel des Gelds und Wohnrecht, ohne Mietangabe. Jahreswert 24.000 € × Frauenfaktor 11,107 = 266.568 € Kapitalwert. Nach 20.000 € Freibetrag sind 446.568 € steuerpflichtig. „Sofort“ ergibt 133.970,40 €; „jährlich“ ergibt 54.000 € im Todesjahr und danach 7.200 € pro Jahr bis Tod oder Heimpflege. Ist Erika bereits im Heim, ergeben beide Wahlen nur 54.000 € und keine Wohnrechtsteuer.
+Synthetische Rechenvariante Max und Erika, geprüft am 27.10.2026, ohne Ehe und Inflation: Erika ist im Todesjahr 70. Max hinterlässt 600.000 € Geld und ein Haus für 600.000 €. Sie erhält ein Drittel des Gelds und Wohnrecht, ohne Mietangabe. Jahreswert 24.000 € × Frauenfaktor 11,107 = 266.568 € Kapitalwert. Nach 20.000 € Freibetrag sind 446.568 € steuerpflichtig, abgerundet 446.500 €. „Sofort“ ergibt 133.950 €; „jährlich“ ergibt 54.000 € im Todesjahr und danach 7.200 € pro Jahr bis Tod oder Heimpflege. Ist Erika bereits im Heim, ergeben beide Wahlen nur 54.000 € und keine Wohnrechtsteuer.
 
 ## Eingaben und Grenzen
 
@@ -101,7 +144,7 @@ Synthetische Rechenvariante Max und Erika, geprüft am 27.10.2026: Max verkauft 
 
 ### Wo du es in der App siehst
 
-„Personen & Vermögen“ führt persönliche Steuerangaben und Erbvorschau. Balance zeigt die vorgeschlagene Verkaufssteuer; der Simulator ergänzt tatsächliche Jahresbuchungen. „Erbschaftsteuer“ und „Steuer Wohnrecht (§ 23)“ stehen getrennt von der jährlichen Kapitalertragsteuer. Bedienung: [Handbuch](../../Handbuch.html#balance-verlusttopf). Die [technischen Belege](TECHNICAL.md#lebensereignisse-und-steuer-belegen) führen zu Rechnung und vorhandenen Prüfungen.
+„Personen & Vermögen“ führt persönliche Steuerangaben und Erbvorschau. Balance zeigt die vorgeschlagene Verkaufssteuer; der Simulator ergänzt tatsächliche Jahresbuchungen. „Erbschaftsteuer“, „Steuer Wohnrecht (§ 23)“ und „Erbschaftsteuer jährlich (§ 23)“ bei der Rente aus dem Erbe stehen getrennt von der jährlichen Kapitalertragsteuer. Das ⓘ zur Erbschaftsteuer nennt ein Wohnkapital mit Betrag. Bedienung: [Handbuch](../../Handbuch.html#balance-verlusttopf). Die [technischen Belege](TECHNICAL.md#lebensereignisse-und-steuer-belegen) führen zu Rechnung und vorhandenen Prüfungen.
 
 ### Modellgrenzen
 

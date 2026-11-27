@@ -54,6 +54,16 @@ const emptyModelOwner = mutateDocument(documents, EVIDENCE_PATHS.dataSources, co
 ));
 assert(errorCodes(validateEvidenceDocuments(emptyModelOwner, { today: fixedToday, repoRoot }))
     .has('MODEL_MATRIX_FIELDS_INVALID'), 'removing an owner must not weaken the migrated model evidence');
+const retiredReviewOnActiveRow = mutateDocument(documents, EVIDENCE_PATHS.dataSources, content => content.replace(
+    '| nein | 2027-01-15 oder vor Engine-Aenderung |', '| nein | entfaellt |'
+));
+assert(errorCodes(validateEvidenceDocuments(retiredReviewOnActiveRow, { today: fixedToday, repoRoot }))
+    .has('INVALID_MODEL_REVIEW_DATE'), 'an active model row must keep a real next-review date');
+const retiredRowWithoutRemovalDate = mutateDocument(documents, EVIDENCE_PATHS.dataSources, content => content.replace(
+    '| entfernt, Stand 2026-11-19;', '| entfernt;'
+));
+assert(errorCodes(validateEvidenceDocuments(retiredRowWithoutRemovalDate, { today: fixedToday, repoRoot }))
+    .has('INVALID_MODEL_REVIEW_DATE'), 'a retired model row must state its removal date');
 for (const file of [EVIDENCE_PATHS.technical, EVIDENCE_PATHS.dataContracts]) {
     const brokenReference = mutateDocument(documents, file, content => `${content}\n[Test](DOES_NOT_EXIST.md)\n`);
     assert(errorCodes(validateEvidenceDocuments(brokenReference, { today: fixedToday, repoRoot }))
@@ -139,8 +149,8 @@ const januaryModelReport = validateEvidenceDocuments(documents, {
 });
 assertEqual(
     januaryModelReport.errors.filter(error => error.code === 'OVERDUE_MODEL_REVIEW').length,
-    10,
-    'the documentation gate should deterministically report all ten matrix rows due by 2027-01-15'
+    9,
+    'the documentation gate should deterministically report all nine active matrix rows due by 2027-01-15 (MS-08 retired)'
 );
 
 const brokenLocalLink = mutateDocument(documents, EVIDENCE_PATHS.market, content => content.replace(

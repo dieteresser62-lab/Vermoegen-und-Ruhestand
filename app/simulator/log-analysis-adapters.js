@@ -26,6 +26,8 @@ function normalizeRows(entries) {
         const financial = valid && isMinimumFlexFinancialYear(row);
         const inflationPct = entry?.inflationVJ ?? row?.inflation;
         const startFactor = row?.inflation_factor_cum;
+        // Preisstand am Jahresanfang = Endfaktor des Vorjahrs; nach einer Lücke bleibt er wie der Endfaktor unbekannt.
+        const yearStartPriceFactor = financial && inflationComplete && finite(startFactor) && startFactor > 0 ? startFactor : null;
         if (financial && (!finite(inflationPct) || inflationPct <= -100
             || !finite(startFactor) || startFactor <= 0)) inflationComplete = false;
         const factor = financial && inflationComplete ? startFactor * (1 + inflationPct / 100) : null;
@@ -40,7 +42,7 @@ function normalizeRows(entries) {
             recordType: valid ? row.recordType ?? (row.Regime === 'BANKRUPT' ? 'terminal_ruin'
                 : financial ? 'financial_year' : 'not_evaluable') : 'missing_row',
             inflationPct: finite(inflationPct) ? inflationPct : null,
-            yearEndPriceFactor, nominalWealthEur, realWealthEur: finite(real) ? real : null
+            yearStartPriceFactor, yearEndPriceFactor, nominalWealthEur, realWealthEur: finite(real) ? real : null
         };
     });
 }

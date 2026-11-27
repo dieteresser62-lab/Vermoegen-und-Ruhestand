@@ -1,6 +1,8 @@
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
 import { readQSCReferences } from './helpers/qs-c-expectations.mjs';
 import { readGL1References } from './helpers/gl-1-expectations.mjs';
 import { readJB2Hash } from './helpers/jb-2-expectations.mjs';
+import { readRK1MergeReferences } from './helpers/rk-1-merge-expectations.mjs';
 import { createHash } from 'node:crypto';
 import { EngineAPI } from '../engine/index.mjs';
 import { initMcRunState, simulateOneYear } from '../app/simulator/simulator-engine-wrapper.js';
@@ -22,5 +24,6 @@ for (const result of simulator) {
     assert(result.logData.cashInterestEarned >= 0, 'Unbetroffenes Simulatorjahr ohne negative Zinsen');
     assert(!result.logData.SevereFlexEmergencyActive, 'Unbetroffenes Simulatorjahr ohne Notlage');
 }
-assertEqual(hash(engine), readQSCReferences(readGL1References(readJB2Hash('f54fa84794651a29d3f07a096df9942a7f750b0e86ec2a289581bae61f59eb75'))), 'Sechs vollständige Engine-Ergebnisse nach FR-20/33/34 auf BK-2-Referenz');
-assertEqual(hash(simulator), readQSCReferences(readGL1References(readJB2Hash('c12e991667ed28da619b3fbfd3db39ec23aee5a137c655c0eeef2c25018a0503'))), 'Drei vollständige Simulator-Ergebnisse nach FR-20/33/34 auf BK-2-Referenz');
+// FR-88: Die drei Engine-Fälle mit Dynamic Flex rechnen die VPW-Rate vorschüssig; Beleg in rk-1-merge-expectation-deltas.json.
+assertEqual(hash(engine), readRK1MergeReferences(readQSCReferences(readGL1References(readJB2Hash('f54fa84794651a29d3f07a096df9942a7f750b0e86ec2a289581bae61f59eb75')))), 'Sechs vollständige Engine-Ergebnisse nach FR-20/33/34 auf BK-2-Referenz');
+assertEqual(hash(simulator), readKR1cReferences(readQSCReferences(readGL1References(readJB2Hash('c12e991667ed28da619b3fbfd3db39ec23aee5a137c655c0eeef2c25018a0503')))), 'Drei vollständige Simulator-Ergebnisse nach FR-20/33/34 auf BK-2-Referenz');

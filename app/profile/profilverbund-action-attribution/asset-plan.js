@@ -2,9 +2,9 @@
 import { EPSILON, finiteNumber, TOLERANCE_EUR, sum } from './amounts.js';
 import { candidateTaxTerms, addRawAggregate, previewHouseholdTax, rawAggregateForSources } from './tax.js';
 import { stableCandidateComparison, appendCandidateSelection, sourceFromCandidate, buildAssetBlueprint, buildAssetCandidates } from './candidates.js';
-import { resolveLiquidityRunwayYears } from '../../../types/liquidity-runway-contract.js';
 import { allocateLiquiditySources } from './liquidity.js';
 import { activeCarrier } from '../household-withdrawal-mode.js';
+import { equalizeLiquidity } from '../runway-equalize.js';
 import { applyIsinFifo, isinFifoGroup, olderInIsinGroup } from '../../../types/sale-fifo.js';
 
 /** FR-82: Gruppe (Person, ISIN) eines Kandidaten für die Bankreihenfolge. @param {any} candidate */
@@ -85,9 +85,17 @@ function selectTaxOptimizedGross(candidates, grossTarget, selected, rawByProfile
     }
 }
 
-function profileAllocationWeight(profile, mode) {
+/** FR-87: Aufteilungsschlüssel für „Reichweite zuerst“: operative Liquidität vor dem Verkauf plus bereits zugeordnete Erlöse
+ * (`sources`, beim Zusatzverkauf der Hauptplan), angeglichen mit dem gesamten Bruttoziel; gilt für jede Anlageklasse gleich. */
+function runwayShares(profiles, grossTarget, sources = []) {
+    const shares = equalizeLiquidity(profiles.map(profile => finiteNumber(profile.inputs?.tagesgeld) + finiteNumber(profile.inputs?.geldmarktEtf)
+        + sum(sources.filter(source => source.sourceProfileId === profile.profileId).map(source => source.brutto))), grossTarget);
+    return new Map(profiles.map((profile, index) => [profile.profileId, shares[index]]));
+}
+
+function profileAllocationWeight(profile, mode, shares = null) {
     const inputs = profile?.inputs || {};
-    if (mode === 'runway_first') return Math.max(0, resolveLiquidityRunwayYears(inputs).years);
+    if (mode === 'runway_first') return shares?.get(profile.profileId) || 0;
     return Math.max(0,
         finiteNumber(inputs.depotwertAlt)
         + finiteNumber(inputs.depotwertNeu)
@@ -97,7 +105,7 @@ function profileAllocationWeight(profile, mode) {
     );
 }
 
-function allocateGrossByProfile(grossTarget, candidates, profiles, mode) {
+function allocateGrossByProfile(grossTarget, candidates, profiles, mode, shares = null) {
     const capacities = new Map(profiles.map(profile => [
         profile.profileId,
         sum(candidates.filter(candidate => candidate.sourceProfileId === profile.profileId).map(candidate => candidate.capacity))
@@ -106,7 +114,7 @@ function allocateGrossByProfile(grossTarget, candidates, profiles, mode) {
     let remaining = grossTarget;
     let active = profiles.filter(profile => (capacities.get(profile.profileId) || 0) > EPSILON);
     while (remaining > EPSILON && active.length) {
-        const rawWeights = active.map(profile => profileAllocationWeight(profile, mode));
+        const rawWeights = active.map(profile => profileAllocationWeight(profile, mode, shares));
         const totalRawWeight = sum(rawWeights);
         const weights = totalRawWeight > EPSILON
             ? rawWeights
@@ -139,8 +147,8 @@ function allocateGrossByProfile(grossTarget, candidates, profiles, mode) {
     return allocations;
 }
 
-function selectWeightedGross(candidates, profiles, grossTarget, mode, selected, rawByProfile) {
-    const allocations = allocateGrossByProfile(grossTarget, candidates, profiles, mode);
+function selectWeightedGross(candidates, profiles, grossTarget, mode, selected, rawByProfile, shares = null) {
+    const allocations = allocateGrossByProfile(grossTarget, candidates, profiles, mode, shares);
     const fifo = candidateFifoOlder(candidates) !== null;
     profiles.forEach(profile => {
         let remaining = allocations.get(profile.profileId) || 0;
@@ -178,6 +186,7 @@ function selectAssetSourcesAtScale({ candidates, blueprint, profiles, mode, scal
         { sumRealizedGainSigned: 0, sumTaxableAfterTqfSigned: 0 }
     ]));
     const byBucket = candidatesByBucket || candidatesPerBucket(candidates, blueprint);
+    const shares = mode === 'runway_first' ? runwayShares(profiles, scale * sum([...blueprint.grossByBucket.values()])) : null;
     blueprint.order.forEach(bucket => {
         const bucketCandidates = byBucket.get(bucket);
         const grossTarget = (blueprint.grossByBucket.get(bucket) || 0) * scale;
@@ -186,7 +195,7 @@ function selectAssetSourcesAtScale({ candidates, blueprint, profiles, mode, scal
         } else if (mode === 'tax_optimized') {
             selectTaxOptimizedGross(bucketCandidates, grossTarget, selected, rawByProfile);
         } else {
-            selectWeightedGross(bucketCandidates, profiles, grossTarget, mode, selected, rawByProfile);
+            selectWeightedGross(bucketCandidates, profiles, grossTarget, mode, selected, rawByProfile, shares);
         }
     });
     const tax = previewHouseholdTax(profiles, rawByProfile);
@@ -246,7 +255,8 @@ function coverAttributionGap({ maxPlan, maxScale, candidates, profiles, mode, ta
             } else if (mode === 'tax_optimized') {
                 selectTaxOptimizedGross(remainingCandidates, gross, selected, rawByProfile);
             } else {
-                selectWeightedGross(remainingCandidates, profiles, gross, mode, selected, rawByProfile);
+                selectWeightedGross(remainingCandidates, profiles, gross, mode, selected, rawByProfile,
+                    mode === 'runway_first' ? runwayShares(profiles, gross, maxPlan.sources) : null);
             }
             const sources = [...selected.values()].map(entry => sourceFromCandidate(entry.candidate, entry.gross));
             const tax = previewHouseholdTax(profiles, rawByProfile);

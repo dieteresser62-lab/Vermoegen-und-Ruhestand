@@ -1,11 +1,11 @@
 import fs from 'node:fs';
-import { normalizeSearch, searchChapters, findSearchRange, handbookSearchText } from '../app/handbook/handbook.js';
+import { normalizeSearch, searchChapters, findSearchRange, handbookSearchText, searchMarkRanges } from '../app/handbook/handbook.js';
 const handbook = fs.readFileSync(new URL('../Handbuch.html', import.meta.url), 'utf8');
 const records = [...handbook.matchAll(/<article id="([^"]+)"[^>]*>([\s\S]*?)<\/article>/g)].map(([, id, body]) => ({
     id, title: body.match(/<h2\b[^>]*>([^<]+)/)?.[1] || '',
     text: body.replace(/<!--[\s\S]*?-->/g, '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ')
 }));
-assertEqual(records.length, 20, 'Suche erfasst auch das Kapitel vor dem Ruhestand');
+assertEqual(records.length, 19, 'Suche erfasst auch das Kapitel vor dem Ruhestand');
 assertEqual(normalizeSearch('KÜRZUNG abschließen'), 'kurzung abschliessen', 'Suche ignoriert Großschreibung und Umlaute und findet ß mit ss');
 const spelling = 'Nach dem Abschließen die Kürzung prüfen';
 const range = findSearchRange(spelling, 'KURZUNG');
@@ -21,6 +21,30 @@ assertEqual(searchChapters(records, 'nichtvorhandenerMustermannbegriff').length,
 assertEqual(searchChapters(records, '<script>alert(1)</script>').length, 0, 'HTML-artiger Suchtext wird als Text behandelt');
 assertEqual(searchChapters([{ id: 'text', title: 'Andere Aufgabe', text: 'Tagesgeld korrigieren' },
     { id: 'title', title: 'Tagesgeld', text: 'Tagesgeld pflegen' }], 'Tagesgeld')[0].id, 'title', 'Passende Kapitelüberschrift erhält Vorrang');
+
+// KS-1: Mehrere Suchwörter setzen den Ausschnitt an die gesuchte Stelle statt an das erste Füllwort.
+const marked = (snippet, query) => searchMarkRanges(snippet, query).map(range => snippet.slice(range.start, range.end));
+// Nutzertest 19.11. suchte „im Seitenkopf auf“; den Satz hat SV-1 aus dem Handbuch genommen. Gleiches Muster mit echtem Text:
+const header = searchChapters(records, 'im Kopf an der Stelle');
+assertEqual(header[0]?.id, 'probelauf', 'Echte Wortgruppe „im Kopf an der Stelle“ führt zuerst zum Spielbereich-Kapitel');
+assert(header[0].phrase && header[0].snippet.includes('im Kopf an der Stelle'), 'Ausschnitt zeigt den gesuchten Satz: ' + header[0]?.snippet);
+assertEqual(marked(header[0].snippet, 'im Kopf an der Stelle').join('|'), 'im Kopf an der Stelle', 'Markiert wird die ganze Wortgruppe');
+const filler = 'Im Spielbereich bleibt alles getrennt. ' + 'Weitere Erklärungen zu Sicherungen und Punkten. '.repeat(8);
+const phraseHits = searchChapters([
+    { id: 'verstreut', title: 'Seitenkopf und Spielbereich', text: 'Im Kopf steht der Seitenkopf. Wir klicken darauf. ' + filler },
+    { id: 'gruppe', title: 'Sichern', text: filler + 'Klicke im Seitenkopf auf „Spielbereich beenden“. Danach ist alles wie vorher.' }
+], 'im Seitenkopf auf');
+assertEqual(phraseHits.map(hit => hit.id).join(','), 'gruppe,verstreut', 'Wortgruppe: zusammenhängender Treffer steht vor besserer Titelgewichtung mit verstreuten Wörtern');
+assert(phraseHits[0].snippet.startsWith('… ') && phraseHits[0].snippet.includes('Klicke im Seitenkopf auf'), 'Wortgruppe: Ausschnitt sitzt an der Gruppe, nicht am ersten „Im“');
+assertEqual(marked(phraseHits[0].snippet, 'im Seitenkopf auf').join('|'), 'im Seitenkopf auf', 'Wortgruppe: genau die Gruppe ist markiert');
+const lone = searchChapters([{ id: 'lang', title: 'Text', text: 'Im Jahr gilt immer der Plan. ' + filler + 'Der Jahresabschluss steht am Ende.' }], 'im Jahresabschluss');
+assert(!lone[0].phrase && lone[0].snippet.includes('Der Jahresabschluss steht'), 'Verstreute Wörter: ohne Nachbarn sitzt der Ausschnitt am längsten Wort: ' + lone[0].snippet);
+const dense = searchChapters([{ id: 'dicht', title: 'Text', text: 'Pflege beginnt früh. ' + filler + 'Im Heim steigen die Kosten der Pflege. ' + filler + 'Kosten am Ende.' }], 'Kosten Pflege Heim');
+assert(dense[0].snippet.includes('Im Heim steigen die Kosten der Pflege.'), 'Verstreute Wörter: Ausschnitt sitzt dort, wo die meisten Suchwörter nahe beieinander stehen: ' + dense[0].snippet);
+assertEqual(marked(dense[0].snippet, 'Kosten Pflege Heim').join('|'), 'Heim|Kosten|Pflege', 'Verstreute Wörter: jedes Suchwort im Ausschnitt ist markiert');
+assertEqual(marked('Immer im Heim', 'im Heim').join('|'), 'im Heim', 'Wortgruppe wird auch in kurzen Ausschnitten als Ganzes markiert');
+assertEqual(marked('Das Zimmer im Heim, dazu der Plan', 'Plan Heim im').join('|'), 'im|Heim|Plan', 'Treffer am Wortanfang gehen vor Treffern mitten im Wort, ohne Überlappung');
+assertEqual(marked('<b>Heim</b>', '<b>').join('|'), '<b>', 'Markierungen sind nur Textbereiche; der Aufrufer setzt sie als Textknoten');
 
 // Benachbarte DOM-Blöcke ohne Quell-Leerraum bilden die Browserbefunde nach.
 function element(tag, children, attributes = {}) {
@@ -58,7 +82,9 @@ const hidden = element('section', [element('p', ['Sichtbarer Text.']), element('
 const visibleText = handbookSearchText(hidden);
 assertEqual(visibleText, 'Sichtbarer Text.', 'Verborgene Unterbäume, Nummern, Navigation, Kommentare und Skripte fehlen im Index');
 assertEqual(searchChapters([{ id: 'sichtbar', title: 'Text', text: visibleText }], 'UnsichtbareHilfe').length, 0, 'Unsichtbare Hilfstexte erzeugen keine Suchtreffer');
-assertEqual((handbook.match(/<tr><th scope="row"><a href="docs\/reference\//g) || []).length, 48, 'Alle alphabetischen Kurzdefinitionen führen zum zuständigen Thema');
+// DK-2A (18.11.): +2 Glossareinträge „Hilfe zur Pflege“ und „Steuerschuld“ (Doku-Prüfung Befund 24).
+// AP-1: Glossareintrag Außenperson entfernt.
+assertEqual((handbook.match(/<tr><th scope="row"><a href="docs\/reference\//g) || []).length, 49, 'Alle alphabetischen Kurzdefinitionen führen zum zuständigen Thema');
 assert(!/href="#[^"]+">Zum Kapitel/.test(handbook), 'Kein Begriff-Hilfslink bleibt unmarkiert');
 const source = fs.readFileSync(new URL('../app/handbook/handbook.js', import.meta.url), 'utf8');
 assert(!/innerHTML|localStorage|sessionStorage|PersistenceFacade/.test(source), 'Handbuchsuche fügt kein unkontrolliertes HTML ein und schreibt keine Fachdaten');
@@ -237,18 +263,7 @@ const legacyIdsByChapter = {
         "mc-risiko",
         "mc-pflege",
         "simulator-szenario-log",
-        "monte-carlo-fehler",
-        "monte-carlo-weiter"
-    ],
-    "werkstatt": [
-        "werkstatt",
-        "werkstatt-title",
-        "werkstatt-einstieg",
-        "simulator-stress-replay",
-        "simulator-sweep",
-        "werkstatt-optimize",
-        "werkstatt-fehler",
-        "werkstatt-weiter"
+        "monte-carlo-fehler"
     ],
     "daten-sicherung": [
         "daten-sicherung",

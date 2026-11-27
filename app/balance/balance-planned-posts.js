@@ -120,10 +120,13 @@ export function plannedExpenseImportChoices({ storage, scope, year, month, profi
     return choices;
 }
 
-/** @param {{plannedExpenseChoices?: import('../../typcheck/balance-ui.js').PaymentChoice[], total: number}} target @returns {import('../../typcheck/datenvertraege.js').ExpensePayment[]} */
+/** @param {{plannedExpenseChoices?: import('../../typcheck/balance-ui.js').PaymentChoice[], grossExpenses?: number, total: number}} target @returns {import('../../typcheck/datenvertraege.js').ExpensePayment[]} */
 export function selectedExpensePayments(target) {
     const payments = (target.plannedExpenseChoices || []).filter(item => item.selected).map(({ id, month, label, amount, scopeKey }) => ({ id, month, label, amount, scopeKey }));
-    if (payments.some(item => !Number.isFinite(item.amount) || item.amount <= 0)
-        || payments.reduce((sum, item) => sum + item.amount, 0) > target.total + 0.01) throw new Error('Geplante Ausgaben: Zugeordnete Beträge müssen positiv sein und dürfen die Importsumme nicht übersteigen.');
+    const grossExpenses = target.grossExpenses ?? target.total;
+    if (payments.length && (!Number.isFinite(grossExpenses) || payments.some(item => !Number.isFinite(item.amount) || item.amount <= 0)
+        || payments.reduce((sum, item) => sum + item.amount, 0) > grossExpenses + 0.01)) {
+        throw new Error('Geplante Ausgaben: Zugeordnete Beträge müssen positiv sein und dürfen die Bruttoausgaben des Imports nicht übersteigen.');
+    }
     return payments;
 }

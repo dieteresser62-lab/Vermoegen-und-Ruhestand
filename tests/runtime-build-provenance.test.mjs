@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { eigenesRepoPruefen, gitFreieUmgebung, prozessUmgebungBereinigen } from './helpers/git-isoliert.mjs';
 import {
     getRuntimeBuildProvenance,
     loadRuntimeBuildProvenance,
@@ -84,18 +85,23 @@ function writeFixtureFile(relativePath, content = `fixture:${relativePath}\n`) {
     fs.writeFileSync(absolutePath, content, 'utf8');
 }
 
+// Der lokale Server dieses Tests ruft Git im eigenen Prozess auf; ein geerbtes GIT_DIR darf ihn nicht umlenken.
+prozessUmgebungBereinigen();
+const gitEnv = gitFreieUmgebung();
+
 function git(...args) {
     return execFileSync('git', [
         '-c', 'user.name=Dist Sync Test',
         '-c', 'user.email=dist-sync@example.invalid',
         '-c', 'commit.gpgsign=false',
         ...args
-    ], { cwd: fixtureRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    ], { cwd: fixtureRoot, env: gitEnv, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 }
 
 function runSync(...args) {
     const result = spawnSync(process.execPath, [path.join(fixtureRoot, 'scripts', 'sync-dist.mjs'), ...args], {
         cwd: fixtureRoot,
+        env: gitEnv,
         encoding: 'utf8'
     });
     return { status: result.status, output: `${result.stdout}\n${result.stderr}` };
@@ -170,6 +176,7 @@ try {
     fs.mkdirSync(path.join(fixtureRoot, 'scripts'), { recursive: true });
     for (const script of ['sync-dist.mjs', 'docs-reader.mjs']) fs.copyFileSync(path.join(repoRoot, 'scripts', script), path.join(fixtureRoot, 'scripts', script));
     git('init', '-q');
+    eigenesRepoPruefen(fixtureRoot, gitEnv);
     git('add', '.');
     git('commit', '-q', '-m', 'fixture');
     let fixtureHead = git('rev-parse', 'HEAD');

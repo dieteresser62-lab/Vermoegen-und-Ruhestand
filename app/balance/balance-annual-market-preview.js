@@ -1,70 +1,63 @@
-/** Lesender Jahresabschlussadapter; Hochreferenz und Abrufkurs bleiben reine Anzeige. */
+/** Lesender Jahresabschlussadapter: Allzeithoch und Marktlage zum Abschlusskurs (FR-89), reine Anzeige. */
 import { buildBalanceEngineInputFromStorage } from './balance-input-storage.js';
-import { prepareMarketPreview, projectMarketPreview, unavailableBudgetComparison } from './balance-market-preview.js';
-import { readDailyPrices, historyDay, mergeHistoryIntervals } from '../tranches/tranchen-history-store.js';
+import { prepareMarketPreview, projectMarketPreview, storedMarketHigh, unavailableMarketPreview } from './balance-market-preview.js';
+import { highCorrectionsOf } from './balance-ath-corrections.js';
+import { withAthNoiseBand } from './balance-ath-noise.js';
+import { readDailyPrices, readHistoryStartDate, historyDay, mergeHistoryIntervals } from '../tranches/tranchen-history-store.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import { annualEngineLoader } from '../shared/annual-engine-loader.js';
-import { computeAnnualPlanUpdate } from './balance-annual-storage.js';
-import { evaluateAnnualDraft } from './balance-annual-storage-commit.js';
 
 /** @param {{targetYear: number, quote?: {price: number, asOf: string},
- * storage?: import('../../typcheck/datenvertraege.js').RecordStorage,
- * engineLoader?: typeof annualEngineLoader, marketData?: import('../../typcheck/balance-ui.js').ComputeAnnualOptions['marketData'],
- * cash?: import('../../typcheck/speicher-integration.js').Cash, careValues?: unknown, careToday?: Record<string, number>}} options */
-export async function projectAnnualMarketReadings({ targetYear, quote, marketData, cash, careValues, careToday, storage = persistenceStorage, engineLoader = annualEngineLoader }) {
+ * storage?: import('../../typcheck/datenvertraege.js').RecordStorage, engineLoader?: typeof annualEngineLoader}} options */
+export async function projectAnnualMarketReadings({ targetYear, quote, storage = persistenceStorage, engineLoader = annualEngineLoader }) {
     if (!quote) return null;
     try {
-        return await prepareAnnualMarketReadings({ targetYear, quote, marketData, cash, careValues, careToday, storage, engineLoader });
+        return await prepareAnnualMarketReadings({ targetYear, quote, storage, engineLoader });
     } catch (error) {
-        console.error('Jahresabschlussvergleich nicht verfügbar:', error);
-        const reason = 'Marktvorschau nicht verfügbar';
-        return { withoutQuote: /** @type {const} */ (true), withoutQuoteReason: reason, quote: null,
-            yearEndDate: null, readingsEqual: /** @type {const} */ (true), comparison: unavailableBudgetComparison(reason) };
+        console.error('Marktlage im Jahresabschluss nicht verfügbar:', error);
+        return unavailableMarketPreview('Marktvorschau nicht verfügbar');
     }
 }
 
 /** @param {{targetYear: number, quote: {price: number, asOf: string},
- * storage: import('../../typcheck/datenvertraege.js').RecordStorage,
- * engineLoader: typeof annualEngineLoader, marketData?: import('../../typcheck/balance-ui.js').ComputeAnnualOptions['marketData'],
- * cash?: import('../../typcheck/speicher-integration.js').Cash, careValues?: unknown, careToday?: Record<string, number>}} options */
-async function prepareAnnualMarketReadings({ targetYear, quote, marketData, cash, careValues, careToday, storage, engineLoader }) {
+ * storage: import('../../typcheck/datenvertraege.js').RecordStorage, engineLoader: typeof annualEngineLoader}} options */
+async function prepareAnnualMarketReadings({ targetYear, quote, storage, engineLoader }) {
     const series = readDailyPrices(storage).value?.symbols['VWCE.DE'];
-    const end = historyDay(quote.asOf);
-    const calculation = buildBalanceEngineInputFromStorage({ storage, referenceYear: targetYear });
+    const periodId = `calendar-year:${targetYear}`;
+    const before = buildBalanceEngineInputFromStorage({ storage, referenceYear: targetYear });
+    const alreadyCommitted = before.persistentState.annualPeriodMetadata?.lastCommittedPeriod === periodId
+        || before.persistentState.balanceStateLifecycle?.lastCommittedPeriod === periodId;
+    const calculation = alreadyCommitted ? buildBalanceEngineInputFromStorage({ storage, referenceYear: targetYear + 1 }) : before;
     const input = calculation.readerInputData || calculation.inputData;
     const state = calculation.profiles.find((/** @type {import("../../typcheck/balance-ui.js").ProfileInput} */ profile) => profile.balanceState?.annualPeriodMetadata?.lastCommittedPeriod)?.balanceState
         || calculation.persistentState;
     const meta = state.annualMarketDataMeta?.ath;
+    const savedMarket = calculation.persistentState.annualMarketDataMeta;
+    if (alreadyCommitted && savedMarket?.periodId === periodId) quote = { price: savedMarket.price, asOf: savedMarket.asOf };
+    const end = historyDay(quote.asOf);
+    const storedHighAsOf = meta?.value === input.ath ? meta.lastHighAsOf ?? null : null;
     const prepared = prepareMarketPreview({
         inputs: { endeVJ: input.endeVJ ?? 0, endeVJ_1: input.endeVJ_1 ?? 0, endeVJ_2: input.endeVJ_2 ?? 0,
             endeVJ_3: input.endeVJ_3 ?? 0, ath: input.ath ?? 0, jahreSeitAth: input.jahreSeitAth ?? 0 },
         dailyPrices: series ? { version: 1, symbols: { 'VWCE.DE': { ...series,
             queried: mergeHistoryIntervals([...series.queried, [end, end]]) } } } : null,
-        // Der Abruf ersetzt den Vergleichskurs, wird aber kein gespeicherter Schluss.
+        // Der Abruf ersetzt den Stichtagskurs, wird aber kein gespeicherter Schluss.
         quoteOverride: quote,
-        // Das Fachdatum ist das Abschlussjahresende, auch bei einem späteren Abruf.
-        today: `${targetYear}-12-31`, yearEndDate: `${targetYear - 1}-12-31`, hasAnnualClose: true,
-        storedHighAsOf: meta?.value === input.ath ? meta.lastHighAsOf ?? null : null
+        // Das Fachdatum ist das Abschlussjahresende, auch bei einem späteren Abruf; bis dahin zählt auch das Alter des Hochs.
+        today: `${targetYear}-12-31`, ageUntil: `${targetYear}-12-31`, yearEndDate: `${targetYear - 1}-12-31`, hasAnnualClose: true,
+        storedHighAsOf, corrections: highCorrectionsOf(calculation.persistentState), yearEndAsOf: state.annualMarketDataMeta?.asOf ?? null,
+        historyStart: readHistoryStartDate(storage)
     });
-    const engine = await engineLoader.load();
-    const run = (/** @type {import('./balance-market-preview.js').AnnualMarketInputs} */ market) => {
-        const result = engine.simulateSingleYear({ ...structuredClone(calculation.engineInput), ...market }, structuredClone(calculation.engineLastState));
-        if (result.error) throw result.error;
-        return /** @type {import('../../typcheck/rechenkern.js').EngineSuccess} */ (result);
-    };
-    const stored = run(prepared.inputs);
-    const yearHigh = prepared.high.value > prepared.ruleInputs.ath && prepared.high.asOf
-        ? { value: prepared.high.value, asOf: prepared.high.asOf } : undefined;
-    // Wie beim Speichern zählt das Alter des Hochs bis zum 31.12., auch solange Inflation oder CAPE noch fehlen.
-    if (yearHigh) prepared.highInputs.jahreSeitAth = (Date.parse(`${targetYear}-12-31`) - Date.parse(yearHigh.asOf)) / 86400000 / 365.2425;
-    if (marketData?.inflation && marketData?.cape && marketData?.etf) {
-        const evaluate = (/** @type {import('../../typcheck/datenvertraege.js').YearHighChoice|undefined} */ choice) => {
-            const draft = computeAnnualPlanUpdate({ targetYear, marketData, yearHigh: choice, storage });
-            return /** @type {import('../../typcheck/rechenkern.js').EngineSuccess} */ (evaluateAnnualDraft(
-                /** @type {import('../../typcheck/speicher-integration.js').AnnualDraft} */ (draft), { engineApi: engine, cash, careValues, careToday }).modelResult);
-        };
-        return projectMarketPreview(prepared, { stored, rule: evaluate(undefined), high: evaluate(yearHigh) });
+    if (alreadyCommitted) {
+        // Der gespeicherte Abschluss enthält Jahresendstände, Hoch und Alter bereits.
+        prepared.marketInputs = { ...prepared.inputs };
+        const stored = storedMarketHigh(prepared.inputs, storedHighAsOf, `${targetYear}-12-31`);
+        prepared.high = { ...stored, source: !stored.dated ? 'stored' : stored.asOf === state.annualMarketDataMeta?.asOf ? 'year_end' : 'daily',
+            splitAsOf: prepared.high.splitAsOf ?? null };
     }
-    return projectMarketPreview(prepared, { stored, rule: prepared.withoutQuote ? stored : run(prepared.ruleInputs),
-        high: prepared.withoutQuote ? stored : run(prepared.highInputs) });
+    const engine = await engineLoader.load();
+    // Die neuen Marktwerte ersetzen die der Rechenkopie; das Grundrauschen gilt wie bei allen Balance-Aufrufen (FR-89, Ergänzung 3).
+    const result = engine.simulateSingleYear(withAthNoiseBand({ ...structuredClone(calculation.engineInput), ...prepared.marketInputs }), structuredClone(calculation.engineLastState));
+    if (result.error) throw result.error;
+    return projectMarketPreview(prepared, /** @type {import('../../typcheck/rechenkern.js').EngineSuccess} */ (result));
 }

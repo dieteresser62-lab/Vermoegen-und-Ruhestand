@@ -344,6 +344,26 @@ function pickIndexFromSampler(rand, sampler, fallbackIndex = 0) {
 }
 
 /**
+ * MS-1 (NG-9): Jahr `offset` eines festen Blocks. Der Block läuft entlang der sortierten Fensterjahre
+ * und am Fensterende zirkulär zum Fensteranfang weiter (Politis & Romano); ohne Fenster über alle Jahre.
+ * @param {number[]|undefined} poolIndices Sortierte zulässige Indizes des Fensters.
+ * @param {number} blockStartIndex Erstes Jahr des Blocks.
+ * @param {number} offset Position im Block, 0 ist der Blockstart.
+ * @returns {number}
+ */
+function circularBlockYearIndex(poolIndices, blockStartIndex, offset) {
+    if (offset === 0) return blockStartIndex;
+    if (!Array.isArray(poolIndices) || poolIndices.length === 0) return (blockStartIndex + offset) % annualData.length;
+    let position = poolIndices.indexOf(blockStartIndex);
+    if (position < 0) {
+        const next = poolIndices.findIndex(index => index > blockStartIndex);
+        position = (next < 0 ? 0 : next) - 1;
+    }
+    const length = poolIndices.length;
+    return poolIndices[(((position + offset) % length) + length) % length];
+}
+
+/**
  * Wählt Marktdaten für das nächste Jahr gemäß der MC-Methode aus
  *
  * @param state Zustand des Simulationspfads.
@@ -389,19 +409,18 @@ export function sampleNextYearData(state, methode, blockSize, rand, stressCtx) {
     }
 
     if (methode === 'block') {
-        if (!samplerState.blockStartIndex || samplerState.yearInBlock >= blockSize) {
+        if (!Number.isInteger(samplerState.blockStartIndex) || samplerState.yearInBlock >= blockSize) {
             if (yearSampling?.blockSampler) {
                 samplerState.blockStartIndex = pickIndexFromSampler(rand, yearSampling.blockSampler, 0);
             } else if (Array.isArray(yearSampling?.blockStartIndices) && yearSampling.blockStartIndices.length > 0) {
                 const indices = yearSampling.blockStartIndices;
                 samplerState.blockStartIndex = indices[Math.floor(rand() * indices.length)];
             } else {
-                const maxIndex = annualData.length - blockSize;
-                samplerState.blockStartIndex = Math.floor(rand() * maxIndex);
+                samplerState.blockStartIndex = Math.floor(rand() * annualData.length);
             }
             samplerState.yearInBlock = 0;
         }
-        const data = annualData[samplerState.blockStartIndex + samplerState.yearInBlock];
+        const data = annualData[circularBlockYearIndex(yearSampling?.allowedIndices, samplerState.blockStartIndex, samplerState.yearInBlock)];
         samplerState.yearInBlock++;
         return { ...data };
     }

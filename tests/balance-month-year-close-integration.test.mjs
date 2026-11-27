@@ -3,12 +3,12 @@ import { displayMonthlyDown } from '../app/shared/display-rounding.js';
 import { installAnnualLocks } from './helpers/balance-storage-fixtures.mjs';
 import { commitAnnualPlanUpdate } from '../app/balance/balance-annual-storage-commit.js';
 import { HOUSEHOLD_PLAN_KEY, buildPlanRecord, PLAN_DEFAULTS, readBalanceHouseholdPlan } from '../app/profile/household-plan.js';
-import { createSnapshotHandlers } from '../app/balance/balance-binder-snapshots.js';
-import { createAnnualHandlers } from '../app/balance/balance-binder-annual.js';
-import { createAnnualNavigationLifecycle } from '../app/balance/balance-annual-orchestrator.js';
-import { createBalanceWealthHistoryService } from '../app/balance/balance-wealth-history.js';
-import { createAnnualMonthSession } from '../app/balance/balance-close-coordinator.js';
-import { createAnnualModalHandlers } from '../app/balance/balance-annual-modal.js';
+import { createAnnualCoordinator, createAnnualNavigationLifecycle } from '../app/shared/annual-coordinator.js';
+import { createAnnualMonthSession } from '../app/shared/annual-close-session.js';
+import { createAnnualCloseDialog } from '../app/shared/annual-close-dialog.js';
+import { createInflationReaders } from '../app/balance/balance-annual-inflation.js';
+import { createAnnualMarketDataReaders, prepareAnnualMarketData } from '../app/shared/annual-marketdata.js';
+import { appNow } from '../app/shared/app-clock.js';
 import { projectAnnualPreview } from '../app/balance/balance-annual-preview.js';
 import { captureCashPeople } from '../app/profile/profile-cash-update.js';
 import { loadProfilverbundProfiles, aggregateProfilverbundInputs } from '../app/profile/profilverbund-balance.js';
@@ -19,6 +19,7 @@ import { projectOverview, buildBalanceOverviewSummary } from '../app/overview/ov
 import { storeOverviewSummary, readMonthProvision, OVERVIEW_MONTH_KEY, OVERVIEW_SUMMARY_KEY, overviewScope, OVERVIEW_BACKUP_KEY } from '../app/overview/overview-storage.js';
 import { PersistenceFacade as P, persistenceStorage as storage } from '../app/shared/persistence-facade.js';
 import { SnapshotArchive } from '../app/shared/snapshot-archive.js';
+import { restoreSnapshotById } from '../app/shared/snapshot-restore.js';
 import { createNavigationGuard } from '../app/shared/navigation-guard.js';
 import { createDialogFixture } from './close-dialog.test.mjs?fixture';
 import { dialogElements } from '../app/shared/close-dialog.js';
@@ -31,6 +32,8 @@ import { getAppTestDate, setAppTestDate } from '../app/shared/app-clock.js';
 import { DATA_BACKUP_SUMMARY_KEY, assertBackupSummary } from '../app/data/data-backup-summary.js';
 import { createManualAnnualValue } from '../app/shared/annual-marketdata.js';
 
+const createAnnualModalHandlers = ({ dom, ...options } = {}) => createAnnualCloseDialog({ ...options,
+    projectPreview: preview => projectAnnualPreview({ ...preview, inputs: dom?.inputs || {} }) });
 const old = { doc: globalThis.document, win: globalThis.window, fetch: globalThis.fetch, timeout: globalThis.setTimeout,
     confirm: globalThis.confirm, location: globalThis.location,
     date: getAppTestDate(), toast: UIRenderer.toast, clear: UIRenderer.clearActionError, error: UIRenderer.handleActionError,
@@ -93,20 +96,21 @@ try {
             minimumFlexAnnual: '1000', flexBudgetAnnual: '5000', flexBudgetRecharge: '2000', aktuellesAlter: '67', inflation: '2.5',
             endeVJ: '120', endeVJ_1: '110', endeVJ_2: '100', endeVJ_3: '90', ath: '150', jahreSeitAth: '1', marketCapeRatio: '28', capeRatio: '28' }).map(([id, value]) => [id, { value }]));
         const dom = { inputs, outputs: {}, controls: { btnJahresUpdate: { innerHTML: 'Jahresupdate' } } };
-        const annual = createAnnualHandlers({ dom, appState: {}, update: () => ({ ok: true }), debouncedUpdate() {},
-            getLastUpdateResults: () => null, setLastUpdateResults() {}, navigationLifecycle: lifecycle });
+        const readers = { prepareInflation: createInflationReaders().prepareInflation, ...createAnnualMarketDataReaders() };
+        const annual = { ...readers, prepareAnnualUpdate: options => prepareAnnualMarketData({ ...options,
+            signal: options.signal || options.navigationOperation?.controller.signal, readers }) };
         const packageData = { inflation: await annual.prepareInflation({ targetYear: 2026 }),
             etf: await annual.prepareETF({ targetYear: 2026 }), cape: await annual.prepareCape({ targetYear: 2026 }) };
         const preview = projectAnnualPreview({ targetYear: 2026, inputs, inflation: packageData.inflation });
         const cash = { people: captureCashPeople({ ids: scope.ids, activeId: 'Max' }),
             values: failure === 'unchanged' ? { Max: 50000, Erika: 50000 } : { Max: 45000.125, Erika: 40000.25 } };
-        const wealth = createBalanceWealthHistoryService({ guard });
-        const handlers = createSnapshotHandlers({ engineLoader: { load: async () => EngineAPI }, confirmAnnual: async () => ({}), decide: async () => true, dom, appState: {}, wealthHistory: wealth, navigationLifecycle: lifecycle,
-            runAnnualUpdate: async options => { annualUpdates++; return annual.prepareAnnualUpdate(options); },
-            applyAnnualInflation: annual.applyAnnualInflation, validateLiveState: () => ({ ok: true }),
-            rollExpensesYearFn: () => 2027,
+        const coordinator = createAnnualCoordinator({ storage, persistence: P, archive: SnapshotArchive, now: appNow,
+            engineLoader: { load: async () => EngineAPI }, confirmAnnual: async () => ({}), navigationLifecycle: lifecycle,
+            prepareMarketData: async options => { annualUpdates++; return annual.prepareAnnualUpdate(options); },
+            validateLiveState: () => ({ ok: true }),
             flushLiveState: async () => { if (await P.flush() === false) throw new Error('FLUSH_FAILED'); },
-            commitLiveState: async options => {
+            confirmRestore: async () => true, restoreSnapshot: (id, options) => StorageManager.restoreSnapshot(id, options),
+            commit: async options => {
                 const committed = await commitAnnualPlanUpdate({ ...options, engineApi: EngineAPI, now: () => new Date(`${date}T11:00:00Z`) });
                 commitResult = committed.result;
                 return committed;
@@ -115,6 +119,7 @@ try {
                 const plan = readBalanceHouseholdPlan();
                 for (const key of ['floorBedarf', 'flexBedarf']) inputs[key].value = UIUtils.formatNumber(plan.entry.values[key]);
             } });
+        const handlers = { handleJahresabschluss: options => coordinator.close(options) };
         const beforeYear = await P.readPersistedRecords();
         const beforeCashHistory = Object.fromEntries(scope.ids.map(id => [id, id === 'Max'
             ? beforeYear.profile_cash_history_v1 : JSON.parse(beforeYear.rs_profiles_v1).profiles[id].data.profile_cash_history_v1]));
@@ -220,6 +225,8 @@ try {
                 }
                 delete before[OVERVIEW_BACKUP_KEY]; delete after[OVERVIEW_BACKUP_KEY];
                 delete before[DATA_BACKUP_SUMMARY_KEY]; delete after[DATA_BACKUP_SUMMARY_KEY];
+                // Die Sicherung schreibt drei Metadaten: Zeit, Vergleichsbasis und Art der Sicherung.
+                delete before.overview_last_full_backup_delivery_v1; delete after.overview_last_full_backup_delivery_v1;
                 assertEqual(JSON.stringify(after), JSON.stringify(before), phase + ': Export erhält alle Fachrecords');
                 if (phase === 'C') assert(resultHost.querySelector('[data-annual-combined-result="C"]'), 'Backup erhält Ergebnis C');
             } finally {
@@ -258,29 +265,11 @@ try {
                 assertEqual(monthSnapshot.label, `Monatsabschluss ${session.request.month}`, 'Recovery verweist auf echten Monatswiederherstellungspunkt');
                 assert(!Object.hasOwn(monthSnapshot.records, OVERVIEW_MONTH_KEY), 'Erster Monatsabschluss hat im Snapshot noch keinen aktiven Monatsrecord');
                 assert(readMonthProvision(records[OVERVIEW_MONTH_KEY], session.request.month, scope), 'Fehlgeschlagener Rollback hinterlässt aktiven Monatsmarker vor Restore');
-                const actionErrors = [], writesBeforeRestore = writes.length;
-                globalThis.confirm = () => true;
-                globalThis.location = { reload() { throw new Error('RELOAD_INJECTED'); } };
-                UIRenderer.handleActionError = error => { actionErrors.push(error); };
-                const restoreEvent = key => ({ target: { closest: selector => selector === '.restore-snapshot' ? { dataset: { key } } : null } });
-                try {
-                    await handlers.handleSnapshotActions(restoreEvent(result.snapshotId));
-                    assertEqual(actionErrors.length, 1, 'Restoreknopf weist echten Jahressnapshot während Monatsrecovery ab');
-                    assert(actionErrors[0].context.originalError.message.includes('fehlgeschlagenen Monatsabschlusses'), 'Fremder Snapshotschlüssel erhält passenden Ablehnungsgrund');
-                    assertEqual(writes.length, writesBeforeRestore, 'Abgewiesener Snapshot löst keinen Backendwrite aus');
-                    assertEqual(JSON.stringify(await P.readPersistedRecords()), JSON.stringify(records), 'Abgewiesener Snapshot lässt sämtliche Records unverändert');
-                    assert(P.hasSyncWriteBlocks(), 'Abgewiesener Snapshot erhält Schreibsperre');
-                    const uiRestored = await handlers.handleSnapshotActions(restoreEvent(monthSnapshot.id));
-                    assertEqual(uiRestored.status, 'reload_required', 'Restoreknopf akzeptiert echten Monatssnapshotschlüssel und führt geschützten Restore aus');
-                    assert(writes.slice(writesBeforeRestore).some(write => write.deletes.includes(OVERVIEW_MONTH_KEY)), 'Monatsrestore löscht fehlenden Snapshotrecord ausdrücklich im Backend');
-                    assertEqual(actionErrors.length, 2, 'Restoreknopf meldet weiterhin erforderlichen Reload');
-                    assert(actionErrors[1].message.includes('bitte die Seite neu laden'), 'Erfolgreicher Monatsrestore weist auf gesperrte veraltete Oberfläche hin');
-                } finally {
-                    globalThis.confirm = old.confirm; globalThis.location = old.location;
-                    UIRenderer.handleActionError = error => { throw error; };
-                }
-                const restored = await globalThis.window.__balanceMonthRecovery.restore({ reload: () => { throw new Error('RELOAD_INJECTED'); } });
+                // SV-1: Zurückgeholt wird der Monatspunkt wie jeder Punkt, immer für den ganzen Haushalt.
+                const writesBeforeRestore = writes.length;
+                const restored = await restoreSnapshotById(monthSnapshot.id, { reload: () => { throw new Error('RELOAD_INJECTED'); } });
                 assertEqual(restored.status, 'reload_required', 'Geschützter Monatsrestore wartet auf Reload');
+                assert(writes.slice(writesBeforeRestore).some(write => write.deletes.includes(OVERVIEW_MONTH_KEY)), 'Monatsrestore löscht fehlenden Snapshotrecord ausdrücklich im Backend');
                 const restoredRecords = await P.readPersistedRecords();
                 assertEqual(restoredRecords.rs_profiles_v1, afterYear.rs_profiles_v1, 'Monatsrestore nimmt sämtliche Haushaltsmarker zurück');
                 assertEqual(restoredRecords[OVERVIEW_MONTH_KEY], afterYear[OVERVIEW_MONTH_KEY], 'Monatsrestore setzt aktiven Monatsrecord auf den Snapshotzustand zurück');
@@ -424,7 +413,7 @@ try {
     const { projectOverviewFromRecords } = await import('../app/overview/overview-model.js');
     const { SummaryRenderer } = await import('../app/balance/balance-renderer-summary.js');
     try {
-        for (const single of [false, true]) {
+        for (const single of [false]) {
             setAppTestDate('2026-01-02');
             const records = createMusterHaushaltRecords('2026-01-02');
             const registry = JSON.parse(records.rs_profiles_v1);
@@ -440,10 +429,6 @@ try {
             records[CONFIG.STORAGE.LS_KEY] = initialState(records[CONFIG.STORAGE.LS_KEY]);
             for (const profile of Object.values(registry.profiles)) profile.data[CONFIG.STORAGE.LS_KEY] = initialState(profile.data[CONFIG.STORAGE.LS_KEY]);
             records.rs_profiles_v1 = JSON.stringify(registry);
-            if (single) {
-                for (const profile of Object.values(registry.profiles)) profile.meta.belongsToHousehold = false;
-                records.rs_profiles_v1 = JSON.stringify(registry);
-            }
             const backend = new Map(Object.entries(records));
             P.resetPersistenceForTests({ async open() {}, async loadAll() { return Object.fromEntries(backend); },
                 async saveBatch() { throw new Error('UNEXPECTED_STATUS_WRITE'); } });

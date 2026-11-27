@@ -1,27 +1,11 @@
-
 import { PLAY_DB_NAME } from './persistence-area-storage.js';
 import { areaHousehold, isPlayArea } from './household-registry.js';
-import { CONFIG } from '../balance/balance-config.js';
-import { isAllowedSnapshotCaptureKey, isLegacySnapshotKey } from './persistence-key-policy.js';
 
-const SNAPSHOT_SCHEMA_VERSION = 1;
-const SNAPSHOT_TYPE = 'persistence-records-v1';
-const SNAPSHOT_KIND_MANUAL = 'manual';
-const PROFILE_STORAGE_KEYS = Object.freeze({
-    registry: 'rs_profiles_v1',
-    current: 'rs_current_profile',
-    active: 'rs_active_profile'
-});
 const DEFAULT_DB_NAME = 'ruhestand-suite';
 const DEFAULT_DB_VERSION = 2;
 const KV_STORE = 'kv';
 const METADATA_STORE = 'metadata';
 const SNAPSHOT_STORE = 'snapshots';
-const LEGACY_SNAPSHOT_DB_NAME = 'snapshotDB';
-const LEGACY_SNAPSHOT_DB_CLEANUP_METADATA_KEY = 'legacySnapshotDbCleanup';
-const LEGACY_SNAPSHOT_MIGRATION_METADATA_KEY = 'legacySnapshotMigration';
-const LEGACY_SNAPSHOT_GENERATION_METADATA_KEY = 'legacySnapshotGeneration';
-const legacyCleanupRequests = new WeakMap();
 const OUTDATED_MESSAGE = 'Datenbankverbindung veraltet, bitte diesen Tab neu laden.';
 const UPGRADE_BLOCKED_MESSAGE = 'IndexedDB-Upgrade blockiert. Bitte andere Vermögen & Ruhestand-Tabs schliessen oder neu laden.';
 
@@ -30,31 +14,6 @@ function requestToPromise(request) {
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error || new Error('IndexedDB request failed'));
     });
-}
-
-function legacyDatabaseCleanup(indexedDb, onBlocked) {
-    const pending = legacyCleanupRequests.get(indexedDb);
-    if (pending) return pending;
-    const state = { blocked: false, promise: null };
-    state.promise = new Promise((resolve, reject) => {
-        const name = LEGACY_SNAPSHOT_DB_NAME;
-        const request = indexedDb.deleteDatabase(name);
-        request.onsuccess = () => { state.blocked = false; resolve(true); };
-        request.onerror = () => reject(request.error || new Error('IndexedDB database deletion failed'));
-        request.onblocked = () => { state.blocked = true; onBlocked(); };
-    }).catch(error => {
-        legacyCleanupRequests.delete(indexedDb);
-        throw error;
-    });
-    legacyCleanupRequests.set(indexedDb, state);
-    return state;
-}
-
-function invalidateLegacyMigration(transaction) {
-    const metadata = transaction.objectStore(METADATA_STORE);
-    metadata.delete(LEGACY_SNAPSHOT_MIGRATION_METADATA_KEY);
-    metadata.put({ key: LEGACY_SNAPSHOT_GENERATION_METADATA_KEY,
-        value: globalThis.crypto?.randomUUID?.() || `${Date.now()}:${Math.random()}` });
 }
 
 function transactionDone(transaction) {
@@ -102,88 +61,6 @@ function toSnapshotIndexEntry(snapshot) {
     return indexEntry;
 }
 
-function parseJsonObject(raw, fallback = null) {
-    if (!raw) return fallback;
-    try {
-        const parsed = JSON.parse(String(raw));
-        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : fallback;
-    } catch {
-        return fallback;
-    }
-}
-
-function parseLegacySnapshot(raw) {
-    const parsed = parseJsonObject(raw, null);
-    if (parsed?.snapshotType !== 'full-localstorage' || !parsed.localStorage || typeof parsed.localStorage !== 'object') {
-        return null;
-    }
-    return parsed;
-}
-
-function getProfileNameFromLegacyRecords(records, activeProfileId) {
-    const registry = parseJsonObject(records[PROFILE_STORAGE_KEYS.registry], null);
-    return String(registry?.profiles?.[activeProfileId]?.meta?.name || '');
-}
-
-function resolveLegacyActiveProfileId(records) {
-    const explicit = String(records[PROFILE_STORAGE_KEYS.current] || records[PROFILE_STORAGE_KEYS.active] || '');
-    if (explicit) return explicit;
-    if (!records[PROFILE_STORAGE_KEYS.registry]) return 'default';
-    return '';
-}
-
-function asIsoDate(value) {
-    const date = value ? new Date(value) : new Date();
-    if (!Number.isFinite(date.getTime())) return new Date().toISOString();
-    return date.toISOString();
-}
-
-function buildCanonicalSnapshotFromLegacy(key, legacySnapshot) {
-    const sourceRecords = legacySnapshot.localStorage || {};
-    const records = Object.create(null);
-    Object.entries(sourceRecords).forEach(([recordKey, value]) => {
-        const normalizedKey = String(recordKey || '');
-        if (!isAllowedSnapshotCaptureKey(normalizedKey)) return;
-        if (value === null || value === undefined) return;
-        records[normalizedKey] = String(value);
-    });
-    const activeProfileId = resolveLegacyActiveProfileId(sourceRecords);
-    const label = legacySnapshot.label || String(key || '').replace(CONFIG.STORAGE.SNAPSHOT_PREFIX, '');
-    return {
-        schemaVersion: SNAPSHOT_SCHEMA_VERSION,
-        id: String(key || '').replace(CONFIG.STORAGE.SNAPSHOT_PREFIX, 'snapshot_legacy_') || undefined,
-        snapshotType: SNAPSHOT_TYPE,
-        label,
-        kind: SNAPSHOT_KIND_MANUAL,
-        createdAt: asIsoDate(legacySnapshot.timestamp || legacySnapshot.createdAt),
-        activeProfileId,
-        activeProfileName: activeProfileId ? getProfileNameFromLegacyRecords(sourceRecords, activeProfileId) : '',
-        recordCount: Object.keys(records).length,
-        records,
-        restoreScope: {
-            profileRegistryMode: 'preserve-by-default',
-            profileLiveDataMode: 'restore-only-if-active-profile-still-exists'
-        }
-    };
-}
-
-function getCanonicalLegacySnapshotId(id) {
-    const normalized = String(id || '');
-    return isLegacySnapshotKey(normalized)
-        ? normalized.replace(CONFIG.STORAGE.SNAPSHOT_PREFIX, 'snapshot_legacy_')
-        : normalized;
-}
-
-function createLegacyMigrationReport() {
-    return {
-        migratedCount: 0,
-        skippedCount: 0,
-        notStandardRestorableCount: 0,
-        warnings: [],
-        errors: []
-    };
-}
-
 export function createIndexedDbAdapter(options = {}) {
     const household = areaHousehold(options.area);
     const dbName = options.dbName || (options.area === 'spiel' ? PLAY_DB_NAME
@@ -192,7 +69,6 @@ export function createIndexedDbAdapter(options = {}) {
     const indexedDb = options.indexedDB || globalThis.indexedDB;
     let db = null;
     let outdated = false;
-    let cleanupTask = null;
 
     async function ensureOpen() {
         if (outdated) throw createOutdatedError();
@@ -233,26 +109,6 @@ export function createIndexedDbAdapter(options = {}) {
         return database.transaction(storeName, mode).objectStore(storeName);
     }
 
-    function scheduleLegacyCleanup(adapter, report) {
-        // Die alte gemeinsame snapshotDB gehört nur Haushalt 1.
-        if (options.area === 'spiel' || household || !indexedDb?.deleteDatabase) return;
-        const warnBlocked = () => report.warnings.push({ key: LEGACY_SNAPSHOT_DB_NAME,
-            message: 'Legacy-Snapshot-Datenbank ist durch eine offene Verbindung blockiert; der laufende Löschauftrag wartet im Hintergrund.' });
-        if (legacyCleanupRequests.get(indexedDb)?.blocked) warnBlocked();
-        if (cleanupTask) return;
-        cleanupTask = (async () => {
-            const marker = await adapter.readMetadata(LEGACY_SNAPSHOT_DB_CLEANUP_METADATA_KEY);
-            if (marker?.completedAt) return;
-            await legacyDatabaseCleanup(indexedDb, warnBlocked).promise;
-            await adapter.writeMetadata(LEGACY_SNAPSHOT_DB_CLEANUP_METADATA_KEY, {
-                completedAt: new Date().toISOString(), dbName: LEGACY_SNAPSHOT_DB_NAME
-            });
-        })().catch(error => {
-            cleanupTask = null;
-            report.warnings.push({ key: LEGACY_SNAPSHOT_DB_NAME, message: error?.message || String(error) });
-        });
-    }
-
     return {
         name: 'IndexedDB',
 
@@ -287,7 +143,7 @@ export function createIndexedDbAdapter(options = {}) {
         async saveBatch(batch = {}) {
             assertUsable();
             const database = await ensureOpen();
-            const transaction = database.transaction([KV_STORE, METADATA_STORE], 'readwrite');
+            const transaction = database.transaction(KV_STORE, 'readwrite');
             const store = transaction.objectStore(KV_STORE);
             const updatedAt = new Date().toISOString();
 
@@ -295,7 +151,6 @@ export function createIndexedDbAdapter(options = {}) {
                 store.delete(String(key));
             });
             (batch.upserts || []).forEach(([key, value]) => {
-                if (isLegacySnapshotKey(String(key))) invalidateLegacyMigration(transaction);
                 store.put({ key: String(key), value: String(value), updatedAt });
             });
 
@@ -324,8 +179,6 @@ export function createIndexedDbAdapter(options = {}) {
 
         async listSnapshots() {
             assertUsable();
-            const report = await this.migrateLegacySnapshotsIfNeeded();
-            if (report.errors.length) throw new Error(`Ältere Sicherungen konnten nicht vollständig geladen werden: ${report.errors.map(error => error.message).join('; ')}`);
             const database = await ensureOpen();
             const store = getStore(database, SNAPSHOT_STORE);
             const snapshots = [];
@@ -351,12 +204,7 @@ export function createIndexedDbAdapter(options = {}) {
             const snapshotId = String(id || '');
             const database = await ensureOpen();
             const store = getStore(database, SNAPSHOT_STORE);
-            let row = await requestToPromise(store.get(getCanonicalLegacySnapshotId(snapshotId)));
-            if (!row) {
-                const report = await this.migrateLegacySnapshotsIfNeeded();
-                if (report.errors.length) throw new Error(`Ältere Sicherungen konnten nicht vollständig geladen werden: ${report.errors.map(error => error.message).join('; ')}`);
-                row = await requestToPromise(getStore(database, SNAPSHOT_STORE).get(getCanonicalLegacySnapshotId(snapshotId)));
-            }
+            const row = await requestToPromise(store.get(snapshotId));
             const snapshot = row?.snapshot || row;
             if (!snapshot) {
                 throw new Error(`Snapshot ${snapshotId} wurde nicht gefunden.`);
@@ -393,96 +241,12 @@ export function createIndexedDbAdapter(options = {}) {
             return true;
         },
 
-        async migrateLegacySnapshotsIfNeeded() {
-            assertUsable();
-            const database = await ensureOpen();
-            const report = createLegacyMigrationReport();
-            if (options.skipLegacySnapshotMigration) return report;
-            const migrationMarker = await this.readMetadata(LEGACY_SNAPSHOT_MIGRATION_METADATA_KEY);
-            const generation = !migrationMarker?.completedAt
-                ? await this.readMetadata(LEGACY_SNAPSHOT_GENERATION_METADATA_KEY) : null;
-            const kvStore = getStore(database, KV_STORE);
-            const legacyRows = [];
-
-            if (!migrationMarker?.completedAt) {
-                const cursorRequest = kvStore.openCursor();
-
-                await new Promise((resolve, reject) => {
-                    cursorRequest.onsuccess = () => {
-                        const cursor = cursorRequest.result;
-                        if (!cursor) {
-                            resolve(true);
-                            return;
-                        }
-                        const row = cursor.value;
-                        if (isLegacySnapshotKey(row?.key)) legacyRows.push(row);
-                        cursor.continue();
-                    };
-                    cursorRequest.onerror = () => reject(cursorRequest.error || new Error('IndexedDB legacy snapshot cursor failed'));
-                });
-
-                for (const row of legacyRows) {
-                    const legacyKey = String(row.key || '');
-                    try {
-                        const legacySnapshot = parseLegacySnapshot(row.value);
-                        if (!legacySnapshot) {
-                            report.skippedCount += 1;
-                            continue;
-                        }
-                        const canonical = buildCanonicalSnapshotFromLegacy(legacyKey, legacySnapshot);
-                        const existing = await requestToPromise(getStore(database, SNAPSHOT_STORE).get(canonical.id));
-                        if (existing) {
-                            report.skippedCount += 1;
-                        } else {
-                            const transaction = database.transaction([SNAPSHOT_STORE, KV_STORE], 'readwrite');
-                            transaction.objectStore(SNAPSHOT_STORE).put({
-                                key: canonical.id,
-                                snapshot: canonical,
-                                updatedAt: new Date().toISOString()
-                            });
-                            transaction.objectStore(KV_STORE).delete(legacyKey);
-                            await transactionDone(transaction);
-                            report.migratedCount += 1;
-                        }
-                        if (!canonical.activeProfileId) report.notStandardRestorableCount += 1;
-                    } catch (err) {
-                        report.errors.push({ key: legacyKey, message: err?.message || String(err) });
-                    }
-                }
-
-                if (report.errors.length === 0) {
-                    const marker = {
-                        completedAt: new Date().toISOString(),
-                        scannedCount: legacyRows.length,
-                        migratedCount: report.migratedCount,
-                        skippedCount: report.skippedCount,
-                        notStandardRestorableCount: report.notStandardRestorableCount
-                    };
-                    // Vergleich und Markerwrite sind atomar gegenüber Imports anderer Tabs.
-                    const transaction = database.transaction(METADATA_STORE, 'readwrite');
-                    const metadata = transaction.objectStore(METADATA_STORE);
-                    const request = metadata.get(LEGACY_SNAPSHOT_GENERATION_METADATA_KEY);
-                    request.onsuccess = () => {
-                        if ((request.result?.value ?? null) === generation) {
-                            metadata.put({ key: LEGACY_SNAPSHOT_MIGRATION_METADATA_KEY, value: marker,
-                                updatedAt: new Date().toISOString() });
-                        }
-                    };
-                    await transactionDone(transaction);
-                }
-            }
-
-            scheduleLegacyCleanup(this, report);
-
-            return report;
-        },
-
         async replaceLiveRecords(records, options = {}) {
             assertUsable();
             const database = await ensureOpen();
             const deleteKeys = Array.isArray(options.deleteKeys) ? options.deleteKeys : [];
             const upserts = Array.isArray(options.upserts) ? options.upserts : Object.entries(records || {});
-            const transaction = database.transaction([KV_STORE, METADATA_STORE], 'readwrite');
+            const transaction = database.transaction(KV_STORE, 'readwrite');
             const store = transaction.objectStore(KV_STORE);
             const updatedAt = new Date().toISOString();
 
@@ -491,7 +255,6 @@ export function createIndexedDbAdapter(options = {}) {
             });
             upserts.forEach(([key, value]) => {
                 if (value === null || value === undefined) return;
-                if (isLegacySnapshotKey(String(key))) invalidateLegacyMigration(transaction);
                 store.put({ key: String(key), value: String(value), updatedAt });
             });
 

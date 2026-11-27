@@ -1,9 +1,10 @@
 import {
     createMonteCarloUI, readMonteCarloParameters, prepareHistoricalDataOnce, getDataVersion, validateSimulatorInputs, getCommonInputs,
     personDataContextFor, normalizeWidowOptions, runMonteCarloLogsForIndices, displayMonteCarloResults, readDocumentPersonInputs, createProtocolPersonContext,
-    beginOverviewRun, completeOverviewRun, readOverviewAssumptions, projectMonteCarloOverview, beginSimulationSummary
+    beginOverviewRun, completeOverviewRun, readOverviewAssumptions, projectMonteCarloOverview
 } from './execution-dependencies.js';
 import { activeMonteCarloRun, monteCarloNavigationRegistration } from './state.js';
+import { appNow } from '../../shared/app-clock.js';
 import { readRememberedMonteCarloResult, forgetMonteCarloResult, monteCarloFingerprint, monteCarloRowIndices, restoreMonteCarloRows, expandMonteCarloExport,
     showMonteCarloMemorySource, watchMonteCarloEdits } from './result-memory.js';
 
@@ -27,6 +28,18 @@ export function readMonteCarloRunBasis(dependencies = {}) {
     const personDataContext = personDataContextFor(inputs);
     return { inputs, monteCarloParams, widowOptions, useCapeSampling, personDataContext,
         fingerprint: monteCarloFingerprint({ inputs, monteCarloParams, widowOptions, useCapeSampling, dataVersion: getDataVersion(), personDataContext }) };
+}
+
+/**
+ * HP-4: Geldfächer und Endwerte je Lauf wieder als nicht aufzählbare Felder, wie direkt nach dem Lauf.
+ * @param display Gemerkte Anzeigeargumente mit hiddenResults.
+ * @returns Anzeigeargumente ohne hiddenResults.
+ */
+function withHiddenResults({ hiddenResults = {}, ...display }) {
+    const results = display.aggregatedResults;
+    if (results && 'wealthFan' in hiddenResults) Object.defineProperty(results, 'wealthFan', { value: hiddenResults.wealthFan, enumerable: false });
+    if (results?.wealthView && 'realByRun' in hiddenResults) Object.defineProperty(results.wealthView, 'realByRun', { value: hiddenResults.realByRun, enumerable: false });
+    return display;
 }
 
 /**
@@ -54,13 +67,11 @@ export async function restoreMonteCarloResult({ doc = globalThis.document, depen
         useCapeSampling, runIndices: monteCarloRowIndices(entry.display), generationId: 'monte-carlo-restore', signal: null });
     // Eine inzwischen gestartete oder fertige Rechnung hat Vorrang.
     if (overtaken() || readRememberedMonteCarloResult()?.savedAt !== entry.savedAt) return 'none';
-    const restored = restoreMonteCarloRows(entry.display, logsByIndex);
+    const restored = restoreMonteCarloRows(withHiddenResults(entry.display), logsByIndex);
     // Namen wie beim Laufbeginn aus der Seite, damit eine Umbenennung nicht mit altem Namen erscheint.
     const personEntries = readDocumentPersonInputs()?.entries || [];
     const display = { ...restored, displayContext: { ...restored.displayContext, personDisplayContext: createProtocolPersonContext(inputs,
         (basis.personDataContext?.persons || []).map(person => personEntries.find(item => item.profileId === person.profileId))) } };
-    // Wie beim Laufbeginn: Werkstatt-Herkunft an die Eingaben binden (schreibt nichts), damit Stress-Replay den Beleg führt.
-    (dependencies.beginSimulationSummary || beginSimulationSummary)('montecarlo', inputs, { ...monteCarloParams, useCapeSampling });
     (dependencies.displayResults || displayMonteCarloResults)(display.aggregatedResults, display.anzahl, display.failCount, display.worstRun,
         {}, {}, display.pflegeTriggeredCount, inputs, display.worstRunCare, display.scenarioLogs, display.displayContext);
     (dependencies.createUI || createMonteCarloUI)().publishRunExport(expandMonteCarloExport(entry.exportDownload));
@@ -77,7 +88,7 @@ export async function restoreMonteCarloResult({ doc = globalThis.document, depen
         { startedAt: entry.startedAt || entry.savedAt, generationId: 'monte-carlo-restore' });
     if (token) completeOverviewRun('montecarlo', token, projectMonteCarloOverview(display.aggregatedResults, display.anzahl, display.failCount, inputs, display.displayContext?.durationYears ?? monteCarloParams?.maxDauer));
     const saved = new Date(entry.savedAt), time = saved.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-    const when = saved.toDateString() === new Date().toDateString() ? `von ${time}`
+    const when = saved.toDateString() === appNow().toDateString() ? `von ${time}`
         : `vom ${saved.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} ${time}`;
     showMonteCarloMemorySource(doc, `Ergebnis ${when} · Eingaben unverändert`);
     watchMonteCarloEdits(doc, registration);

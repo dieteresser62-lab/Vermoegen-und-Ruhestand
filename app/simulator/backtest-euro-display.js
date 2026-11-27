@@ -1,4 +1,4 @@
-import { adaptBacktestResult, finite } from './log-analysis-adapters.js';
+import { adaptBacktestResult, adjacent, finite } from './log-analysis-adapters.js';
 import { backtestChartSeries } from './simulator-crises.js';
 
 /**
@@ -14,13 +14,28 @@ export const backtestStartYear = result => result?.request?.period?.startYear ??
 export const backtestEuroBasis = (result, mode) => mode === 'real'
     ? `Euro von ${backtestStartYear(result) ?? 'Laufstart'}` : 'nominal';
 
-// Derselbe protokollierte Jahresendfaktor wie im Backtest-Log-Analysator.
+// Dieselben protokollierten Preisfaktoren wie im Backtest-Log-Analysator: Bestände mit dem Jahresend-,
+// Zahlungen des Jahres mit dem Jahresanfangsfaktor (ST7-A).
 const realAmount = (value, factor) => {
     if (!finite(value)) return null;
     if (value === 0) return 0;
     const real = finite(factor) && factor > 0 ? value / factor : null;
     return finite(real) ? real : null;
 };
+
+/** Preisfaktor für den Endstand des Laufs. ST7-FIX (Gutachten ST7 P2-2): Die Ruin-Zeile trägt keinen Preisfaktor. Für sie gilt der
+ * letzte bekannte, also der Jahresendfaktor des Vorjahrs (Preisstand am Jahresanfang der Ruin-Zeile, im ersten Jahr 1).
+ *
+ * @param result - Laufergebnis.
+ * @param [items] - Bereits normalisierte Jahreszeilen.
+ * @returns {number|null}
+ */
+export function backtestEndPriceFactor(result, items = adaptBacktestResult(result).rows) {
+    const last = items.at(-1), previous = items.at(-2);
+    if (!last || last.yearEndPriceFactor !== null || last.recordType !== 'terminal_ruin') return last?.yearEndPriceFactor ?? null;
+    if (!previous) return 1;
+    return adjacent(previous, last) ? previous.yearEndPriceFactor : null;
+}
 
 /** Reine Anzeigeprojektion; Resultat, Kennzahlen- und Exportverträge bleiben unverändert.
  *
@@ -30,10 +45,10 @@ const realAmount = (value, factor) => {
 export function projectBacktestEuroMetrics(result) {
     const nominal = result?.metrics?.values ?? {};
     const items = adaptBacktestResult(result).rows;
-    const endFactor = items.at(-1)?.yearEndPriceFactor;
+    const endFactor = backtestEndPriceFactor(result, items);
     const sum = read => {
         if (!items.length) return null;
-        const values = items.map(item => realAmount(read(result.rows[item.rowIndex]), item.yearEndPriceFactor));
+        const values = items.map(item => realAmount(read(result.rows[item.rowIndex]), item.yearStartPriceFactor));
         return values.every(finite) ? values.reduce((total, value) => total + value, 0) : null;
     };
     const gap = result?.summary?.healthBucket?.targetGap;

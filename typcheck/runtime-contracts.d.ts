@@ -1,7 +1,7 @@
 /** Ergänzungen, die an Fehlerobjekte der Speicher- und Profilpfade geschrieben werden. */
 export interface AppError extends Error {
     code?: string; status?: string; profileId?: string; storageKey?: string;
-    rollbackError?: unknown; raw?: unknown; quarantinePath?: string; recoverySnapshotId?: string;
+    rollbackError?: unknown; raw?: unknown; quarantinePath?: string; recoverySnapshotId?: string; areaUnchanged?: boolean;
 }
 export interface StorageReader { getItem(key: string): string | null; }
 export interface StorageKeys extends StorageReader { readonly length: number; key(index: number): string | null; }
@@ -32,7 +32,5 @@ export interface PersistenceAdapter {
     readPersistedSnapshots?(): Promise<import("./datenvertraege.js").Snapshot[]>;
     readSnapshot?(id: string): Promise<import("./datenvertraege.js").Snapshot>;
     writeSnapshot?(snapshot: import("./datenvertraege.js").Snapshot): Promise<boolean>;
-    writeSnapshots?(snapshots: import("./datenvertraege.js").Snapshot[]): Promise<boolean>;
-    migrateLegacySnapshotsIfNeeded?(options?: object): Promise<unknown>;
     close?(): void;
 }

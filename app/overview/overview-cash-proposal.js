@@ -7,7 +7,7 @@ import { appNow, localCalendarDate } from '../shared/app-clock.js';
 import { projectPersonMonthIncome, validateIsoDate } from '../profile/profile-person-data.js';
 import { liveCashData } from '../profile/profile-cash-update.js';
 import { loadExpensesStoreResult } from '../balance/balance-expenses-storage.js';
-import { computeSpent } from '../balance/balance-expenses-metrics.js';
+import { computeSpent, expenseConventions } from '../balance/balance-expenses-metrics.js';
 
 export const CASH_PLAY_SOURCE = 'spielwert';
 const rounded = value => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -29,6 +29,7 @@ export function calculateCashProposal({ person, data, end, fallbackStart, expens
     const startDay = last ? dayNumber(last) + 1 : dayNumber(fallbackStart), endDay = dayNumber(end);
     let pension = 0, income = 0, spent = 0, days = 0;
     const missing = [];
+    const directions = new Map();
     for (let cursor = startDay; cursor <= endDay;) {
         const date = new Date(cursor * 86400000), year = date.getUTCFullYear(), month = date.getUTCMonth() + 1;
         const monthDays = new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -37,7 +38,8 @@ export function calculateCashProposal({ person, data, end, fallbackStart, expens
         pension += personIncome.pension * fraction;
         income += personIncome.income * fraction;
         const entry = expenses?.years?.[year]?.months?.[month]?.profiles?.[person.id];
-        if (entry?.categories) spent += computeSpent(entry.categories).spent * fraction;
+        if (!directions.has(year)) directions.set(year, expenseConventions(expenses?.years?.[year]).get(person.id));
+        if (entry?.categories) spent += computeSpent(entry.categories, directions.get(year)).spent * fraction;
         else missing.push(`${String(month).padStart(2, '0')}.${year}`);
         days += count; cursor += count;
     }

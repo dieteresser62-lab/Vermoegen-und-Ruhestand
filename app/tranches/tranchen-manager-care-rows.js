@@ -74,7 +74,7 @@ export function renderCareRowSummaries(doc, summaries) {
 const rowBody = (doc, key) => doc.getElementById(`managerCareRow${key}Body`);
 const presentRows = doc => CARE_ROWS.filter(key => rowBody(doc, key));
 
-/** Spiegelt den sichtbaren Zustand in Knopftext und aria-expanded, einzeln und für „Alle Details“. */
+/** Spiegelt den sichtbaren Zustand jeder Zeile in Knopftext und aria-expanded. */
 function paint(doc) {
     const rows = presentRows(doc);
     for (const key of rows) {
@@ -82,12 +82,6 @@ function paint(doc) {
         doc.getElementById(`managerCareRow${key}Toggle`)?.setAttribute('aria-expanded', String(open));
         const action = doc.getElementById(`managerCareRow${key}Action`);
         if (action) action.textContent = open ? '▾ ausblenden' : '▸ zeigen';
-    }
-    const all = doc.getElementById('managerCareToggleAll');
-    if (all) {
-        const expanded = rows.length > 0 && rows.every(key => !rowBody(doc, key).hidden);
-        all.textContent = expanded ? '▾ Alle Details ausblenden' : '▸ Alle Details zeigen';
-        all.setAttribute('aria-expanded', String(expanded));
     }
 }
 
@@ -122,7 +116,7 @@ export function revealCareRowFor(doc, elementId) {
 
 const bound = new WeakSet();
 
-/** Bindet die Zeilenköpfe und „Alle Details“ genau einmal je Dokument. Native Knöpfe übernehmen Enter und Leertaste.
+/** Bindet die Zeilenköpfe genau einmal je Dokument. Native Knöpfe übernehmen Enter und Leertaste.
  *
  * @param {Document} doc Seite Personen & Vermögen.
  * @returns {void}
@@ -133,9 +127,5 @@ export function bindCareRows(doc) {
     for (const key of CARE_ROWS) {
         doc.getElementById(`managerCareRow${key}Toggle`)?.addEventListener('click', () => setCareRows(doc, { [key]: rowBody(doc, key)?.hidden === true }));
     }
-    doc.getElementById('managerCareToggleAll')?.addEventListener('click', () => {
-        const rows = presentRows(doc), open = !rows.every(key => !rowBody(doc, key).hidden);
-        setCareRows(doc, Object.fromEntries(rows.map(key => [key, open])));
-    });
     paint(doc);
 }

@@ -44,7 +44,6 @@ export function createMonteCarloRunContext({
     const yearSamplingConfig = buildYearSamplingConfig(startYearMode, annualData, {
         startYearFilter,
         startYearHalfLife,
-        blockSize,
         excludeEstimatedHistory
     });
     const startYearCdf = buildStartYearCdf(startYearMode, annualData, {

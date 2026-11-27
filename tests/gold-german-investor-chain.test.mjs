@@ -10,11 +10,16 @@ import {
 import {
     annualData,
     HISTORICAL_DATA,
-    HISTORICAL_DATA_MANIFEST
+    HISTORICAL_DATA_MANIFEST,
+    HISTORICAL_DATENSTAND
 } from '../app/simulator/simulator-data.js';
 import { canonicalizeHistoricalContractValue } from '../app/simulator/historical-backtest-contract.js';
 import { SIMULATION_DATA_INVENTORY } from '../app/simulator/simulation-data-inventory.js';
 import { applyAnnualReturnsToPortfolio } from '../app/simulator/simulator-year-portfolio.js';
+
+// JD-1: Endjahr und Jahresanzahl kommen aus dem Datenstand; Werte bis 2025 bleiben fest.
+const DATA_END_YEAR = HISTORICAL_DATENSTAND.endYear;
+const DATA_YEAR_COUNT = DATA_END_YEAR - HISTORICAL_DATENSTAND.startYear + 1;
 
 console.log('--- Gold German-Investor Chain Tests ---');
 
@@ -71,8 +76,8 @@ assertEqual(
     'Gold chain should use its canonical neutral ID'
 );
 assertEqual(GOLD_GERMAN_INVESTOR_CHAIN.coverage.startYear, 1925, 'Gold chain should start in 1925');
-assertEqual(GOLD_GERMAN_INVESTOR_CHAIN.coverage.endYear, 2025, 'Gold chain should end in 2025');
-assertEqual(GOLD_GERMAN_INVESTOR_CHAIN.coverage.yearCount, 101, 'Gold chain should contain 101 years');
+assertEqual(GOLD_GERMAN_INVESTOR_CHAIN.coverage.endYear, DATA_END_YEAR, 'Gold chain should end at the data status end year');
+assertEqual(GOLD_GERMAN_INVESTOR_CHAIN.coverage.yearCount, DATA_YEAR_COUNT, `Gold chain should contain ${DATA_YEAR_COUNT} years`);
 assertEqual(
     GOLD_GERMAN_INVESTOR_CHAIN.returnConvention.timing,
     'simulation year t compares the documented segment-specific level t with level t-1',
@@ -89,7 +94,7 @@ assertEqual(
         { startYear: 1968, endYear: 1968, convention: 'mixed_seam_1967_end_of_year_to_1968_partial_year_average' },
         { startYear: 1969, endYear: 1998, convention: 'annual_average_to_annual_average_frankfurt_fixing' },
         { startYear: 1999, endYear: 1999, convention: 'mixed_source_and_numeraire_annual_average_seam' },
-        { startYear: 2000, endYear: 2025, convention: 'annual_average_world_bank_gold_divided_by_annual_average_usd_eur' }
+        { startYear: 2000, endYear: DATA_END_YEAR, convention: 'annual_average_world_bank_gold_divided_by_annual_average_usd_eur' }
     ]),
     'Every timing regime should be machine-readable'
 );
@@ -108,18 +113,16 @@ for (const [sourceId, source] of Object.entries(GOLD_GERMAN_INVESTOR_CHAIN.sourc
 console.log('✓ identity, convention and source hashes OK');
 
 console.log('Test 2: all 101 runtime observations come only from the generated chain');
-for (let year = 1925; year <= 2025; year += 1) {
+for (let year = 1925; year <= DATA_END_YEAR; year += 1) {
     const rate = GOLD_GERMAN_INVESTOR_ANNUAL_RETURNS[year];
     assert(Number.isFinite(rate), `${year} gold return should be finite`);
     assert(rate > -100, `${year} gold return should remain greater than -100 percent`);
     assertEqual(HISTORICAL_DATA[year].gold_eur_perf, rate, `${year} runtime history should use the generated gold return`);
     assertEqual(annualData[year - 1925].gold_eur_perf, rate, `${year} sampling data should use the generated gold return`);
 }
-assertEqual(Object.keys(GOLD_GERMAN_INVESTOR_ANNUAL_RETURNS).length, 101, 'Return object should contain 101 years');
-const runtimeSource = fs.readFileSync(
-    path.join(projectRoot, 'app', 'simulator', 'simulator-data.js'),
-    'utf8'
-);
+assertEqual(Object.keys(GOLD_GERMAN_INVESTOR_ANNUAL_RETURNS).length, DATA_YEAR_COUNT, `Return object should contain ${DATA_YEAR_COUNT} years`);
+const runtimeSource = ['simulator-data.js', 'historical-data-records.js']
+    .map(file => fs.readFileSync(path.join(projectRoot, 'app', 'simulator', file), 'utf8')).join('\n');
 assertEqual(
     /gold_eur_perf:\s*-?\d/.test(runtimeSource),
     false,
@@ -189,7 +192,7 @@ assertEqual(
         { startYear: 1968, endYear: 1968, evidenceClass: 'derived' },
         { startYear: 1969, endYear: 1998, evidenceClass: 'derived' },
         { startYear: 1999, endYear: 1999, evidenceClass: 'derived' },
-        { startYear: 2000, endYear: 2025, evidenceClass: 'derived' }
+        { startYear: 2000, endYear: DATA_END_YEAR, evidenceClass: 'derived' }
     ]),
     'Gold evidence should expose every market, source and currency seam'
 );

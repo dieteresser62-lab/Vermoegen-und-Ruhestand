@@ -2,13 +2,13 @@
 import { CONFIG } from '../balance/balance-config.js';
 import { appNow } from '../shared/app-clock.js';
 import { PersistenceFacade, persistenceStorage } from '../shared/persistence-facade.js';
-import { SnapshotArchive, SNAPSHOT_KINDS } from '../shared/snapshot-archive.js';
+import { SnapshotArchive } from '../shared/snapshot-archive.js';
 import { isAllowedSnapshotCaptureKey } from '../shared/persistence-key-policy.js';
 import { createNavigationOperationLifecycle } from '../shared/navigation-guard.js';
 import { resolveLiquidityRunwayYears } from '../../types/liquidity-runway-contract.js';
 import { readHouseholdSimulatorNeedsState } from '../simulator/simulator-household-needs-persistence.js';
 import { HOUSEHOLD_PLAN_KEY, PLAN_DEFAULTS, PLAN_FIELD_PATHS, assertPlanValues, assertHouseholdPlanRecord,
-    buildPlanRecord, canonicalPlan, planScope, memberPlanScope, plain } from './household-plan.js';
+    buildPlanRecord, canonicalPlan, memberPlanScope, plain } from './household-plan.js';
 
 const own = (value, key) => Object.hasOwn(value || {}, key);
 /**
@@ -64,11 +64,8 @@ function fromInputs(inputs, path, origin) {
     const aliases = path === 'cape.value' ? ['marketCapeRatio', 'capeRatio']
         : path === 'decumulation.mode' ? ['entnahmeStrategie'] : [path];
     if (path === 'liquidityRunwayYears') {
-        const legacy = { ...inputs };
-        if (!own(legacy, 'runwayTargetMonths') && own(legacy, 'runwayTargetM')) legacy.runwayTargetMonths = legacy.runwayTargetM;
-        if (!own(legacy, 'runwayMinMonths') && own(legacy, 'runwayMinM')) legacy.runwayMinMonths = legacy.runwayMinM;
-        if (!['liquidityRunwayYears', 'runwayTargetMonths', 'runwayMinMonths'].some(key => own(legacy, key))) return missing(origin);
-        return normalizeField(resolveLiquidityRunwayYears(legacy).years, path, origin);
+        if (!own(inputs, 'liquidityRunwayYears')) return missing(origin);
+        return normalizeField(resolveLiquidityRunwayYears(inputs).years, path, origin);
     }
     const direct = getPlanField(inputs, path);
     if (direct !== undefined) return normalizeField(direct, path, origin);
@@ -97,9 +94,7 @@ function simulatorSource(data, state, path, id) {
         if (member.status === 'present') return member;
     }
     if (path === 'liquidityRunwayYears') {
-        const inputs = {};
-        for (const name of ['liquidityRunwayYears', 'runwayTargetMonths', 'runwayMinMonths']) if (own(data, `sim_${name}`)) inputs[name] = data[`sim_${name}`];
-        return fromInputs(inputs, path, `${id}.Simulator`);
+        return fromInputs(own(data, 'sim_liquidityRunwayYears') ? { liquidityRunwayYears: data.sim_liquidityRunwayYears } : {}, path, `${id}.Simulator`);
     }
     if (own(data, key)) return normalizeField(data[key], path, `${id}.${key}`);
     if (path.startsWith('cape.') && path !== 'cape.value') return missing(`${id}.Simulator`);
@@ -123,8 +118,7 @@ export function analyzeHouseholdPlanMigration(records) {
     if (!plain(registry?.profiles)) throw new Error('Profilbestand für die Planumstellung fehlt.');
     const activeId = records.rs_active_profile || records.rs_current_profile;
     const ids = Object.keys(registry.profiles);
-    const members = ids.filter(id => registry.profiles[id].meta.belongsToHousehold !== false);
-    const scopes = [...(members.length ? [memberPlanScope(members, { getItem: key => records[key] ?? null })] : []), ...ids.filter(id => !members.includes(id)).map(id => planScope('single', [id]))];
+    const scopes = ids.length ? [memberPlanScope(ids, { getItem: key => records[key] ?? null })] : [];
     const existing = records[HOUSEHOLD_PLAN_KEY] == null ? { version: 1, entries: {} } : assertHouseholdPlanRecord(records[HOUSEHOLD_PLAN_KEY]);
     const override = /** @type {(storage: import("../../typcheck/datenvertraege.js").RecordReader)=>ReturnType<typeof readHouseholdSimulatorNeedsState>} */ (readHouseholdSimulatorNeedsState)({ getItem: key => records[key] ?? null });
     const analyses = [];
@@ -134,9 +128,9 @@ export function analyzeHouseholdPlanMigration(records) {
         const predecessors = scope.kind === 'household' ? Object.values(existing.entries).filter(entry => entry.scope.kind === 'household'
             && entry.scope.ids.some(id => scope.ids.includes(id))) : [];
         if (predecessors.length && new Set(predecessors.map(entry => canonicalPlan(entry.values))).size === 1) {
-            analyses.push({ scope, sourceId: members[0], fields: [], values: structuredClone(predecessors[0].values), conflicts: [], warnings: [] }); continue;
+            analyses.push({ scope, sourceId: ids[0], fields: [], values: structuredClone(predecessors[0].values), conflicts: [], warnings: [] }); continue;
         }
-        const ordered = scope.kind === 'household' ? members : scope.ids;
+        const ordered = scope.kind === 'household' ? ids : scope.ids;
         const sourceId = ordered[0];
         const dataFor = id => id === activeId ? { ...registry.profiles[id].data, ...Object.fromEntries(Object.entries(records).filter(([key]) => key !== 'rs_profiles_v1')) } : registry.profiles[id].data;
         const data = dataFor(sourceId), state = parseState(data);
@@ -239,11 +233,9 @@ export function migrateHouseholdPlans({ storage = persistenceStorage, persistenc
         check();
         const persisted = await persistence.readPersistedRecords(isAllowedSnapshotCaptureKey);
         check(); if (canonicalPlan(persisted) !== identity) throw new Error('Ausgangsbestand ist nicht dauerhaft bestätigt.');
-        const snapshot = await archive.createSnapshot({ label: 'Vor Umstellung Haushalt & Plan', kind: SNAPSHOT_KINDS.householdPlanMigrationRecovery,
-            activeProfileId: analyzed.activeId, records: before, createdAt: now().toISOString() }, { storage: persistence, navigationOperation: operation, guard });
-        check();
-        const verified = await archive.readSnapshot(snapshot.id, { storage: persistence });
-        check(); if (canonicalPlan(verified) !== canonicalPlan(snapshot) || canonicalPlan(verified.records) !== identity) throw new Error('Wiederherstellungspunkt wurde nicht bytegleich bestätigt.');
+        // SV-1: Interne Rücksicherung; sie erscheint nicht in der Liste und entfällt nach Erfolg.
+        const snapshot = await archive.createInternalRecovery(before, { label: 'Vor Umstellung Haushalt & Plan', storage: persistence, navigationOperation: operation });
+        check(); if (canonicalPlan(snapshot.records) !== identity) throw new Error('Wiederherstellungspunkt wurde nicht bytegleich bestätigt.');
         const next = buildPlanRecord(before[HOUSEHOLD_PLAN_KEY], entries, { now });
         let writing = false, rollingBack = false;
         const transaction = { ...operation, check() {
@@ -270,9 +262,11 @@ export function migrateHouseholdPlans({ storage = persistenceStorage, persistenc
                 postValidate: actual => { transaction.check(); assertHouseholdPlanRecord(actual[HOUSEHOLD_PLAN_KEY]); } });
         } catch (error) {
             if (error.code === 'rollback_failed') persistence.blockSyncWrites?.([...Object.keys(before), HOUSEHOLD_PLAN_KEY],
-                'Planumstellung und Rücknahme unbestätigt. Bitte neu laden und den Punkt „Vor Umstellung Haushalt & Plan“ wiederherstellen.', { predicate: isAllowedSnapshotCaptureKey });
+                'Planumstellung und Rücknahme unbestätigt. Bitte neu laden und den Stand prüfen. Hilft das nicht, spiele deine letzte Vollsicherung ein.', { predicate: isAllowedSnapshotCaptureKey });
+            else await archive.discardInternalRecovery(snapshot.id, { storage: persistence, navigationOperation: operation });
             throw error;
         }
+        await archive.discardInternalRecovery(snapshot.id, { storage: persistence, navigationOperation: operation });
         return { status: 'migrated', snapshotId: snapshot.id };
     });
     flights.set(storage, job);

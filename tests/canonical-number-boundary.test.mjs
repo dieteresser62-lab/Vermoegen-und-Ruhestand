@@ -4,7 +4,6 @@ import fs from 'node:fs';
 
 import InputValidator from '../engine/validators/InputValidator.mjs';
 import { EngineAPI } from '../engine/index.mjs';
-import { evaluateCandidate } from '../app/simulator/auto-optimize-evaluate.js';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
 import {
     parseDisplayNumber
@@ -17,7 +16,6 @@ import {
     readBasePortfolioInputs,
     readStrategyInputs
 } from '../app/simulator/simulator-input-strategy.js';
-import { runSweepChunk } from '../app/simulator/sweep-runner.js';
 
 console.log('--- Canonical Number Boundary Tests ---');
 
@@ -236,7 +234,7 @@ console.log('Test 6: Simulator HTML exposes the existing engine bounds');
     assertEqual(attribute(maxBear, 'max'), '70', 'Simulator maxBear maximum matches the engine');
 }
 
-console.log('Test 7: MC, Sweep and Optimizer share the canonical fractional-lot initialization');
+console.log('Test 7: MC uses the canonical fractional-lot initialization');
 {
     const derivedInputs = simulationInputs();
     const explicitInputs = simulationInputs({
@@ -271,56 +269,6 @@ console.log('Test 7: MC, Sweep and Optimizer share the canonical fractional-lot 
     ]);
     assertEqual(JSON.stringify(derivedMc), JSON.stringify(explicitMc),
         'Monte Carlo treats derived and explicit O-05 lot values identically');
-
-    const params = {
-        liquidityRunwayYears: 5,
-        goldRebalancingBand: 25,
-        maxSkimPct: 10,
-        maxBearRefillPct: 5,
-        goldTargetPct: 0
-    };
-    const sweepConfig = {
-        anzahlRuns: 2,
-        maxDauer: 1,
-        blockSize: 2,
-        baseSeed: 1703,
-        methode: 'block',
-        rngMode: 'per-run-seed'
-    };
-    const derivedSweep = runSweepChunk({
-        baseInputs: derivedInputs,
-        paramCombinations: [params],
-        comboRange: { start: 0, count: 1 },
-        sweepConfig,
-        engine: EngineAPI
-    });
-    const explicitSweep = runSweepChunk({
-        baseInputs: explicitInputs,
-        paramCombinations: [params],
-        comboRange: { start: 0, count: 1 },
-        sweepConfig,
-        engine: EngineAPI
-    });
-    assertEqual(JSON.stringify(derivedSweep), JSON.stringify(explicitSweep),
-        'Sweep treats derived and explicit O-05 lot values identically');
-
-    const previousDocument = global.document;
-    const previousWindow = global.window;
-    try {
-        global.document = { getElementById: () => null };
-        global.window = { EngineAPI };
-        const [derivedOptimizer, explicitOptimizer] = await Promise.all([
-            evaluateCandidate({}, derivedInputs, 2, 1, [1703]),
-            evaluateCandidate({}, explicitInputs, 2, 1, [1703])
-        ]);
-        assertEqual(JSON.stringify(derivedOptimizer), JSON.stringify(explicitOptimizer),
-            'Optimizer treats derived and explicit O-05 lot values identically');
-    } finally {
-        if (previousDocument === undefined) delete global.document;
-        else global.document = previousDocument;
-        if (previousWindow === undefined) delete global.window;
-        else global.window = previousWindow;
-    }
 }
 
 console.log('✅ Canonical number boundary tests passed');

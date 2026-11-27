@@ -1,10 +1,15 @@
 import { areaSessionStorage, getStorageArea } from '../../shared/persistence-area-storage.js';
+import { appNow } from '../../shared/app-clock.js';
+import { compactHomeWealthFan } from '../wealth-home-fan.js';
 
 // TD-2: Das letzte Monte-Carlo-Ergebnis bleibt für die Sitzung erhalten, solange die Eingaben gleich bleiben.
 // Nur sessionStorage im aktiven Speicherbereich; nie Persistenz, Sicherung oder Export.
 export const MONTE_CARLO_MEMORY_KEY = 'rs_simulator_mc_result_v1';
 // Chromium erlaubt etwa 5 Mio. Zeichen je Ursprung; der Eintrag bleibt mit Abstand darunter.
 export const MONTE_CARLO_MEMORY_LIMIT = 3000000;
+export const MONTE_CARLO_MEMORY_TOO_LARGE = 'Ergebnis zu groß zum Merken – nach einem Seitenwechsel neu rechnen.';
+// HP-4b: Ohne Sitzungsspeicher oder bei einem Fehler beim Serialisieren ist „zu groß“ nicht die Ursache.
+export const MONTE_CARLO_MEMORY_FAILED = 'Ergebnis konnte nicht gemerkt werden – nach einem Seitenwechsel neu rechnen.';
 
 function session() {
     try { return areaSessionStorage(globalThis.window?.sessionStorage) || null; } catch { return null; }
@@ -39,13 +44,52 @@ export function monteCarloFingerprint({ inputs, monteCarloParams, widowOptions, 
 
 // JSON kennt weder NaN, Infinity und -0 noch typisierte Arrays, Map oder Set; die Anzeige braucht sie unverändert.
 const TYPED = { Float64Array, Float32Array, Int32Array, Uint32Array, Int16Array, Uint16Array, Int8Array, Uint8Array, Uint8ClampedArray };
-const encode = (key, value) => typeof value === 'number' && (!Number.isFinite(value) || Object.is(value, -0))
-    ? { $mcNumber: Object.is(value, -0) ? '-0' : String(value) }
-    : ArrayBuffer.isView(value) && TYPED[value.constructor.name] ? { $mcTyped: value.constructor.name, values: Array.from(/** @type {ArrayLike<number>} */ (/** @type {unknown} */ (value))) }
-        : value instanceof Map ? { $mcMap: [...value] } : value instanceof Set ? { $mcSet: [...value] } : value;
-const decode = (key, value) => !value || typeof value !== 'object' || Array.isArray(value) ? value
-    : '$mcNumber' in value ? Number(value.$mcNumber) : '$mcTyped' in value ? new TYPED[value.$mcTyped](value.values)
-        : '$mcMap' in value ? new Map(value.$mcMap) : '$mcSet' in value ? new Set(value.$mcSet) : value;
+// HP-4: Typisierte Arrays (vor allem Fächerklassen und ihre Summen) dünn besetzt: je belegtes Feld Abstand zum vorigen und Wert, ohne Nullfelder.
+/** @param {ArrayLike<number>} array @returns {number[]} */
+function sparseValues(array) {
+    const pairs = [];
+    for (let index = 0, last = -1; index < array.length; index++) if (!Object.is(array[index], 0)) { pairs.push(index - last, array[index]); last = index; }
+    return pairs;
+}
+/** @param {{$mcTyped: string, values?: number[], length?: number, sparse?: number[]}} value */
+function typedArray({ $mcTyped, values, length, sparse }) {
+    if (values) return new TYPED[$mcTyped](values);
+    const array = new TYPED[$mcTyped](length);
+    for (let i = 0, index = -1; i < sparse.length; i += 2) array[index += sparse[i]] = sparse[i + 1];
+    return array;
+}
+// HP-4: Gleiche Zahlenreihen (Endwerte je Lauf, Verteilungen, Export-Kennzahlen) stehen nur einmal im Eintrag, danach als Verweis.
+const SHARED_LIST_MIN = 100;
+const isNumberList = value => Array.isArray(value) && value.length >= SHARED_LIST_MIN && value.every(item => item === null || typeof item === 'number');
+const listKey = list => JSON.stringify(list.map(item => typeof item === 'number' && (!Number.isFinite(item) || Object.is(item, -0)) ? String(item) : item));
+/** @returns {(key: string, value: any) => any} JSON-Ersetzer für einen Eintrag. */
+function createEncoder() {
+    const lists = new Map(), written = new WeakSet();
+    return function encode(key, value) {
+        if (typeof value === 'number' && (!Number.isFinite(value) || Object.is(value, -0))) return { $mcNumber: Object.is(value, -0) ? '-0' : String(value) };
+        if (ArrayBuffer.isView(value) && TYPED[value.constructor.name]) {
+            const array = /** @type {ArrayLike<number>} */ (/** @type {unknown} */ (value));
+            return { $mcTyped: value.constructor.name, length: array.length, sparse: sparseValues(array) };
+        }
+        if (value instanceof Map) return { $mcMap: [...value] };
+        if (value instanceof Set) return { $mcSet: [...value] };
+        if (!isNumberList(value) || written.has(value)) return value;
+        const id = listKey(value);
+        if (lists.has(id)) return { $mcSame: lists.get(id) };
+        lists.set(id, lists.size);
+        const values = value.slice();
+        written.add(values);
+        return { $mcList: lists.size - 1, values };
+    };
+}
+/** @returns {(key: string, value: any) => any} JSON-Wiederhersteller für einen Eintrag; Verweise folgen in Dokumentreihenfolge. */
+function createDecoder() {
+    const lists = [];
+    return (key, value) => !value || typeof value !== 'object' || Array.isArray(value) ? value
+        : '$mcNumber' in value ? Number(value.$mcNumber) : '$mcTyped' in value ? typedArray(value)
+            : '$mcList' in value ? (lists[value.$mcList] = value.values) : '$mcSame' in value ? lists[value.$mcSame].slice()
+                : '$mcMap' in value ? new Map(value.$mcMap) : '$mcSet' in value ? new Set(value.$mcSet) : value;
+}
 
 const runIndex = scenario => scenario?.sourceIdentity?.absoluteRunIndex;
 // Gemerkt wird nur die Zeilenzahl; Platzhalter ohne Zeilen (z. B. kein Pflegefall) bleiben ohne Zeilen.
@@ -72,27 +116,42 @@ export function monteCarloRowIndices(display) {
  * @returns {boolean} true, wenn das Ergebnis gemerkt ist.
  */
 export function rememberMonteCarloResult(entry) {
+    return storeMonteCarloResult(entry) === 'stored';
+}
+
+/**
+ * @param entry Ergebnis mit Fingerabdruck, Zeitpunkt, Anzeigeargumenten und Export.
+ * @returns {'stored'|'too-large'|'failed'} Ausgang; „too-large“ auch bei vollem Speicher.
+ */
+function storeMonteCarloResult(entry) {
     const storage = session();
-    if (!storage) return false;
+    if (!storage) return 'failed';
     const { display } = entry;
-    // Der Export ist eingerückt; kompakt gespeichert ergibt die Rückformatierung dieselben Bytes.
-    const compact = download => download?.content ? { ...download, content: JSON.stringify(JSON.parse(download.content)) } : download;
+    // Der Export ist eingerückt; als JSON-Wert gespeichert ergibt die Rückformatierung dieselben Bytes, und seine Kennzahlreihen teilen sich
+    // die Verweise mit dem Gesamtergebnis (HP-4).
+    const compact = download => download?.content ? { ...download, content: undefined, contentJson: JSON.parse(download.content) } : download;
     const scenarioLogs = display.scenarioLogs && Object.fromEntries(Object.entries(display.scenarioLogs)
         .map(([group, list]) => [group, (list || []).map(withoutRows)]));
+    // HP-4: Geldfächer und Endwerte je Lauf sind nicht aufzählbar und fielen in JSON weg; result-restore.js setzt sie wieder so ein.
+    const results = display.aggregatedResults, view = results?.wealthView;
+    const hiddenResults = results && typeof results === 'object' ? { ...('wealthFan' in results ? { wealthFan: results.wealthFan } : {}),
+        ...(view && typeof view === 'object' && 'realByRun' in view ? { realByRun: view.realByRun } : {}) } : undefined;
+    // HP-4: Vom Immobilienfächer bleiben nur die Summen, die die Anzeige liest (wealth-home-fan.js).
+    const aggregatedResults = results?.displayHomeValueFan ? { ...results, displayHomeValueFan: compactHomeWealthFan(results.displayHomeValueFan) } : results;
     let raw;
     try {
-        raw = JSON.stringify({ version: 1, ...entry, exportDownload: compact(entry.exportDownload), display: { ...display, scenarioLogs,
-            worstRun: withoutRows(display.worstRun), worstRunCare: withoutRows(display.worstRunCare) } }, encode);
+        raw = JSON.stringify({ version: 1, ...entry, exportDownload: compact(entry.exportDownload), display: { ...display, aggregatedResults, hiddenResults, scenarioLogs,
+            worstRun: withoutRows(display.worstRun), worstRunCare: withoutRows(display.worstRunCare) } }, createEncoder());
     } catch (error) { console.warn('[MC] Ergebnis nicht gemerkt.', error); raw = null; }
     try {
-        if (!raw || raw.length > MONTE_CARLO_MEMORY_LIMIT) { storage.removeItem(MONTE_CARLO_MEMORY_KEY); return false; }
+        if (!raw || raw.length > MONTE_CARLO_MEMORY_LIMIT) { storage.removeItem(MONTE_CARLO_MEMORY_KEY); return raw ? 'too-large' : 'failed'; }
         storage.setItem(MONTE_CARLO_MEMORY_KEY, raw);
-        return true;
+        return 'stored';
     } catch (error) {
         // QuotaExceededError oder gesperrter Speicher: nichts merken, die alte Warnung bleibt.
         console.warn('[MC] Ergebnis nicht gemerkt.', error);
         try { storage.removeItem(MONTE_CARLO_MEMORY_KEY); } catch { /* bleibt leer */ }
-        return false;
+        return /** @type {Error} */ (error)?.name === 'QuotaExceededError' ? 'too-large' : 'failed';
     }
 }
 
@@ -102,10 +161,15 @@ export function rememberMonteCarloResult(entry) {
  * @returns {boolean}
  */
 export function rememberPublishedMonteCarloRun({ rngMode, registration, doc, ...entry }) {
-    const remembered = rngMode !== 'legacy-stream' && rememberMonteCarloResult({ ...entry, savedAt: new Date().toISOString() });
+    const legacy = rngMode === 'legacy-stream';
+    const outcome = legacy ? 'legacy' : storeMonteCarloResult({ ...entry, savedAt: appNow().toISOString() });
+    const remembered = outcome === 'stored';
     if (!remembered) forgetMonteCarloResult();
     if (registration) registration.resultRemembered = remembered;
-    if (remembered) watchMonteCarloEdits(doc, registration);
+    // HP-4: Kein stilles Verwerfen; der Hinweis verschwindet beim nächsten Laufstart und mit der nächsten Eingabe.
+    if (outcome === 'too-large') showMonteCarloMemorySource(doc, MONTE_CARLO_MEMORY_TOO_LARGE);
+    if (outcome === 'failed') showMonteCarloMemorySource(doc, MONTE_CARLO_MEMORY_FAILED);
+    if (!legacy) watchMonteCarloEdits(doc, registration);
     return remembered;
 }
 
@@ -147,7 +211,7 @@ export function showMonteCarloMemorySource(doc, text) {
 /** @returns {any} gemerktes Ergebnis oder null */
 export function readRememberedMonteCarloResult() {
     try {
-        const value = JSON.parse(session()?.getItem(MONTE_CARLO_MEMORY_KEY) || 'null', decode);
+        const value = JSON.parse(session()?.getItem(MONTE_CARLO_MEMORY_KEY) || 'null', createDecoder());
         return value?.version === 1 && typeof value.fingerprint === 'string' && value.display ? value : null;
     } catch { return null; }
 }
@@ -157,6 +221,10 @@ export function readRememberedMonteCarloResult() {
  * @returns Export mit derselben Einrückung wie nach der Rechnung.
  */
 export function expandMonteCarloExport(download) {
+    if (download?.contentJson !== undefined) {
+        const { contentJson, ...rest } = download;
+        return { ...rest, content: JSON.stringify(contentJson, null, 2) };
+    }
     return download?.content ? { ...download, content: JSON.stringify(JSON.parse(download.content), null, 2) } : download;
 }
 

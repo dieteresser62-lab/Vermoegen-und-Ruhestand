@@ -95,7 +95,7 @@ try {
         const data = [{ step: 'Flex-S-Kurve', impact: 'Flex-Anteil 100% -> Cap 20.1%. Mindest-Flex 6550€.', status: 'active' }];
         const before = JSON.stringify(data);
         const impact = buildDecisionTree(data).children[0].children[1].children[1].textContent;
-        assertEqual(impact, 'Flex-Anteil 100\u00a0% → Cap 20,1\u00a0%. Mindest-Flex 6.550\u00a0€.', 'Diagnosesätze zeigen deutsche Werte und Pfeil');
+        assertEqual(impact, 'Flex-Anteil 100\u00a0% → Obergrenze 20,1\u00a0%. Mindest-Flex 6.550\u00a0€.', 'Diagnosesätze zeigen deutsche Werte und Pfeil');
         assertEqual(JSON.stringify(data), before, 'Anzeige verändert keine Engine-Diagnose');
     }
 

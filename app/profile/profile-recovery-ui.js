@@ -2,6 +2,7 @@ import { requestPageConfirmation } from '../shared/page-dialog.js';
 import { createProfileRecoveryDocument, resetProfileRecovery } from './profile-storage.js';
 import { renderSuiteProfile } from '../shared/suite-frame.js';
 import { downloadJsonFile } from '../shared/persistence-backup.js';
+import { SAVE_CANCELLED_TEXT } from '../shared/save-file.js';
 import { PersistenceFacade } from '../shared/persistence-facade.js';
 import { reloadGuardedPage } from '../shared/navigation-guard-dialog.js';
 
@@ -33,7 +34,8 @@ export function renderProfileRecovery({
     setProfileControlsDisabled(controls, true);
 
     const message = doc.createElement('p');
-    message.textContent = `${recovery.message} Ohne ausdrückliche Entscheidung werden keine Profildaten überschrieben.`;
+    const introText = `${recovery.message} Ohne ausdrückliche Entscheidung werden keine Profildaten überschrieben.`;
+    message.textContent = introText;
     statusEl.appendChild(message);
 
     const actions = doc.createElement('div');
@@ -75,19 +77,31 @@ export function renderProfileRecovery({
     resetButton.dataset.profileRecoveryAction = 'reset';
     resetButton.disabled = true;
 
-    exportButton.addEventListener('click', () => {
+    exportButton.addEventListener('click', async () => {
         if (exportButton.disabled) return;
+        // SD-1: In der Desktop-App wartet der Export auf den Dialog „Speichern unter“; erst eine gespeicherte Datei gibt den Reset frei.
+        exportButton.disabled = true;
+        resetButton.disabled = true;
         try {
-            exportedDocument = createProfileRecoveryDocument(recovery, {
+            const recoveryDocument = createProfileRecoveryDocument(recovery, {
                 backend: PersistenceFacade.getPersistenceStatus()?.backend || 'unknown'
             });
-            downloadJsonFile(exportedDocument, createRecoveryFilename(), doc);
+            const saved = await downloadJsonFile(recoveryDocument, createRecoveryFilename(), doc);
+            if (!saved.saved) {
+                message.textContent = `${introText} ${SAVE_CANCELLED_TEXT}`;
+                resetButton.disabled = !exportedDocument;
+                return;
+            }
+            exportedDocument = recoveryDocument;
             exportButton.textContent = 'Recovery exportiert';
+            if (saved.path) message.textContent = `${introText} Recovery-Datei gespeichert unter ${saved.path}.`;
             resetButton.disabled = false;
         } catch (error) {
             exportedDocument = null;
             resetButton.disabled = true;
             message.textContent = `Der Recovery-Export ist fehlgeschlagen. ${error?.message || ''}`.trim();
+        } finally {
+            exportButton.disabled = false;
         }
     });
 

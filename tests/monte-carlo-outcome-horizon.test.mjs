@@ -145,8 +145,8 @@ async function runSingle(inputs, { engine = EngineAPI, seed = 42, monteCarloOver
     attachMonteCarloBatchOutcome({
         outcomeCounts: { ruin: 1, all_dead: 1, horizon_exhausted: 1 }
     }, technicalTransport);
-    assert(technicalTransport.errors[0].message.includes('Terminale Outcomes:'), 'Technical UI error path should keep the outcome inventory visible');
-    assert(technicalTransport.errors[0].message.includes('Floor-Deckung im gewaehlten Horizont: nicht ausgewiesen'), 'Technical UI error path should use the reviewed fail-closed headline');
+    assert(technicalTransport.errors[0].message.includes('Endzustände:'), 'Technical UI error path should keep the outcome inventory visible');
+    assert(technicalTransport.errors[0].message.includes('Grundbedarf gedeckt im gewählten Horizont: nicht ausgewiesen'), 'Technical UI error path should use the reviewed fail-closed headline');
 }
 
 {

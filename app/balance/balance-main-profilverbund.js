@@ -6,8 +6,7 @@ import { readBalancePersonStatus, showPersonDataStatus } from '../shared/person-
  * Purpose: Manages the "Profilverbund" (Profile Compound) logic for multi-person households.
  *          It runs one household simulation and attributes the finalized action to profile-owned sources.
  * Usage: Used by balance-main.js to handle multi-profile scenarios.
- * Dependencies: profile-storage.js, profilverbund-balance.js, profilverbund-action-attribution.js,
- *               profilverbund-balance-ui.js
+ * Dependencies: profile-storage.js, profilverbund-balance.js, profilverbund-action-attribution.js
  */
 "use strict";
 
@@ -32,7 +31,6 @@ import {
 } from '../profile/profilverbund-balance.js';
 import { activeCarrier, carrierMissing } from '../profile/household-withdrawal-mode.js';
 import { planCarrierAction, carrierAttributionView, cappedPurchaseAmount, nonCarrierSales, carrierTransactionView, carrierViewCapital, carrierOnlyProfiles, carrierReserveShortfall } from '../profile/household-carrier-action.js';
-import { toggleProfilverbundMode } from '../profile/profilverbund-balance-ui.js';
 import {
     attributeHouseholdAction,
     reconcileAttributedThreeBucketState,
@@ -42,6 +40,7 @@ import { persistenceStorage } from '../shared/persistence-facade.js';
 import { StorageManager } from './balance-storage.js';
 import { renderSuiteHousehold } from '../shared/suite-frame.js';
 import { prepareBalanceEngineAssets } from './balance-health-bucket.js';
+import { capHouseholdFlex } from './balance-flex-cap.js';
 
 /**
  * @param options Optionen und Abhängigkeiten.
@@ -187,15 +186,15 @@ export function createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS })
             deferTaxSettlement: true
         };
         const operative = prepareBalanceEngineAssets(persistedHouseholdInput, profiles);
-        const householdInput = operative.input;
+        let householdInput = operative.input;
         profiles = operative.profiles;
         let householdResult = engineApi.simulateSingleYear(householdInput, householdLastState);
         if (householdResult?.error) {
             throw householdResult.error;
         }
-        const decidedAnnualWithdrawal = Number(householdResult?.ui?.spending?.monatlicheEntnahme) * 12;
+        let decidedAnnualWithdrawal = Number(householdResult?.ui?.spending?.monatlicheEntnahme) * 12;
         if (!Number.isFinite(decidedAnnualWithdrawal) || decidedAnnualWithdrawal < 0) {
-            throw new Error('Profilverbund: Haushalts-Engine lieferte keinen gueltigen Entnahmebedarf.');
+            throw new Error('Die Haushaltsrechnung hat keinen gültigen Entnahmebedarf ergeben.');
         }
 
         let distribution = calculateWithdrawalDistribution(
@@ -203,8 +202,18 @@ export function createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS })
             { ...householdNeed, netWithdrawal: decidedAnnualWithdrawal },
             mode
         );
+        // NK-2d (Gutachten NK2C3 Befund 2): Kürzt die Verteilung Flex (Person zu Hause trägt allein), rechnet die Haushalts-Engine mit dem
+        // gekürzten Flex neu, damit Monatsbudget, Entnahme, Flexkennzahlen und Folgezustand zur Verteilung passen.
+        if (/** @type {any} */ (distribution).flexCut?.length) {
+            const capped = capHouseholdFlex(engineApi, householdInput, householdLastState, distribution.totalNeed, decidedAnnualWithdrawal);
+            ({ input: householdInput, result: householdResult, annual: decidedAnnualWithdrawal } = capped);
+            distribution = calculateWithdrawalDistribution(profiles, { ...householdNeed, netWithdrawal: decidedAnnualWithdrawal }, mode);
+        }
         const allocatedTotal = distribution.items.reduce((sum, item) => sum + (item.withdrawalAmount || 0), 0);
-        if (distribution.remaining > 0.01 || Math.abs(allocatedTotal - distribution.totalNeed) > 0.01) {
+        // NK-2d (Gutachten NK2C3 Befund 1): Ein offener Grundbedarf (Person zu Hause ohne Geld, Einkünfte im Heim gebunden) ist keine
+        // Flex-Kürzung und kein Zuordnungsfehler; er bleibt als `floorShortfall` stehen und steht als Mangel im Abschluss und im Beleg.
+        const floorShortfall = Number(/** @type {any} */ (distribution).floorShortfall) || 0;
+        if (distribution.remaining - floorShortfall > 0.01 || Math.abs(allocatedTotal + floorShortfall - distribution.totalNeed) > 0.01) {
             throw new Error(`Profilverbund: ${distribution.remaining.toFixed(2)} EUR Haushaltsbedarf konnten keinem Profil zugeordnet werden.`);
         }
 
@@ -365,7 +374,7 @@ export function createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS })
     const persistProfilverbundInputs = (runs) => {
         runs.forEach(run => {
             const existing = (run.balanceState && typeof run.balanceState === 'object') ? run.balanceState : {};
-            const hasPlan = readBalanceHouseholdPlan({ profileId: run.profileId }).status === 'valid';
+            const hasPlan = readBalanceHouseholdPlan().status === 'valid';
             const own = input => hasPlan ? stripBalancePlanInputs(input) : input;
             const nextState = {
                 ...existing,
@@ -390,7 +399,7 @@ export function createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS })
             : null;
         runs.forEach(run => {
             const existing = (run.balanceState && typeof run.balanceState === 'object') ? run.balanceState : {};
-            const hasPlan = readBalanceHouseholdPlan({ profileId: run.profileId }).status === 'valid';
+            const hasPlan = readBalanceHouseholdPlan().status === 'valid';
             const own = input => hasPlan ? stripBalancePlanInputs(input) : input;
             const nextState = {
                 ...existing,
@@ -426,7 +435,6 @@ export function createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS })
         }
         if (profiles.length < 1) {
             renderSuiteHousehold([]);
-            toggleProfilverbundMode(false);
             return;
         }
 
@@ -434,15 +442,11 @@ export function createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS })
         const storedMode = readWithdrawalMode();
 
         modeSelect.value = storedMode;
-        toggleProfilverbundMode(true);
 
         modeSelect.addEventListener('change', () => {
             try {
                 const plan = readBalanceHouseholdPlan();
                 if (plan.status === 'valid') {
-                    const ownPlan = readBalanceHouseholdPlan({ profileId: getCurrentProfileId() });
-                    if (ownPlan.scope.key !== plan.scope.key
-                        && modeSelect.value !== plan.entry.values.householdWithdrawalMode) throw new Error('Die Außenperson darf den Haushaltsplan nicht ändern.');
                     // Der bestehende Formularbinder entprellt den Planwrite gemeinsam mit der Rechnung.
                     return;
                 }

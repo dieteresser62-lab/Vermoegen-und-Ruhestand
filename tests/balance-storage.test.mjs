@@ -45,26 +45,6 @@ class MockLocalStorage {
     }
 }
 
-// Mock für IndexedDB (nur für API-Kompatibilität).
-class MockIDBHelper {
-    constructor() {
-        this.store = new Map();
-        this.db = {};
-    }
-
-    async open() {
-        return Promise.resolve();
-    }
-
-    async get(key) {
-        return this.store.get(key) || null;
-    }
-
-    async set(key, val) {
-        this.store.set(key, val);
-    }
-}
-
 // Setup global mocks
 const mockLocalStorage = new MockLocalStorage();
 global.localStorage = mockLocalStorage;
@@ -88,8 +68,6 @@ class StorageError extends Error {
 
 // Minimaler StorageManager für Tests (aus balance-storage.js extrahiert)
 const StorageManager = {
-    _idbHelper: new MockIDBHelper(),
-
     _validateInflationFactor(data) {
         const state = data?.lastState;
         if (!state || !Object.prototype.hasOwnProperty.call(state, 'cumulativeInflationFactor')) return;

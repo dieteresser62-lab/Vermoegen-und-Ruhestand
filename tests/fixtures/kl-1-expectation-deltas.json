@@ -1,0 +1,124 @@
+{
+  "reason": "KL-1 korrigiert die Ansparjahres-Endliquidität im Export und führt die Paritätsprüfungen auf Basis c2b006a7 fort.",
+  "changes": [
+    {
+      "test": "tests/simulation.test.mjs",
+      "field": "Exportspalte Liquidität Jahresende (vor Steuer), Ansparjahr mit Sparrate",
+      "old": 99500,
+      "new": 111500,
+      "reason": "100.000 € Anfangsliquidität minus 500 € Negativzins plus 12.000 € Sparrate ergeben 111.500 € vor Steuer. Der Ausgangsstand erfasste den Wert vor der Sparrate."
+    },
+    {
+      "test": "tests/zr-1-reserve-interest-tax.test.mjs",
+      "field": "Vollständiges Ansparjahresergebnis mit reiner Geldmarkt-Pflegerücklage (SHA-256)",
+      "old": "afedd5f6896ce801220cf3509b9584de87cd048810fff6de1778ab1bde14e34a",
+      "new": "7f1934437cb17aee6fb89b72ce216ab92de62792273862406a8bd80adf0d8765",
+      "reason": "Nur logData.liqEnd ändert sich. Vom Stand nach Zins (81.600 €) gehen 21.600 € für den Zukauf ab. Die 158,25 € Steuer mindern weiterhin erst den Schlussbestand auf 59.841,75 €."
+    },
+    {
+      "test": "tests/qs-i-accumulation-tax.test.mjs",
+      "field": "liqEnd bei vollständiger Anlage der verzinsten Ansparliquidität",
+      "old": 104000,
+      "new": 0,
+      "reason": "100.000 € Geldmarkt und 4.000 € Jahreszins fließen vollständig in den Zukauf. Bei höherem Liquiditätsziel ohne Kauf zeigen beide Steuerpfade weiterhin 104.000 €."
+    },
+    {
+      "test": "tests/profile-person-data.test.mjs",
+      "field": "Alter Offsetrequest mit Ansparphase (SHA-256)",
+      "old": "dcb707bb01850d434716295c34fe692a94802afe5df620a2903b63ecce2357b8",
+      "new": "9aa78aef30daa106d38d8d00076a98e4e2150905bdf1550800edef91cace8af5",
+      "reason": "In beiden Ansparjahren erhöht allein die Buchung von 6.000 € Sparrate den Exportwert liqEnd. Je zwei Zeilen im Ergebnis der beiden Pfade und deren Kopie im ausgewählten Pfad ändern sich. Alle anderen Felder sind bytegleich."
+    },
+    {
+      "test": "tests/simulator-household-pension.test.mjs",
+      "field": "Alt-Kalenderpfad mit persönlicher Ansparsteuer (SHA-256)",
+      "old": "c4dc2276d26c2d7c21751dcd6fdf6e6b9f33219d96e07ad42530dd25ac1b66e6",
+      "new": "604ea99fb520c209c3c859e38a985a56b9842f0fdb3b7505700fefe3ad8d61b7",
+      "reason": "Sparrate und Zukäufe führen in allen drei Ansparjahren zum Liquiditätsziel von 6.000 € vor Steuer. Nur liqEnd dieser Jahreszeilen ändert sich."
+    },
+    {
+      "test": "tests/simulator-household-pension.test.mjs",
+      "field": "Kontrollierter Kalenderpfad ohne alte Rentensteuerquote (SHA-256)",
+      "old": "6428a370ede8d7e33d95340a78e82be201f4c75141ba310c4e663bffcb35ffef",
+      "new": "623432e7ff9d1164b502f2e0f4f8cd25838458bce21845ee1a72c308b4b4197c",
+      "reason": "In den ersten zwei Ansparjahren kommt die Sparrate von 6.000 € zur verzinsten Liquidität. Im dritten Jahr begrenzt der Zukauf die Liquidität vor Steuer auf 86.400 €. Der Vergleich zeigt drei Änderungen an liqEnd, alle anderen Felder sind bytegleich."
+    },
+    {
+      "test": "tests/extended/parity-d23.mjs",
+      "field": "1-reset-2001: Entnahme, Flexrate, Nettojahresbudget und Reichweite in beiden Pfaden und mit beiden Balance-Vorzuständen",
+      "old": [22800, 74.59032576505429, 53058, 70.87219494015362],
+      "new": [27600, 90.38499506416584, 57858, 58.546595820126896],
+      "reason": "FF-E (1c412175, FR-32) schützt den Wunsch-Flex bei einer geschützten Entnahmequote unter 2 % vor der S-Kurve. Budget und Entnahme steigen um 4.800 €, der höhere Bedarf verkürzt die Reichweite. Die Gleichheit der Vorzustände bleibt prüfbar."
+    },
+    {
+      "test": "tests/extended/parity-d23.mjs",
+      "field": "1-reset-2002: Entnahme, Flexrate, Nettojahresbudget und Reichweite in beiden Pfaden und mit beiden Balance-Vorzuständen",
+      "old": [18600, 64.00412269136098, 51534.972, 74.83342738878478],
+      "new": [17400, 59.87482445320865, 50334.972, 79.99435341559753],
+      "reason": "BK-2 (ce574816) prüft den Notfall am tatsächlichen Entnahmebetrag und führt die Rate mit ungerundetem Vorjahresanker fort. Der isolierte Fall ergibt seither in beiden Pfaden 100 € weniger Monatsentnahme bei gleicher Rente."
+    },
+    {
+      "test": "tests/extended/parity-d23.mjs",
+      "field": "2-haushalt: Entnahme in € je Person",
+      "old": {"muster_a": 0, "muster_b": 28800},
+      "new": {"muster_a": 32400, "muster_b": 0},
+      "reason": "FF-E (1c412175, FR-32) hebt die Jahresentnahme in diesem Fall um 3.600 € an. FX-1a (2266fd87, FR-27) belastet bei steueroptimierter Entnahme die Liquidität in Planreihenfolge. Muster A steht zuerst und deckt die Auszahlung in beiden Pfaden vollständig."
+    },
+    {
+      "test": "tests/extended/parity-d23.mjs",
+      "field": "3-horizont: je Preset Horizont in Jahren, Jahresentnahme und dynamischer Flex in € in beiden Pfaden",
+      "old": [[33, 31200, 33024.292345563925], [31, 36000, 38213.88203709832], [25, 45600, 49107.86266321826]],
+      "new": [[35, 27600, 25963.484703274935], [33, 32400, 30277.90815941873], [26, 37200, 40880.47898961255]],
+      "reason": "FR-75 (fa50d383) verwendet die Kohortensterbetafel für die Planungshorizonte. BK-2 (ce574816) ändert die CAPE-Renditeberechnung, FR-76 (8f984329) zieht die aus dem Haushaltsplan gelesenen Aktienfondskosten ab und FR-88 (db0b14f7) rechnet den VPW vorschüssig. Die neue Reihe ist in beiden Pfaden gleich."
+    },
+    {
+      "test": "tests/extended/parity-d23.mjs",
+      "field": "4-drei-toepfe-rendite: Liquidität nach Auszahlung und nach Steuer",
+      "old": 111200,
+      "new": 107600,
+      "reason": "FF-E (1c412175, FR-32) lässt in diesem Bärenjahr 32.400 € statt 28.800 € Entnahme zu. Der Anleihenverkauf bringt weiter 50.000 € bei 90.000 € anfänglicher Liquidität."
+    },
+    {
+      "test": "tests/extended/parity-d23.mjs",
+      "field": "5-drei-toepfe-phase: Anleihen nach Zukäufen, zusätzlicher Aktienverkauf brutto für die gemeinsame Handlung und Liquidität nach Auszahlung",
+      "old": [150000, 180000, 140000],
+      "new": [0, 30000, 137600],
+      "reason": "VF-2f (bfa77b96, FR-63) lässt Anleihen in der regulären Deckung zu und wahrt das Verbot eines gegenläufigen Wiederauffüllens nach einem Anleihenverkauf. Der Verkauf von 50.000 € Anleihen und 30.000 € Aktien bringt unverändert 80.000 € Liquidität. FF-E (1c412175) erhöht die Auszahlung von 30.000 € auf 32.400 €."
+    },
+    {
+      "test": "tests/extended/parity-d23.mjs",
+      "field": "6-jahresrentenrundung: Monatsbudget in beiden Pfaden",
+      "old": 4294.581,
+      "new": 4194.581,
+      "reason": "BK-2 (ce574816) ändert die Entnahme im 2002er Fall von 18.600 € auf 17.400 € pro Jahr. Die ungerundete Jahresrente von 32.934,972 € bleibt gleich. Das Monatsbudget sinkt um 100 €."
+    },
+    {
+      "test": "tests/extended/parity-d23.mjs",
+      "field": "7-cashaufteilung: freie Liquidität und Reichweite in Monaten, je aus Pool und Komponenten",
+      "old": [155611.23446201812, 84.11418079028007],
+      "new": [146379.34667117623, 61.2522877216717],
+      "reason": "FF-E (1c412175) erhöht die Vorjahresauszahlung und senkt den vorgetragenen Pool auf 151.902,03 €. FX-1a (2266fd87) ändert Kontenreihenfolge und Nettoerlös bei Teilverkäufen, der Pool sinkt auf 151.798,87 €. AN-1 (694fddd9) erlaubt im Prüfjahr einen Kauf von 35.000 € aus Überschuss und senkt damit die Reichweite nach der Transaktion. Mit Zins vor der Entscheidung (KR-1c, a83ebdbb) beträgt der Pool 146.379,35 € und der Kauf 30.000 €. Konten, Komponenten und Pool stimmen weiterhin überein."
+    },
+    {
+      "test": "tests/extended/parity-d23-probes.mjs",
+      "field": "10-liquiditaet-plan-kontrolle: Messwerte für Engine-Mindestreichweite und Mindest-Flex-Notfallschwelle in Monaten",
+      "old": "Beide Messwerte im Prüfpfad seit FF-E nicht befüllt",
+      "new": {"engineHardMinimumMonths": [12, 24, 24, 24], "minimumFlexRunway": [12, 24, 24, 24]},
+      "reason": "Seit FF-E (1c412175) erfüllt der Jahresfall den Mindest-Flex bereits. Die Notfallprüfung liefert deshalb keine Schwelle. Die Reichweitendiagnose liefert das Engine-Minimum in der Leitplanke Runway (vs. Min). Für die Notfallschwelle ruft der Test die Mindest-Flex-Regel mit 0 % Flex auf. Beide Messreihen treffen wieder das ursprüngliche Soll."
+    },
+    {
+      "test": "tests/extended/parity-d23.mjs",
+      "field": "11-drei-toepfe-steuerreserve: Anleihen nach Zukäufen, Aktienverkaufsbrutto, Steuer der Handlung und Liquidität nach Auszahlung",
+      "old": [150000, 193381.754283489, 3720.207751006134, 149661.54653248287],
+      "new": [0, 40000, 338.45346751711435, 147261.5465324829],
+      "reason": "VF-2f (bfa77b96, FR-63) lässt die reguläre Deckung wieder aus den Anleihen zu. Darauf folgt kein Wiederauffüllen aus Aktien. Nur der reguläre Aktienverkauf von 40.000 € ist steuerpflichtig und führt 39.661,55 € Liquidität zu. FF-E (1c412175) erhöht die Auszahlung von 30.000 € auf 32.400 €."
+    },
+    {
+      "test": "tests/extended/parity-scenarios-checks.mjs",
+      "field": "Unabhängige Dreijahresfolge mit Nullbedarf und deren Vorjahreszustand",
+      "old": "Ursprüngliches Geldvermögen, Inflationsfaktor des ersten Jahres unverändert übernommen",
+      "new": "Geldvermögen 0 €, Inflationsfaktor nach dem Jahresabschluss fortgeschrieben",
+      "reason": "Bei Nullbedarf löst die Überschussanlage (AN-1) mit alten Startbeständen einen Kauf aus. Der leere Depot- und Tagesgeldbestand hält die Gegenprobe frei von Buchungen. Der Jahresabschluss schreibt den kumulierten Inflationsfaktor seit a5f59478 mit dem übergebenen Vorjahreswert fort. Rente, Kurs und Vergleiche zur unabhängigen Fortsetzung bleiben Teil der Probe."
+    }
+  ]
+}

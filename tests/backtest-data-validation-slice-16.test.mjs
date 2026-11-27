@@ -3,7 +3,8 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { HISTORICAL_DATA, HISTORICAL_DATA_MANIFEST } from '../app/simulator/simulator-data.js';
+// JD-2a: Der Beleg gilt dem Grundbestand 1925–2025; nach einer Übernahme vergleicht er dessen Sicht (jahresrobust).
+import { GRUNDBESTAND_DATA, GRUNDBESTAND_MANIFEST } from './helpers/grundbestand-sicht.mjs';
 import {
     canonicalizeHistoricalContractValue,
     computeHistoricalDatasetHash,
@@ -296,15 +297,15 @@ for (const original of fixture.atomicBinaryContract.originals) {
         `${original.path} live bytes retain the pinned exact bytes`);
 }
 
-assertEqual(HISTORICAL_DATA_MANIFEST.datasetId, fixture.dataset.datasetId,
-    'Live historical manifest retains the validated dataset identity');
-assertEqual(HISTORICAL_DATA_MANIFEST.revision, fixture.dataset.revision,
-    'Live historical manifest retains the validated revision');
-assertEqual(computeHistoricalDatasetHash(HISTORICAL_DATA), fixture.dataset.contentHash,
-    'Live historical records reconstruct the validated content hash');
-assertEqual(sha256Hex(canonicalizeHistoricalContractValue(HISTORICAL_DATA_MANIFEST)),
+assertEqual(GRUNDBESTAND_MANIFEST.datasetId, fixture.dataset.datasetId,
+    'Live historical manifest of the 1925-2025 base retains the validated dataset identity');
+assertEqual(GRUNDBESTAND_MANIFEST.revision, fixture.dataset.revision,
+    'Live historical manifest of the 1925-2025 base retains the validated revision');
+assertEqual(computeHistoricalDatasetHash(GRUNDBESTAND_DATA), fixture.dataset.contentHash,
+    'Live historical records 1925-2025 reconstruct the validated content hash');
+assertEqual(sha256Hex(canonicalizeHistoricalContractValue(GRUNDBESTAND_MANIFEST)),
     fixture.dataset.manifestHash,
-    'Live historical manifest reconstructs the validated manifest hash');
+    'Live historical manifest of the 1925-2025 base reconstructs the validated manifest hash');
 
 assertSha256(fixture.sourceFingerprintBasis.sha256,
     `${fixture.sourceFingerprintBasis.path} declared hash`);

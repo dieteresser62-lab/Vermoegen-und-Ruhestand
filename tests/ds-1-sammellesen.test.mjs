@@ -1,7 +1,6 @@
 import { PersistenceFacade as P } from '../app/shared/persistence-facade.js';
 import { SnapshotArchive } from '../app/shared/snapshot-archive.js';
 import { readDataModel } from '../app/data/data-model.js';
-import { previewSnapshotRetention } from '../app/shared/snapshot-retention.js';
 import { assertNewBeginningAllowed } from '../app/data/data-new-beginning.js';
 import { MemoryWebStorage, fakeAreaIndexedDB, fakeAreaTauri } from './helpers/persistence-area-backends.mjs';
 
@@ -34,12 +33,6 @@ await restart();
     const bulk = await SnapshotArchive.readSnapshots(model.snapshots.map(point => point.id));
     assertEqual(JSON.stringify(bulk), JSON.stringify(single), 'Sammellesen liefert dieselben Punkte wie das Einzellesen');
 }
-// 2. Löschvorschau (Aufräumen) liest ebenfalls einmal.
-{
-    const { result: preview, reads } = await measure(() => previewSnapshotRetention({ now: new Date('2026-11-06T12:00:00Z') }));
-    assert(Array.isArray(preview.remove), 'Löschvorschau berechnet');
-    assert(reads <= 1, `Löschvorschau liest die Punktedatei einmal (gelesen: ${reads})`);
-}
 // 2b. Codex DS1-1: Die Prüfung für „Neu beginnen“ (Seitenstart, Klick, Fensterfokus) liest ebenfalls einmal.
 {
     const { result: allowed, reads } = await measure(() => assertNewBeginningAllowed({ window: {} }));
@@ -59,18 +52,17 @@ await restart();
     const read = await SnapshotArchive.readSnapshots(ids.slice(0, 3), { storage });
     assertEqual(read.map(point => point.id).join(','), ids.slice(0, 3).join(','), 'Einzellesen als Rückfall');
 }
-// 5. Beschädigter Punkt: Löschvorschau markiert ihn wie bisher, statt abzubrechen.
+// 5. SV-1: Ein beschädigter Punkt erscheint als „beschädigt“, statt die ganze Liste zu sperren.
 {
     const archive = JSON.parse(tauri.files.get('snapshots'));
     const damagedId = archive.snapshots[0].id;
     archive.snapshots[0].recordCount = 99;
     tauri.files.set('snapshots', JSON.stringify(archive));
     await restart();
-    const preview = await previewSnapshotRetention({ now: new Date('2026-11-06T12:00:00Z') });
-    assertEqual(preview.keep.find(entry => entry.id === damagedId)?.reason, 'Nicht verlässlich lesbar – bleibt erhalten', 'Löschvorschau markiert den beschädigten Punkt');
-    assertEqual(preview.keep.length + preview.remove.length, 8, 'Löschvorschau bewertet alle übrigen Punkte');
     const model = await readDataModel(P);
-    assert(Boolean(model.archiveError), 'Datenseite meldet den beschädigten Punkt wie bisher');
+    assertEqual(model.archiveError || '', '', 'Datenseite bleibt trotz beschädigtem Punkt lesbar');
+    assertEqual(JSON.stringify(model.damagedSnapshotIds), JSON.stringify([damagedId]), 'Datenseite markiert genau den beschädigten Punkt');
+    assertEqual(model.snapshots.length, 8, 'Alle Punkte bleiben gelistet');
 }
 P.resetPersistenceRuntimeForTests();
 P.resetPersistenceForTests();

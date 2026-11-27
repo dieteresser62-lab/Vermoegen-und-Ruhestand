@@ -2,9 +2,11 @@
 /** @import {SimulatorInputs,SimulationState,HistoricalYear,CareMeta,HouseholdContext,ReplayCollector,YearOutcome} from '../../../typcheck/rechenkern' */
 import { isUnmarriedSimulation, unmarriedYearShares } from '../simulator-unmarried.js';
 import { activeCarrier } from '../../profile/household-withdrawal-mode.js';
-import { sellHomesForExternalCare, sellHomesForEmergency, homeRentForYear, endResidenceRights } from '../simulator-home-sale.js';
+import { sellHomesForExternalCare, sellHomesForEmergency, sellHomesForCare, homeRentForYear, endResidenceRights } from '../simulator-home-sale.js';
 import { applyPlannedInflows } from '../planned-inflows.js';
 import { calculateFixedIncomeForYear } from '../simulator-fixed-income.js';
+import { rentBequestForYear } from '../simulator-rent-bequest.js';
+import { housingCapitalMoveForYear } from '../simulator-housing-capital.js';
 import { fixedCareTodayForYear } from '../simulator-care-today.js';
 import { ensurePersonalAccounts } from '../simulator-personal-accounts.js';
 import { prepareGuardrailPlanInputs } from '../../shared/guardrail-history.js';
@@ -20,13 +22,14 @@ import { captureEngineBoundaryPortfolio } from './engine-boundary.js';
 /** @typedef {{currentState:SimulationState;inputs:SimulatorInputs;yearData:HistoricalYear;yearIndex:number;
  * pflegeMeta:CareMeta|null;careFloorAddition:number;householdContext:Partial<HouseholdContext>|null;temporaryFlexFactor:number;
  * engineAPI:Partial<typeof import("../../../engine/index.mjs").EngineAPI>|null;replayCollector:ReplayCollector|null;beforeRuin:number|boolean;
- * preparedGuardrailPlan:ReturnType<typeof prepareGuardrailPlanInputs>|null;preserveLogOrder:boolean}} YearParameters */
+ * preparedGuardrailPlan:ReturnType<typeof prepareGuardrailPlanInputs>|null;preserveLogOrder:boolean;homeSaleOwners?:string[]|null;
+ * careSale?:{owners:string[];count:number}|null}} YearParameters */
 /** @typedef {YearParameters & NonNullable<ReturnType<typeof prepareYear>['state']>} YearContext */
 /** @param {YearParameters} context */
 export function prepareYear(context) {
     let {
         engineAPI, householdContext, yearData, replayCollector, currentState, yearIndex, inputs, pflegeMeta,
-        careFloorAddition, temporaryFlexFactor, beforeRuin
+        careFloorAddition, temporaryFlexFactor, beforeRuin, homeSaleOwners = null, careSale = null
     } = context;
     // EngineAPI muss übergeben werden oder global verfügbar sein
     const engine = engineAPI || (typeof window !== 'undefined' ? window.EngineAPI : null);
@@ -34,14 +37,14 @@ export function prepareYear(context) {
     if (!engine) {
         return { outcome: /** @type {YearOutcome} */ (buildTechnicalErrorOutcome(
             SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_API_UNAVAILABLE,
-            `Die Simulations-Engine ist nicht verfügbar (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_API_UNAVAILABLE}).`
+            `Der Rechenkern ist nicht verfügbar (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_API_UNAVAILABLE}).`
         )) };
     }
 
     if (typeof engine.simulateSingleYear !== 'function') {
         return { outcome: /** @type {YearOutcome} */ (buildTechnicalErrorOutcome(
             SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_METHOD_UNAVAILABLE,
-            `Die Simulations-Engine besitzt keinen gültigen Jahreseinstieg (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_METHOD_UNAVAILABLE}).`
+            `Der Rechenkern kann keine Jahresrechnung starten (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_METHOD_UNAVAILABLE}).`
         )) };
     }
 
@@ -105,9 +108,11 @@ export function prepareYear(context) {
     }
     const homeHousehold = householdCtx;
     endResidenceRights(portfolio, inputs, currentState.survivor, homeHousehold);
+    const housingCapitalLog = portfolio.pendingHousingCapital
+        ? housingCapitalMoveForYear(portfolio, inputs, homeHousehold, yearIndex, cumulativeInflationFactor * (1 + yearData.inflation / 100)) : null;
     const homeSaleOptions = { portfolio, state: currentState, inputs, household: homeHousehold,
         yearIndex, inflationFactor: cumulativeInflationFactor };
-    let homeSaleLog = !beforeRuin && (hasLifeEvents || fixedCareToday) ? sellHomesForExternalCare(homeSaleOptions) : null;
+    let homeSaleLog = /** @type {any} */ (!beforeRuin && (hasLifeEvents || fixedCareToday) ? sellHomesForExternalCare(homeSaleOptions) : null);
     const startAssets = unmarried ? structuredClone(portfolio) : null;
     const survivorYear = /** @type {import('../../../typcheck/rechenkern-integration').PrepareSurvivorYear} */ (prepareSurvivorYear)(currentState, inputs, householdCtx, portfolio, yearIndex);
     if (survivorYear) inputs = survivorYear.inputs;
@@ -144,6 +149,10 @@ export function prepareYear(context) {
     const temporaryMinimumFlexFactor = survivorFlex?.minimumFlexFactor ?? temporaryFlexFactor;
     if (survivorYear?.deathThisYear && !p1Alive) lastState = { ...lastState, taxState: { lossCarry: 0 } };
     let homeRent = homeRentForYear(portfolio, inputs, rentHousehold, cumulativeInflationFactor, currentState, yearIndex);
+    const rentBequest = rentBequestForYear(portfolio, inputs, rentHousehold, cumulativeInflationFactor);
+    if (rentBequest && !rentBequest.rent && portfolio.rentBequest && !portfolio.rentBequest.rentEnded) {
+        portfolio.rentBequest = { ...portfolio.rentBequest, rentEnded: true };
+    }
     // FR-72 Punkt 0: verbleibender Grundbedarf, Pflegezusatz zu Hause und Heimposten getrennt.
     const yearNeed = calculateCareNeeds({ inputs, baseFloor, careFloorAddition, priced: true,
         inflationFactor: cumulativeInflationFactor, yearIndex, referenceDate: inputs.careReferenceDate,
@@ -151,10 +160,13 @@ export function prepareYear(context) {
     // FR-43 (11.11.2026): Feste geplante Ausgaben wirken in ihren Monaten wie ein höherer Grundbedarf. Sie kommen
     // nach Hinterbliebenenfaktor, Heimersatz und Pflege-Deckel dazu und werden deshalb nie gekürzt.
     const fixedPlannedExpense = simulatorPlannedExpenseYear(inputs, yearIndex, cumulativeInflationFactor).fixed;
-    const floorWithoutRent = yearNeed.total + fixedPlannedExpense;
+    const floorWithoutRent = yearNeed.total + fixedPlannedExpense + (rentBequest?.rent ?? 0);
     // FR-72 Punkt 9: Rücklagengrenze aus Pflegezusätzen und Heimkosten, ohne eigene Ausgaben.
     const healthBucketCareNeed = careFloorAddition + yearNeed.residentialCosts;
-    if (!homeSaleLog && inputs.home?.length) {
+    // NK-2 (FR-84 Punkt 20): Wiederholung des Jahres, weil sonst Hilfe zur Pflege fiele: zuerst die Immobilie der pflegebedürftigen Person.
+    if (careSale?.owners?.length) homeSaleLog = mergeHomeSaleLogs(homeSaleLog, sellHomesForCare({ ...homeSaleOptions, household: rentHousehold,
+        owners: careSale.owners, maxSales: careSale.count }));
+    if ((!homeSaleLog || homeSaleLog.immobilien_verkauf_pflege) && inputs.home?.length) {
         const requiredFloorForPortfolio = () => {
             const currentRent = homeRentForYear(portfolio, inputs, rentHousehold, cumulativeInflationFactor, currentState, yearIndex);
             const thresholdPension = calculateHouseholdPensionForYear({ inputs, yearIndex, currentAnnualPension,
@@ -164,21 +176,29 @@ export function prepareYear(context) {
             const thresholdIncome = calculateFixedIncomeForYear({ inputs, state: { ...currentState, portfolio }, yearIndex,
                 inflationFactor: cumulativeInflationFactor, household: householdCtx, care: { p1: careP1, p2: careP2 },
                 deathThisYear: survivorYear?.deathThisYear === true });
-            return Math.max(0, floorWithoutRent + currentRent - thresholdPension.pensionAnnual - (thresholdIncome?.total || 0));
+            // FR-84 Punkt 9: Notverkauf nur bei Haushaltsmangel ohne Pflege; Pflegekosten zählen für die Schwelle nicht. NK-2d (Abnahme S1):
+            // Geplante einmalige Zuflüsse dieses Jahres zählen wie Renten und Einkünfte mit.
+            return Math.max(0, floorWithoutRent - (yearNeed.total - yearNeed.homeFloor) + currentRent
+                - thresholdPension.pensionAnnual - (thresholdIncome?.total || 0) - plannedInflowTotal(inputs, yearIndex));
         };
-        homeSaleLog = sellHomesForEmergency({ ...homeSaleOptions, household: rentHousehold, beforeRuin: Boolean(beforeRuin), maxSales: beforeRuin || Infinity,
-            requiredFloor: requiredFloorForPortfolio(), requiredFloorForPortfolio });
+        homeSaleLog = mergeHomeSaleLogs(homeSaleLog, sellHomesForEmergency({ ...homeSaleOptions, household: rentHousehold, beforeRuin: Boolean(beforeRuin), maxSales: beforeRuin || Infinity,
+            requiredFloor: requiredFloorForPortfolio(), requiredFloorForPortfolio, ...(homeSaleOwners ? { owners: homeSaleOwners } : {}) }));
         homeRent = homeRentForYear(portfolio, inputs, rentHousehold, cumulativeInflationFactor, currentState, yearIndex);
     }
     const effectiveBaseFloor = floorWithoutRent + homeRent;
     // FR-72 Punkt 10: Heimposten gehören vollständig zu den persönlichen Pflegekosten.
-    const unmarriedShares = unmarried ? unmarriedYearShares(homeSaleLog?.immobilien_notverkauf ? portfolio : startAssets,
+    const unmarriedShares = unmarried ? unmarriedYearShares(homeSaleLog?.immobilien_notverkauf || homeSaleLog?.immobilien_verkauf_pflege ? portfolio : startAssets,
         inputs, { p1: careP1, p2: careP2 }, survivorYear?.deathThisYear, householdCtx,
         careFloorAddition + yearNeed.residentialCosts + yearNeed.residentialOwnExpenses) : null;
     const plannedInflowLog = applyPlannedInflows(portfolio, inputs, yearIndex, cumulativeInflationFactor);
     const rentLog = portfolio.homeRent ? { wohnmiete: homeRent, wohnmiete_startjahr: portfolio.homeRent.startYear,
         wohnmiete_aktiv: portfolio.homeRent.active } : null;
-    let inflowLog = /** @type {Record<string,unknown>|null} */ (homeSaleLog || rentLog ? { ...plannedInflowLog, ...homeSaleLog, ...rentLog } : plannedInflowLog);
+    // ER-2: Nach „Verkauf mit Wohnkapital“ steht nur die selbst bezahlte Miete im Protokoll.
+    const bequestRentLog = rentBequest?.selfPaid ? { miete_nach_erbfall: rentBequest.rent }
+        : rentBequest ? { miete_aus_erbe: rentBequest.rent, rente_aus_erbe: rentBequest.income,
+            rente_aus_erbe_person: rentBequest.profileId } : null;
+    let inflowLog = /** @type {Record<string,unknown>|null} */ (homeSaleLog || rentLog || bequestRentLog || housingCapitalLog
+        ? { ...plannedInflowLog, ...homeSaleLog, ...rentLog, ...bequestRentLog, ...housingCapitalLog } : plannedInflowLog);
     return { state: {
         engine: /** @type {typeof engine & {simulateSingleYear:NonNullable<typeof engine.simulateSingleYear>}} */ (engine),
         hasLifeEvents, householdContext, yearData, replayYear, replayCollector, currentState, yearIndex,
@@ -190,4 +210,20 @@ export function prepareYear(context) {
         temporaryMinimumFlexFactor, effectiveBaseFloor, unmarriedShares, inflowLog, yearNeed, healthBucketCareNeed,
         fixedPlannedExpense
     } };
+}
+
+/** NK-2: Verkaufsprotokolle eines Jahres zusammenführen (Verkauf vor Hilfe zur Pflege und Notverkauf). Ohne zweites Protokoll unverändert.
+ * @param {any} first @param {any} second @returns {any} */
+function mergeHomeSaleLogs(first, second) {
+    if (!first || !second) return first || second || null;
+    const hint = [first.immobilienverkauf_hinweis, second.immobilienverkauf_hinweis].filter(Boolean).join(' ');
+    return { ...first, ...second, immobilienverkauf: (first.immobilienverkauf || 0) + (second.immobilienverkauf || 0),
+        immobilienverkauf_personen: [...(first.immobilienverkauf_personen || []), ...(second.immobilienverkauf_personen || [])],
+        ...(first.immobilien_verkauf_pflege ? { immobilien_verkauf_pflege: first.immobilien_verkauf_pflege } : {}), ...(hint ? { immobilienverkauf_hinweis: hint } : {}) };
+}
+
+/** NK-2d: Summe der geplanten einmaligen Zuflüsse eines Jahres (wie `applyPlannedInflows`, ohne zu buchen). @param {any} inputs @param {number} yearIndex */
+function plannedInflowTotal(inputs, yearIndex) {
+    return (inputs.plannedInflows || []).filter((/** @type {any} */ entry) => entry.year - inputs.plannedInflowsReferenceYear === yearIndex)
+        .reduce((/** @type {number} */ sum, /** @type {any} */ entry) => sum + Math.max(0, Number(entry.amount) || 0), 0);
 }

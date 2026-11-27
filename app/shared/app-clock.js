@@ -21,14 +21,14 @@ export function parseCalendarDate(value) {
 export function localCalendarDate(date = appNow()) {
     return `${String(date.getFullYear()).padStart(4, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
+const berlinDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' });
+/** ST7-B (Befund 1047): Ganze Kalendertage zwischen zwei Zeitpunkten nach dem Kalender in Europe/Berlin. Es zählt Mitternacht, nicht 24 Stunden.
+ * @param {number} from Früherer Zeitpunkt in Millisekunden. @param {number} to Späterer Zeitpunkt in Millisekunden. @returns {number} */
+export const berlinCalendarDays = (from, to) => (Date.parse(berlinDay.format(to)) - Date.parse(berlinDay.format(from))) / 86400000;
 /**
  * @returns {Date} Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
 export function appNow() { return testDate === null ? new Date() : parseCalendarDate(testDate); }
-/**
- * @returns {number} Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
- */
-export function appNowMs() { return appNow().getTime(); }
 /**
  * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */

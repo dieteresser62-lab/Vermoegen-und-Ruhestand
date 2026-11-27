@@ -153,12 +153,13 @@ export const UIRenderer = {
         // Im Planversuch rechnet die Karte wie vor GU-1 mit der Neuberechnung des Versuchs.
         const trial = registeredPlanTrial(globalThis.document)?.read?.().active === true;
         const confirmed = !trial && summaryRenderer.actionOrigin?.confirmed?.action ? summaryRenderer.actionOrigin.confirmed : null;
-        let reserveOptions = {};
+        let reserveOptions = { todoPlan: null };
         if (ui.currentYear || confirmed) {
             // Dieselbe Aktionsaufbereitung ohne DOM-Schreibzugriff für Diagnose und laufende Reserven (auch für die Übersicht).
             const result = reserveActionSource(currentYear, confirmed);
             entries = result.prepared;
-            reserveOptions = { targetEntries: result.source.targetEntries, settled: result.source.settled, creditPendingNet: result.source.creditPendingNet };
+            reserveOptions = { action: result.source.action, targetEntries: result.source.targetEntries, settled: result.source.settled,
+                creditPendingNet: result.source.creditPendingNet, todoPlan: confirmed && !result.fellBack ? summaryRenderer.todoPlan : null };
             diagnosisActionSummary = currentYear.input?.decumulation?.mode === '3_bucket_jilge'
                 ? summarizeThreeBucketAction(threeBucketActionTrades(entries), result.base) : result.base;
         }

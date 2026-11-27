@@ -1,44 +1,53 @@
-/** @import {MonteCarloParameters,MonteCarloParametersInput,MonteCarloAgeInput,MonteCarloParameterContext,SamplingMethod,SweepRequestInput} from '../../typcheck/rechenkern' */
+/** @import {MonteCarloParameters,MonteCarloParametersInput,MonteCarloAgeInput,MonteCarloParameterContext,SamplingMethod} from '../../typcheck/rechenkern' */
 "use strict";
 
-import { annualData } from './simulator-data.js';
+import { annualData, HISTORICAL_DATENSTAND } from './simulator-data.js';
 
-const HISTORICAL_YEAR_MINIMUM = annualData[0]?.jahr ?? 1925;
-const HISTORICAL_YEAR_MAXIMUM = annualData[annualData.length - 1]?.jahr ?? 2025;
+// Erstes und letztes Jahr der geladenen Reihen; der Datenstand ist nur Rückfall ohne Jahresdaten.
+const HISTORICAL_YEAR_MINIMUM = annualData[0]?.jahr ?? HISTORICAL_DATENSTAND.startYear;
+const HISTORICAL_YEAR_MAXIMUM = annualData[annualData.length - 1]?.jahr ?? HISTORICAL_DATENSTAND.endYear;
 
 export const MONTE_CARLO_PARAMETERS_VERSION = 'MonteCarloParametersV1';
-export const SWEEP_REQUEST_VERSION = 'SweepRequestV1';
-export const SWEEP_SAMPLING_METHOD_RESOLUTION = 'strict_no_fallback';
 
-export const MONTE_CARLO_PARAMETER_LIMITS = Object.freeze({
-    runs: Object.freeze({
-        minimum: 1,
-        default: 10000,
-        interactiveRecommendedMaximum: 100000,
-        hardMaximum: 1000000
-    }),
-    durationYears: Object.freeze({
-        minimum: 1,
-        // Nur ohne Personen; mit Personen gilt 110 − Alter der jüngsten Person (FR-75).
-        default: 35,
-        // Alte Vorgabe: ein gespeicherter Wert 35 gilt beim Lesen als „automatisch“.
-        legacyStoredDefault: 35,
-        mortalityTableMaximumAge: 110,
-        storageMaximum: 0xFFFFFFFF
-    }),
-    blockLengthYears: Object.freeze({ minimum: 1, default: 5, maximum: 30 }),
-    workerCount: Object.freeze({ autoSentinel: 0, minimumExplicit: 1, default: 8, maximum: 32 }),
-    jobTimeBudgetMs: Object.freeze({ minimum: 50, default: 500, maximum: 5000 }),
-    seed: Object.freeze({ minimum: 0, default: 12345, maximum: 0xFFFFFFFF }),
-    startYearFilter: Object.freeze({
-        minimum: HISTORICAL_YEAR_MINIMUM,
-        default: 1970,
-        maximum: HISTORICAL_YEAR_MAXIMUM
-    }),
-    startYearHalfLife: Object.freeze({ minimum: 5, default: 20, maximum: 50 }),
-    measuredWorkerResultBytesPerRun: 978
-});
+/**
+ * Grenzen und Vorgaben der Monte-Carlo-Parameter; der Bereich „Startjahr ab“ folgt den historischen Jahren.
+ * @param {{startYear: number, endYear: number}} historicalYears Erstes und letztes historisches Jahr.
+ */
+export function buildMonteCarloParameterLimits({ startYear, endYear }) {
+    return Object.freeze({
+        runs: Object.freeze({
+            minimum: 1,
+            default: 10000,
+            interactiveRecommendedMaximum: 100000,
+            hardMaximum: 1000000
+        }),
+        durationYears: Object.freeze({
+            minimum: 1,
+            // Nur ohne Personen; mit Personen gilt 110 − Alter der jüngsten Person (FR-75).
+            default: 35,
+            // Alte Vorgabe: ein gespeicherter Wert 35 gilt beim Lesen als „automatisch“.
+            legacyStoredDefault: 35,
+            mortalityTableMaximumAge: 110,
+            storageMaximum: 0xFFFFFFFF
+        }),
+        blockLengthYears: Object.freeze({ minimum: 1, default: 5, maximum: 30 }),
+        workerCount: Object.freeze({ autoSentinel: 0, minimumExplicit: 1, default: 8, maximum: 32 }),
+        jobTimeBudgetMs: Object.freeze({ minimum: 50, default: 500, maximum: 5000 }),
+        seed: Object.freeze({ minimum: 0, default: 12345, maximum: 0xFFFFFFFF }),
+        startYearFilter: Object.freeze({
+            minimum: startYear,
+            default: 1970,
+            maximum: endYear
+        }),
+        startYearHalfLife: Object.freeze({ minimum: 5, default: 20, maximum: 50 }),
+        measuredWorkerResultBytesPerRun: 978
+    });
+}
 
+export const MONTE_CARLO_PARAMETER_LIMITS = buildMonteCarloParameterLimits({ startYear: HISTORICAL_YEAR_MINIMUM, endYear: HISTORICAL_YEAR_MAXIMUM });
+
+/** MS-1: Vorgabe für neue Pläne und Pläne ohne ausdrückliche Wahl; Blocklänge siehe `blockLengthYears.default`. @type {SamplingMethod} */
+export const MONTE_CARLO_DEFAULT_SAMPLING_METHOD = 'stationary';
 /** @type {readonly SamplingMethod[]} */
 export const MONTE_CARLO_SAMPLING_METHODS = Object.freeze([
     'block',
@@ -55,14 +64,6 @@ export const MONTE_CARLO_START_YEAR_MODES = Object.freeze(['UNIFORM', 'FILTER', 
  * @param {string} message */
 function parameterError(code, message) {
     const error = /** @type {TypeError & {code?:string}} */ (new TypeError(`${MONTE_CARLO_PARAMETERS_VERSION}: ${message}`));
-    error.code = code;
-    return error;
-}
-
-/** @param {string} code
- * @param {string} message */
-function sweepRequestError(code, message) {
-    const error = /** @type {TypeError & {code?:string}} */ (new TypeError(`${SWEEP_REQUEST_VERSION}: ${message}`));
     error.code = code;
     return error;
 }
@@ -178,15 +179,14 @@ export function normalizeMonteCarloParametersV1(rawParameters = {}, {
         rawParameters.methode,
         'Simulationsmethode',
         MONTE_CARLO_SAMPLING_METHODS,
-        'regime_markov'
+        MONTE_CARLO_DEFAULT_SAMPLING_METHOD
     );
     const durationMaximum = resolveMonteCarloDurationMaximumV1(inputs);
-    const eligibleRecordCount = historicalRecordCount === null || historicalRecordCount === undefined
-        ? null
-        : readStrictInteger(historicalRecordCount, 'Anzahl historischer Datensaetze', { minimum: 1 });
-    const blockMaximum = methode === 'block' && eligibleRecordCount !== null
-        ? Math.min(limits.blockLengthYears.maximum, eligibleRecordCount)
-        : limits.blockLengthYears.maximum;
+    if (historicalRecordCount !== null && historicalRecordCount !== undefined) {
+        readStrictInteger(historicalRecordCount, 'Anzahl historischer Datensaetze', { minimum: 1 });
+    }
+    // MS-1 (NG-9): Blöcke laufen zirkulär durch das Fenster; die Blocklänge hat nur noch die feste Obergrenze.
+    const blockMaximum = limits.blockLengthYears.maximum;
 
     const normalized = {
         anzahl: readStrictInteger(rawParameters.anzahl, 'Anzahl der Simulationen', {
@@ -206,7 +206,7 @@ export function normalizeMonteCarloParametersV1(rawParameters = {}, {
             maximum: blockMaximum,
             defaultValue: limits.blockLengthYears.default
         }),
-        seed: readStrictInteger(rawParameters.seed, 'Zufalls-Seed', {
+        seed: readStrictInteger(rawParameters.seed, 'Zufallsstartwert', {
             minimum: limits.seed.minimum,
             maximum: limits.seed.maximum,
             defaultValue: limits.seed.default
@@ -232,80 +232,6 @@ export function normalizeMonteCarloParametersV1(rawParameters = {}, {
     };
 
     return Object.freeze(normalized);
-}
-
-/**
- * Builds the DOM-free, versioned request consumed by serial and worker sweeps.
- *
- * Legacy direct callers may still provide the former flat sweepConfig fields;
- * production callers emit the versioned nested form. Both routes are validated
- * by normalizeMonteCarloParametersV1 so no second bounds contract can drift.
- */
-/** @param {SweepRequestInput|null|undefined} rawRequest
- * @param {MonteCarloParameterContext} options */
-export function normalizeSweepRequestV1(rawRequest, {
-    inputs = null,
-    historicalRecordCount = null
-} = {}) {
-    if (!rawRequest || typeof rawRequest !== 'object' || Array.isArray(rawRequest)) {
-        throw sweepRequestError('SWEEP_REQUEST_OBJECT_REQUIRED', 'Request muss als Objekt uebergeben werden.');
-    }
-    if (rawRequest.schemaVersion !== undefined
-        && rawRequest.schemaVersion !== null
-        && rawRequest.schemaVersion !== SWEEP_REQUEST_VERSION) {
-        throw sweepRequestError(
-            'SWEEP_REQUEST_VERSION_INVALID',
-            `Nicht unterstuetzte Requestversion: ${String(rawRequest.schemaVersion)}.`
-        );
-    }
-
-    const nestedParameters = rawRequest.monteCarloParameters;
-    const rawParameters = nestedParameters === undefined
-        ? {
-            anzahl: rawRequest.anzahl ?? rawRequest.anzahlRuns,
-            maxDauer: rawRequest.maxDauer,
-            blockSize: rawRequest.blockSize,
-            seed: rawRequest.seed ?? rawRequest.baseSeed,
-            methode: rawRequest.methode,
-            rngMode: rawRequest.rngMode,
-            startYearMode: rawRequest.startYearMode,
-            startYearFilter: rawRequest.startYearFilter,
-            startYearHalfLife: rawRequest.startYearHalfLife,
-            excludeEstimatedHistory: rawRequest.excludeEstimatedHistory
-        }
-        : nestedParameters;
-    const monteCarloParameters = normalizeMonteCarloParametersV1(rawParameters, {
-        inputs,
-        historicalRecordCount
-    });
-    const derivedRequestedSamplingMethod = rawParameters?.methode === undefined
-        || rawParameters?.methode === null
-        || rawParameters?.methode === ''
-        ? monteCarloParameters.methode
-        : rawParameters.methode;
-    const requestedSamplingMethod = rawRequest.requestedSamplingMethod
-        ?? derivedRequestedSamplingMethod;
-    const appliedSamplingMethod = rawRequest.appliedSamplingMethod
-        ?? monteCarloParameters.methode;
-    const samplingMethodResolution = rawRequest.samplingMethodResolution
-        ?? SWEEP_SAMPLING_METHOD_RESOLUTION;
-    if (samplingMethodResolution !== SWEEP_SAMPLING_METHOD_RESOLUTION
-        || requestedSamplingMethod !== monteCarloParameters.methode
-        || appliedSamplingMethod !== monteCarloParameters.methode) {
-        throw sweepRequestError(
-            'SWEEP_REQUEST_METHOD_PROVENANCE_MISMATCH',
-            'Requested und Applied Samplingmethodik muessen dem strikt validierten MC-Parametervertrag entsprechen.'
-        );
-    }
-
-    return Object.freeze({
-        schemaVersion: SWEEP_REQUEST_VERSION,
-        requestedSamplingMethod,
-        appliedSamplingMethod,
-        samplingMethodResolution,
-        useCapeSampling: readBoolean(rawRequest.useCapeSampling, 'CAPE-Sampling', false),
-        monteCarloParameters
-    });
 }
 
 /** @param {{workerCount?:unknown;timeBudgetMs?:unknown}} rawConfig */

@@ -13,7 +13,8 @@ import { createDialogFixture } from './close-dialog.test.mjs?fixture';
 const DATE = '2026-10-23', MARTIN = 'muster_martin', PETRA = 'muster_petra';
 
 // Punkt 1 (FR-81): Martin und Petra unverheiratet, Martin 0 €, Petra 5.000 € Tagesgeld, beide ohne Aktien, Backtest ab 2000.
-// 2000 zahlt Petra 38.600 € von ihrem Plananteil 48.000 €; die fehlenden 9.400 € sind eine Kürzung ihres Flex-Anteils.
+// 2000 zahlt Petra 38.806 € von ihrem Plananteil 48.000 €; die fehlenden 9.194 € sind eine Kürzung ihres Flex-Anteils. KR-1c (NG-5): Ihr
+// Tagesgeld bekommt den Zins 2000 (4,12 % auf 5.000 € = 206 €) vor der Entscheidung; vorher fehlten 9.400 €.
 // Vorher: Kennzahlen „Jahre mit Kürzung 0“, Ausgaben mit vollem Flex 12.000 €, Rohdaten Kürzung 0 %.
 {
     const inputs = structuredClone(await measurementInputs(0, 'martin-petra', DATE));
@@ -26,14 +27,14 @@ const DATE = '2026-10-23', MARTIN = 'muster_martin', PETRA = 'muster_petra';
     const result = backtest(inputs);
     const entry = result.rows[0], row = entry.row;
     const cut = (row.personalPayout?.flexCut || []).reduce((sum, item) => sum + item.amount, 0);
-    assertClose(cut, 9400, 0.01, 'RK-3 P1: Petras Flex-Anteil 2000 um 9.400 € gekürzt (Ausgangslage)');
-    assertClose(row.flex_haushalt_erfuellt, row.flex_wunsch_haushalt_nominal - 9400, 0.01, 'RK-3 P1: Ausgaben zeigen den gezahlten Flex (12.000 − 9.400 €)');
-    assertClose(row.flex_haushalt_kuerzung_pct, 9400 / 12000 * 100, 0.01, 'RK-3 P1: Rohdaten nennen die Flex-Kürzung');
-    assertClose(entry.entscheidung.kuerzungProzent, 9400 / 12000 * 100, 0.01, 'RK-3 P1: Jahreszeile nennt die Kürzung');
+    assertClose(cut, 9194, 0.01, 'RK-3 P1: Petras Flex-Anteil 2000 um 9.194 € gekürzt (Ausgangslage)');
+    assertClose(row.flex_haushalt_erfuellt, row.flex_wunsch_haushalt_nominal - 9194, 0.01, 'RK-3 P1: Ausgaben zeigen den gezahlten Flex (12.000 − 9.194 €)');
+    assertClose(row.flex_haushalt_kuerzung_pct, 9194 / 12000 * 100, 0.01, 'RK-3 P1: Rohdaten nennen die Flex-Kürzung');
+    assertClose(entry.entscheidung.kuerzungProzent, 9194 / 12000 * 100, 0.01, 'RK-3 P1: Jahreszeile nennt die Kürzung');
     assert(result.summary.metrics.flex_reduction_years_gte_10_pct >= 1, 'RK-3 P1: Kennzahl „Jahre mit Kürzung“ zählt 2000');
     assert(result.summary.maxReductionStreak >= 1, 'RK-3 P1: „Längste Kürzung“ ist nicht „Keine“');
     const flow = protocolCashflowBreakdown(entry, { source: 'backtest', inputs, startYear: 2000 });
-    assertClose(flow.totals.ausgaben_gesamt, 38600, 0.01, 'RK-3 P1: Ausgaben gesamt = gezahlte 38.600 €');
+    assertClose(flow.totals.ausgaben_gesamt, 38806, 0.01, 'RK-3 P1: Ausgaben gesamt = gezahlte 38.806 €');
     assertClose(flow.saved, row.einkuenfte_gespart, 0.01, 'RK-3 P1: Ungezahltes zählt nicht als angelegter Überschuss');
     assertClose(row.entnahme_effektiv, Math.max(0, row.personalPayout.total - 48000), 0.01, 'RK-3 P1: entnahme_effektiv ist der gezahlte Betrag aus dem Vermögen');
     console.log('✅ RK-3 P1: FR-81-Kürzung in Kennzahlen, Jahreszeile, Ausgaben und Rohdaten');

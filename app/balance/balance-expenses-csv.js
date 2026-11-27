@@ -9,6 +9,7 @@ import { parseLocalizedNumber } from './balance-utils.js';
 export const EXPENSE_CSV_IMPORT_SUMMARY = Symbol('expense-csv-import-summary');
 // Metadaten bleiben außerhalb der enumerierbaren Kategoriesummen (Altvertrag).
 export const EXPENSE_CSV_CATEGORY_NEEDS = Symbol('expense-csv-category-needs');
+export const EXPENSE_CSV_LINE_TOTALS = Symbol('expense-csv-line-totals');
 
 export class ExpenseCsvImportError extends Error {
     /** @param {string} code @param {string} message @param {{summary?: {totalRows: number, importedRows: number, rejectedRows: {lineNumber: number, reason: string}[]}}} [details] */
@@ -108,6 +109,7 @@ export function parseCategoryCsv(text) {
     const categoryNeeds = /** @type {Record<string, import('../../typcheck/datenvertraege.js').CategoryNeeds>} */ (Object.create(null));
     const rejectedRows = [];
     let importedRows = 0;
+    const lineTotals = { positive: 0, negative: 0 };
     for (let i = 1; i < lines.length; i++) {
         const { line, lineNumber } = lines[i];
         let row;
@@ -139,6 +141,8 @@ export function parseCategoryCsv(text) {
         const aggregated = (categories[category] || 0) + amount;
         if (!Number.isFinite(aggregated)) throw new ExpenseCsvImportError('expenses_csv_non_finite_sum', 'CSV-Import abgebrochen: Eine Kategoriesumme ist zu groß.');
         categories[category] = aggregated;
+        if (amount < 0) lineTotals.negative -= amount;
+        else lineTotals.positive += amount;
         if (needsIndex >= 0) {
             const pair = categoryNeeds[category] ||= { floor: 0, flex: 0 };
             pair[need === 'flex' ? 'flex' : 'floor'] += amount;
@@ -182,6 +186,7 @@ export function parseCategoryCsv(text) {
         enumerable: false
     });
 
+    Object.defineProperty(categories, EXPENSE_CSV_LINE_TOTALS, { value: lineTotals });
     if (needsIndex >= 0) Object.defineProperty(categories, EXPENSE_CSV_CATEGORY_NEEDS, { value: categoryNeeds });
     return categories;
 }

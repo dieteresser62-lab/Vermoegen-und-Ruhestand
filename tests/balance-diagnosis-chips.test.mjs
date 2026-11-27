@@ -93,7 +93,7 @@ try {
         });
         const note = fragment.children.find(node => node?.className === 'chip-note runway-source-note');
         assert(note?.children[0]?.children[1]?.textContent.includes('50\u00a0% zwischen Normalziel'), 'Runway source note should explain smoothing severity');
-        const runwayChip = fragment.children.find(node => node?.className?.includes('diag-chip') && node?.children?.[0]?.textContent === 'Runway · nach Vorschlag');
+        const runwayChip = fragment.children.find(node => node?.className?.includes('diag-chip') && node?.children?.[0]?.textContent === 'Reichweite · nach Vorschlag');
         assert(runwayChip?.title.includes('Harte Mindestgrenze'), 'Runway chip tooltip should explain hard minimum');
         assertEqual(runwayChip.children[1].textContent, '30 / 48 Mon.', 'Runway hat die Einheit einmal und kein zusätzliches Komma');
         assert(runwayChip.title.includes('Vermögensentnahme nach dem Vorschlag, vor Auszahlung'), 'Diagnose benennt Bezugsgröße und Zustand');

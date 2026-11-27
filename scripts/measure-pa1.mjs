@@ -1,9 +1,8 @@
-// PA-1: ausschließlich synthetische Muster, vollständige Lebenspfade einschließlich Schattenjahren.
+// PA-1: ausschließlich synthetische Muster. Seit dem Wegfall des Stresspfad-Replays zählen nur die
+// MC-Protokollzeilen (bis Ruin bzw. letztem Tod, ohne Schattenjahre); alte Messwerte sind nicht bytegleich nachrechenbar.
 import { writeFileSync } from 'node:fs';
 import { measurementInputs, backtest, hash } from '../tests/helpers/ek-1b-measurement.mjs';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
-import { createStressReplayCaptureRequest } from '../app/simulator/stress-replay-path-materializer.js';
-import { careAllowanceAnnual, careFormForPerson } from '../app/shared/care-benefits.js';
 import { EngineAPI } from '../engine/index.mjs';
 
 const parameters = { anzahl: 2000, maxDauer: 35, blockSize: 5, seed: 12345,
@@ -23,26 +22,21 @@ for (const name of ['grund', 'haus-pg3', 'paar-pg2', 'haus-pg3-4-4']) {
         const indices = Array.from({ length: 100 }, (_, i) => start + i);
         const chunk = await runMonteCarloChunk({ inputs, engine: EngineAPI, monteCarloParams: parameters,
             widowOptions: inputs.widowOptions, useCapeSampling: false, runRange: { start, count: 100 },
-            logIndices: indices, stressReplayCapture: createStressReplayCaptureRequest(indices) });
+            logIndices: indices });
         chunks.push(hash(chunk));
         fail += chunk.totals.failCount; ruin += chunk.totals.outcomeRuinCount;
         technical += chunk.technicalInventory?.technicalError || 0;
         for (const run of chunk.runMeta) {
             emergencySales += run.logDataRows.filter(row => row.immobilien_notverkauf).length;
             let inflation = 1;
-            for (const year of run.stressReplayCapture.years) {
-                const event = year.householdEvents[0];
-                for (const index of [0, 1]) {
-                    const n = index + 1, care = event?.[`careMetaP${n}`];
-                    if (!care?.active) continue;
-                    const weight = event[`p${n}Alive`] ? 1 : .5;
-                    cost += care.zusatzFloorZiel * weight / inflation;
-                    allowance += careAllowanceAnnual({ grade: care.grade, preset: inputs.pflegeKostenStaffelPreset,
-                        careForm: careFormForPerson(inputs, care.grade, index, { care: { p1: event.careMetaP1, p2: event.careMetaP2 },
-                            p1Alive: event.p1Alive, p2Alive: event.p2Alive }), lifeFactor: weight, careValues: inputs.careValues });
-                    if (care.familyCareFallback && care.grade <= 3) switchedPersonYears += weight;
+            for (const row of run.logDataRows) {
+                // Zusatzkosten und Pflegegeld je Haushalt, im Sterbejahr bereits halbiert.
+                cost += (row.pflege_zusatz_floor || 0) / inflation;
+                allowance += (row.pflegegeld || 0) / inflation;
+                for (const n of [1, 2]) {
+                    if (row[`CareP${n}_Active`] && row[`CareP${n}_FamilyFallback`]) switchedPersonYears += row[`Person${n}Alive`] ? 1 : .5;
                 }
-                inflation *= 1 + year.inflationPct / 100;
+                inflation *= 1 + (row.inflation || 0) / 100;
             }
         }
         if ((start + 100) % 500 === 0) console.log(`${name}: ${start + 100}/2000`);

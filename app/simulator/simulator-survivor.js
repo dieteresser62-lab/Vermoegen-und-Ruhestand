@@ -137,7 +137,9 @@ export function finishSurvivorYear(result, transition, pension) {
         const deceased = portfolio.personAccounts.find(p => p.profileId === survivor.deceasedProfileId);
         if (account && deceased) {
             portfolio.personAccounts = portfolio.personAccounts.filter(p => p !== deceased)
-                .map(p => p === account ? { ...p, tagesgeld: p.tagesgeld + deceased.tagesgeld } : p);
+                // NK-2 (FR-84 Punkt 17): Eine offene Steuerschuld geht ohne eigenen Nachlassweg ganz auf die lebende Person über.
+                .map(p => p === account ? { ...p, tagesgeld: p.tagesgeld + deceased.tagesgeld,
+                    ...(deceased.openTax > 0 ? { openTax: (p.openTax || 0) + deceased.openTax } : {}) } : p);
             const lotGroups = ['depotTranchesAktien', 'depotTranchesGold', 'depotTranchesGeldmarkt', 'healthBucketTranches'];
             const ids = new Set(lotGroups.flatMap(key => portfolio[key] || [])
                 .filter(lot => lot.sourceProfileId === survivor.survivorProfileId).map(lot => lot.trancheId));

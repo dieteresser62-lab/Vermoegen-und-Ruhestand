@@ -1,0 +1,30 @@
+{
+ "hinweis": "Vier Zellen der Spalten Date und CAPE aus ie_data.xls vom 2026-11-17 (Blatt Data, Kopfzeile 7). Die Datei selbst liegt nicht im Repo.",
+ "kopf": {
+  "zeile": 7,
+  "date": "Date",
+  "cape": "CAPE"
+ },
+ "zeilen": [
+  {
+   "zeile": 1843,
+   "date": 2023.12,
+   "cape": 31.452310923844557
+  },
+  {
+   "zeile": 1854,
+   "date": 2024.11,
+   "cape": 37.35019565507877
+  },
+  {
+   "zeile": 1855,
+   "date": 2024.12,
+   "cape": 37.711191696434625
+  },
+  {
+   "zeile": 1856,
+   "date": 2025.01,
+   "cape": 37.12921985219889
+  }
+ ]
+}

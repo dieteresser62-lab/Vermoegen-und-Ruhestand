@@ -3,6 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
+import { HISTORICAL_END_YEAR } from './lib/historical-end-year.mjs';
+import { GRUNDBESTAND_END_YEAR } from './lib/jahresdaten/grundbestand.mjs';
+import { fortschreibungAnwenden } from './lib/jahresdaten/fortschreibung.mjs';
+import * as aktienKette from './lib/jahresdaten/ketten/aktien.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIRECTORY, '..');
@@ -26,33 +30,13 @@ if (REFRESH_FILTERED_INPUTS && VERIFY_ONLY) {
     throw new Error('--refresh-filtered-inputs and --verify-only are mutually exclusive');
 }
 
-const COUNTRY_CURRENCIES = Object.freeze({
-    AUS: 'AUD',
-    BEL: 'EUR',
-    CHE: 'CHF',
-    DEU: 'EUR',
-    DNK: 'DKK',
-    ESP: 'EUR',
-    FIN: 'EUR',
-    FRA: 'EUR',
-    GBR: 'GBP',
-    ITA: 'EUR',
-    JPN: 'JPY',
-    NLD: 'EUR',
-    NOR: 'NOK',
-    PRT: 'EUR',
-    SWE: 'SEK',
-    USA: 'USD'
-});
+const { COUNTRY_CURRENCIES } = aktienKette;
 const COUNTRY_ISOS = Object.freeze(Object.keys(COUNTRY_CURRENCIES));
-const DECEMBER_PERIODS = Object.freeze([
-    '2020-12',
-    '2021-12',
-    '2022-12',
-    '2023-12',
-    '2024-12',
-    '2025-12'
-]);
+const END_YEAR = HISTORICAL_END_YEAR;
+// Die Originale bauen den Grundbestand bis GRUND_END_YEAR; spätere Jahre bis END_YEAR kommen aus den Jahreslieferungen.
+const GRUND_END_YEAR = GRUNDBESTAND_END_YEAR;
+// Dezember-Werte vom Basisjahr 2020 der modellierten Dividende bis zum Ende des Grundbestands.
+const DECEMBER_PERIODS = Object.freeze(Array.from({ length: GRUND_END_YEAR - 2020 + 1 }, (_, index) => `${2020 + index}-12`));
 const EXPECTED_COUNTRY_COUNTS = Object.freeze({
     1945: 15,
     1946: 14,
@@ -574,46 +558,41 @@ function currencyPerEur(iso, period) {
     return positiveNumber(row.obs_value, `ECB ${currency} ${period} obs_value`);
 }
 
-for (let year = 2021; year <= 2025; year += 1) {
+for (let year = 2021; year <= GRUND_END_YEAR; year += 1) {
     const previousPeriod = `${year - 1}-12`;
     const currentPeriod = `${year}-12`;
-    annualReturns[year] = COUNTRY_ISOS.reduce((total, iso) => {
+    annualReturns[year] = aktienKette.aktienJahresrendite(COUNTRY_ISOS, modernWeights, (iso) => {
         const previous = oecdByIsoPeriod.get(rowKey(iso, previousPeriod));
         const current = oecdByIsoPeriod.get(rowKey(iso, currentPeriod));
         if (!previous || !current) fail('OECD country-period observation is missing', { iso, year });
         if (previous.obs_status !== 'A' || current.obs_status !== 'A') {
             fail('OECD observations must have normal status A', { iso, year, previous, current });
         }
-        const priceReturn = (
-            positiveNumber(current.obs_value, `OECD ${iso} ${currentPeriod} obs_value`)
-            / positiveNumber(previous.obs_value, `OECD ${iso} ${previousPeriod} obs_value`)
-            - 1
-        );
-        const totalReturnProxy = priceReturn + dividendProxyByIso[iso];
-        const eurReturn = (
-            (1 + totalReturnProxy)
-            * currencyPerEur(iso, previousPeriod)
-            / currencyPerEur(iso, currentPeriod)
-            - 1
-        );
+        const eurReturn = aktienKette.aktienLaenderRendite({
+            oecdPrevious: positiveNumber(previous.obs_value, `OECD ${iso} ${previousPeriod} obs_value`),
+            oecdCurrent: positiveNumber(current.obs_value, `OECD ${iso} ${currentPeriod} obs_value`),
+            dividendReturn: dividendProxyByIso[iso],
+            currencyPerEurPrevious: currencyPerEur(iso, previousPeriod),
+            currencyPerEurCurrent: currencyPerEur(iso, currentPeriod)
+        });
         if (!(eurReturn > -1)) fail('Derived modern country return must be greater than -100%', {
             iso,
             year,
             eurReturn
         });
-        return total + eurReturn * modernWeights[iso];
-    }, 0);
+        return eurReturn;
+    });
     countryCounts[year] = COUNTRY_ISOS.length;
 }
 
 const indexLevels = {};
 let indexLevel = 100;
-for (let year = 1925; year <= 2025; year += 1) {
+for (let year = 1925; year <= GRUND_END_YEAR; year += 1) {
     const annualReturn = annualReturns[year];
     if (!Number.isFinite(annualReturn) || !(annualReturn > -1)) {
         fail('Annual chain return is invalid', { year, annualReturn });
     }
-    indexLevel *= 1 + annualReturn;
+    indexLevel = aktienKette.aktienIndexstand(indexLevel, annualReturn);
     if (!Number.isFinite(indexLevel) || !(indexLevel > 0)) fail('Index level is invalid', { year, indexLevel });
     indexLevels[year] = indexLevel;
 }
@@ -634,11 +613,11 @@ const rawDataHash = sha256Canonical(
         }
     ]))
 );
-const chain = {
+const grundbestand = {
     schemaVersion: 'GlobalEquityResearchChainV1',
     revision: '2026-07-29.2',
     seriesId: 'global_equity_research_index',
-    period: { startYear: 1925, endYear: 2025 },
+    period: { startYear: 1925, endYear: GRUND_END_YEAR },
     base: { year: 1924, level: 100 },
     countryUniverse: COUNTRY_ISOS,
     weighting: {
@@ -671,7 +650,7 @@ const chain = {
         },
         {
             startYear: 2021,
-            endYear: 2025,
+            endYear: GRUND_END_YEAR,
             evidenceClass: 'estimated',
             currencyConvention: 'EUR',
             returnConstruction: 'OECD December share-price return plus frozen JST 2020 dividend return, converted with ECB December reference rates.'
@@ -685,30 +664,9 @@ const chain = {
     indexLevels
 };
 
-const output = `/**
- * GENERATED DATA ARTIFACT - DO NOT EDIT MANUALLY.
- * Build with: npm run build:global-equity-data
- *
- * The data values and adaptations derived from JST R6 are licensed under
- * CC BY-NC-SA 4.0. See data/historical/global-equity-research-chain/LICENSE.md.
- */
-"use strict";
-
-function deepFreezeGlobalEquityResearchData(value, seen = new WeakSet()) {
-    if (value === null || typeof value !== 'object' || seen.has(value)) return value;
-    seen.add(value);
-    for (const child of Object.values(value)) deepFreezeGlobalEquityResearchData(child, seen);
-    return Object.freeze(value);
-}
-
-export const GLOBAL_EQUITY_RESEARCH_CHAIN = deepFreezeGlobalEquityResearchData(${JSON.stringify(chain, null, 4)});
-
-export const GLOBAL_EQUITY_RESEARCH_ANNUAL_RETURNS =
-    GLOBAL_EQUITY_RESEARCH_CHAIN.annualReturns;
-
-export const GLOBAL_EQUITY_RESEARCH_INDEX_LEVELS =
-    GLOBAL_EQUITY_RESEARCH_CHAIN.indexLevels;
-`;
+// Jahre nach dem Grundbestand hängt dieselbe Fortschreibung an wie `npm run jahresdaten -- <Jahr> --uebernehmen`.
+const chain = fortschreibungAnwenden(aktienKette, grundbestand, { root: PROJECT_ROOT, endYear: END_YEAR });
+const [[, output]] = aktienKette.schreiben(chain);
 
 if (VERIFY_ONLY) {
     console.log('Verified original-to-filtered reconstruction and generated-chain inputs without writing files.');

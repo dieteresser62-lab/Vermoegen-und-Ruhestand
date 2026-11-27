@@ -18,7 +18,7 @@ for (const id of ['max-erika', 'renate']) {
     const inputs = await measurementInputs(0, id, '2026-10-28');
     const mc = await runMonteCarloChunk({ inputs, engine: EngineAPI,
         monteCarloParams: { ...parameters, anzahl: 40 }, widowOptions: inputs.widowOptions,
-        useCapeSampling: false, runRange: { start: 0, count: 40 }, logIndices: Array.from({length:40},(_,i)=>i) });
+        useCapeSampling: false, runRange: { start: 0, count: 40 }, logIndices: Array.from({length:40},(_,i)=>i), collectPersonOutcomes: true });
     if (!mc.financialMetricsValid || mc.batchStatus !== 'completed') throw new Error('Monte Carlo nicht vollständig auswertbar');
     const records = createMusterHaushaltRecords('2026-10-28', id);
     const registry = JSON.parse(records.rs_profiles_v1);
@@ -31,7 +31,9 @@ for (const id of ['max-erika', 'renate']) {
         now: new Date('2026-10-28T12:00:00Z') });
     const historical = backtest(inputs);
     if (historical.outcome.kind !== 'completed' || !overview.available) throw new Error('Backtest oder Übersicht nicht auswertbar');
-    result[id] = { balance: hash(balance), backtest: hash(historical), monteCarlo: hash(mc), overview: hash(overview) };
+    // Die reine Personenanzeige gehört nicht zum Vergleich der Rechnung.
+    const { personOutcomeCounts, ...monteCarloCalculation } = mc;
+    result[id] = { balance: hash(balance), backtest: hash(historical), monteCarlo: hash(monteCarloCalculation), overview: hash(overview) };
 }
 writeFileSync(output, JSON.stringify(result, null, 2)+'\n');
 console.log(JSON.stringify(result));

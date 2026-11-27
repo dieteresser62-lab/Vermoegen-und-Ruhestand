@@ -31,7 +31,7 @@ function assert(condition, message) {
 
 // Small numeric tolerance helper for percent-ish outputs.
 function assertClose(actual, expected, tolerance = 0.001, message) {
-    if (Math.abs(actual - expected) > tolerance) {
+    if (!Number.isFinite(actual) || !Number.isFinite(expected) || Math.abs(actual - expected) > tolerance) {
         console.error(`❌ Assertion failed: ${message} (Expected ${expected}, got ${actual})`);
         process.exit(1);
     }

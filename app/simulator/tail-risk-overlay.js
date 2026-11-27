@@ -20,6 +20,19 @@ function drawProbability(random) {
     return Math.min(1 - Number.EPSILON, Math.max(0, value));
 }
 
+// KR-1 (NG-2): Der Crash-Zuschlag zieht aus einem eigenen, fest abgezweigten Strom. Mit dem Startwert der Jahresziehung
+// fiel ein Crash im Jahr 0 nur in wenige Startjahre. Je Lauf und Startwert bleibt der Plan gleich.
+const TAIL_RISK_STREAM_SALT = 0x5bd1e995;
+function deriveTailRiskSeed(runSeed) {
+    let h = ((Number(runSeed) || 0) ^ TAIL_RISK_STREAM_SALT) >>> 0;
+    h ^= h >>> 16;
+    h = Math.imul(h, 0x85ebca6b);
+    h ^= h >>> 13;
+    h = Math.imul(h, 0xc2b2ae35);
+    h ^= h >>> 16;
+    return h >>> 0;
+}
+
 function createEvent({ eventId, startYearIndex, durationYears, config }) {
     return {
         tailRiskEventId: eventId,
@@ -55,7 +68,7 @@ export function createTailRiskSchedule(runSeed, configInput = {}, horizonYears) 
         };
     }
 
-    const random = rng(Number(runSeed) || 0);
+    const random = rng(deriveTailRiskSeed(runSeed));
     const events = [];
     let yearIndex = 0;
     let eventId = 1;

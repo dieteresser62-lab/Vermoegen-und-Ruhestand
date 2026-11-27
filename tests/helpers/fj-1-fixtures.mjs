@@ -7,9 +7,11 @@ export const stateKey = CONFIG.STORAGE.LS_KEY;
 export const fixtureNow = () => new Date('2026-12-30T12:00:00Z');
 export function setPrices(records, points) {
     const days = points.map(([date]) => historyDay(date));
+    // Abgefragt ab Historienstart wie die Referenzreihe (ATH-1b); sonst wären die Tage davor ungeprüft.
+    const start = records.rs_wealth_history_start_v1 ? historyDay(JSON.parse(records.rs_wealth_history_start_v1).startDate) : days[0];
     records[DAILY_PRICES_KEY] = JSON.stringify({ version: 1, symbols: { 'VWCE.DE': {
         ...emptyHistorySymbol(), currency: 'EUR', days, closes: points.map(([, value]) => value),
-        queried: [[days[0], days.at(-1)]]
+        queried: [[Math.min(start, days[0]), days.at(-1)]]
     } } });
 }
 export function changeProfiles(records, update) {

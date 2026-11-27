@@ -3,9 +3,6 @@ import { parseCategoryCsv, EXPENSE_CSV_CATEGORY_NEEDS } from '../app/balance/bal
 import { computeHouseholdNeedsStats, computeYearStats, hasCategoryNeeds } from '../app/balance/balance-expenses-metrics.js';
 import { loadExpensesStoreResult, saveExpensesStore, setExpensesActiveYear } from '../app/balance/balance-expenses-storage.js';
 import { requestExpensesPreview } from '../app/balance/balance-expenses-import.js';
-import { PersistenceFacade as P } from '../app/shared/persistence-facade.js';
-import { previewPersonExport, confirmPersonExport, previewPersonImport, importPersonFile, normalizePersonFile } from '../app/profile/profile-person-file.js';
-import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { projectExpenses } from '../app/expenses/expenses-model.js';
 import { readCloseExpenseNeeds } from '../app/expenses/expenses-needs.js';
 import { renderExpenseNeeds } from '../app/expenses/expenses-needs-renderer.js';
@@ -22,28 +19,6 @@ const entry = (floor, flex) => ({ categories: { Alltag: -floor - flex }, categor
 const people = [{ id: 'a', name: 'Max' }, { id: 'b', name: 'Erika' }];
 const text = node => [node.textContent, ...Array.from(node.children).map(text)].join(' ');
 const walk = node => [node, ...Array.from(node.children).flatMap(walk)];
-
-await probe('1 / I3: Export und zweifacher Reimport lassen Ausgaben bytegleich', async () => {
-    const records = createMusterHaushaltRecords('2026-10-30');
-    P.resetPersistenceForTests({ name: 'FF-1b', async loadAll() { return { ...records }; },
-        async saveBatch({ upserts, deletes }) { deletes.forEach(key => delete records[key]); Object.assign(records, Object.fromEntries(upserts)); } });
-    try {
-        await P.init({ installLifecycleHooks: false, installTauriCloseHook: false });
-        const before = records.balance_expenses_v1;
-        const file = await confirmPersonExport(await previewPersonExport(records.rs_current_profile));
-        // I3 wirklich bis zum Doppelimport ausführen, auch gegen den alten Exportvertrag.
-        for (let repeat = 0; repeat < 2; repeat++) strict.equal((await importPersonFile(await previewPersonImport(file))).status, 'imported');
-        strict.equal(records.balance_expenses_v1, before, 'Doppelimport lässt den Ausgabenstore bytegleich');
-        strict.equal(Object.hasOwn(file, 'expenses'), false, 'Export enthält keine Ausgaben');
-        // Zwischenstandsdateien werden angenommen, ihr Zusatzfeld wird unabhängig vom Inhalt ignoriert.
-        for (const expenses of [JSON.parse(before), { version: 2, years: 'unlesbar' }]) {
-            const oldFile = { ...file, expenses };
-            strict.equal(Object.hasOwn(normalizePersonFile(oldFile), 'expenses'), false);
-            strict.equal((await importPersonFile(await previewPersonImport(oldFile))).status, 'imported');
-            strict.equal(records.balance_expenses_v1, before, 'Reimport schreibt den Ausgabenstore nicht');
-        }
-    } finally { P.resetPersistenceForTests(); }
-});
 
 await probe('2 / G1/G2: ungültige Aufteilung überlebt Laden, Jahreswahl und Speichern', () => {
     for (const invalid of [null, { Alltag: { floor: '12', flex: 0 } }, { Alltag: { floor: -99, flex: 0 } }]) {
@@ -114,12 +89,12 @@ await probe('4 / F4/F9: vollständige, abgelaufene positive Monate wie Gesamt', 
     for (const id of ['expensesNeeds']) { const node = doc.createElement('section'); node.id = id; doc.body.append(node); }
     renderExpenseNeeds(doc, view, true);
     const card = text(doc.getElementById('expensesNeeds'));
-    strict.match(card, /= Hochrechnung oben\. Floor und Flex aus 1 Monat mit Aufteilung \(von 2 gezählten\)\./);
+    strict.match(card, /= Hochrechnung oben\. Grundbedarf und Flex aus 1 Monat mit Aufteilung \(von 2 gezählten\)\./);
     strict.equal(card.includes('Floor + Flex = Hochrechnung oben.'), false);
     const monthly = createOverviewStepContent({ doc, model: { scope: view.scope, expenseNeeds: review,
         expenses: { year: 2026, month: 1, complete: true, spent: 1200 }, occasion: { previousYear: 2026, previousMonth: 1 }, expenseBudget: null },
         step: { id: 'budget', done: false, result: '' } });
-    strict.match(text(monthly), /Floor und Flex aus 1 von 2 Monaten mit Aufteilung\./);
+    strict.match(text(monthly), /Grundbedarf und Flex aus 1 von 2 Monaten mit Aufteilung\./);
     const allSplit = projectExpenses({ ...args, store: { years: { 2026: { months: { 1: yearData.months[1] } } } } });
     renderExpenseNeeds(doc, allSplit, true);
     strict.match(text(doc.getElementById('expensesNeeds')), /= Hochrechnung oben\./);

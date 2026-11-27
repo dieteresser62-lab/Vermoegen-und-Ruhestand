@@ -17,7 +17,7 @@ async function measure(directory) {
     const { createParityCase } = await load('app/balance/parity-case.js');
     const { createParitySequenceSeed } = await load('tests/extended/parity-balance-sequence.mjs');
     const { runMonteCarloChunk } = await load('app/simulator/monte-carlo-runner.js');
-    const { normalizeWidowOptions } = await load('app/simulator/simulator-sweep-utils.js');
+    const { normalizeWidowOptions } = await load('app/simulator/simulator-run-utils.js');
     const unchanged = JSON.stringify({ inputs: fixture.inputs, records: fixture.records });
     const scenarios = [];
     const period = { startYear: 2000, endYear: 2025 };

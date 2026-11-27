@@ -127,7 +127,7 @@
 .personen-vermoegen-page #profilePersonDateStatus.ds-explanation,
 .balance-page #balancePersonSPBSource.ds-explanation,
 .balance-page #actionDetailsNote.ds-explanation,
-#tab-annahmen .ds-explanation, #tab-werkstatt .ds-explanation,
+#tab-annahmen .ds-explanation,
 #tab-montecarlo .ds-explanation { font: 400 var(--text-sm)/1.5 var(--font-sans); color: var(--text-muted); }
 .ds-explanation .ds-info { margin: 0 0 0 var(--space-1); vertical-align: middle; }
 .ds-explanation .ds-info-button { width: 24px; height: 24px; min-height: 24px; }
@@ -269,6 +269,7 @@ details[open] > .ds-disclosure-toggle .ds-slider::after { transform: translateX(
 .page-choice-dialog :is(p, label, legend, select, input) { font-family: var(--font-sans); font-size: var(--text-base); }
 .page-choice-dialog button { font-family: var(--font-sans); font-size: var(--text-sm); }
 .page-choice-dialog .ds-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+#appTabDialog :is(h2, p) { margin: 0; }
 .page-choice-group { border: 0; padding: 0; margin: 1.5rem 0; }
 .page-choice-group legend { font-weight: 600; margin-bottom: .5rem; }
 .page-choice-dialog .page-choice-card { display: flex; align-items: center; gap: .75rem; padding: 1rem; margin: .5rem 0; border: 1px solid var(--border); border-radius: .75rem; cursor: pointer; }
@@ -341,15 +342,17 @@ html:has(.close-dialog[open]) { overflow: hidden; }
 .probelauf-transfer-group li { margin: 8px 0; }
 .probelauf-transfer-success { border: 1px solid var(--good); background: var(--good-soft); color: var(--good); border-radius: var(--radius-md); padding: var(--space-4); }
 
-.close-dialog-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--space-2); padding: 0 var(--space-8) var(--space-3); border-bottom: 1px solid var(--border); }
+/* OP-2 (Punkt 2): Reiter sind gleich breit, solange jeder Name passt; ein Name, dessen längstes Wort nicht passt, erhält die nötige Breite, die übrigen teilen den Rest gleich.
+   Nur das längste Wort des Namens bestimmt die Mindestbreite; der Stand bricht notfalls selbst um.
+   OP-3 (Punkt 2): Jahres- und Monatsabschluss zeigen dasselbe Reiterbild, Nummer, darunter Name, darunter Stand; die Stände stehen unten auf einer Linie, alle Reiter gleich hoch. */
+.close-dialog-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(min-content, 1fr); gap: var(--space-2); padding: 0 var(--space-8) var(--space-3); border-bottom: 1px solid var(--border); }
 .close-dialog-step { min-width: 0; }
 .close-dialog-step-heading { margin: 0 0 var(--space-3); font-family: var(--font-serif); }
-.close-dialog-step-title { display: grid; grid-template-columns: 26px minmax(0, 1fr); grid-template-areas: "symbol status" "name name"; align-content: start; align-items: center; gap: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-md); min-width: 0; padding: var(--space-3); text-align: left; background: var(--surface); color: var(--text-main); font: inherit; font-weight: 600; cursor: pointer; }
+.close-dialog-step-title { display: grid; grid-template-columns: minmax(min-content, 1fr); grid-template-rows: auto 1fr auto; justify-items: start; align-items: start; gap: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-md); min-width: 0; padding: var(--space-3); text-align: left; background: var(--surface); color: var(--text-main); font: inherit; font-weight: 600; cursor: pointer; }
 .close-dialog-step-title[aria-current="step"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
 /* VN-4 Nachtrag 1 N1: Ein Schrittname bricht nur zwischen Wörtern um, nie mitten im Wort. */
-.close-dialog-step-name { grid-area: name; white-space: normal; overflow-wrap: normal; word-break: normal; hyphens: manual; min-width: min-content; }
-.close-dialog-step-symbol { grid-area: symbol; display: inline-grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 50%; background: var(--surface-sunken); color: var(--text-muted); font-size: var(--text-sm); }
-.close-dialog-step-title[data-state="done"] .close-dialog-step-symbol { color: var(--good); border-color: var(--good); background: var(--good-soft); }
+.close-dialog-step-name { white-space: normal; overflow-wrap: normal; word-break: normal; hyphens: manual; min-width: min-content; }
+.close-dialog-step-symbol { display: inline-grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 50%; background: var(--surface-sunken); color: var(--text-muted); font-size: var(--text-sm); }
 .close-dialog-step-title[aria-current="step"] .close-dialog-step-symbol { color: var(--surface); border-color: var(--accent); background: var(--accent); }
 .close-dialog-step-result { margin: 0 0 var(--space-4); }
 .close-dialog-result-warning { color: var(--warn); }
@@ -403,7 +406,7 @@ html:has(.close-dialog[open]) { overflow: hidden; }
 #annualHandPriceHelp { margin-top: 4px; font-size: 14px; }
 
 .close-dialog-footnote { display: flex; align-items: center; gap: var(--space-2); flex: 0 0 auto; color: var(--text-muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
-.close-dialog-step-pill { grid-area: status; overflow-wrap: normal; border-radius: var(--radius-lg); padding: var(--space-1) var(--space-2); font-size: var(--text-sm); font-weight: 600; color: var(--warn); background: var(--warn-soft); }
+.close-dialog-step-pill { align-self: end; min-width: 0; max-width: 100%; white-space: normal; hyphens: auto; overflow-wrap: anywhere; border-radius: var(--radius-lg); padding: var(--space-1) var(--space-2); font-size: var(--text-sm); font-weight: 600; color: var(--warn); background: var(--warn-soft); }
 .close-dialog-step-title[data-state="done"] .close-dialog-step-pill { color: var(--good); background: var(--good-soft); }
 .close-dialog-recommendation { background: var(--surface-sunken); border-radius: var(--radius-md); padding: var(--space-4); display: flex; align-items: center; gap: var(--space-2); border-top: 1px solid var(--border); padding-top: var(--space-3); color: var(--text-muted); font-size: var(--text-sm); }
 .close-dialog .tagesgeld-close-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
@@ -416,6 +419,10 @@ html:has(.close-dialog[open]) { overflow: hidden; }
 .close-dialog .tagesgeld-person [hidden] { display: none; }
 .close-dialog .tagesgeld-person .tagesgeld-error { grid-column: 1 / -1; color: var(--bad); }
 .close-dialog .tagesgeld-error:empty { display: none; }
+.close-dialog .tagesgeld-person .tagesgeld-confirm { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.close-dialog .tagesgeld-person .tagesgeld-confirm[hidden] { display: none; }
+.close-dialog .tagesgeld-confirm .ds-field-reason { margin: 0; }
+.close-dialog .tagesgeld-confirm .ds-button { flex: 0 0 auto; white-space: nowrap; }
 .close-dialog .tagesgeld-person-amount { position: relative; min-width: 0; }
 .close-dialog .tagesgeld-unit { position: absolute; right: var(--space-3); top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: var(--text-sm); pointer-events: none; }
 .close-dialog .tagesgeld-person input { min-width: 0; width: 100%; padding-right: var(--space-6); text-align: right; font-size: var(--value-md); font-variant-numeric: tabular-nums; }
@@ -448,6 +455,11 @@ html:has(.close-dialog[open]) { overflow: hidden; }
 .close-dialog [data-annual-cape-missing] { margin-bottom: var(--space-3); font-size: var(--text-sm); }
 .close-dialog [data-annual-cape-missing] > h4 { margin: 0 0 var(--space-2); font: 600 var(--text-base)/1.5 var(--font-sans); }
 .close-dialog [data-annual-cape-missing] > p { margin: 0; }
+/* SP-1c: Geld unterwegs beim Start des Jahresabschlusses, gleicher Warnbaustein wie „CAPE nicht automatisch ermittelt“. */
+.close-dialog [data-annual-money-underway] { display: grid; gap: var(--space-2); justify-items: start; margin-bottom: var(--space-4); }
+.close-dialog [data-annual-money-underway][hidden] { display: none; }
+.close-dialog [data-annual-money-underway] > h4 { margin: 0; font: 600 var(--text-base)/1.5 var(--font-sans); }
+.close-dialog [data-annual-money-underway] > p { margin: 0; }
 .close-dialog label[for="annualHandCape"] .ds-info { margin-left: var(--space-1); }
 .close-dialog label[for="annualHandCape"] .ds-info-pop { left: 0; right: auto; }
 .annual-combined-result > [data-annual-action-result] { margin-top: var(--space-4); }
@@ -526,7 +538,7 @@ html:has(.close-dialog[open]) { overflow: hidden; }
 .household-plan-field > .ds-segment { grid-column: 2; justify-self: end; max-width: 100%; }
 .household-plan-field > [data-plan-segment="decumulation.mode"] { flex-wrap: nowrap; }
 .household-plan-field > [data-plan-segment="decumulation.mode"] button { white-space: nowrap; }
-.household-plan-field .ds-segment > button { padding: .4rem .65rem; font-size: .85rem; }
+:is(.household-plan-field, [data-inheritance-toggle]) .ds-segment > button { padding: .4rem .65rem; font-size: .85rem; }
 .household-plan-field > .household-plan-error { grid-column: 1 / -1; color: var(--bad); }
 .household-plan-field [aria-invalid="true"] { border-color: var(--bad); }
 .household-plan-used { display: flex; gap: .375rem; font-size: var(--balance-help, .8rem); margin-top: .75rem; }
@@ -621,6 +633,46 @@ details[open] > summary .household-plan-disclosure-action > span:last-child { di
 .annual-care-fields > small { grid-column: 1 / -1; }
 .annual-care-fields input { width: 100%; box-sizing: border-box; text-align: right; }
 .annual-care-fields input[data-annual-care-field="from"] { text-align: left; }
+/* IM-1 (FR-85): Schritt „Immobilienwerte“ wie „Pflegewerte“; Kacheln, Verlaufsvorschau und Variante „Werte ändern …“ nach Entwurf. */
+#balanceAnnualClose .close-dialog-step-body:has(.annual-property-editor) { padding-left: 0; }
+.annual-property-editor { display: grid; gap: var(--space-4); }
+.annual-property-editor p, .annual-property-editor h4 { margin: 0; }
+.annual-property-hint { color: var(--text-muted); font-size: var(--text-sm); border-bottom: 1px solid var(--border); padding-bottom: var(--space-3); }
+.annual-property-columns { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: var(--space-6); align-items: start; }
+.annual-property-columns[hidden], .annual-property-actions[hidden], .annual-property-fields[hidden] { display: none; }
+.annual-property-main { display: grid; gap: var(--space-4); }
+.annual-property-list, .annual-property-side, .annual-property-fields { display: grid; gap: var(--space-3); }
+.annual-property-home { display: grid; gap: var(--space-2); }
+.annual-property-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
+.annual-property-head h4, .annual-property-side h4 { font: 600 var(--text-base)/1.4 var(--font-sans); }
+.annual-property-head small, .annual-property-later, .annual-property-facts, .annual-property-legend { color: var(--text-muted); font-size: var(--text-sm); }
+.annual-property-values, .annual-property-edit { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.annual-property-edit { border-color: var(--accent-line); }
+.annual-property-values > div, .annual-property-edit > div { display: grid; gap: 2px; align-content: start; padding: var(--space-3); min-width: 0; }
+.annual-property-values > div + div, .annual-property-edit > div + div { border-left: 1px solid var(--border); }
+.annual-property-values small, .annual-property-edit small { color: var(--text-muted); font-size: var(--text-sm); }
+.annual-property-values strong, .annual-property-edit strong { font: 400 24px/1.4 var(--font-serif); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.annual-property-values .annual-property-new { background: color-mix(in srgb, var(--accent-soft) 45%, var(--surface)); }
+.annual-property-values .annual-property-new strong { font-size: 26px; }
+.annual-property-delta { color: var(--good); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.annual-property-edit input { width: 100%; box-sizing: border-box; }
+.annual-property-edit label { color: var(--text-muted); font-size: var(--text-sm); }
+.annual-property-edit input[data-annual-property-value] { font: 400 22px/1.3 var(--font-serif); font-variant-numeric: tabular-nums; }
+.annual-property-chart { display: grid; gap: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-3); }
+.annual-property-chart svg { display: block; width: 100%; height: auto; }
+.annual-property-chart text { font: 10px var(--font-sans); fill: var(--text-muted); }
+.annual-property-chart .annual-property-grid { stroke: var(--border); }
+.annual-property-chart .annual-property-axis { stroke: var(--border-strong); }
+.annual-property-chart polyline { fill: none; stroke-width: 2.5; }
+.annual-property-chart .annual-property-old { stroke: var(--text-main); }
+.annual-property-chart .annual-property-step { stroke: var(--accent); }
+.annual-property-chart .annual-property-point { fill: var(--accent); }
+.annual-property-chart .annual-property-step-label { fill: var(--accent); }
+.annual-property-legend { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.annual-property-legend span::before { content: ""; display: inline-block; width: 14px; height: 3px; margin-right: 6px; vertical-align: 3px; background: var(--text-main); }
+.annual-property-legend .annual-property-legend-step::before { background: var(--accent); }
+.annual-property-facts { margin: 0; padding-left: 18px; display: grid; gap: var(--space-1); }
+.annual-property-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 .annual-needs-review { display: grid; gap: var(--space-4); }
 .annual-needs-review .close-dialog-tiles { margin: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .annual-need-head, .annual-need-row { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.35fr) 9rem; gap: var(--space-2); align-items: center; }
@@ -659,8 +711,6 @@ details[open] > summary .household-plan-disclosure-action > span:last-child { di
 /* Abschluss: Ansichtsnavigation bestätigt keine fachlichen Schritte. */
 .close-dialog-step-title:hover { background: var(--surface-sunken); }
 .close-dialog-step-title:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.close-dialog-step-title[data-state="not_applicable"] .close-dialog-step-symbol,
-.close-dialog-step-title[data-state="skipped"] .close-dialog-step-symbol { color: var(--text-muted); background: transparent; }
 .close-dialog-next { margin: 0; }
 .close-dialog-next-actions { display: contents; }
 .close-dialog-step-title[data-tone="warning"] .close-dialog-step-pill { color: var(--warn); background: var(--warn-soft); }
@@ -793,54 +843,18 @@ dialog.probelauf-start-dialog .probelauf-sources > button.probelauf-source[aria-
 .annual-need-value small { display: block; color: var(--text-muted); font-size: var(--text-sm); margin-top: var(--space-1); }
 .close-dialog-needs-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-/* Gemeinsamer Marktvergleich in Balance und Jahresabschluss. */
-.balance-preview-table { width: 100%; table-layout: fixed; font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
-.balance-preview-table :is(th, td) { padding: 7px 6px; text-align: right; vertical-align: top; overflow-wrap: break-word; }
-.balance-preview-table th:first-child { text-align: left; width: 23%; }
-.balance-preview-table thead th { white-space: normal; }
-.balance-preview-table td.balance-preview-cell-warning { background: var(--warn-soft); }
-.balance-preview-table small { display: block; margin-top: var(--space-1); line-height: 1.25; }
-/* Budgetprüfung in Balance und im gemeinsamen Jahresdialog. */
+/* Allzeithoch in Balance und im gemeinsamen Jahresdialog (FR-89). */
 .balance-market-preview { border: 2px solid var(--accent-line); border-radius: var(--radius-md); padding: var(--space-3); background: var(--surface); min-width: 0; }
-.balance-preview-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-3); }
-.balance-preview-head > div { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
-.balance-preview-head h4 { margin: 0; font: 500 20px/1.2 var(--font-serif); }
 .balance-market-preview p { margin: var(--space-2) 0; }
 .balance-preview-result { padding: var(--space-3); border-radius: var(--radius-sm); background: var(--surface-sunken); }
 .balance-preview-result > strong { display: block; font: 500 18px/1.4 var(--font-sans); }
-.balance-preview-result-warning { background: var(--warn-soft); }
-.balance-preview-result-notice { background: var(--accent-soft); }
 .balance-preview-result > .ds-badge { margin-bottom: var(--space-2); background: var(--surface); }
-.balance-preview-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); margin-top: var(--space-3); }
-.balance-preview-tiles > .ds-kpi { display: grid; padding: var(--space-2); background: var(--surface); border-radius: var(--radius-sm); }
-.balance-preview-tiles strong { font: 500 var(--value-md)/1.3 var(--font-serif); }
-.balance-preview-consequences { background: var(--surface); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); margin-top: var(--space-3); }
-.balance-market-history { margin: var(--space-2) 0; }
-.balance-market-history svg { display: block; width: 100%; height: auto; font: 13px var(--font-sans); }
-.annual-market-choice-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--space-6); align-items: start; }
-.annual-market-choice-layout > * { min-width: 0; }
-.annual-market-choice-layout .balance-market-preview { padding: 0; border: 0; }
-.annual-market-choice { border: 0; margin: 0; padding: 0; min-width: 0; }
-.annual-market-choice legend { font: 500 var(--text-lg)/1.3 var(--font-serif); margin-bottom: var(--space-3); }
-.annual-market-option { display: block; position: relative; padding: var(--space-3) var(--space-3) var(--space-3) calc(var(--space-8) + var(--space-2)); margin-bottom: var(--space-3); cursor: pointer; }
-.annual-market-option input { position: absolute; left: var(--space-3); top: calc(var(--space-3) + .3rem); margin: 0; }
-.annual-market-option[data-selected="true"] { border-color: var(--accent); background: var(--accent-soft); }
-.annual-market-option-budget { display: block; font: 500 var(--value-md)/1.3 var(--font-serif); margin-block: var(--space-2); }
-.annual-market-option p { font-size: var(--text-sm); margin: var(--space-2) 0; }
-.annual-market-plan-note { background: var(--surface-sunken); border-radius: var(--radius-sm); padding: var(--space-3); font-size: var(--text-sm); margin-bottom: var(--space-3); }
-.annual-market-plan-note p { margin: 0 0 var(--space-1); }
 .balance-preview-result p { margin-bottom: 0; font-size: var(--text-sm); }
-.balance-preview-details { margin-top: var(--space-3); }
-.balance-preview-details > summary { cursor: pointer; font-weight: 500; padding: var(--space-2) 0; }
-.balance-preview-distances { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
-.balance-preview-distance { min-width: 0; font-size: var(--text-sm); }
-.balance-preview-bar { height: 5px; border-radius: var(--radius-sm); background: var(--surface-sunken); overflow: hidden; }
-.balance-preview-bar i { display: block; height: 100%; background: var(--accent-line); }
 /* FR-77: Baustein „Was zu tun ist“ in Balance und Jahresabschluss (Entwurf 11.11.2026). */
 .todo-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); }
 .todo-head h3, .todo-result .todo-head h3 { margin: 0; font: 500 22px/1.2 var(--font-serif); color: var(--text-main); }
-.todo-plan, .todo-refill, .todo-bear, .todo-result { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
-.todo-plan > p, .todo-refill > p, .todo-bear > p, .todo-result > p { margin: 0; }
+.todo-plan, .todo-refill, .todo-result { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.todo-plan > p, .todo-refill > p, .todo-result > p { margin: 0; }
 .todo-decided { font-size: var(--text-sm); }
 .todo-status { display: flex; flex-direction: column; gap: var(--space-2); }
 .todo-status-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
@@ -873,18 +887,6 @@ dialog.probelauf-start-dialog .probelauf-sources > button.probelauf-source[aria-
 .todo-preview > summary { display: flex; justify-content: space-between; gap: var(--space-3); cursor: pointer; }
 .todo-preview-title { font-weight: 500; }
 .todo-preview > p { margin: var(--space-2) 0; font-size: var(--text-sm); }
-.todo-bear { padding: var(--space-4); border-radius: var(--radius-sm); background: var(--warn-soft); }
-.todo-bear-head { display: flex; align-items: center; gap: var(--space-3); }
-.todo-bear-head h4 { margin: 0; font: 500 18px/1.3 var(--font-serif); }
-.todo-bear-badge { white-space: nowrap; padding: 1px 10px; border-radius: 999px; background: var(--warn); color: var(--surface); font: 500 14px var(--font-sans); }
-.todo-bear-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
-.todo-bear-tile { display: grid; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--surface); }
-.todo-bear-tile strong { font: 500 20px/1.3 var(--font-serif); font-variant-numeric: tabular-nums; }
-.todo-bear-gap { color: var(--warn); font-size: var(--text-sm); }
-.todo-bear-subtitle { margin: 0; font-size: 15px; font-weight: 600; }
-.todo-bear .todo-table-box { background: var(--surface); }
-.todo-bear-history > summary { cursor: pointer; font-weight: 500; }
-.todo-bear .annual-market-choice legend { font-size: var(--text-base); }
 /* VN-1 Punkt 10: Schritte des geführten Verkaufs und Kaufs in „Was zu tun ist“, wie die Schrittkacheln im Dialog. */
 .todo-flow-steps { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0 0; padding: 0; list-style: none; }
 .todo-flow-step { display: inline-flex; align-items: center; gap: var(--space-2); padding: 3px 12px 3px 4px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text-muted); font: 500 var(--text-sm)/1.3 var(--font-sans); }
@@ -1017,7 +1019,7 @@ dialog.probelauf-start-dialog .probelauf-sources > button.probelauf-source[aria-
 .sale-flow-dialog .close-dialog-step-title { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--space-2); row-gap: var(--space-1); padding: var(--space-2) var(--space-3); }
 .sale-flow-dialog .close-dialog-step-symbol { order: 0; flex: 0 0 26px; }
 .sale-flow-dialog .close-dialog-step-name { order: 1; flex: 1 1 auto; }
-.sale-flow-dialog .close-dialog-step-pill { order: 2; white-space: normal; }
+.sale-flow-dialog .close-dialog-step-pill { order: 2; align-self: center; white-space: normal; }
 .sale-flow-dialog .close-dialog-tabs { padding-bottom: var(--space-2); }
 .sale-flow-dialog .close-dialog-content { padding-top: var(--space-3); }
 .sale-flow-table :is(th, .sale-flow-who, .sale-flow-state), .sale-flow-table .ds-num, .sale-flow-table .ds-num .sale-flow-sub { overflow-wrap: normal; white-space: nowrap; }

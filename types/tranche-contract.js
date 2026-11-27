@@ -23,7 +23,7 @@ export const TRANCHE_CATEGORY_TYPES = Object.freeze({
 export const TRANCHE_FIELD_GROUPS = Object.freeze({
     persisted: Object.freeze([
         'schemaVersion', 'trancheId', 'name', 'isin', 'ticker', 'shares',
-        'purchasePrice', 'currentPrice', 'asOf', 'purchaseDate', 'category', 'type',
+        'purchasePrice', 'currentPrice', 'asOf', 'quoteExchange', 'purchaseDate', 'category', 'type',
         'tqf', 'taxExempt', 'notes', 'correctionHistory', 'legacyCorrectionAt'
     ]),
     derived: Object.freeze(['marketValue', 'costBasis', 'instrumentId']),
@@ -571,6 +571,9 @@ function normalizeOneUncached(raw, options = {}) {
     else { delete value.correctionHistory; delete value.legacyCorrectionAt; }
     if (asOf === undefined) delete value.asOf;
     else value.asOf = asOf;
+    const quoteExchange = normalizeText(raw.quoteExchange);
+    if (mode === 'persisted' && asOf !== undefined && quoteExchange) value.quoteExchange = quoteExchange;
+    else delete value.quoteExchange;
     if (shares === null) delete value.shares;
     if (purchasePrice === null) delete value.purchasePrice;
     if (currentPrice === null) delete value.currentPrice;

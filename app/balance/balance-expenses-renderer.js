@@ -9,7 +9,7 @@ import { formatCurrency as formatCurrencyWithCents } from '../shared/shared-form
 import { bindBalanceTableOverflow } from './balance-presentation-controls.js';
 import { appendExampleExpensesIcon } from '../shared/designsystem-icons.js';
 
-import { computeSpent, computeBudgetSpent, hasCategoryNeeds, sortExpenseEntries } from './balance-expenses-metrics.js';
+import { expenseConvention, expenseConventions, computeBudgetSpent, hasCategoryNeeds, hasExpenseImport, sortExpenseEntries } from './balance-expenses-metrics.js';
 
 export const EXPENSE_MONTHS = [
     'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
@@ -25,14 +25,6 @@ function refreshMatrixOverflow(host) {
     const hint = host?.ownerDocument?.getElementById('expensesMatrixScrollHint');
     if (!region || !hint) return;
     bindBalanceTableOverflow(region, hint);
-}
-
-// Präsenz braucht einen gültigen Importrecord, keinen positiven Betrag.
-function hasValidImport(record) {
-    const categories = record?.categories;
-    return record !== null && typeof record === 'object' && !Array.isArray(record)
-        && categories !== null && typeof categories === 'object' && !Array.isArray(categories)
-        && Object.values(categories).every(value => ['number', 'string'].includes(typeof value) && Number.isFinite(Number(value)));
 }
 
 function appendActionIcon(button, action, doc) {
@@ -289,8 +281,9 @@ export function renderExpensesTableStructure({ host, profiles, examples = false,
  * @param options Optionen und Abhängigkeiten.
  * @returns Ergebnis der bestehenden Operation.
  */
-export function refreshExpensesTableValues({ host, yearData, profileIds, monthlyBudget, formatCurrency, missingLabel = '—', dueMonth = 0 }) {
+export function refreshExpensesTableValues({ host, yearData, profileIds, monthlyBudget, formatCurrency, missingLabel = '—', dueMonth = 0, playArea = false }) {
     if (!host) return;
+    const directions = expenseConventions(yearData);
     let hasYearData = false;
     for (let month = 1; month <= 12; month++) {
         const monthData = yearData?.months?.[String(month)] || { profiles: {} };
@@ -300,14 +293,13 @@ export function refreshExpensesTableValues({ host, yearData, profileIds, monthly
 
         profileIds.forEach(profileId => {
             const profileData = monthData.profiles?.[profileId] || null;
-            const imported = hasValidImport(profileData);
+            const imported = hasExpenseImport(profileData);
             if (imported) importedProfiles++;
-            const categories = profileData?.categories || {};
-            const { spent, planned } = computeBudgetSpent(profileData);
+            const { spent, planned } = computeBudgetSpent(profileData, directions.get(profileId));
             monthTotal += spent;
 
             const cell = host.querySelector(`[data-month="${month}"][data-profile="${profileId}"] [data-role="value"]`);
-            if (cell) cell.textContent = imported ? formatCurrency(spent) + (planned ? ` · zusätzlich geplant ${formatCurrency(planned)}` : '') + (profileData?.source === 'probelauf-example' ? ' · Beispieldaten (Spielbereich)' : '') : month <= dueMonth ? missingLabel : '—';
+            if (cell) cell.textContent = imported ? formatCurrency(spent) + (planned ? ` · zusätzlich geplant ${formatCurrency(planned)}` : '') + (playArea && profileData?.source === 'probelauf-example' ? ' · Beispieldaten (Spielbereich)' : '') : month <= dueMonth ? missingLabel : '—';
             const deleteButton = host.querySelector(`[data-month="${month}"][data-profile="${profileId}"] [data-action="delete"]`);
             if (deleteButton) {
                 const hasProfileData = Boolean(profileData);
@@ -348,7 +340,7 @@ export function refreshExpensesTableValues({ host, yearData, profileIds, monthly
  */
 export function createExpenseNeedsLegend(doc, keys = ['floor', 'flex', 'unallocated']) {
     const legend = doc.createElement('div'); legend.className = 'expenses-legend';
-    const labels = { floor: 'Floor', flex: 'Flex', unallocated: 'ohne Aufteilung', forecast: 'Prognose bis Jahresende' };
+    const labels = { floor: 'Grundbedarf', flex: 'Flex', unallocated: 'ohne Aufteilung', forecast: 'Prognose bis Jahresende' };
     for (const key of keys) {
         const item = doc.createElement('span'), swatch = doc.createElement('span');
         swatch.className = `expenses-swatch expenses-swatch-${key}`; swatch.setAttribute('aria-hidden', 'true');
@@ -361,13 +353,14 @@ export function createExpenseNeedsLegend(doc, keys = ['floor', 'flex', 'unalloca
  * @param options Optionen und Abhängigkeiten.
  * @returns Ergebnis der bestehenden Operation.
  */
-export function renderExpensesDetails({ refs, monthName, profileName, categories, categoryNeeds, source, plannedExpenses = [], doc = globalThis.document }) {
+export function renderExpensesDetails({ refs, monthName, profileName, categories, categoryNeeds, yearData = null, profileId = null, source, plannedExpenses = [], playArea = false, doc = globalThis.document }) {
     if (!refs?.detailDialog) return;
+    const direction = expenseConventions(yearData).get(profileId) ?? expenseConvention(categories);
     const entries = sortExpenseEntries(categories);
     const split = hasCategoryNeeds({ categories, categoryNeeds });
     const money = value => formatCurrencyWithCents(value === 0 ? 0 : value).replace(/^-/, '−');
     const node = (tag, text = '', className = '') => { const el = doc.createElement(tag); el.textContent = text; el.className = className; return el; };
-    if (refs.detailTitle) refs.detailTitle.textContent = `${monthName} · ${profileName}${source === 'probelauf-example' ? ' · Beispieldaten (Spielbereich)' : ''}`;
+    if (refs.detailTitle) refs.detailTitle.textContent = `${monthName} · ${profileName}${playArea && source === 'probelauf-example' ? ' · Beispieldaten (Spielbereich)' : ''}`;
     if (refs.detailBody) {
         refs.detailBody.replaceChildren();
         const note = node('div', split ? 'Importiert mit Spalte „Bedarf“'
@@ -382,21 +375,21 @@ export function renderExpensesDetails({ refs, monthName, profileName, categories
         else {
             const list = doc.createElement('table'); list.className = 'expense-detail-table ds-table';
             const head = node('thead'), header = node('tr');
-            for (const label of split ? ['Kategorie', 'Floor', 'Flex', 'Summe'] : ['Kategorie', 'Summe']) { const cell = node('th', label); cell.scope = 'col'; header.append(cell); }
+            for (const label of split ? ['Kategorie', 'Grundbedarf', 'Flex', 'Summe'] : ['Kategorie', 'Summe']) { const cell = node('th', label); cell.scope = 'col'; header.append(cell); }
             head.append(header); list.append(head);
             const tbody = node('tbody');
             entries.forEach(entry => {
                 const row = node('tr'); row.append(node('td', entry.name));
                 if (split) for (const key of ['floor', 'flex']) {
                     const value = categoryNeeds[entry.name][key];
-                    row.append(node('td', value === 0 ? '—' : money(-value), 'expense-detail-value'));
+                    row.append(node('td', value === 0 ? '—' : money(direction * value), 'expense-detail-value'));
                 }
-                row.append(node('td', money(-entry.value), 'expense-detail-value')); tbody.append(row);
+                row.append(node('td', money(direction * entry.value), 'expense-detail-value')); tbody.append(row);
             });
             list.append(tbody);
             if (split) {
                 const foot = node('tfoot'), row = node('tr'); row.append(node('td', 'Summe'));
-                for (const amount of ['floor', 'flex'].map(key => Object.values(categoryNeeds).reduce((sum, pair) => sum + pair[key], 0)).concat(entries.reduce((sum, entry) => sum + entry.value, 0))) row.append(node('td', money(-amount), 'expense-detail-value'));
+                for (const amount of ['floor', 'flex'].map(key => Object.values(categoryNeeds).reduce((sum, pair) => sum + pair[key], 0)).concat(entries.reduce((sum, entry) => sum + entry.value, 0))) row.append(node('td', money(direction * amount), 'expense-detail-value'));
                 foot.append(row); list.append(foot);
             }
             refs.detailBody.append(list);

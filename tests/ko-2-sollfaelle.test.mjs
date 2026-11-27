@@ -10,7 +10,7 @@ import { setAppTestDate } from '../app/shared/app-clock.js';
 import { dynamicFlexPresetPatch } from '../app/shared/dynamic-flex-presets.js';
 import { annualRecordStorage } from '../app/balance/balance-annual-storage.js';
 import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input-storage.js';
-import { evaluateBalanceFileInputs } from '../app/balance/balance-file-service.js';
+import { evaluateBalanceInputs } from '../app/balance/balance-evaluation.js';
 import { evaluateStoredAnnualHousehold } from '../app/balance/balance-main-profilverbund.js';
 import { createBalanceDisplayEngineApi } from '../app/balance/balance-update-pipeline.js';
 import { projectBalanceBudget } from '../app/balance/balance-budget.js';
@@ -49,7 +49,7 @@ async function balanceBudget(data) {
     try {
         const storage = annualRecordStorage(data), api = createBalanceDisplayEngineApi(EngineAPI);
         const calculation = buildBalanceEngineInputFromStorage({ storage }), plan = calculation.householdPlan;
-        const evaluation = evaluateBalanceFileInputs({ inputData: calculation.inputData, persistentState: calculation.history.persistentState,
+        const evaluation = evaluateBalanceInputs({ inputData: calculation.inputData, persistentState: calculation.history.persistentState,
             profiles: calculation.history.profiles, profileId: data.rs_current_profile, engineApi: api, publish: false,
             planInputs: plan.entry.values, marketPreviewContext: { calculation, storage },
             profilverbundHandlers: { runProfilverbundProfileSimulations: (input, profiles, state) => evaluateStoredAnnualHousehold(input, profiles, state,
@@ -86,10 +86,11 @@ assert(Object.is(netEquityReturn(0.05, 0), 0.05), 'S1: k = 0 lässt die erwartet
     const dynamic = await balanceBudget(records('max-erika', { preset: 'ausgewogen' }));
     // Mit LE-1 (FR-75) rechnet Dynamic Flex mit dem Horizont der Kohortentafel: 33 statt 31 Jahre. Ohne LE-1 waren es 68.400 € statt 70.800 €.
     assertEqual(dynamic.engineInput.horizonYears, 33, 'S2: Horizont nach FR-75 (Kohortentafel) 33 Jahre');
-    assertEqual(dynamic.annual, 67200, 'S2: Max und Erika mit Dynamic Flex „Ausgewogen“ 67.200 € statt 69.600 € (mit Horizont nach FR-75)');
+    // FR-88 (vorschüssige VPW-Rate): vorher 67.200 € statt 69.600 €.
+    assertEqual(dynamic.annual, 66000, 'S2: Max und Erika mit Dynamic Flex „Ausgewogen“ 66.000 € statt 68.400 € (mit Horizont nach FR-75, vorschüssig nach FR-88)');
     assertEqual(dynamic.engineInput.equityCostPct, 0.5, 'S2: Balance gibt mit Dynamic Flex die Vorgabe 0,5 % an die Engine');
     const withoutCost = await balanceBudget(records('max-erika', { preset: 'ausgewogen', k: 0 }));
-    assertEqual(withoutCost.annual, 69600, 'S2: Mit Planwert 0 % bleibt es beim Wert ohne Fondskosten, 69.600 € (mit Horizont nach FR-75)');
+    assertEqual(withoutCost.annual, 68400, 'S2: Mit Planwert 0 % bleibt es beim Wert ohne Fondskosten, 68.400 € (mit Horizont nach FR-75, vorschüssig nach FR-88)');
     assert(!Object.hasOwn(withoutCost.engineInput, 'equityCostPct'), 'S3: Mit 0 % bleibt die Balance-Eingabe wie ohne Fondskosten');
 }
 

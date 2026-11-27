@@ -29,7 +29,8 @@ const exportBytes = exports();
 for (const source of ['mc', 'backtest']) for (const moneyBasis of ['nominal', 'real']) {
     const entry = row => source === 'mc' ? row : { jahr: row.jahr, row, inflationVJ: row.inflation };
     const opts = { source, moneyBasis, strategyMode: '3_bucket_jilge' };
-    const factor = row => moneyBasis === 'nominal' ? 1 : row.inflation_factor_cum * (source === 'backtest' ? 1 + row.inflation / 100 : 1);
+    // ST7-A: Auffüllungen und Verkäufe sind Zahlungen des Jahres, real in beiden Quellen mit dem Faktor am Jahresanfang.
+    const factor = row => moneyBasis === 'nominal' ? 1 : row.inflation_factor_cum;
     const money = (amount, row) => euro(amount / factor(row));
     const mixed = plain(protocolActionExplanation(entry(witness.mixedRefill), opts));
     assert(mixed.includes(`Anleihentopf aufgefüllt: ${money(70000, witness.mixedRefill)} aus dem Tagesgeld (Immobilienerlös), ${money(witness.mixedRefill.bondRefillGross - witness.mixedRefill.bondRefillTax, witness.mixedRefill)} aus Aktien`),
@@ -67,7 +68,7 @@ const amounts = ruin.ruin_reason.match(/\((-?\d+)\).*\((\d+)\)/).slice(1).map(Nu
 for (const moneyBasis of ['nominal', 'real']) {
     const factor = moneyBasis === 'real' ? previous.inflation_factor_cum * (1 + previous.inflation / 100) : 1;
     const options = { moneyBasis, rows: witness.ruinRows };
-    const expected = `Ruin: Geldvermögen ${euro(amounts[0] / factor)} reicht nicht für den Grundbedarf von ${euro(amounts[1] / factor)}`;
+    const expected = `Vermögen aufgebraucht: Geldvermögen ${euro(amounts[0] / factor)} reicht nicht für den Grundbedarf von ${euro(amounts[1] / factor)}`;
     assertEqual(plain(protocolActionShortText(ruin, options)), expected, 'Echte Ruinzeile folgt der gewählten Eurobasis, auch ohne eigenen Preisfaktor');
     assertEqual(plain(protocolActionExplanation(ruin, options)), expected, 'Ruin-Info nennt dieselben formatierten Beträge');
     assert(renderProtocolTable(witness.ruinRows, options).includes('reicht nicht für den Grundbedarf'), 'Auch die echte Tabellenprojektion nutzt den Ruingrund');

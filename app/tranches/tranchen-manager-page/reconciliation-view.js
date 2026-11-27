@@ -61,8 +61,3 @@ export function renderReconciliationState() {
         );
     }
 }
-
-// Ungenutzt seit VK-1 (FR-79: der alte Verkaufsdialog entfällt); die Exporte bleiben erhalten (Exportprüfung) und tun nichts.
-export const syncInitialCashStatusControls = () => {};
-export const renderReconciliationOptions = () => {};
-export const renderReconciliationPreview = () => {};

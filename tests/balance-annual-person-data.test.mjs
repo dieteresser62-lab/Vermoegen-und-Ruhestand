@@ -1,4 +1,4 @@
-import { createAnnualModalHandlers } from '../app/balance/balance-annual-modal.js';
+import { createAnnualCloseDialog as createAnnualModalHandlers } from '../app/shared/annual-close-dialog.js';
 import { PersistenceFacade, persistenceStorage } from '../app/shared/persistence-facade.js';
 import { createDialogFixture } from './close-dialog.test.mjs?fixture';
 import { dialogElements } from '../app/shared/close-dialog.js';

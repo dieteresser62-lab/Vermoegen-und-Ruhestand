@@ -119,18 +119,18 @@ Quelle: ${runwaySourceInfo.description}`;
         createChip('info', 'Regime', d.general.marketSzenario),
         createChip(d.general.alarmActive ? 'danger' : 'ok', 'Alarm', d.general.alarmActive ? 'AKTIV' : 'Inaktiv'),
         createChip(qStatus, 'Entnahmequote', formatDisplayPercentRatio(entnahmequoteDepot, { fractionDigits: 1, invalid: 'n/a' }), 'Entnahmequote = Jährliche Entnahme / Depotwert'),
-        createChip(ddStatus, 'Realer Drawdown', formatDisplayPercentRatio(-realerDepotDrawdown, { fractionDigits: 1, invalid: 'n/a' }), 'Realer Drawdown des Geldvermögens seit dem inflationsbereinigten Höchststand'),
+        createChip(ddStatus, 'Realer Rückgang', formatDisplayPercentRatio(-realerDepotDrawdown, { fractionDigits: 1, invalid: 'n/a' }), 'Realer Rückgang des Geldvermögens seit dem inflationsbereinigten Höchststand'),
         createChip(liquidityStatus, 'Liquidität', liquidityChipValue, liquidityChipTitle),
-        createChip(rStatus, 'Runway · nach Vorschlag', `${runwayChipValue} Mon.`, runwayChipTitle)
+        createChip(rStatus, 'Reichweite · nach Vorschlag', `${runwayChipValue} Mon.`, runwayChipTitle)
     );
 
     if (runwaySourceInfo?.label) {
         const runwaySourceNote = document.createElement('small');
         runwaySourceNote.className = 'chip-note runway-source-note';
         const sourceText = runwaySmoothingInfo.active
-            ? `Runway-Ziel basiert auf: ${runwaySourceInfo.label} (${runwaySmoothingInfo.detail})`
-            : `Runway-Ziel basiert auf: ${runwaySourceInfo.label}`;
-        runwaySourceNote.appendChild(createDiagnosisInfo('Erläuterung zum Runway-Ziel', `${sourceText}\n${runwayChipTitle}`));
+            ? `Zielreichweite basiert auf: ${runwaySourceInfo.label} (${runwaySmoothingInfo.detail})`
+            : `Zielreichweite basiert auf: ${runwaySourceInfo.label}`;
+        runwaySourceNote.appendChild(createDiagnosisInfo('Erläuterung zur Zielreichweite', `${sourceText}\n${runwayChipTitle}`));
         fragment.appendChild(runwaySourceNote);
     }
     return fragment;

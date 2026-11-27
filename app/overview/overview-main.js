@@ -4,7 +4,7 @@ import { createClosePriceActions } from '../shared/close-price-actions.js';
 import { bindOverviewAnnualClose } from './overview-annual-close.js';
 import { consumeAnnualRetry } from '../shared/annual-coordinator.js';
 import { initializeHouseholdPlanPage } from '../profile/household-plan-dialog.js';
-import { bindOverviewExampleExpenses, createOverviewExpensesWealthCapture } from './overview-example-expenses.js';
+import { bindOverviewExampleExpenses } from './overview-example-expenses.js';
 import { getPageNavigationGuard } from '../shared/navigation-guard-dialog.js';
 import { readHouseholdPersonStatus, showPersonDataStatus } from '../shared/person-data-status.js';
 import { bindOverviewHistory } from './overview-history.js';
@@ -17,9 +17,10 @@ import { renderProfileRecovery } from '../profile/profile-recovery-ui.js';
 import { PersistenceFacade, persistenceStorage } from '../shared/persistence-facade.js';
 import { getProbelaufController } from '../shared/probelauf-state.js';
 import { resumeTimeLapse } from '../shared/probelauf-timelapse-ui.js';
-import { bindStartupPrices } from '../tranches/tranchen-startup-prices.js';
+import { bindStartupPrices, requestStartupPriceRefresh } from '../tranches/tranchen-startup-prices.js';
 import { projectOverviewWithAnnualArchive } from './overview-model.js';
 import { readLastFullBackup, storeMonthProvision } from './overview-storage.js';
+import { readLastFullBackupStatus } from '../data/data-backup-summary.js';
 import { renderOverview, renderOverviewCoverage, renderOverviewPersistenceRecovery, bindOverviewBackupTargets, openOverviewBackupTarget } from './overview-renderer.js';
 import { requestOverviewMonthConfirmation } from './overview-month-confirmation.js';
 import { createOverviewReserves } from './overview-reserves.js';
@@ -88,6 +89,8 @@ async function initializeOverview(doc, win) {
         model = reserves.project(model, { storage: persistenceStorage, liveData });
         model = monthControls.projectModel(model);
         model = exampleControls.projectModel(model);
+        // Nur Anzeige: die Art der letzten Vollsicherung gehört nicht zur Rechnung der Übersicht.
+        model = { ...model, lastBackupDelivery: readLastFullBackupStatus(persistenceStorage).delivery };
         renderOverview(doc, model);
         monthControls.syncButtons();
         exampleControls.syncButtons();
@@ -96,14 +99,15 @@ async function initializeOverview(doc, win) {
     const priceActions = /** @type {O.CreatePriceActions} */ (createClosePriceActions)({ doc, win, getModel: () => model, onReport: report => { priceReport = report; refresh(); } });
     monthControls = bindOverviewMonthClose({ doc, win, getModel: () => model, refresh, priceActions, getImports: () => exampleControls });
     historyControls = bindOverviewHistory({ doc, win, refresh, storage: persistenceStorage });
-    const wealthCapture = createOverviewExpensesWealthCapture({ doc, win, refresh, report: text => exampleControls?.reportWealth(text) });
-    exampleControls = bindOverviewExampleExpenses({ doc, win, getModel: () => model, refresh, wealthCapture });
+    exampleControls = bindOverviewExampleExpenses({ doc, win, getModel: () => model, refresh });
     annualControls = bindOverviewAnnualClose({ doc, win, getModel: () => model, refresh, priceActions, getImports: () => exampleControls });
     observeOverviewProbelauf(doc, win, refresh);
     refresh();
     if (annualRetry) await annualControls.resume(annualRetry);
     doc.addEventListener('overview-backup-changed', refresh);
     const startup = bindStartupPrices({ doc, win, onReport: report => { priceReport = report; refresh(); } });
+    // OP-3 Punkt 3: Die Kursanzeige im Kopf öffnet die Kursdetails und startet die manuelle Aktualisierung.
+    doc.getElementById('overviewPrices')?.addEventListener('click', () => { void requestStartupPriceRefresh(doc); });
     let historyTask;
     if (available && !win.__profileRecoveryBlocker) {
         historyTask = /** @type {O.BindHistoryFetch} */ (bindHistoryFetch)({ doc, win, afterStartup: startup, firstPlanningYear: () => model.firstPlanningYear });

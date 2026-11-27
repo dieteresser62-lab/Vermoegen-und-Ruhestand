@@ -1,11 +1,9 @@
 import { createAnnualMonthSession } from '../app/shared/annual-close-session.js';
 import { overviewAnnualFixture, annualUntil } from './overview-annual-close.test.mjs?fixture';
-import { annualServiceFixture, readyAnnualFixture, annualTestNow, installAnnualLocks, installBalanceStorageForm } from './helpers/balance-storage-fixtures.mjs';
-import { createDialogFixture, prepareCloseFixture } from './close-dialog.test.mjs?fixture';
-import { UIBinder, initUIBinder, preserveUIBinderStateForTests } from '../app/balance/balance-binder.js';
+import { annualServiceFixture, readyAnnualFixture, annualTestNow, installAnnualLocks } from './helpers/balance-storage-fixtures.mjs';
+import { prepareCloseFixture } from './close-dialog.test.mjs?fixture';
 import { UIRenderer } from '../app/balance/balance-renderer.js';
 import { CONFIG } from '../app/balance/balance-config.js';
-import { createAnnualSnapshot } from '../app/shared/annual-coordinator.js';
 import { SnapshotArchive } from '../app/shared/snapshot-archive.js';
 import { projectAnnualCloseRecovery } from '../app/shared/annual-close-recovery.js';
 import { PersistenceFacade } from '../app/shared/persistence-facade.js';
@@ -16,38 +14,17 @@ import { captureCashPeople } from '../app/profile/profile-cash-update.js';
 import { storeMonthProvision, readMonthProvision, OVERVIEW_MONTH_KEY, overviewScope } from '../app/overview/overview-storage.js';
 
 const old = { doc: globalThis.document, win: globalThis.window, date: getAppTestDate(), toast: UIRenderer.toast, error: UIRenderer.handleActionError };
-const locks = installAnnualLocks(), restoreBinder = preserveUIBinderStateForTests();
+const locks = installAnnualLocks();
 const text = root => dialogElements(root).map(node => node.textContent).join(' ');
-async function balanceFixture() {
-    const sample = readyAnnualFixture(), env = await annualServiceFixture({ sample });
-    const { doc } = createDialogFixture(); globalThis.document = doc; globalThis.window = { document: doc };
-    const dom = installBalanceStorageForm(JSON.parse(env.storage.getItem(CONFIG.STORAGE.LS_KEY)).inputs, sample.values);
-    dom.controls = { annualTestOpener: doc.createElement('button'), btnJahresUpdate: doc.createElement('button') };
-    dom.expenses = { yearSelect: { value: '2026' } }; dom.containers = {}; dom.outputs = {};
-    initUIBinder(dom, {}, () => ({ ok: true }), () => {});
-    return { ...env, doc, get handlers() { return preserveUIBinderStateForTests().handlers; },
-        open: () => UIBinder.handleJahresabschluss(), close() { this.handlers.closeCoordinator.dispose(); } };
-}
 try {
     setAppTestDate('2027-01-02'); UIRenderer.toast = () => {}; UIRenderer.handleActionError = () => {};
-    for (const page of ['overview', 'balance']) for (const kind of ['empty', 'etf', 'invalid']) {
+    for (const page of ['overview']) for (const kind of ['empty', 'etf', 'invalid']) {
         const options = kind === 'invalid' ? { engineLoader: { load: async () => { throw new Error('ENGINE_INJECTED'); } } }
             : { prepareMarketData: async () => {
                 if (kind === 'empty') throw new Error('ABRUF_INJECTED');
                 return { ok: false, results: { errors: [{ step: 'ETF & Nachrücken', error: 'offline' }] } };
             } };
-        const f = page === 'overview' ? await overviewAnnualFixture({ coordinatorOptions: options }) : await balanceFixture();
-        let point;
-        if (page === 'balance') {
-            point = await createAnnualSnapshot({ storage: f.storage, archive: SnapshotArchive, profileId: f.storage.getItem('rs_current_profile'),
-                label: 'Synthetischer Jahrespunkt', date: annualTestNow(), check: () => {}, snapshotId: 'synthetic / ä & point' });
-            const snapshot = await SnapshotArchive.readSnapshot(point);
-            f.handlers.snapshots.handleJahresabschluss = async () => kind === 'invalid' ? { status: 'invalid', error: new Error('ENGINE_INJECTED') }
-                : { status: 'incomplete_recovery', recovery: { snapshotId: point, periodId: 'calendar-year:2026' },
-                    ...(kind === 'etf' ? { results: { targetYear: 2026, errors: [{ step: 'ETF & Nachrücken', error: 'offline' }] },
-                        retryContext: { snapshotId: point, periodId: 'calendar-year:2026' } } : {}) };
-            assert(snapshot.label === 'Synthetischer Jahrespunkt', 'Balance-Recoverytest verwendet echten Archivpunkt');
-        }
+        const f = await overviewAnnualFixture({ coordinatorOptions: options });
         let navigated = null;
         const create = f.doc.createElement;
         f.doc.createElement = tag => { const node = create(tag); if (tag === 'a') node.click = () => { navigated = node.getAttribute('href'); }; return node; };
@@ -66,19 +43,12 @@ try {
         } else await f.doc.getElementById('annualCloseBtn').fire('click');
         f.close();
     }
-    for (const page of ['overview', 'balance']) {
+    for (const page of ['overview']) {
         let failFactory = true;
-        const f = page === 'overview' ? await overviewAnnualFixture({ monthFactory: async options => {
+        const f = await overviewAnnualFixture({ monthFactory: async options => {
             if (failFactory) { failFactory = false; throw new Error('SESSION_INJECTED'); }
             return createAnnualMonthSession(options);
-        } }) : await balanceFixture();
-        if (page === 'balance') {
-            const readModel = f.handlers.getAnnualModel;
-            f.handlers.getAnnualModel = () => {
-                const model = readModel();
-                return failFactory && model.occasion.annualState === 'done' ? { ...model, summary: null } : model;
-            };
-        }
+        } });
         const running = f.open(); await prepareCloseFixture(f.doc); await annualUntil(() => f.doc.getElementById('annualConfirmBtn')?.disabled === false);
         await f.doc.getElementById('annualConfirmBtn').fire('click'); await running;
         const afterYear = await f.persistence.readPersistedRecords();
@@ -151,6 +121,6 @@ try {
         assertEqual(readMonthProvision(env.storage.getItem(OVERVIEW_MONTH_KEY), '2026-12', sample.scope), null, 'Abgewiesene Quelle erhält keinen Dezemberbeleg');
     }
 } finally {
-    restoreBinder(); locks(); globalThis.document = old.doc; globalThis.window = old.win; setAppTestDate(old.date);
+    locks(); globalThis.document = old.doc; globalThis.window = old.win; setAppTestDate(old.date);
     UIRenderer.toast = old.toast; UIRenderer.handleActionError = old.error; PersistenceFacade.resetPersistenceRuntimeForTests();
 }

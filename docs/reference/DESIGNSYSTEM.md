@@ -83,7 +83,7 @@ Reguläre sichtbare Balance-Geldbeträge, Handlungsdialog und dessen bestehender
 | Daten | `ds-table`, `ds-table-scroll`, `ds-table-box`, `ds-chart-surface` |
 | Hilfe | `ds-note`, `ds-hint`, `ds-banner`, `ds-badge`, native Details/Summary |
 
-Hauptaktionen dunkel mit heller Schrift. Symbolknöpfe haben einen Namen und sichtbaren Tastaturfokus. Gesperrte Kontrollen bleiben lesbar. Vollständige Erklärungen müssen erreichbar sein, nicht ausschließlich als `title` oder abgeschnittener Text. `ds-info` mit Knopf und Popup unterstützt Hover, Fokus, Klick, Escape mit Rückfokus und Außenklick; Pflichtwarnungen bleiben offen sichtbar. Alle Infofenster bleiben mit acht Pixeln Rand im sichtbaren Fenster; bei Scrollen und Größenänderungen folgt die Position dem Knopf. Text bricht linksbündig in normaler Schriftstärke um; Vermögensaufteilungen verwenden eine Liste mit eigenen rechtsbündigen Betrag- und Anteilspalten. Ein ⓘ enthält höchstens drei Sätze (etwa 50 Wörter); längere Erklärungen folgen über „Mehr im Handbuch“.
+Hauptaktionen dunkel mit heller Schrift. Symbolknöpfe haben einen Namen und sichtbaren Tastaturfokus. Gesperrte Kontrollen bleiben lesbar. Vollständige Erklärungen müssen erreichbar sein, nicht ausschließlich als `title` oder abgeschnittener Text. `ds-info` mit Knopf und Popup unterstützt Hover, Fokus, Klick, Escape mit Rückfokus und Außenklick. Im Abschlussdialog schließt Escape alle offenen ⓘ auf einmal. Sind alle ⓘ geschlossen, verarbeitet der Dialog die Taste. Pflichtwarnungen bleiben offen sichtbar. Alle Infofenster bleiben mit acht Pixeln Rand im sichtbaren Fenster; bei Scrollen und Größenänderungen folgt die Position dem Knopf. Text bricht linksbündig in normaler Schriftstärke um; Vermögensaufteilungen verwenden eine Liste mit eigenen rechtsbündigen Betrag- und Anteilspalten. Ein ⓘ enthält höchstens drei Sätze (etwa 50 Wörter); längere Erklärungen folgen über „Mehr im Handbuch“.
 
 ### Felder
 
@@ -97,7 +97,7 @@ Neue Spalten erhalten `minmax(0, …)`/`min-width: 0`. Breite Tabellen und Grafi
 
 ### Dialoge
 
-Abschlüsse verwenden ein mittiges Fenster mit `min(1200px, 94vw)` Breite, `min(900px, 92vh)` Höhe und `radius-lg`. Kopf, gleich breite Reiter und Fuß bleiben fest; nur der aktuelle Inhalt scrollt. Der aktuelle Reiter trägt `aria-current="step"` mit `accent` auf `accent-soft`; Warnstände behalten `warn`. Namen umbrechen. Weiter und Hauptaktion stehen rechts im Fuß, Sicherung und Status links. Ergebnisse zeigen zwei Spalten ohne Reiter, das Spielbereichsende bleibt einspaltig.
+Abschlüsse verwenden ein mittiges Fenster mit `min(1200px, 94vw)` Breite, `min(900px, 92vh)` Höhe und `radius-lg`. Kopf, Reiter und Fuß bleiben fest; nur der aktuelle Inhalt scrollt. Die Reiter sind gleich breit; passt das längste Wort eines Namens nicht, bekommt dieser Reiter die nötige Breite, und die übrigen teilen den Rest. Kreis, Name und Stand stehen in einer Zeile; fehlt Platz, rutscht der Stand unter den Namen und zählt nicht zur Mindestbreite. Der aktuelle Reiter trägt `aria-current="step"` mit `accent` auf `accent-soft`; Warnstände behalten `warn`. Namen umbrechen. Weiter und Hauptaktion stehen rechts im Fuß, Sicherung und Status links. Ergebnisse zeigen zwei Spalten ohne Reiter, das Spielbereichsende bleibt einspaltig.
 
 Die [Navigationswache](../../app/shared/navigation-guard.js) trennt abbrechbare Vorbereitung, geschützte Writes und Recovery. Während Schreiben, Validieren, Finalisieren und Wiederherstellen sind Appnavigation und Fachdialogschließen gesperrt. Fehler nach Schreibbeginn gelten nicht als folgenloser Abbruch. Browsernavigation hat den begrenzten `beforeunload`-Schutz; Tauri nutzt sein Schließprotokoll.
 
@@ -105,7 +105,7 @@ Der native Nachfragedialog bündelt Verlustgründe, Erstfokus „Bleiben“, Esc
 
 ### Diagramme
 
-Vermögenshauptzahlen und Verteilungen enthalten Immobilien. Entwicklung und Rendite, Ruin, Deckung sowie Strategiequoten benennen Geldvermögen. Gestapelte Vermögensgrafiken trennen Geldbestand und Immobilien, Legenden nennen nur gezeichnete Reihen. Datenlücken bleiben sichtbar.
+Vermögenshauptzahlen und Verteilungen enthalten Immobilien. Entwicklung und Rendite, aufgebrauchtes Vermögen, Deckung sowie Strategiequoten benennen Geldvermögen. Gestapelte Vermögensgrafiken trennen Geldbestand und Immobilien, Legenden nennen nur gezeichnete Reihen. Datenlücken bleiben sichtbar.
 
 Portfoliofarben stammen aus `--chart-*` und `--history-*`: Aktien dunkel, Gold Messing, Anleihen/Puffer gedämpft, selbst genutzte Immobilien `--history-homeSelf`, vermietete `--history-homeRented`. Beide Immobilientokens sind helle Tönungen ihrer Farbfamilie; Flächen ohne Randlinie, Legenden und Tabellenmarken verwenden denselben Token. Die Linien des Geldvermögens bleiben führend. Heatmaps interpolieren Hell → Messing → Schiefer aus `--heatmap-low/mid/high`; fehlende Zellen bleiben neutral mit Grund. Beschriftungen liegen auf opaken hellen Platten, auch über kritischer Überlagerung. Serienfarben bedeuten keine zusätzliche Bewertung. Für Grafiktexte gelten ergänzend diese Kontrastpaare:
 
@@ -137,6 +137,8 @@ Getrennte HTML-Seiten teilen Kopf und Seitenleiste. Profilübergabe, bestätigte
 
 Der Suite-Kopf enthält aktive Identität und Seitenkontext jeweils einmal. Aktiver Navigationslink mit `aria-current`, kompakte Links behalten Namen und Tooltips. Unter 82 rem Rahmenbreite ist die Leiste automatisch 4 rem breit; darüber gilt die manuelle Wahl 12/4 rem. Nur manuelle Änderungen speichern die Gerätepräferenz. Profilwechsel wartet den vorhandenen Flush ab.
 
+Der Kopf bleibt beim Scrollen oben stehen (`position: sticky`, Ebene 15), der Spielbereich-Streifen direkt darunter (Ebene 14). Ein Schatten in `page` deckt runde Ecken und Abstand ab. ⓘ-Fenster, Menüs und Dialoge liegen darüber. [suite-frame.js](../../app/shared/suite-frame.js) misst beide Höhen in `--suite-kopf-hoehe` und `--suite-streifen-hoehe`; ohne Script gelten die Ersatzwerte aus `tokens.css`. Leiste, klebende Inhalte und Sprungziele beginnen darunter, Inhalte über `--suite-inhalt-oben`. Tabellenköpfe in eigenen Scrollrahmen bleiben bei `top: 0`.
+
 ### Planung
 
 Übersicht: Fokusaufgabe vor Kennzahlen, Vermögenskarte mit Verteilung, Plankarte und zwölfmonatiges Jahresband. Budgetlinie nur mit passendem gespeichertem Beleg, fehlend/offen/teilweise als Text unterscheiden. Sicherungsalter warnt, sperrt allein keinen Jahresabschluss. Die eigene Sicherungsseite ist der aktuelle Ort; die Übersicht liest Bestände und Belege. Recovery steht außerhalb geschlossener Technikklappen.
@@ -155,9 +157,9 @@ Ausgaben unterscheiden fehlenden Import, gültige Null und unvollständigen Haus
 
 Annahmen zeigen Bedarf offen, weitere Parameter, Personendetails und Pflegeannahmen initial geschlossen. Profilherkunft erklärt übernommene Werte, ohne zusätzliche Sperren einzuführen. Ergebnisse trennen gültigen Laufstand, veraltete Annahmen und technischen Fehler. Fallzahlen, Nenner, Wilsonintervall, Quantile, Missingness und reale/nominale Basis bleiben erhalten. Floor-Deckung und Drawdowns haben ohne vorhandene Bewertung neutrale Zahlenrollen.
 
-Werkstatt: Einstiegskarten für Replay, Sweep und Auto-Optimize; Öffnen zeigt Wechselnavigation und bestehende Toolhosts. Lokale Scrollregionen erhalten Geometrie und Exporte. Backtest-Endvermögen enthält die Pflegereserve; Portfoliochart und Krisentiefstände schließen sie aus und nennen diese Grenze. Referenzzahlen sind keine Finanz-Sollwerte.
+Lokale Scrollregionen erhalten Geometrie und Exporte. Backtest-Endvermögen enthält die Pflegereserve; Portfoliochart und Krisentiefstände schließen sie aus und nennen diese Grenze. Referenzzahlen sind keine Finanz-Sollwerte.
 
-Handbuch: 20 Aufgaben-/Begriffskapitel, mitlaufende Navigation, lokale Suche, erhaltene Aliasanker und Kontextsprünge. Bilder zeigen synthetische Appzustände mit Bildtext; Abschlüsse als nummerierte Folgen. Markdown-Leseseiten teilen lokale Typografie, Tabellen und Handbuchrücklink; sie schreiben keine Appdaten.
+Handbuch: 20 Aufgaben-/Begriffskapitel, mitlaufende Navigation, lokale Suche, erhaltene Aliasanker und Kontextsprünge. Bei mehreren Suchwörtern stehen Kapitel mit der ganzen Wortgruppe vorn; der Ausschnitt zeigt die Gruppe oder die Stelle mit den meisten Suchwörtern. Bilder zeigen synthetische Appzustände mit Bildtext; Abschlüsse als nummerierte Folgen. Markdown-Leseseiten teilen lokale Typografie, Tabellen und Handbuchrücklink; sie schreiben keine Appdaten.
 
 ## Ausnahmen und Prüfung
 
@@ -184,7 +186,7 @@ Nur die folgenden belegten Deklarationen sind ausgenommen; keine zusätzliche Te
 | css/balance.css | `.help-tooltip .tooltip-text` | `opacity: 0` | Bestehender verborgener Tooltip; im Hoverzustand Deckkraft 1. |
 | simulator.css | `.chart-svg .area-band` | `opacity: 0.15` | Reine Datenfläche ohne Textkinder. |
 
-Sweep-/Pareto-Kontextpunkte mit Deckkraft .6 und kritische Heatmapflächen mit .12 sind rein grafisch; Labelunterlagen bleiben opak.
+Kritische Heatmapflächen mit Deckkraft .12 sind rein grafisch; Labelunterlagen bleiben opak.
 
 `PRIORITY_EXCEPTIONS` in [designsystem-source-contract.mjs](../../tests/designsystem-source-contract.mjs) bindet jede Ausnahme an Quelle, normalisierten Selektor und exakte Deklaration. Entfallene Ausnahmen sind kein neues Kontingent. Bestehende schmale Ansichten und Drucköffnungen begründen keine neue Arbeit an solchen Ansichten.
 
@@ -193,7 +195,6 @@ Sweep-/Pareto-Kontextpunkte mit Deckkraft .6 und kritische Heatmapflächen mit .
 | simulator.css | `.log-export-buttons button` | `width: auto !important` |
 | simulator.css | `.log-export-buttons button` | `min-width: 0 !important` |
 | simulator.css | `.log-export-buttons button` | `flex: 0 0 auto !important` |
-| simulator.css | `.ao-preset-btn:hover` | `border-color: var(--secondary-color) !important` |
 | css/personen-vermoegen-seite.css | `:where(.personen-vermoegen-page) [aria-invalid="true"]:where(:not(dialog, dialog *))` | `border-color: var(--bad) !important` |
 | css/personen-vermoegen-seite.css | `:where(.personen-vermoegen-page) [aria-invalid="true"]:where(:not(dialog, dialog *))` | `box-shadow: 0 0 0 3px var(--bad) !important` |
 | css/balance.css | `.input-error` | `border-color: var(--danger-color) !important` |
@@ -209,27 +210,21 @@ Sweep-/Pareto-Kontextpunkte mit Deckkraft .6 und kritische Heatmapflächen mit .
 | simulator.css | `.visually-hidden` | `clip: rect(0, 0, 0, 0) !important` |
 | simulator.css | `.visually-hidden` | `white-space: nowrap !important` |
 | simulator.css | `.visually-hidden` | `border: 0 !important` |
-| simulator.css | `#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel[hidden], [data-stress-replay-comparison-panel][hidden]` | `display: block !important` |
-| simulator.css | `.stress-replay-diagnostics > dl` | `display: grid !important` |
-| simulator.css | `.mc-view-nav, .tab-buttons, .mc-settings-actions, .stress-replay-comparison-tabs, .stress-replay-expert-toggle, #mcShowReplayButton, #mcShowScenarioLogsButton` | `display: none !important` |
-| simulator.css | `#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput, .stress-replay-table-scroll` | `width: auto !important` |
-| simulator.css | `#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput, .stress-replay-table-scroll` | `max-width: 100% !important` |
-| simulator.css | `#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput, .stress-replay-table-scroll` | `height: auto !important` |
-| simulator.css | `#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput, .stress-replay-table-scroll` | `max-height: none !important` |
-| simulator.css | `#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput, .stress-replay-table-scroll` | `overflow: visible !important` |
+| simulator.css | `#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel[hidden]` | `display: block !important` |
+| simulator.css | `.mc-view-nav, .tab-buttons, .mc-settings-actions` | `display: none !important` |
+| simulator.css | `#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput` | `width: auto !important` |
+| simulator.css | `#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput` | `max-width: 100% !important` |
+| simulator.css | `#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput` | `height: auto !important` |
+| simulator.css | `#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput` | `max-height: none !important` |
+| simulator.css | `#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput` | `overflow: visible !important` |
 | simulator.css | `#tab-montecarlo th` | `position: static !important` |
-| simulator.css | `#simulationLog table, #scenarioLogOutput table, .stress-replay-table-scroll table` | `width: 100% !important` |
-| simulator.css | `#simulationLog table, #scenarioLogOutput table, .stress-replay-table-scroll table` | `min-width: 0 !important` |
-| simulator.css | `#simulationLog th, #simulationLog td, #scenarioLogOutput th, #scenarioLogOutput td, .stress-replay-table-scroll th, .stress-replay-table-scroll td` | `min-width: 0 !important` |
-| simulator.css | `#simulationLog th, #simulationLog td, #scenarioLogOutput th, #scenarioLogOutput td, .stress-replay-table-scroll th, .stress-replay-table-scroll td` | `white-space: normal !important` |
-| simulator.css | `#tab-montecarlo, #tab-werkstatt, #workshopReplayPanel[hidden], #workshopReplayPanel, #tab-sweep, #tab-sweep[hidden], #tab-auto-optimize, #tab-auto-optimize[hidden]` | `display: block !important` |
-| simulator.css | `.sim-workshop-cards` | `display: none !important` |
-| simulator.css | `#stressReplayExpertFields[hidden]` | `display: grid !important` |
-| simulator.css | `#tab-werkstatt .ds-table-scroll, #tab-werkstatt .ds-tool-output` | `overflow: visible !important` |
-| simulator.css | `#tab-werkstatt .ds-table-scroll, #tab-werkstatt .ds-tool-output` | `max-height: none !important` |
-| simulator.css | `#tab-werkstatt > .sim-page-head, #tab-werkstatt button` | `display: none !important` |
-| simulator.css | `#mcSetupDisclosure::details-content, .stress-replay-diagnostics::details-content` | `display: contents !important` |
-| simulator.css | `#mcSetupDisclosure::details-content, .stress-replay-diagnostics::details-content` | `content-visibility: visible !important` |
+| simulator.css | `#simulationLog table, #scenarioLogOutput table` | `width: 100% !important` |
+| simulator.css | `#simulationLog table, #scenarioLogOutput table` | `min-width: 0 !important` |
+| simulator.css | `#simulationLog th, #simulationLog td, #scenarioLogOutput th, #scenarioLogOutput td` | `min-width: 0 !important` |
+| simulator.css | `#simulationLog th, #simulationLog td, #scenarioLogOutput th, #scenarioLogOutput td` | `white-space: normal !important` |
+| simulator.css | `#tab-montecarlo` | `display: block !important` |
+| simulator.css | `#mcSetupDisclosure::details-content` | `display: contents !important` |
+| simulator.css | `#mcSetupDisclosure::details-content` | `content-visibility: visible !important` |
 | simulator.css | `#mcSetupDisclosure:not([open]) > .mc-setup-content > :not(button)` | `display: block !important` |
 | simulator.css | `#mcSetupDisclosure:not([open]) > .mc-setup-content` | `display: grid !important` |
 | simulator.css | `#tab-montecarlo .kpi-description, #tab-montecarlo .summary-description` | `display: block !important` |
@@ -238,7 +233,6 @@ Sweep-/Pareto-Kontextpunkte mit Deckkraft .6 und kritische Heatmapflächen mit .
 | simulator.css | `.mc-more-metrics::details-content` | `content-visibility: visible !important` |
 | simulator.css | `#tab-montecarlo .ds-info, .mc-settings-actions, #mcRunHead button, #mcSetupDisclosure #mcRecalculateButton` | `display: none !important` |
 | simulator.css | `.ds-info-pop` | `display: none !important` |
-| simulator.css | `.stress-replay-table-scroll th` | `position: static !important` |
 
 ### Abnahme
 

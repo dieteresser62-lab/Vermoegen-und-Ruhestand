@@ -18,7 +18,7 @@ if (process.argv.includes('--sample')) {
     for (let start = 0; start < 1000; start += 100) {
         const chunk = await runMonteCarloChunk({ inputs, engine: EngineAPI, monteCarloParams,
             widowOptions: inputs.widowOptions, useCapeSampling: false,
-            runRange: { start, count: 100 }, logIndices: [] });
+            runRange: { start, count: 100 }, logIndices: [], collectPersonOutcomes: true });
         if (chunk.technicalInventory.technicalError !== 0) throw new Error('MC-Messung enthält technische Fehler.');
     }
     const measurement = { msPerRun: (performance.now() - started) / 1000 };

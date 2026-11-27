@@ -168,7 +168,10 @@ export function historyDayRows(point, history) {
         ['Immobilien selbst genutzt', point.property?.self, point.property?.self > 0],
         ['Immobilien vermietet', point.property?.rented, point.property?.rented > 0]
     ].filter(([, , present]) => present);
-    parts.forEach(([label, value], index) => rows.push({ text: label + ': ' + money(value), ...(index === 0 ? { kind: 'separator' } : {}) }));
+    // OP-1 (Punkt 1): Der Anteil am angezeigten Gesamtvermögen steht neben dem Betrag (früher im Block „Aufteilung am …“).
+    const total = history.hasHomes ? point.totalWithHomes : point.total;
+    const share = value => total > 0 && Number.isFinite(value) ? ' · ' + formatDisplayNumber(value / total * 100, { unit: 'percent', fractionDigits: 1 }) : '';
+    parts.forEach(([label, value], index) => rows.push({ text: label + ': ' + money(value) + share(value), ...(index === 0 ? { kind: 'separator' } : {}) }));
     if (!Number.isFinite(point.total)) rows.push({ text: 'Geldvermögen nicht vollständig bewertbar' });
     const qualityLabels = { 'open-gap': 'Kurs noch nicht bestätigt', 'missing-first-price': 'Erster Schlusskurs fehlt',
         'unsupported-currency': 'Kurswährung nicht unterstützt', 'missing-cash': 'Tagesgeld unbekannt', 'missing-ticker': 'Ticker fehlt',
@@ -410,7 +413,7 @@ function renderHistoryTotalArea(upper, lower) {
 }
 
 /** Vollständige Skalenbasis; nur Zeichnungspunkte werden ausgewählt.
- * @param history Vorbereitete Tagesprojektion mit optionalen Abschlusswerten.
+ * @param history Vorbereitete Tagesprojektion.
  * @param {H.ChartOptions} [options]
  * @returns {string} */
 export function renderWealthHistorySvg(history, { title = 'Vermögensverlauf', description = '', width = 1420, height = 460 } = {}) {
@@ -419,8 +422,7 @@ export function renderWealthHistorySvg(history, { title = 'Vermögensverlauf', d
     const id = `wealth-history-${++svgSequence}`;
     const left = Math.min(90, width * .3), right = Math.max(left + 1, width - Math.min(50, width * .1)), top = Math.min(60, height * .2), bottom = Math.max(top + 1, height - Math.min(60, height * .2));
     const points = history.points;
-    const closures = history.closures || [];
-    const { floor, ceiling, step } = wealthHistoryScale([...points, ...closures]);
+    const { floor, ceiling, step } = wealthHistoryScale(points);
     const span = Math.max(1, history.range.end - history.range.start + 1);
     const x = day => left + (day - history.range.start) / span * (right - left);
     const px = day => x(day + .5);
@@ -499,11 +501,6 @@ export function renderWealthHistorySvg(history, { title = 'Vermögensverlauf', d
             lastLabel = xx;
         }
         marks += '</g>';
-    }
-    for (const row of closures) {
-        const xx = n(px(row.day)), yy = n(y(row.totalWithHomes ?? row.total));
-        const label = `${dateLabel(row.day)}: ${row.marker} ${row.label}, Gesamtvermögen ${formatDisplayNumber(row.totalWithHomes ?? row.total, { unit: 'currency', fractionDigits: 0 })}${row.totalWithHomes === undefined ? '' : ` · davon Geldvermögen ${formatDisplayNumber(row.total, { unit: 'currency', fractionDigits: 0 })} · Immobilien ${formatDisplayNumber(row.totalWithHomes - row.total, { unit: 'currency', fractionDigits: 0 })}`}`;
-        marks += `<g class="history-closure ${row.reason === 'annual_close' ? 'history-closure-annual' : 'history-closure-manual'}" data-closure-date="${escapeHtml(row.asOf)}" data-closure-total="${row.total}"><title>${escapeHtml(label)}</title><path d="M${xx},${yy - 7}l7,7l-7,7l-7,-7Z"/></g>`;
     }
     const last = points.at(-1);
     const end = last ? { ...last, total: last.totalWithHomes ?? last.total } : null;

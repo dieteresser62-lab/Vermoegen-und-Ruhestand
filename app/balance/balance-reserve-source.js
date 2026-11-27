@@ -16,10 +16,10 @@ export function prepareReserveSource(currentYear, source) {
  * Diagnose mit der Neuberechnung weiter. Die Seite bricht nie ab.
  * @param {any} currentYear @param {any} [confirmed] Beleg aus `projectBalanceActionOrigin` samt Umsetzungsstand. */
 export function reserveActionSource(currentYear, confirmed = null) {
-    try { return prepareReserveSource(currentYear, currentYearActionSource(currentYear, confirmed)); }
+    try { return { ...prepareReserveSource(currentYear, currentYearActionSource(currentYear, confirmed)), fellBack: false }; }
     catch (error) {
         if (!confirmed) throw error;
         console.warn('Jahresbeleg nicht auf heutige Bestände anwendbar; Reserven rechnen neu:', error);
-        return prepareReserveSource(currentYear, recalculatedActionSource(currentYear));
+        return { ...prepareReserveSource(currentYear, recalculatedActionSource(currentYear)), fellBack: true };
     }
 }

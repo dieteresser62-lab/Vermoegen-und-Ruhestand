@@ -270,9 +270,9 @@ export function resolveHomeFloorFactor(inputs, household, deathThisYear) {
 }
 
 
-/** FR-72 Punkt 0: Jahresbedarf aus getrennten Bestandteilen, erst danach addiert. Budget, Ruinprüfung,
- * beide Notverkaufsprüfungen und Protokoll verwenden diese Summe; die Miete nach FR-62 kommt beim
- * Aufrufer hinzu. Ohne Heim ergibt sich exakt der bisherige Wert.
+/** FR-72 Punkt 0: Jahresbedarf aus getrennten Bestandteilen, erst danach addiert. Budget und Protokoll verwenden
+ * diese Summe; die Miete nach FR-62 kommt beim Aufrufer hinzu. Ruinprüfung und Notverkauf rechnen nach FR-84 mit dem
+ * Grundbedarf ohne Pflege (Summe abzüglich Pflegezusatz und Heimposten). Ohne Heim ergibt sich exakt der bisherige Wert.
  *
  * @param {object} options
  * @param options.inputs Wirksame Simulationseingaben.

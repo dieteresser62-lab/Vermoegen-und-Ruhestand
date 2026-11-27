@@ -1,6 +1,6 @@
 /** @import {TaxReconciliation} from '../../typcheck/rechenkern-integration.js' */
 import { validateAccumulationExpenses } from './simulator-input-validation.js';
-import { ensurePersonalAccounts, applyPersonalInterest, syncPersonalLiquidity, debitPersonalLiquidity,
+import { ensurePersonalAccounts, applyPersonalInterest, addReserveCashInterest, syncPersonalLiquidity, debitPersonalLiquidity,
     personalProfiles, personalWithdrawalPlan } from './simulator-personal-accounts.js';
 import { calculateHouseholdPensionForYear } from './simulator-household-pension.js';
 import { buyGold, buyStocksNeu, sumDepot } from './simulator-portfolio.js';
@@ -11,8 +11,10 @@ import {
 } from './simulator-engine-direct-utils.js';
 import { buildNextMarketDataHist } from './simulator-year-portfolio.js';
 import { sumBondBucketValuation } from '../../engine/transactions/three-bucket-logic.mjs';
-import { beginPersonalTaxYear, settlePersonalTaxYear, beginAggregateTaxYear, settleAggregateTaxYear } from './simulator-personal-tax.js';
+import { beginPersonalTaxYear, settlePersonalTaxYear, beginAggregateTaxYear, settleAggregateTaxYear, payPersonalCostInAdvance } from './simulator-personal-tax.js';
 import { applyUnmarriedInheritance } from './simulator-inheritance.js';
+import { rentBequestForYear } from './simulator-rent-bequest.js';
+import { loadTaxClaims, carryTaxShortfall, logTaxDebt } from './simulator-tax-debt.js';
 import { deathYearCashShare, deathYearCashLimit } from './simulator-death-year-cash.js';
 import { finishSurvivorYear, survivorLiquidityTarget } from './simulator-survivor.js';
 import {
@@ -117,7 +119,6 @@ export function simulateAccumulationYear({
     );
     const personalInterest = applyPersonalInterest(portfolio, Number(rC), { additive: true });
     let cashZinsen = personalInterest.interest;
-    let liqNachZins = initialLiqStart;
 
     let sparrateThisYear = (Number(inputs.accumulationPhase.sparrate) || 0) * 12;
     if (inputs.accumulationPhase.sparrateIndexing === 'inflation' && currentState.accumulationState?.yearsSaved > 0) {
@@ -141,12 +142,18 @@ export function simulateAccumulationYear({
     const nextP1 = (currentState.currentAnnualPension || 0) * (1 + rentAdjPct / 100);
     const nextP2 = (currentState.currentAnnualPension2 || 0) * (1 + rentAdjPct / 100);
 
-    liquiditaet = portfolio.liquiditaet;
-    liqNachZins = euros(liquiditaet);
+    const bequest = rentBequestForYear(portfolio, inputs, householdCtx, cumulativeInflationFactor);
+    const bequestSurplus = bequest && !bequest.selfPaid ? bequest.income - bequest.rent : 0;
+    if (bequestSurplus > 0) {
+        portfolio.personAccounts.find(person => person.profileId === bequest.profileId).tagesgeld += bequestSurplus;
+    }
     portfolio.personAccounts[0].tagesgeld += sparrateThisYear;
+    const housingRentPayment = bequest?.selfPaid && bequest.rent > 0
+        ? payPersonalCostInAdvance(portfolio, bequest.profileId, bequest.rent) : null;
     syncPersonalLiquidity(portfolio);
     liquiditaet = portfolio.liquiditaet;
     const healthBucketInterest = applyHealthBucketInterest({ inputs, portfolio, rC });
+    addReserveCashInterest(personalInterest, healthBucketInterest.cashInterestByOwner);
     let healthBucketDiagnostics = buildHealthBucketDiagnostics({
         inputs,
         portfolio,
@@ -165,7 +172,7 @@ export function simulateAccumulationYear({
         marketDataCurrentYear,
         effectiveBaseFloor,
         baseFlex,
-        p1Income + p2Income
+        p1Income + p2Income + (bequest?.income ?? 0)
     );
     const taxAction = {};
     const taxState = {};
@@ -201,25 +208,31 @@ export function simulateAccumulationYear({
         kaufAktTotal = aktienBetrag;
     }
 
+    const liqJahresende = euros(liquiditaet);
+    // NK-2 (FR-84 Punkte 13 und 17, Codex 8): Auch in der Ansparphase zahlt die Abrechnung Altschuld und offene Wohnrechtsteuer; was offen
+    // bleibt, wird Schuld der Person statt Ruin.
+    const oldTaxDue = personalTaxBook ? loadTaxClaims(/** @type {any[]} */ (personalTaxBook)).old : 0;
     /** @type {TaxReconciliation & {taxFundingSaleGross?: number}} */
     const taxResult = personalTaxBook ? settlePersonalTaxYear({ portfolio, book: personalTaxBook,
         personalInterest, actionResult: taxAction, plannedActionFlow: null, regularSaleScale: 0,
         forcedTaxReserved: 0, spendingNewState: {}, didForcedSale: false, inputs })
         : settleAggregateTaxYear({ portfolio, book: aggregateTaxBook, personalInterest, actionResult: taxAction,
             spendingNewState: taxState, inputs, taxStatePrev: currentState.lastState?.taxState });
-    const inheritanceLog = hasInheritance && !(taxResult.taxShortfall > 1e-8)
+    carryTaxShortfall(portfolio, /** @type {any[]} */ (taxAction.personalAnnualTaxes || []));
+    const inheritanceLog = hasInheritance
         ? applyUnmarriedInheritance({ portfolio, transition: survivorYear,
-            inputs: inputs.partnership ? inputs : { ...inputs, partnership: { status: 'married' } },
+            inputs, historicalYear: yearData.temporal ? yearData.jahr : undefined,
             inflationFactor: nextCumulativeInflationFactor, pension: calendarPension, personalInterest, actionResult: taxAction, household: householdCtx,
             reserveTarget: () => survivorLiquidityTarget({ state: currentState, portfolio, transition: survivorYear, inputs,
                 household: householdCtx, yearIndex, inflationFactor: nextCumulativeInflationFactor,
                 marketData: marketDataCurrentYear, pension: calendarPension }) }) : null;
     if (inheritanceLog) {
+        // NK-2: Ungedeckte Erbschaftsteuer bleibt Schuld der erbenden Person.
+        const heir = /** @type {any[]} */ (portfolio.personAccounts || []).find(item => item.profileId === survivorYear?.survivor?.survivorProfileId);
+        if (heir && inheritanceLog.inheritancePayment.shortfall > .01) heir.openTax = (heir.openTax || 0) + inheritanceLog.inheritancePayment.shortfall;
         survivorYear.inheritanceLog = inheritanceLog;
         healthBucketDiagnostics = buildHealthBucketDiagnostics({ inputs, portfolio, cumulativeInflationFactor });
     }
-    liquiditaet = portfolio.liquiditaet;
-
     const newAccumulationState = {
         yearsSaved: (currentState.accumulationState?.yearsSaved || 0) + 1,
         totalContributed: euros((currentState.accumulationState?.totalContributed || 0) + sparrateThisYear),
@@ -234,9 +247,13 @@ export function simulateAccumulationYear({
         portfolioActiveBeforeFlows
         + signedEuros(cashZinsen)
         + euros(sparrateThisYear)
+        + signedEuros(bequestSurplus)
+        - signedEuros(housingRentPayment?.paidCost || 0)
         + taxResult.taxCashAdjustment
-        - (inheritanceLog ? inheritanceLog.abgang_erben - inheritanceLog.healthLeaves
-            + inheritanceLog.erbschaftsteuer + inheritanceLog.inheritancePayment.extraTax : 0)
+        - (inheritanceLog ? inheritanceLog.abgang_erben + (inheritanceLog.inheritance.estateCosts || 0)
+            - (inheritanceLog.wohnkapital || 0) - inheritanceLog.healthLeaves
+            + inheritanceLog.erbschaftsteuer - (inheritanceLog.inheritancePayment.shortfall > .01 ? inheritanceLog.inheritancePayment.shortfall : 0)
+            + inheritanceLog.inheritancePayment.extraTax : 0)
     );
     const healthBucketWarnings = Array.isArray(portfolio.healthBucketMeta?.warnings)
         ? portfolio.healthBucketMeta.warnings
@@ -263,8 +280,10 @@ export function simulateAccumulationYear({
             transitionYear: currentState.transitionYear
         },
         totalTaxesThisYear: taxResult.totalTaxesThisYear + (inheritanceLog?.inheritancePayment.extraTax || 0),
-        ...(inheritanceLog?.inheritancePayment.shortfall > .01 ? { inheritanceShortfall: inheritanceLog.inheritancePayment.shortfall } : {}),
-        ...(taxResult.taxShortfall > 1e-8 ? { taxReconciliation: taxResult } : {}),
+        ...(inheritanceLog?.inheritancePayment.shortfall > .01 && !portfolio.personAccounts?.some(item => item.profileId === survivorYear?.survivor?.survivorProfileId)
+            ? { inheritanceShortfall: inheritanceLog.inheritancePayment.shortfall } : {}),
+        ...(taxResult.taxShortfall > 1e-8 && !personalTaxBook ? { taxReconciliation: taxResult } : {}),
+        ...(housingRentPayment?.shortfall > .01 ? { housingRentPayment } : {}),
         logData: {
             ...(inheritanceLog ? { abgang_erben: inheritanceLog.abgang_erben, erbschaftsteuer: inheritanceLog.erbschaftsteuer,
                 inheritance: inheritanceLog.inheritance } : {}),
@@ -305,7 +324,7 @@ export function simulateAccumulationYear({
             liqStart: euros(initialLiqStart),
             personAccounts: portfolio.personAccounts.map(person => ({ ...person })),
             cashInterestEarned: signedEuros(cashZinsen),
-            liqEnd: euros(liqNachZins),
+            liqEnd: inheritanceLog ? euros(portfolio.liquiditaet) : liqJahresende,
             liq_post_accumulation_end_of_year: euros(portfolio.liquiditaet),
             portfolio_total_before_accumulation: portfolioActiveBeforeFlows,
             portfolio_active_end: portfolioActiveEnd,
@@ -322,7 +341,9 @@ export function simulateAccumulationYear({
             portfolio_total_end: euros(wertAktien + wertGold + portfolio.liquiditaet + healthBucketDiagnostics.currentAmount),
             aktionUndGrund: `Sparrate: ${euros(sparrateThisYear)}€ / Kauf A: ${euros(kaufAktTotal)}€ / Kauf G: ${euros(kaufGldTotal)}€`,
             usedSPB: taxAction.taxSettlement?.spbUsedThisYear || 0,
-            floor_brutto: 0,
+            floor_brutto: bequest?.rent ?? 0,
+            ...(bequest ? { sonstige_einkuenfte: bequest.income, sonstige_einkuenfte_personen: [{ profileId: bequest.profileId, amount: bequest.income }],
+                einkuenfte_gespart: bequestSurplus } : {}),
             pension_annual: 0,
             rente1: 0,
             rente2: 0,
@@ -372,5 +393,11 @@ export function simulateAccumulationYear({
         }
     };
     if (inheritanceLog) result.logData.steuern_gesamt = result.totalTaxesThisYear;
+    logTaxDebt(result.logData, portfolio, oldTaxDue); // NK-2: Schuld und Nettovermögen wie in der Entnahmephase
+    // NK-2b (Gutachten NK2C Befunde 5 und 6): Verkaufssignal für offene Altschuld und am Jahresende bezahlte Wohnrechtsteuer an den Koordinator
+    // weitergeben (nicht aufzählbar).
+    const rows = /** @type {any[]} */ (taxAction.personalAnnualTaxes || []);
+    Object.defineProperty(result, 'taxRestOwners', { value: rows.filter(row => (row.oldDebtRest || 0) > 0.005).map(row => row.profileId), enumerable: false });
+    Object.defineProperty(result, 'taxRows', { value: { book: personalTaxBook, rows }, enumerable: false });
     return finishSurvivorYear(result, survivorYear, calendarPension);
 }

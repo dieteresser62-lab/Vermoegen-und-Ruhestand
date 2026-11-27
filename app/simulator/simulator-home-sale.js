@@ -1,10 +1,12 @@
 /** FR-53/61/62: einmaliger Verkauf und anschließende Haushaltsmiete. */
 import { careFormForPerson, isInResidentialCare } from '../shared/care-benefits.js';
-import { inheritancePercent, inheritsHomeAndTax, testamentRule, hasTestament, testamentMoney, hasInheritanceHomes } from '../profile/household-partnership.js';
+import { inheritancePercent, inheritsHomeAndTax, testamentRule, hasTestament, testamentMoney, hasInheritanceHomes, hasTestamentHomeSale } from '../profile/household-partnership.js';
+import { HOME_SALE_NET_SHARE } from '../profile/household-inheritance-sale.js';
 import { homeValueAtDeath, inheritanceReferenceFactor } from './simulator-inheritance.js';
 import { personalAssetValues } from './simulator-unmarried.js';
 import { syncPersonalLiquidity } from './simulator-personal-accounts.js';
 import { livesInResidentialCare } from './simulator-residential-care.js';
+import { appNow } from '../shared/app-clock.js';
 
 /**
  * @param home
@@ -62,9 +64,10 @@ export function inheritedHomeShare(inputs, portfolio, survivor, home, index, inf
     if (hasTestament(inputs.partnership, home.profileId, hasHomes)) {
         if (rule.home === 'residence') return 0;
         if (rule.home === 'life-estate') return home.nutzung === 'selbst' ? 1 : 0;
+        if (hasTestamentHomeSale(rule) && home.nutzung === 'selbst') return 0;
         const assets = personalAssetValues(portfolio).find(row => row.profileId === home.profileId)?.value || 0;
         return testamentMoney(assets, inheritancePercent(inputs.partnership, home.profileId), rule,
-            rule.minimumStand ? inheritanceReferenceFactor(rule.minimumStand, inputs, inflationFactor) : 1).share;
+            rule.minimumStand ? inheritanceReferenceFactor(rule.minimumStand, inputs, inflationFactor) : 1, inflationFactor).share;
     }
     return inputs.partnership && !inheritsHomeAndTax(inputs.partnership, home.profileId, hasHomes)
         ? inheritancePercent(inputs.partnership, home.profileId) / 100 : 1;
@@ -146,6 +149,23 @@ export function sellHomesForExternalCare(options) {
     return sellHomes(options);
 }
 
+/** NK-2 (FR-84 Punkt 20, Nachträge 16 und 17): Vor der Hilfe zur Pflege setzt die pflegebedürftige Person ihre Immobilie ein: eine
+ * vermietete, oder die selbst genutzte, wenn niemand mehr darin wohnt (alle Lebenden im Heim). Kein Schonbetrag.
+ * @param {any} home @param {any} inputs @param {any} household @returns {boolean} */
+export function careSaleEligible(home, inputs, household) {
+    return home?.nutzung === 'vermietet' || (home?.nutzung === 'selbst' && allLivingInResidence(inputs, household));
+}
+
+/** NK-2 (FR-84 Punkt 20): Verkauf vor der Hilfe zur Pflege, nur aus Immobilien der genannten Personen. Erlös auf ihr Konto (90 %), die
+ * Miete entfällt, keine Ersatzmiete. `maxSales` begrenzt die Zahl der Verkäufe dieses Jahres.
+ * @param {any} options @returns {any} Verkaufsprotokoll mit `immobilien_verkauf_pflege` (Anzahl) oder null. */
+export function sellHomesForCare(options) {
+    const { inputs, owners, household, maxSales = 1 } = options;
+    if (!inputs.home?.length || !owners?.length) return null;
+    const log = sellHomes({ ...options, emergency: false, owners, maxSales, eligible: (/** @type {any} */ home) => careSaleEligible(home, inputs, household) });
+    return log?.immobilienverkauf_personen?.length ? { ...log, immobilien_verkauf_pflege: log.immobilienverkauf_personen.length } : null;
+}
+
 /**
  * @param {object} options
  * @returns Ergebnis der Operation.
@@ -196,22 +216,43 @@ function homeRentLifeFactor(inputs, household, state, yearIndex) {
     return (before + after) / 2;
 }
 
+/** Bezugsjahr des Verkaufs: Planjahr der Eingaben, ohne Angabe das Jahr der App-Uhr (im Spielbereich das Testdatum). */
+function homeSaleReferenceYear(inputs) {
+    return inputs.homeReferenceYear ?? inputs.referenceYear ?? inputs.fixedIncomeReferenceYear ?? appNow().getFullYear();
+}
+
 function sellHomes({ portfolio, state, inputs, household, yearIndex, inflationFactor, emergency = false,
-    requiredFloor = 0, requiredFloorForPortfolio = null, beforeRuin = false, maxSales = Infinity }) {
+    requiredFloor = 0, requiredFloorForPortfolio = null, beforeRuin = false, maxSales = Infinity, owners = /** @type {string[]|null} */ (null),
+    eligible = /** @type {((home: any) => boolean)|null} */ (null) }) {
     if (!inputs.home?.length) return null;
     const sales = [], hints = [], sold = [...(portfolio.homeSales || [])];
     let rent = 0;
     const deceasedId = isPartnerDeathYear(state, inputs, household, yearIndex)
         ? inputs.simulationPeople?.[household.p1Alive ? 1 : 0]?.profileId : null;
     const homes = inputs.home.map((home, index) => ({ home, index }));
+    const bequestHomes = deceasedId && hasTestamentHomeSale(testamentRule(inputs.partnership, deceasedId))
+        && hasTestament(inputs.partnership, deceasedId, true)
+        ? homes.filter(({ home, index }) => home.profileId === deceasedId && home.nutzung === 'selbst'
+            && home.wert > 0 && !homeWasSold(portfolio, home, index)).map(({ home }) => home)
+        : [];
     if (emergency) homes.sort((a, b) => Number(b.home.profileId === deceasedId) - Number(a.home.profileId === deceasedId)
         || Number(a.home.nutzung === 'selbst') - Number(b.home.nutzung === 'selbst') || a.index - b.index);
+    // NK-2b (Fable P3-6): Verkauf vor der Hilfe in der Reihenfolge der Eigentümer (höhere Pflegekosten zuerst).
+    const ownerRank = (/** @type {any} */ home) => owners ? owners.indexOf(state.survivor?.deceasedProfileId != null && state.survivor.deceasedProfileId === home.profileId
+        ? state.survivor.survivorProfileId : home.profileId) : 0;
+    if (eligible && owners) homes.sort((a, b) => ownerRank(a.home) - ownerRank(b.home) || a.index - b.index);
     for (const { home, index } of homes) {
         if (emergency && sales.length && (sales.length >= maxSales || (!beforeRuin && moneyAssets(portfolio)
             >= ((requiredFloorForPortfolio?.() ?? requiredFloor) + rent * homeRentLifeFactor(inputs, household, state, yearIndex))
                 * EMERGENCY_HOME_SALE_THRESHOLD_YEARS))) break;
+        if (!emergency && sales.length >= maxSales) break;
         if (homeWasSold(portfolio, home, index)) continue;
+        if (portfolio.pendingHousingCapital?.homeKeys.includes(homeKey(home, index))) continue;
+        if (eligible && !eligible(home)) continue;
+        if (bequestHomes.includes(home)) continue;
         const inherited = state.survivor?.deceasedProfileId != null && state.survivor.deceasedProfileId === home.profileId;
+        // NK-2 (FR-84 Punkt 17, Fable P2-8): Eine offene Steuerschuld verkauft nur Immobilien der Person, deren Schuld offen ist (auch geerbte).
+        if (owners && !owners.includes(inherited ? state.survivor.survivorProfileId : home.profileId)) continue;
         const mode = hasTestament(inputs.partnership, home.profileId, hasInheritanceHomes(inputs.home, home.profileId)) ? testamentRule(inputs.partnership, home.profileId).home : 'money';
         if ((inherited || home.profileId === deceasedId) && (mode === 'residence' || mode === 'life-estate')) continue;
         let profileId = inherited ? state.survivor.survivorProfileId : home.profileId;
@@ -227,12 +268,12 @@ function sellHomes({ portfolio, state, inputs, household, yearIndex, inflationFa
             continue;
         }
         const value = homeValueAtDeath(home, inputs, inflationFactor) * share;
-        const amount = value * .9;
+        const amount = value * HOME_SALE_NET_SHARE;
         if (emergency && home.nutzung === 'selbst') rent += value * EMERGENCY_HOME_RENT_RATE;
         account.tagesgeld += amount;
         // FR-56: nominale Zuordnung, unabhängig von späterem Verbrauch oder Anlage.
         account.homeSaleProceeds = [...(account.homeSaleProceeds || []), { homeId: home.id ?? index, amount,
-            year: (inputs.homeReferenceYear ?? inputs.referenceYear ?? inputs.fixedIncomeReferenceYear ?? 2026) + yearIndex }];
+            year: homeSaleReferenceYear(inputs) + yearIndex }];
         sold.push(homeKey(home, index));
         sales.push({ profileId, homeId: home.id ?? index, amount });
         if (emergency) {
@@ -245,14 +286,13 @@ function sellHomes({ portfolio, state, inputs, household, yearIndex, inflationFa
     if (sales.length) {
         portfolio.homeSales = sold;
         if (rent > 0) portfolio.homeRent = { amount: rent + (portfolio.homeRent
-            ? portfolio.homeRent.amount * inflationFactor / portfolio.homeRent.inflationFactor : 0), startYear: portfolio.homeRent?.startYear ?? (inputs.homeReferenceYear ?? inputs.referenceYear
-            ?? inputs.fixedIncomeReferenceYear ?? 2026) + yearIndex, inflationFactor,
+            ? portfolio.homeRent.amount * inflationFactor / portfolio.homeRent.inflationFactor : 0), startYear: portfolio.homeRent?.startYear ?? homeSaleReferenceYear(inputs) + yearIndex, inflationFactor,
             active: homeRentLifeFactor(inputs, household, state, yearIndex) > 0 };
         syncPersonalLiquidity(portfolio);
     }
     return { ...(sales.length ? { immobilienverkauf: sales.reduce((sum, sale) => sum + sale.amount, 0),
         ...(emergency ? { immobilien_notverkauf: true } : {}),
-        immobilienverkauf_jahr: (inputs.homeReferenceYear ?? inputs.referenceYear ?? inputs.fixedIncomeReferenceYear ?? 2026) + yearIndex,
+        immobilienverkauf_jahr: homeSaleReferenceYear(inputs) + yearIndex,
         immobilienverkauf_personen: sales } : {}),
         ...(hints.length ? { immobilienverkauf_hinweis: hints.join(' ') } : {}) };
 }

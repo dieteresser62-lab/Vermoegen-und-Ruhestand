@@ -27,12 +27,8 @@ const DEFAULT_FACTORS = CONTRACT.care.mortalityModel.defaultFactorsByGrade;
 const CARE_GRADES = CONTRACT.care.taxonomy.grades;
 const ENTRY_BUCKETS = Object.keys(ENTRY_BY_SEX.d).map(Number).sort((a, b) => a - b);
 
-/** Früheres festes Bezugsjahr des Ersatz-Geburtsjahrs. Seit LE-1b nicht mehr verwendet: Fehlt das Geburtsjahr,
- * gilt das Bezugsjahr der Aufrufstelle, sonst das Jahr der App-Uhr (im Spielbereich das Testdatum).
- * Bleibt als Export für bestehende Aufrufer. */
-export const TARGET_MORTALITY_FALLBACK_REFERENCE_YEAR = 2026;
-
-/** Bezugsjahr des Ersatz-Geburtsjahrs: Jahr der App-Uhr, im Spielbereich das Testdatum. */
+/** Bezugsjahr des Ersatz-Geburtsjahrs: Jahr der App-Uhr, im Spielbereich das Testdatum. Fehlt das Geburtsjahr,
+ * gilt das Bezugsjahr der Aufrufstelle, sonst dieses Jahr (seit LE-1b; das frühere feste Jahr 2026 ist entfernt). */
 export function resolveTargetMortalityReferenceYear() {
     return appNow().getFullYear();
 }

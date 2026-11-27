@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { EngineAPI } from '../../engine/index.mjs';
 import { runMonteCarloChunk } from '../../app/simulator/monte-carlo-runner.js';
-import { normalizeWidowOptions } from '../../app/simulator/simulator-sweep-utils.js';
+import { normalizeWidowOptions } from '../../app/simulator/simulator-run-utils.js';
 import { dynamicFlexPresetPatch, DYNAMIC_FLEX_OPTIONS } from '../../app/shared/dynamic-flex-presets.js';
 import { inputs, records } from './parity-replay-fixture.mjs';
 

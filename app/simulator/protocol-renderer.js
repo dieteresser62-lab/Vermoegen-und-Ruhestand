@@ -1,13 +1,13 @@
 import { rowWealthParts, protocolWealthText } from './wealth-display.js';
 "use strict";
 
-import { PROTOCOL_GROUPS, getProtocolColumns, readProtocolValue, formatProtocolValue,
+import { PROTOCOL_GROUPS, getProtocolColumns, readProtocolValue, formatProtocolValue, protocolResidentialEntry,
     protocolRowData, protocolRowFlags, createProtocolPersonContext, translateProtocolText } from './protocol-columns.js';
 import { infoPopoverHtml } from '../shared/designsystem-info-popover.js';
 import { protocolCashflowBreakdown, protocolCareNotes, protocolCareState } from './protocol-cashflows.js';
 import { noCareAllowanceReason } from '../shared/care-benefits.js';
 import { STRATEGY_OPTIONS } from '../../types/strategy-options.js';
-import { FAMILY_HOME_CONDITIONS, spouseTaxNote, inheritancePersonalAllowance } from '../profile/household-partnership.js';
+import { FAMILY_HOME_CONDITIONS, spouseTaxNote, inheritancePersonalAllowance, inheritanceClassIIITariffText, PENSION_ALLOWANCE, MISSING_PARTNERSHIP_STATUS, rentFreeThroughDescription, HOUSING_CAPITAL_CANCELLED } from '../profile/household-partnership.js';
 import { displayTradeAmount } from '../shared/transaction-display-text.js';
 import { CARRIER_RESERVE_SHORT_TEXT, activeCarrier } from '../profile/household-withdrawal-mode.js';
 import { formatDisplayPercentRatio } from '../shared/shared-formatting.js';
@@ -22,10 +22,12 @@ export function escapeProtocolHtml(value) {
 }
 const escape = escapeProtocolHtml;
 const chip = (label, tone = '', description = '') => `<span class="sim-status-chip protocol-chip${tone ? ` protocol-chip-${tone}` : ''}"${description ? ` title="${escape(description)}" aria-label="${escape(description)}"` : ''}>${escape(label)}</span>`;
-const LOW_WITHDRAWAL_HINT = 'Reale Entnahme unter dem 10-%-Wert aller simulierten Jahre (CaR)';
+const LOW_WITHDRAWAL_HINT = 'Reale Entnahme unter dem 10-%-Wert aller simulierten Jahre';
 const protocolInfo = (label, text) => infoPopoverHtml(label, text).replace('class="ds-info-button"', 'class="ds-info-button ds-button"');
-const actionMoney = (value, entry, options) => {
-    const text = formatProtocolValue({ format: 'money' }, value, entry, options);
+// ST7-FIX (Gutachten ST7 P2-3): Bestände am Jahresende (Bruttovermögen, offene Steuerschuld, Tagesgeld danach) nehmen wie die Spalte
+// „Geldvermögen“ den Preisstand am Jahresende; Zahlungen des Jahres den am Jahresanfang.
+const actionMoney = (value, entry, options, yearEnd = false) => {
+    const text = formatProtocolValue({ format: 'money', ...(yearEnd ? { id: 'total' } : {}) }, value, entry, options);
     // Echte Centbeträge nicht als Nullverkauf ausgeben, auch nach Kaufkraftumrechnung.
     return displayTradeAmount(value) > 0 && /^0[\u0020\u00a0\u202f]*€$/u.test(text) ? '< 1\u00a0€' : text;
 };
@@ -50,7 +52,7 @@ function actionSaleAmounts(raw) {
 }
 function homeSaleText(entry, options) {
     const raw = protocolRowData(entry, options.source);
-    return raw.immobilienverkauf > 0 ? `${raw.immobilien_notverkauf ? 'Notverkauf Immobilie' : 'Immobilienverkauf'} ${actionMoney(raw.immobilienverkauf, entry, options)} · ` : '';
+    return raw.immobilienverkauf > 0 ? `${raw.immobilien_notverkauf ? 'Notverkauf Immobilie' : raw.immobilien_verkauf_pflege ? 'Verkauf Immobilie für Heimkosten' : 'Immobilienverkauf'} ${actionMoney(raw.immobilienverkauf, entry, options)} · ` : '';
 }
 
 function noTradeText(raw) {
@@ -71,7 +73,7 @@ function ruinActionText(entry, options) {
     if (raw.recordType !== 'terminal_ruin' && !/RUIN/u.test(raw.aktionUndGrund || '')) return null;
     const reason = raw.ruin_reason || String(raw.aktionUndGrund || '').replace(/>>> RUIN <<</u, '').trim();
     const amounts = reason.match(/^Gesamtvermögen \((-?\d+)\) < Floor \((\d+)\)/u);
-    if (!amounts) return `Ruin: ${translateProtocolText(reason).replace(/Floor/gu, 'Grundbedarf')}`;
+    if (!amounts) return `Vermögen aufgebraucht: ${translateProtocolText(reason).replace(/Floor/gu, 'Grundbedarf')}`;
     // Terminalzeilen haben oft keinen Preisfaktor. Wie die Ruin-Karte den
     // Jahresendstand der unmittelbar vorangehenden Finanzzeile heranziehen.
     const index = options.rows?.findIndex(row => protocolRowData(row, options.source) === raw) ?? -1;
@@ -82,7 +84,7 @@ function ruinActionText(entry, options) {
         ? previousRaw.inflation_factor_cum * (1 + previousInflation / 100) : raw.jahr === 1 ? 1 : null);
     const real = options.moneyBasis === 'real', known = Number.isFinite(factor) && factor > 0;
     const money = value => formatProtocolValue({ format: 'money' }, Number(value) / (real && known ? factor : 1));
-    return `Ruin: Geldvermögen ${money(amounts[1])} reicht nicht für den Grundbedarf von ${money(amounts[2])}${real && !known ? ' (nominal; Kaufkraftbetrag unbekannt)' : ''}`;
+    return `Vermögen aufgebraucht: Geldvermögen ${money(amounts[1])} reicht nicht für den Grundbedarf von ${money(amounts[2])}${real && !known ? ' (nominal; Kaufkraftbetrag unbekannt)' : ''}`;
 }
 
 // Nur die Anzeige umrechnen. Alte Logs enthalten Eurobeträge auch ausschließlich im Text.
@@ -120,7 +122,17 @@ function actionDetailText(value, entry, options) {
 }
 
 function inheritanceTaxInfo(entry, options) {
-    const estate = protocolRowData(entry, options.source).inheritance;
+    const raw = protocolRowData(entry, options.source);
+    const estate = raw.inheritance;
+    const move = raw.housingCapitalMove;
+    if (move?.kind === 'sold') {
+        const money = value => actionMoney(value, entry, options);
+        const taxClass = options.inputs?.partnership?.status === 'married' ? 'I' : 'III';
+        return protocolInfo('Erbschaftsteuer auf Wohnkapital', `Die App rechnet beide Erwerbe in Steuerklasse ${taxClass} zusammen und zieht die Steuer aus dem Todesjahr ab. Freibetragsrest aus dem Todesjahr ${money(move.allowanceRemaining)}. Der steuerpflichtige Betrag steigt um ${money(move.taxable)}.`)
+            .replace('class="ds-info"', 'class="ds-info protocol-tax-info"');
+    }
+    const status = options.inputs?.partnership?.status, married = status === 'married';
+    const personalAllowance = inheritancePersonalAllowance(status);
     const sold = new Set();
     for (const row of options.rows || []) {
         for (const sale of protocolRowData(row, options.source).immobilienverkauf_personen || []) sold.add(JSON.stringify([sale.profileId, sale.homeId]));
@@ -128,17 +140,28 @@ function inheritanceTaxInfo(entry, options) {
     }
     const familyHomes = (options.inputs?.home || []).filter((home, index) => home.profileId === estate?.deceasedProfileId
         && home.nutzung === 'selbst' && home.wert > 0 && !sold.has(JSON.stringify([home.profileId, home.id ?? index])));
-    const familyNote = options.inputs?.partnership?.status !== 'unmarried' && estate?.inheritedHome > 0 && familyHomes.length
+    const familyNote = status && estate?.exemptHome > 0
         ? ` Familienheim-Befreiung angenommen. ${FAMILY_HOME_CONDITIONS}${familyHomes.length > 1 ? ' Steuerfrei ist nur das Familienheim – bei mehreren selbst genutzten Immobilien die wertvollste.' : ''}` : '';
-    const text = options.inputs?.partnership?.status === 'unmarried'
-        ? 'Vereinfachte Steuerklasse III: 20.000 € Freibetrag, Tarif 30 % bis 6 Mio. €, darüber 50 %; Härteausgleich nahe der Tarifgrenze.'
-        : `Vereinfachte Steuerklasse I: 500.000 € Freibetrag. ${spouseTaxNote(options.inputs?.partnership)}${familyNote}`;
-    const gainNote = estate?.exemptGain > 0 ? ` Steuerfrei als Zugewinnausgleich ${estate.exemptGain.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €.` : '';
+    const relief = status ? estate?.pensionAllowance : undefined;
+    const euro = value => `${value.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €`;
+    // HP-3: Bei „Euro von heute“ sagt der Text, dass beide Beträge nominal sind, mit dem Wert von heute dahinter (wie der Freibetrag im ⓘ „Todesfall …“).
+    const today = value => { const real = formatProtocolValue({ format: 'money' }, value, entry, options);
+        return options.moneyBasis === 'real' && real !== '—' && real !== formatProtocolValue({ format: 'money' }, value) ? `, gilt nominal, in Euro von heute ${real}` : ''; };
+    const taxableNote = Number.isFinite(estate?.taxable) ? ` Steuerpflichtiger Erwerb ${euro(estate.taxable)} (auf volle 100 € abgerundet)${today(estate.taxable)}.` : ''; // HP-4; ältere Einträge ohne Wert
+    const gainNote = status && estate?.exemptGain > 0 ? ` Steuerfrei als Zugewinnausgleich ${euro(estate.exemptGain)}${today(estate.exemptGain)}.` : '';
+    // VB-1: Versorgungsfreibetrag (§ 17 ErbStG) als eigener Satz, nominal wie der Zugewinnbetrag.
+    const reliefNote = !relief ? '' : relief.missingAge ? ' Versorgungsfreibetrag (§ 17 ErbStG): ohne Alter kein Versorgungsfreibetrag.'
+        : ` Versorgungsfreibetrag (§ 17 ErbStG) ${euro(relief.amount)}${relief.capital > 0 ? ` (${euro(PENSION_ALLOWANCE)} minus Kapitalwert der Hinterbliebenenrente ${euro(relief.capital)})` : ''}${today(relief.amount)}.`;
+    // HP-2: Nennt reliefNote den Freibetrag, entfällt der allgemeine Satz dazu; der Satz mit Betrag folgt dem Zugewinnausgleich, vor dem Familienheim.
+    const text = married
+        ? `Vereinfachte Steuerklasse I: ${personalAllowance.toLocaleString('de-DE')} € Freibetrag. ${spouseTaxNote(options.inputs?.partnership, !reliefNote)}`
+        : `${status ? '' : MISSING_PARTNERSHIP_STATUS + '. '}Vereinfachte Steuerklasse III: ${personalAllowance.toLocaleString('de-DE')} € Freibetrag, ${inheritanceClassIIITariffText()}; Härteausgleich nahe der Tarifgrenze.`;
     const annual = estate?.residenceTax;
-    const personalAllowance = options.inputs?.partnership?.status === 'unmarried' ? 20000 : 500000;
-    const detail = annual ? ` Jährlich (§ 23 ErbStG): Im Todesjahr nur der Geld- und Immobilienanteil nach Freibetrag; Tarif nach Gesamterwerb einschließlich Wohnrecht. Jahreswert ${annual.annualValue.toLocaleString('de-DE')} €, Steuersatz ${formatDisplayPercentRatio(annual.rate)}. Ab dem Folgejahr nominal fest ${annual.annualTax.toLocaleString('de-DE')} € im Voraus bis Tod oder dauerhafter Heimpflege. Freibetragsrest ${annual.allowanceRemaining.toLocaleString('de-DE')} € wird aufgezehrt (ursprünglich ${personalAllowance.toLocaleString('de-DE')} € persönlicher Freibetrag${estate.exemptGain > 0 ? ` plus ${estate.exemptGain.toLocaleString('de-DE')} € Zugewinnausgleich` : ''}). Sofortvergleich ${annual.immediateComparison.toLocaleString('de-DE')} €.` : '';
-    return protocolInfo('Erbschaftsteuer: vereinfachte Rechnung', text + gainNote + detail
-        + (options.inputs?.partnership?.status === 'unmarried' ? '' : ' Steuerberater fragen.'))
+    const rentBequest = estate?.rentBequestAnnual > 0;
+    const capitalNote = estate?.housingCapital > 0 ? ` Wohnkapital ${euro(estate.housingCapital)} als Geldvermächtnis voll im Erwerb, ohne Familienheim-Befreiung.` : '';
+    const detail = annual ? ` Jährlich (§ 23 ErbStG): Im Todesjahr nur der Geld- und Immobilienanteil nach Freibetrag; Tarif nach Gesamterwerb einschließlich ${rentBequest ? 'Rente aus dem Erbe' : 'Wohnrecht'}. Jahreswert ${annual.annualValue.toLocaleString('de-DE')} €, Steuersatz ${formatDisplayPercentRatio(annual.rate)}. Ab dem Folgejahr nominal fest ${annual.annualTax.toLocaleString('de-DE')} € im Voraus bis ${rentBequest ? 'zum Tod' : 'Tod oder dauerhafter Heimpflege'}. Freibetragsrest ${annual.allowanceRemaining.toLocaleString('de-DE')} € wird aufgezehrt (ursprünglich ${personalAllowance.toLocaleString('de-DE')} € persönlicher Freibetrag${estate.exemptGain > 0 ? ` plus ${estate.exemptGain.toLocaleString('de-DE')} € Zugewinnausgleich` : ''}${relief?.amount > 0 ? ` plus ${relief.amount.toLocaleString('de-DE')} € Versorgungsfreibetrag` : ''}). Sofortvergleich ${annual.immediateComparison.toLocaleString('de-DE')} €.` : '';
+    return protocolInfo('Erbschaftsteuer: vereinfachte Rechnung', text + taxableNote + gainNote + reliefNote + familyNote + capitalNote + detail
+        + (married ? ' Steuerberater fragen.' : ''))
         .replace('class="ds-info"', 'class="ds-info protocol-tax-info"');
 }
 
@@ -146,7 +169,8 @@ function residenceTaxInfo(entry, options) {
     const payment = protocolRowData(entry, options.source).residenceTaxPayment;
     if (!payment) return '';
     const money = value => `${value.toLocaleString('de-DE', { maximumFractionDigits: 2 })} € nominal`;
-    return protocolInfo('Steuer Wohnrecht (§ 23)', `Vorauszahlung zu Jahresbeginn aus Tagesgeld oder Verkauf. Jahreswert ${money(payment.annualValue)}, Satz ${formatDisplayPercentRatio(payment.rate)}, feste Jahressteuer ${money(payment.annualTax)}. Davon Jahreswert steuerfrei ${money(payment.exempt)} durch Aufzehrung; Freibetragsrest ${money(payment.allowanceRemaining)}. Endet mit Tod oder dauerhafter Heimpflege.${payment.note ? ` ${payment.note}` : ''}${payment.shortfall > .01 ? ` Ungedeckt: ${money(payment.shortfall)}.` : ''}`);
+    const label = payment.rentBequest ? 'Steuer auf die Rente aus dem Erbe (§ 23)' : 'Steuer Wohnrecht (§ 23)';
+    return protocolInfo(label, `Vorauszahlung zu Jahresbeginn aus Tagesgeld oder Verkauf. Jahreswert ${money(payment.annualValue)}, Satz ${formatDisplayPercentRatio(payment.rate)}, feste Jahressteuer ${money(payment.annualTax)}. Davon Jahreswert steuerfrei ${money(payment.exempt)} durch Aufzehrung; Freibetragsrest ${money(payment.allowanceRemaining)}. Endet ${payment.rentBequest ? 'mit dem Tod' : 'mit Tod oder dauerhafter Heimpflege'}.${payment.note ? ` ${payment.note}` : ''}${payment.shortfall > .01 ? ` Ungedeckt: ${money(payment.shortfall)}.` : ''}`);
 }
 
 function cashflowInfo(column, entry, options) {
@@ -163,8 +187,9 @@ function cashflowInfo(column, entry, options) {
             const care = protocolCareState(entry, index, options), fallback = row[`CareP${index + 1}_FamilyFallback`];
             // FR-72 Punkt 18: gespeicherte Jahresform; im Heim gilt der Heimgrund auch bei „Amtlich“.
             const reason = noCareAllowanceReason({ grade: care?.grade, careForm: care?.form ?? undefined,
+                name: options.personDisplayContext?.persons?.[index]?.name || inputs.simulationPeople?.[index]?.name || `Person ${index + 1}`,
                 preset: care?.form === 'residential' ? undefined : inputs.pflegeKostenStaffelPreset });
-            if (reason) content += `<span class="ds-help">${escape(options.personDisplayContext?.persons?.[index]?.name || inputs.simulationPeople?.[index]?.name || `Person ${index + 1}`)}: ${escape(reason)}</span>`;
+            if (reason) content += `\n<span class="ds-help">${escape(reason)}</span>`;
             if (fallback) {
                 const other = 1 - index;
                 const name = options.personDisplayContext?.persons?.[other]?.name || inputs.simulationPeople?.[other]?.name || `Person ${other + 1}`;
@@ -173,12 +198,17 @@ function cashflowInfo(column, entry, options) {
                 const currentGrade = row[`CareP${other + 1}_Active`] ? row[`CareP${other + 1}_Grade`] : null;
                 const cause = alive === 0 || alive === false || fallback.reason === 'death' ? 'verstorben ist'
                     : `selbst Pflegegrad ${currentGrade >= 3 ? currentGrade : fallback.grade} hat`;
-                content += `<span class="ds-help">${escape(`Pflegeform: externe Unterstützung, weil ${name} ${cause}.`)}</span>`;
+                content += `\n<span class="ds-help">${escape(`Externe Unterstützung übernimmt die Pflege, weil ${name} ${cause}.`)}</span>`;
             }
         }
     }
-    if (!income) content += line('davon aus dem Vermögen bezahlt', breakdown.withdrawal, 'protocol-cashflow-withdrawal') + protocolCareNotes(entry, options,
-        value => formatProtocolValue({ format: 'money' }, value)).map(note => `<span class="ds-help">${escape(note)}</span>`).join('');
+    // KR-1c-b: Besteht die Hilfe nur aus der Steuer, steht sie in derselben Zeile wie eine Hilfe aus der Auszahlung.
+    // TX-2 (H-OP1-DAVON-EINRUECKUNG): Zeilen unter „Summe“ teilen die Summe auf und beginnen nicht mit „davon“; nur eingerückte Erläuterungen tun das.
+    if (!income && breakdown.careAid.payout + breakdown.careAid.tax > 0) content += line('Hilfe zur Pflege (zahlt der Staat)', breakdown.careAid.payout || breakdown.careAid.tax, 'protocol-cashflow-withdrawal');
+    if (!income && breakdown.careAid.tax > 0) content += `<span class="ds-help">${escape(breakdown.careAid.payout > 0 ? `Dazu trägt der Staat ${formatProtocolValue(column, breakdown.careAid.tax, entry, options)} Steuer aus Verkäufen oder Zinsen für die Pflege (Hilfe zur Pflege, keine Ausgabe des Jahres).` : 'Die Hilfe ist Steuer aus Verkäufen oder Zinsen für die Pflege (keine Ausgabe des Jahres).')}</span>`;
+    if (!income) content += line('Aus dem Vermögen bezahlt', breakdown.withdrawal, 'protocol-cashflow-withdrawal') + protocolCareNotes(entry,
+        { ...options, residentialEntry: (/** @type {any} */ row, /** @type {number} */ index) => protocolResidentialEntry(row, index, options) },
+        value => formatProtocolValue({ format: 'money' }, value)).map(note => `\n<span class="ds-help">${escape(note)}</span>`).join('');
     return protocolInfo(`${column.label}: Aufschlüsselung des Jahres`, '').replace('role="tooltip">', `role="tooltip">${content}`);
 }
 
@@ -191,21 +221,38 @@ function cashflowInfo(column, entry, options) {
  */
 export function protocolActionShortText(entry, options = {}, fallback = '') {
     const raw = protocolRowData(entry, options.source);
+    const move = raw.housingCapitalMove;
+    // ER-2e (Befund 1814): Bei „Auszug nach 0“ nennt das Todesjahr dieselben Bausteine wie das spätere Verkaufsjahr.
+    const immediateCapital = raw.inheritance?.housingCapital;
+    const saleAmount = move?.kind === 'sold' ? move.amount : immediateCapital;
+    const capitalAction = saleAmount > 0 ? `Hausanteil verkauft · Wohnkapital ${actionMoney(saleAmount, entry, options)} aufs Tagesgeld · Mietbeginn${immediateCapital > 0 ? ' im Folgejahr' : ''}`
+        : move?.kind === 'staying' ? 'Mietfreies Wohnen bis zum Auszug'
+        : raw.inheritance?.moveOutYears > 0 ? rentFreeThroughDescription(raw.inheritance.moveOutYears)
+        : move?.kind === 'cancelled' || raw.inheritance?.housingCapitalCancelled
+            ? (move?.reason === 'death' ? 'Wohnkapital entfällt durch Tod' : HOUSING_CAPITAL_CANCELLED) : '';
+    const capitalPrefix = capitalAction ? `${capitalAction} · ` : '';
     const ruin = ruinActionText(entry, options);
-    if (ruin) return homeSaleText(entry, options) + ruin;
+    if (ruin) return capitalPrefix + homeSaleText(entry, options) + ruin;
     const noTrade = noTradeText(raw);
-    if (noTrade) return homeSaleText(entry, options) + noTrade;
+    if (noTrade) return capitalPrefix + homeSaleText(entry, options) + noTrade;
     const text = String(raw.aktionUndGrund || fallback);
+    const shortDetail = () => actionDetailText(text.split(' / ')[0].replace(/[!<>]+/g, '').trim(), entry, options);
+    if (raw.recordType === 'terminal_death' && capitalAction) return `${shortDetail() || 'Alle Personen verstorben'} · ${capitalAction}`;
     const money = value => actionMoney(value, entry, options);
     const { equity, bonds, gold, total: sale } = actionSaleAmounts(raw);
     const actions = [];
-    if (raw.immobilienverkauf > 0) actions.push(`${raw.immobilien_notverkauf ? 'Notverkauf Immobilie' : 'Immobilienverkauf'} ${money(raw.immobilienverkauf)}`);
-    if (raw.inheritance) actions.push(`Erbe: ${money(raw.abgang_erben)} verlassen den Haushalt`);
+    if (raw.immobilienverkauf > 0) actions.push(`${raw.immobilien_notverkauf ? 'Notverkauf Immobilie' : raw.immobilien_verkauf_pflege ? 'Verkauf Immobilie für Heimkosten' : 'Immobilienverkauf'} ${money(raw.immobilienverkauf)}`);
+    const saleRest = housingCapitalSaleRest(raw.inheritance);
+    if (raw.inheritance) actions.push(`Erbe: ${money(raw.abgang_erben)} ${saleRest > 0 ? `Geld und ${money(saleRest)} Hauserlös ` : ''}verlassen den Haushalt`);
+    if (capitalAction) actions.push(capitalAction);
+    const propertyActionCount = actions.length;
+    const summarizeActions = () => capitalAction && actions.length === propertyActionCount && /^Sparrate/i.test(text)
+        ? [shortDetail(), ...actions].join(' · ') : actions.join(' · ');
     const bondRefill = displayTradeAmount(raw.bondRefillGross ?? raw.threeBucket?.bondRefillGross);
     const assetSalesKnown = [raw.vk?.vkAkt, raw.vk?.vkBnd, raw.vk?.vkGld, raw.executedSaleAkt, raw.executedSaleEq].some(Number.isFinite);
     if (options.strategyMode === STRATEGY_OPTIONS.THREE_BUCKET_JILGE && raw.threeBucketTrades) {
         for (const trade of raw.threeBucketTrades.filter(trade => displayTradeAmount(trade.net) !== 0)) actions.push(`${trade.profile ? trade.profile + ': ' : ''}${trade.label} ${trade.net > 0 ? 'verkaufen' : 'kaufen'} ${money(Math.abs(trade.net))}`);
-        return actions.join(' · ') || 'Kein Handlungsbedarf';
+        return summarizeActions() || 'Kein Handlungsbedarf';
     }
     if (raw.personalPayoutSales?.length) {
         const personalSales = raw.personalPayoutSales.reduce((sum, person) => sum + person.gross, 0);
@@ -225,7 +272,7 @@ export function protocolActionShortText(entry, options = {}, fallback = '') {
         trade('Anleihen', raw.vk?.vkBnd ?? raw.threeBucket?.bondSaleAmount ?? raw.bondSaleAmount,
             raw.bondRefillNet ?? raw.threeBucket?.bondRefillNet ?? bondRefill);
         trade('Gold', raw.vk?.vkGld, raw.kaufGld);
-        return actions.join(' · ') || 'Kein Handlungsbedarf';
+        return summarizeActions() || 'Kein Handlungsbedarf';
     }
     if ((options.strategyMode === STRATEGY_OPTIONS.THREE_BUCKET_JILGE && assetSalesKnown) || bonds > 0 || bondRefill > 0) {
         if (equity > 0) actions.push(`Aktien verkauft ${money(equity)}`);
@@ -241,9 +288,9 @@ export function protocolActionShortText(entry, options = {}, fallback = '') {
     if (bondRefill > 0) actions.push(`Anleihen aufgefüllt ${money(bondRefill)}`);
     if (displayTradeAmount(raw.kaufAkt) > 0) actions.push(`Aktien kaufen ${money(raw.kaufAkt)}`);
     if (displayTradeAmount(raw.kaufGld) > 0) actions.push(`Gold kaufen ${money(raw.kaufGld)}`);
-    if (actions.length) return actions.join(' · ');
+    if (actions.length) return summarizeActions();
     if (/kein Handlungsbedarf/i.test(text)) return 'Kein Handlungsbedarf';
-    if (/RUIN|ENDE|Sparrate/i.test(text)) return actionDetailText(text.split(' / ')[0].replace(/[!<>]+/g, '').trim(), entry, options);
+    if (/RUIN|ENDE|Sparrate/i.test(text)) return shortDetail();
     // Ältere Logs haben teilweise nur den Handlungstext, ohne einzelne Handelsbeträge.
     const detail = text.replace(/^(?:REC_BÄR|HEISS|ATH|ERHOLUNG|KORREKTUR|BÄR|SEITWÄRTS)(?: \(S\))?\s*/u, '')
         .replace(/^\((.*)\)$/, '$1').split(' / ')[0];
@@ -291,6 +338,7 @@ export function protocolActionExplanation(entry, options = {}, fallback = '') {
     if (flexCut.length) text += ` · Flex-Anteil von ${flexCut.join(' und ')} gekürzt: Das eigene Geld reicht nur noch für den eigenen Anteil am Grundbedarf.`;
     // Ergänzung 1 FR-81: Die Einkünfte des Haushalts hätten gereicht; bei Unverheirateten gehören sie aber jeder Person selbst.
     if (flexCut.length && raw.personalPayout?.flexCutIncomeCovers) text += ' Mit „Eine Person trägt“ legt die App die Einkünfte beider zusammen.';
+    text += floorReliefText(raw, (value, yearEnd) => actionMoney(value, entry, options, yearEnd));
     // VN-4 Punkt 5 (Abnahme LZDS-2): „Verkäufe und Käufe je Person“ zeigte nur die Überschrift. Jetzt mit den Werten des Jahresbelegs:
     // wer verkauft (bei „Eine Person trägt“ die tragende Person), Steuer des Haushalts und Tagesgeld je Person nach dem Jahr.
     const people = raw.personAccounts || [];
@@ -303,7 +351,8 @@ export function protocolActionExplanation(entry, options = {}, fallback = '') {
         if (sold > 0) text += carrierName && !attacked.length ? ` · ${carrierName} verkauft ${money(sold)} (trägt die Entnahme), die andere Person verkauft nichts`
             : ` · Verkauft im Haushalt ${money(sold)}`;
         if (Number(raw.steuern_gesamt) > 0.5) text += ` · Steuer im Jahr ${money(raw.steuern_gesamt)}`;
-        text += ` · Tagesgeld danach: ${people.map(person => `${person.name || 'Person'} ${money(person.tagesgeld)}${person.geldmarktEtf > 0.5 ? ` (dazu Geldmarkt ${money(person.geldmarktEtf)})` : ''}`).join(', ')}`;
+        const after = value => actionMoney(value, entry, options, true);
+        text += ` · Tagesgeld danach: ${people.map(person => `${person.name || 'Person'} ${after(person.tagesgeld)}${person.geldmarktEtf > 0.5 ? ` (dazu Geldmarkt ${after(person.geldmarktEtf)})` : ''}`).join(', ')}`;
     }
     if (options.strategyMode === STRATEGY_OPTIONS.THREE_BUCKET_JILGE && visibleTrades?.length) {
         // Einzelne Klassenbeträge stehen bereits vollständig im Personensaldo.
@@ -320,8 +369,41 @@ export function protocolActionExplanation(entry, options = {}, fallback = '') {
     return text;
 }
 
+/** FR-84: Hilfe zur Pflege, Grundbedarf vom Partner, gekürzte einmalige Ausgabe und offene Reste eines Jahres.
+ * @param {any} raw Jahreszeile. @param {(value: number, yearEnd?: boolean) => string} money Betrag in der gewählten Eurobasis,
+ * mit `yearEnd` als Bestand am Jahresende. @returns {string} */
+export function floorReliefText(raw, money) {
+    const name = (/** @type {string} */ id) => raw.personAccounts?.find((/** @type {any} */ person) => person.profileId === id)?.name || 'Person';
+    let text = '';
+    if (raw.hilfe_zur_pflege > 0) {
+        const persons = (raw.hilfe_zur_pflege_personen || []).map((/** @type {any} */ row) => `${name(row.profileId)} ${money(row.amount)}`);
+        const tax = raw.hilfe_zur_pflege_steuer > 0 ? `, davon Steuer aus Verkäufen oder Zinsen für die Pflege ${money(raw.hilfe_zur_pflege_steuer)}` : '';
+        text += ` · Hilfe zur Pflege: ${money(raw.hilfe_zur_pflege)}${persons.length ? ` (${persons.join(', ')})` : ''}${tax}. Diese Pflegekosten trägt das eigene Geld nicht mehr; sie zahlt der Staat.`;
+    }
+    for (const row of raw.partner_grundbedarf || []) text += ` · Partner deckt Grundbedarf: ${money(row.amount)} (${name(row.fromProfileId)} für ${name(row.profileId)}).`;
+    if (raw.geplante_ausgaben_abgelehnt?.length) {
+        const labels = raw.geplante_ausgaben_abgelehnt.map((/** @type {{label: string}} */ item) => item.label).filter(Boolean);
+        text += ` · Einmalausgabe wegen zu hohem Betrag abgelehnt${labels.length ? ` (${labels.join(', ')})` : ''}.`;
+    }
+    if (raw.geplante_ausgaben_gekuerzt > 0) {
+        const items = (raw.geplante_ausgaben_entfallen || []).filter((/** @type {any} */ item) => item.label).map((/** @type {any} */ item) => `${item.label} ${money(item.amount)}`);
+        text += ` · Geplante Ausgabe entfällt: ${money(raw.geplante_ausgaben_gekuerzt)}${items.length ? ` (${items.join(', ')})` : ''}. Das Geld reicht nach Grundbedarf und Pflege nicht mehr; jeder Posten ganz oder gar nicht.`;
+    }
+    if (raw.grundbedarf_rest > 0) text += ` · Grundbedarf um ${money(raw.grundbedarf_rest)} nicht gedeckt (Rundungsrest).`;
+    // NK-2 (FR-84 Punkt 17): Steuerschuld aus dem Vorjahr und am Jahresende offene Steuer.
+    if (raw.steuer_schuld_vorjahr > 0) text += ` · Steuerschuld aus dem Vorjahr: ${money(raw.steuer_schuld_vorjahr)}, nach Grundbedarf und Pflege und vor dem Flex fällig.`;
+    if (raw.steuer_offen > 0) text += ` · Steuer offen: ${money(raw.steuer_offen, true)}. Sie bleibt als Schuld stehen, mindert das Vermögen (brutto ${money(raw.portfolio_total_brutto, true)}) und ist im Folgejahr fällig.`;
+    return text;
+}
+
+/** ER-2e (Befund 1814): Beim Verkauf im Todesjahr erhalten die anderen Erben den Nettoerlös ohne das Wohnkapital. */
+function housingCapitalSaleRest(estate) {
+    return estate?.housingCapital > 0 ? estate.housingCapital * (100 - estate.housingCapitalPercent) / estate.housingCapitalPercent : 0;
+}
+
 function inheritanceInfo(raw, entry, options) {
     const estate = raw.inheritance, people = options.inputs?.simulationPeople || [];
+    const status = options.inputs?.partnership?.status;
     const name = id => {
         const index = people.findIndex(person => person.profileId === id);
         return options.personDisplayContext?.persons?.[index]?.name || people[index]?.name || 'Person';
@@ -329,25 +411,45 @@ function inheritanceInfo(raw, entry, options) {
     const money = value => formatProtocolValue({ format: 'money' }, value, entry, options);
     const line = (label, value) => `<span class="protocol-cashflow-line"><span>${escape(label)}</span><span>${escape(money(value))}</span></span>`;
     const deceased = name(estate.deceasedProfileId), survivor = name(estate.survivorProfileId);
-    const allowance = inheritancePersonalAllowance(options.inputs?.partnership?.status ?? 'married');
+    const allowance = inheritancePersonalAllowance(status);
     const nominalAllowance = formatProtocolValue({ format: 'money' }, allowance), realAllowance = money(allowance);
     const allowanceNote = options.moneyBasis === 'real' && realAllowance !== '—' && realAllowance !== nominalAllowance
         ? `<small>Freibetrag ${escape(nominalAllowance)} gilt nominal, in Euro von heute ${escape(realAllowance)}.</small>` : '';
+    // VB-1: Versorgungsfreibetrag mit derselben Real-/Nominalbehandlung wie der persönliche Freibetrag.
+    const relief = status ? estate.pensionAllowance : undefined;
+    const nominal = value => formatProtocolValue({ format: 'money' }, value);
+    const reliefNote = !relief ? '' : relief.missingAge ? 'Hinterbliebenenrente eingetragen, aber ohne Alter kein Versorgungsfreibetrag.'
+        : [relief.capital > 0 ? `${nominal(PENSION_ALLOWANCE)} minus Kapitalwert der Hinterbliebenenrente ${nominal(relief.capital)}.` : '',
+            options.moneyBasis === 'real' && money(relief.amount) !== '—' && money(relief.amount) !== nominal(relief.amount)
+                ? `Versorgungsfreibetrag ${nominal(relief.amount)} gilt nominal, in Euro von heute ${money(relief.amount)}.` : ''].filter(Boolean).join(' ');
     const content = `<strong>Todesfall ${escape(deceased)}</strong>` + line(`${deceased}: Vermögen im Todesjahr`, estate.assets)
+        + (estate.estateCosts > 0 ? line('Bestattungs- und Abwicklungskosten', estate.estateCosts) : '')
         + (estate.home > (estate.inheritedSaleProceeds || 0) ? line('dazu Immobilien', estate.home - (estate.inheritedSaleProceeds || 0)) : '')
         + (estate.inheritedSaleProceeds > 0 ? line(`Hauserlös (verkauft im Jahr ${[...new Set((Array.isArray(estate.homeSaleProceeds) ? estate.homeSaleProceeds : []).map(row => row.year))].join(', ')})`, estate.inheritedSaleProceeds) : '')
-        + line(`${survivor} erbt (${estate.homeAndTax ? 'Immobilien + Steuer, zusätzlich ' : ''}${estate.homeMode ? 'nach Testament' : `${estate.percent} %`})`, estate.inherited + estate.inheritedHome)
+        + line(`${survivor} erbt (${estate.homeAndTax ? 'Immobilien + Steuer, zusätzlich ' : ''}${estate.homeMode ? 'nach Testament' : `${estate.percent} %`})`,
+            estate.housingCapital > 0 ? estate.inherited + estate.inheritedHome + estate.housingCapital : estate.inherited + estate.inheritedHome)
         + (estate.homeMode ? line('Geldanteil', estate.inherited) + line('Immobilien', estate.inheritedHome)
-            + line('Kapitalwert Wohnrecht', estate.residenceCapital)
+            + (estate.homeMode === 'housing-capital'
+                ? (estate.housingCapital > 0 ? line(`Wohnkapital (${estate.housingCapitalPercent.toLocaleString('de-DE')} % vom Nettoerlös)`, estate.housingCapital)
+                    + (housingCapitalSaleRest(estate) > 0 ? line('Übriger Hauserlös an die anderen Erben', housingCapitalSaleRest(estate)) : '')
+                    + `<small>Der Anteil von ${escape(deceased)} am selbst genutzten Haus wird verkauft. ${escape(survivor)} erhält das Wohnkapital aufs Tagesgeld und zahlt ab dem Folgejahr die Miete selbst.</small>`
+                    : estate.housingCapitalCancelled ? `<small>${HOUSING_CAPITAL_CANCELLED}. Die übrigen Erben erhalten den Hausanteil.</small>`
+                    : estate.moveOutYears > 0 ? `<small>${rentFreeThroughDescription(estate.moveOutYears)}. Im Verkaufsjahr beginnt die Miete. Den übrigen Erlös erhalten die anderen Erben.</small>` : '')
+                : line(estate.homeMode === 'rent-bequest' ? 'Kapitalwert der Rente aus dem Erbe' : 'Kapitalwert Wohnrecht', estate.residenceCapital))
             + (estate.homeMode === 'residence' ? (estate.residenceIneligible
                 ? '<small>Wohnrecht entfällt (Pflegeheim), Haus an die übrigen Erben.</small>'
                 : '<small>Wohnrecht auf Lebenszeit: Haus bei den übrigen Erben, mietfreies Wohnen bis zur dauerhaften Heimpflege; kein Verkauf im Modell.</small>')
+                : estate.rentBequestAnnual > 0 ? `<small>Der Verkaufserlös geht an die übrigen Erben. ${escape(survivor)} erhält ab dem Folgejahr lebenslang eine Rente aus dem Erbe, angepasst an die Inflation.</small>`
                 : estate.homeMode === 'life-estate' ? '<span>Eigentum auf Lebenszeit, danach an die Kinder: kein Verkauf und keine Mieteinnahmen bei Heimpflege.</span>' : '') : '')
+        + (estate.childrenMoneyCut > 0 ? line('Geldanteil gekürzt für den Pflichtteil der Kinder', estate.childrenMoneyCut) : '')
+        + (estate.childrenShortfall > 0 ? line('Pflichtteil der Kinder nicht voll gedeckt', estate.childrenShortfall) : '')
         + (estate.homeAndTax ? line('davon Steuergeld', estate.taxCash) : '')
         + (estate.homeAndTax ? `<span>davon ${escape(money(estate.taxCashSaleTax || 0))} für Steuern beim Verkauf von Wertpapieren</span>` : '')
         + line('Erbschaftsteuer', estate.tax)
+        + (status ? '' : `<small>${MISSING_PARTNERSHIP_STATUS}.</small>`)
         + allowanceNote
-        + (estate.exemptGain > 0 ? line('steuerfrei als Zugewinnausgleich', estate.exemptGain) : '')
+        + (status && estate.exemptGain > 0 ? line('steuerfrei als Zugewinnausgleich', estate.exemptGain) : '')
+        + (relief ? line('Versorgungsfreibetrag (§ 17 ErbStG)', relief.amount) + (reliefNote ? `<small>${escape(reliefNote)}</small>` : '') : '')
         + (estate.funding ? line('Kapitalertragsteuer zur Bezahlung', estate.funding.saleTax)
             + `<small>Bezahlt: aus Verkauf ${escape(money(estate.funding.saleUsed))}, aus Liquidität ${escape(money(estate.funding.liquidityUsed))}`
             + (estate.funding.inheritedTaxCashUsed !== undefined ? `, aus geerbtem Steuergeld ${escape(money(estate.funding.inheritedTaxCashUsed))}` : '')
@@ -404,23 +506,24 @@ export function renderProtocolSummary(rows, options = {}) {
     const source = options.source || 'mc', data = Array.isArray(rows) ? rows : [];
     const flags = data.map(row => protocolRowFlags(row, source));
     const outcome = options.outcome?.kind || options.outcome;
-    const outcomeLabel = ({ completed: 'Vollständig', no_ruin: 'Kein Ruin', ruin: 'Ruin', all_dead: 'Haushalt verstorben', horizon_exhausted: 'Horizont erreicht',
+    const outcomeLabel = ({ completed: 'Vollständig', no_ruin: 'Vermögen reicht', ruin: 'Vermögen aufgebraucht', all_dead: 'Haushalt verstorben', horizon_exhausted: 'Horizont erreicht',
         incomplete: 'Unvollständig', technical_error: 'Technischer Fehler' })[outcome];
     const lastEntry = data.filter(entry => Number.isFinite(protocolRowData(entry, source)?.portfolio_total_end)).at(-1);
     const last = protocolRowData(lastEntry, source);
     const badge = outcomeLabel ? chip(outcomeLabel, outcome === 'ruin' ? 'ruin' : outcome === 'all_dead' ? 'ended' : 'complete') : '';
     const metrics = [];
-    const metric = (value, label, detail = '') => `<div class="ds-metric"><strong class="ds-metric-value">${escape(value)}</strong><span class="ds-metric-label">${escape(label)}</span>${detail ? `<small class="sim-money-detail">${escape(detail)}</small>` : ''}</div>`;
+    // HP-3: Die Teile des Zusatzes brechen nicht in sich um; der Trennpunkt hängt am ersten Teil (wie der Alterstext, HP-2).
+    const metric = (value, label, parts = []) => `<div class="ds-metric"><strong class="ds-metric-value">${escape(value)}</strong><span class="ds-metric-label">${escape(label)}</span>${parts.length ? `<small class="sim-money-detail">${parts.map((part, at) => `<span class="sim-money-part">${escape(part)}${at < parts.length - 1 ? ' ·' : ''}</span>`).join(' ')}</small>` : ''}</div>`;
     const inflation = source === 'backtest' ? lastEntry?.inflationVJ : last.inflation;
     const factor = Number.isFinite(last.inflation_factor_cum) && Number.isFinite(inflation)
         ? last.inflation_factor_cum * (1 + inflation / 100) : null;
     const end = Object.hasOwn(options, 'endWealth') ? options.endWealth : options.moneyBasis === 'real'
         ? Number.isFinite(factor) && factor > 0 ? last.portfolio_total_end / factor : null : last.portfolio_total_end;
     const homes = rowWealthParts(last, options.moneyBasis, factor);
-    if (Number.isFinite(end)) metrics.push(metric(formatProtocolValue({ format: 'money' }, end + (homes?.total || 0)), `Gesamtvermögen · ${options.euroBasis || (options.moneyBasis === 'real' ? 'real' : 'nominal')}`, Number.isFinite(last.immobilien_wert_end) ? `davon Geldvermögen ${formatProtocolValue({ format: 'money' }, end)} · Immobilien ${formatProtocolValue({ format: 'money' }, homes?.total)}` : ''));
-    metrics.push(metric(flags.filter(flag => flag.cut).length, 'Jahre mit Kürzung'));
+    if (Number.isFinite(end)) metrics.push(metric(formatProtocolValue({ format: 'money' }, end + (homes?.total || 0)), `Gesamtvermögen · ${options.euroBasis || (options.moneyBasis === 'real' ? 'real' : 'nominal')}`, Number.isFinite(last.immobilien_wert_end) ? [`davon Geldvermögen ${formatProtocolValue({ format: 'money' }, end)}`, `Immobilien ${formatProtocolValue({ format: 'money' }, homes?.total)}`] : []));
+    metrics.push(metric(flags.filter(flag => flag.cut).length, 'Jahre mit einer Kürzung'));
     metrics.push(metric(flags.filter(flag => flag.care).length, 'Pflegejahre'));
-    return renderPersonDataNotice(options.personDataContext) + `<p class="protocol-subtitle">${escape(options.subtitle || `${data.length} Jahreszeilen · Anzeige unabhängig vom vollständigen Download`)}</p><div class="protocol-chips">${badge}<div class="protocol-metrics ds-kpi-strip">${metrics.join('')}</div></div>`;
+    return renderPersonDataNotice(options.personDataContext) + `<p class="protocol-subtitle">${escape(options.subtitle || `${data.length} Jahreszeilen · Anzeige unabhängig vom vollständigen Export`)}</p><div class="protocol-chips">${badge}<div class="protocol-metrics ds-kpi-strip">${metrics.join('')}</div></div>`;
 }
 
 /**
@@ -430,7 +533,7 @@ export function renderProtocolSummary(rows, options = {}) {
 export function renderProtocolLegend(options = {}) {
     const context = options.personDisplayContext || createProtocolPersonContext(options.inputs);
     const persons = options.source === 'backtest' ? '' : `✓ lebt · ${context.careEnabled ? 'PG Pflegegrad · ' : ''}† verstorben. `;
-    return `<div class="protocol-legend"><span><i class="protocol-mark-cut" aria-hidden="true"></i>Jahr mit Kürzung</span><span><i class="protocol-mark-care" aria-hidden="true"></i>Pflegejahr</span><span><i class="protocol-mark-ruin" aria-hidden="true"></i>Ruin</span><span>${persons}Gepunktete Überschriften erklären die Spalten. Handel nennt verkauft oder gekauft.</span></div>`;
+    return `<div class="protocol-legend"><span><i class="protocol-mark-cut" aria-hidden="true"></i>Jahr mit Kürzung</span><span><i class="protocol-mark-care" aria-hidden="true"></i>Pflegejahr</span><span><i class="protocol-mark-ruin" aria-hidden="true"></i>Vermögen aufgebraucht</span><span>${persons}Gepunktete Überschriften erklären die Spalten. Handel nennt verkauft oder gekauft.</span></div>`;
 }
 
 /**
@@ -464,7 +567,7 @@ export function protocolPersonPresentation(rows, index, column, options = {}) {
     if (context.careEnabled && raw[`CareP${person}_Active`]) {
         const grade = raw[`CareP${person}_Grade`];
         return { text: grade == null ? 'PG ?' : `PG ${grade}`, tone: 'care',
-            title: `${name}: ${grade == null ? 'Pflegegrad unbekannt' : `Pflegegrad ${grade}`}${raw[`CareP${person}_HeimBestand`] ? ' · heute im Heim' : raw[`CareP${person}_HeimJahr`] ? ` · im Heim, Heimjahr ${raw[`CareP${person}_HeimJahr`]}` : ''}` };
+            title: `${name}: ${grade == null ? 'Pflegegrad unbekannt' : `Pflegegrad ${grade}`}${raw[`CareP${person}_HeimBestand`] ? ' · heute im Heim' : raw[`CareP${person}_HeimJahr`] ? ` · im Heim, Heimjahr ${raw[`CareP${person}_HeimJahr`]}` : ''}${(entry => entry ? ` · ${entry}` : '')(protocolResidentialEntry(rows[index], person - 1, { ...options, rows }))}` };
     }
     return { text: '✓', tone: 'alive', title: `${name}: lebt` };
 }
@@ -499,13 +602,15 @@ export function renderProtocolTable(rows, options = {}) {
             ? ` id="${source === 'backtest' ? 'backtest' : 'scenario'}-year-${entry.jahr}" tabindex="-1"` : '';
         html += `<tr${yearAnchor} class="${index % 2 === 0 ? 'even' : 'odd'}${flags.cut ? ' backtest-row-cut protocol-row-cut' : ''}${flags.care ? ' protocol-row-care' : ''}${flags.ruin ? ' backtest-row-ruin protocol-row-ruin' : ''}${belowCar ? ' below-car' : ''}">`;
         columns.forEach((column, position) => {
-            let value = column.id ? readProtocolValue(column, entry, options) : undefined;
+            let value = column.id ? readProtocolValue(column, entry, actionOptions) : undefined;
             const requested = typeof column.cellClass === 'function' ? column.cellClass(entry) : column.cellClass;
             const tradeClass = ['backtest-trade-sale', 'backtest-trade-buy'].includes(requested) ? requested : '';
             const numeric = column.align === 'right' ? ' protocol-number' : '';
             if (column.id === 'year') {
                 const year = protocolYearPresentation(entry, index, options);
-                html += `<td class="protocol-year">${escape(year.calendarYear ?? '—')}<small>${source === 'mc' ? `Simulationsjahr ${escape(year.simulationYear ?? '—')}` : ''}${year.ages ? `${source === 'mc' ? ' · ' : ''}Alter ${escape(year.ages)}` : ''}</small></td>`;
+                // HP-2: Beide Teile brechen nicht in sich um; der Trennpunkt hängt am ersten Teil, damit keine Zeile mit „·“ beginnt.
+                const parts = [source === 'mc' ? `Simulationsjahr ${escape(year.simulationYear ?? '—')}` : '', year.ages ? `Alter ${escape(year.ages)}` : ''].filter(Boolean);
+                html += `<td class="protocol-year">${escape(year.calendarYear ?? '—')}<small>${parts.map((part, at) => `<span class="protocol-year-part">${part}${at < parts.length - 1 ? ' ·' : ''}</span>`).join(' ')}</small></td>`;
             } else if (column.format === 'person') {
                 const state = protocolPersonPresentation(data, index, column, options);
                 html += `<td class="protocol-person protocol-person-${state.tone}${groupStart(position) ? ' protocol-group-start' : ''}" title="${escape(state.title)}" aria-label="${escape(state.title)}"><span aria-hidden="true">${escape(state.text)}</span></td>`;
@@ -515,7 +620,7 @@ export function renderProtocolTable(rows, options = {}) {
                 const withdrawal = column.id === 'withdrawal';
                 const cashflow = ['income-total', 'expense-total'].includes(column.id);
                 // TRG-1c Punkt 5: Ein Rückgriff („Vermögen von … wird angegriffen“) bleibt auch im Todesjahr sichtbar.
-                const actionInfo = action && (!raw.inheritance || options.strategyMode === STRATEGY_OPTIONS.THREE_BUCKET_JILGE || raw.personalPayoutSales?.length || raw.personalPayout?.attacked?.length || raw.personalPayout?.flexCut?.length)
+                const actionInfo = action && (!raw.inheritance || options.strategyMode === STRATEGY_OPTIONS.THREE_BUCKET_JILGE || raw.personalPayoutSales?.length || raw.personalPayout?.attacked?.length || raw.personalPayout?.flexCut?.length || raw.hilfe_zur_pflege > 0 || raw.partner_grundbedarf?.length || raw.steuer_schuld_vorjahr > 0 || raw.steuer_offen > 0)
                     ? protocolInfo('Handlung und vollständige Begründung', protocolActionExplanation(entry, actionOptions, formatted)) : '';
                 const content = action
                     ? `${escape(protocolActionShortText(entry, actionOptions, formatted))}${actionInfo}${raw.inheritance ? inheritanceInfo(raw, entry, options) : ''}`

@@ -23,9 +23,9 @@ const factor2045 = schedule => careCostDriftFactor(2026, 2045, schedule);
         'GN-2: gespeichert 3,5 % (alte Vorgabe, Altbestand) wie Vorgabe');
     assertClose(factor2045(scheduleFor(prices({ driftPercent: 3.5 }))), Math.pow(1.035, 19), 1e-9,
         'GN-2: bewusst eingetragene 3,5 % (markiert, PFA-4 B6) bleiben dauerhaft');
-    assertClose(factor2045(careDriftScheduleOf(resolveCarePrices(null, { sim_pflegeKostenDrift: '3.5' }, { shared: false }))), 1.8911, 1e-4,
+    assertClose(factor2045(careDriftScheduleOf(resolveCarePrices(null, { sim_pflegeKostenDrift: '3.5' }))), 1.8911, 1e-4,
         'GN-2: alter sim_-Wert 3,5 % ohne Preisblock wie Vorgabe');
-    assertClose(factor2045(careDriftScheduleOf(resolveCarePrices(null, { sim_pflegeKostenDrift: '4' }, { shared: false }))), Math.pow(1.04, 19), 1e-9,
+    assertClose(factor2045(careDriftScheduleOf(resolveCarePrices(null, { sim_pflegeKostenDrift: '4' }))), Math.pow(1.04, 19), 1e-9,
         'GN-2: alter eigener sim_-Wert 4 % gilt dauerhaft');
     const own = scheduleFor(prices({ driftPercent: 6, driftUntilYear: 2030, driftAfterPercent: 1 }));
     assertEqual(JSON.stringify(own), JSON.stringify({ firstPercent: 6, untilYear: 2030, afterPercent: 1 }), 'GN-2: gesetzter Verlauf gilt wie gespeichert');

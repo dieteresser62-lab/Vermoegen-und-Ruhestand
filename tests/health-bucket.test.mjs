@@ -14,7 +14,7 @@ function assert(condition, message) {
 }
 
 function assertClose(actual, expected, tolerance, message) {
-    if (Math.abs(actual - expected) > tolerance) {
+    if (!Number.isFinite(actual) || !Number.isFinite(expected) || Math.abs(actual - expected) > tolerance) {
         throw new Error(`${message}: Actual ${actual} != Expected ${expected}`);
     }
 }

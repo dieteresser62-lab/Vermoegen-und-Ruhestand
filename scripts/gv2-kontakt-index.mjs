@@ -38,7 +38,6 @@ const indexRows = records.map(record => {
         || state.startsWith('verlauf-') && row[2] === 'Verlauf Haushalt/Person'
         || state.startsWith('handbuch') && row[2].startsWith('Handbuch')
         || state.startsWith('monte-carlo-care') && row[2] === 'Monte Carlo Pflege'
-        || state.startsWith('werkstatt-') && row[2] === 'Werkstatt'
         || record.file.includes('martin-petra') && row[2] === 'Partnerschaft').map(row => row[1]);
     return `| [${record.file}](${record.file}) · [Bildschirm](${record.screen}) | ${numbers.join(', ') || 'ergänzende Seitenabnahme'} | ${record.place} | ${record.expected} |`;
 });

@@ -1,6 +1,6 @@
 import { resolveCareSetting } from '../shared/care-cost-resolver.js';
 /** @import {SimulatorControl} from '../../typcheck/simulator-ui.js' */
-import { careSettingsStorage, isCareSettingKey, sharesHouseholdCareValues } from '../shared/care-profile-settings.js';
+import { careSettingsStorage, isCareSettingKey } from '../shared/care-profile-settings.js';
 import { resolveCarePrices } from '../shared/care-prices.js';
 import { readCareValues } from '../shared/household-care-values.js';
 import { normalizeCareForm } from '../shared/care-benefits.js';
@@ -14,9 +14,13 @@ import { readSimulatorHouseholdPlan, projectPlanToSimulator, SIMULATOR_PLAN_FIEL
 import { SUPPORTED_PFLEGE_GRADES } from './simulator-data.js';
 import { updateStartPortfolioDisplay } from './simulator-portfolio.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
-import { MONTE_CARLO_PARAMETER_LIMITS } from './monte-carlo-parameters.js';
+import { documentMonteCarloDefaultRuns } from './monte-carlo-run-default.js';
 import { readStoredMonteCarloDuration, writeMonteCarloDurationMarker, MONTE_CARLO_DURATION_EXPLICIT_KEY } from './monte-carlo-duration.js';
+import { readStoredMonteCarloMethod, writeMonteCarloMethodSource, MONTE_CARLO_METHOD_SOURCE_KEY } from './monte-carlo-method-choice.js';
 import { migrateStoredCareFlex } from './simulator-care-flex-persistence.js';
+import { WIDOW_FIELD_IDS, loadHouseholdWidowSettings, writeHouseholdWidowSetting } from './simulator-household-widow-persistence.js';
+import { readHouseholdEquityPurchases, writeHouseholdEquityPurchases } from './simulator-household-purchases-persistence.js';
+import { setStartYearFilter } from './historical-backtest-ui.js';
 import {
     HOUSEHOLD_SIMULATOR_NEED_FIELD_IDS,
     ensureHouseholdSimulatorNeedsMigrationPending,
@@ -35,9 +39,10 @@ const CARE_GRADE_FIELD_IDS = SUPPORTED_PFLEGE_GRADES.flatMap(grade => [
     `pflegeStufe${grade}Form`
 ]);
 /**
+ * @param {{monteCarloDefaultRuns?: number}} [options] Vorgabe der Laufzahl; sonst aus dem Spielbereich der Seite (MC-3).
  * @returns {void}
  */
-export function initInputPersistence() {
+export function initInputPersistence({ monteCarloDefaultRuns = documentMonteCarloDefaultRuns(globalThis.document) } = {}) {
     const careMigration = migrateStoredCareFlex();
     const careNotice = document.getElementById('simCareFlexMigrationNotice');
     if (careNotice) {
@@ -48,6 +53,7 @@ export function initInputPersistence() {
     getSimulatorPlanTrial(document);
     const allInputs = [
         'survivorFloorPercent', 'survivorFlexPercent', 'survivorMinimumFlexPercent',
+        ...WIDOW_FIELD_IDS, 'simulatedEquityPurchases',
         'startFloorBedarf', 'startFlexBedarf', 'minimumFlexAnnual', 'flexBudgetAnnual', 'flexBudgetYears', 'flexBudgetRecharge', 'marketCapeRatio',
         'dynamicFlexPreset', 'dynamicFlexShowAdvanced',
         'dynamicFlex', 'horizonMethod', 'horizonYears', 'survivalQuantile', 'goGoActive', 'goGoMultiplier',
@@ -65,9 +71,9 @@ export function initInputPersistence() {
     const projected = initialPlan.status === 'valid' ? projectPlanToSimulator(initialPlan.entry.values) : null;
     const householdNeedsState = projected ? { values: null } : ensureHouseholdSimulatorNeedsMigrationPending();
     const persistedHouseholdNeeds = householdNeedsState.values;
+    const widowSettings = loadHouseholdWidowSettings(persistenceStorage);
     // Lesen: Record zuerst, sonst Altbestand über den Resolver; nichts wird dabei geschrieben.
-    const carePrices = resolveCarePrices(readCareValues(persistenceStorage), careSettingsStorage(persistenceStorage),
-        { shared: sharesHouseholdCareValues(persistenceStorage) });
+    const carePrices = resolveCarePrices(readCareValues(persistenceStorage), careSettingsStorage(persistenceStorage));
 
     const renderHouseholdNeedWriteResult = (element, result, eventType) => {
         const message = result.ok ? '' : result.message;
@@ -81,17 +87,26 @@ export function initInputPersistence() {
             // Persistence Logic
             const storageKey = 'sim_' + id;
             const fieldStorage = isCareSettingKey(storageKey) ? careSettingsStorage(persistenceStorage) : persistenceStorage;
+            const isWidowSetting = WIDOW_FIELD_IDS.includes(id);
+            const isEquityPurchaseSetting = id === 'simulatedEquityPurchases';
             const isHouseholdNeed = isHouseholdSimulatorNeedField(id);
             const isPlanField = Object.hasOwn(SIMULATOR_PLAN_FIELD_MAP, id);
             const rawStoredVal = ['dynamicFlexPreset', 'dynamicFlexShowAdvanced'].includes(id) && projected ? null : !projected && PLAN_ONLY_PERSIST_IDS.has(id) ? null : projected && isPlanField ? projected[id] ?? '' : isHouseholdNeed
                 ? (persistedHouseholdNeeds?.[id] ?? null)
+                : isWidowSetting ? widowSettings[id] ?? null
+                : isEquityPurchaseSetting ? readHouseholdEquityPurchases(persistenceStorage)
                 : CARE_PRICE_FIELD_IDS.has(id) ? String(carePriceValue(id, carePrices))
                     : resolveCareSetting(storageKey, fieldStorage.getItem(storageKey));
             // FR-75: Die alte Vorgabe 35 gilt beim Lesen als automatische Dauer; nichts wird geschrieben.
             // GH-1 Punkt 11: eine bewusst eingetragene 35 bleibt nach dem Neuladen stehen.
-            const storedVal = id === 'mcDauer' ? readStoredMonteCarloDuration(rawStoredVal, fieldStorage.getItem(MONTE_CARLO_DURATION_EXPLICIT_KEY) === 'true') : rawStoredVal;
+            // MS-1b: Nur ein gespeichertes regime_markov ohne Merkmal „nutzer“ ist die alte Vorgabe und weicht Stationary Bootstrap. Nichts wird geschrieben.
+            const storedVal = id === 'mcDauer' ? readStoredMonteCarloDuration(rawStoredVal, fieldStorage.getItem(MONTE_CARLO_DURATION_EXPLICIT_KEY) === 'true')
+                : id === 'mcMethode' ? readStoredMonteCarloMethod(rawStoredVal, fieldStorage.getItem(MONTE_CARLO_METHOD_SOURCE_KEY)) : rawStoredVal;
+            // JD-1: Schieber „Startjahr ab“ erst mit Maximum aus den Daten, dann gespeicherter Wert oder Vorgabe 1970.
+            if (id === 'mcStartYearFilter') setStartYearFilter(element, element.dataset.noPersist ? null : storedVal);
+            // MC-3: Ohne gespeicherte Eingabe gilt die Vorgabe der Seite (Beispielhaushalt 2.000, sonst 10.000); gespeichert wird sie nicht.
             if (id === 'mcAnzahl' && (storedVal === null || storedVal === '')) {
-                element.value = String(MONTE_CARLO_PARAMETER_LIMITS.runs.default);
+                element.value = String(monteCarloDefaultRuns);
             }
             // noPersist allows specific fields to opt out of persisted storage.
             if (!element.dataset.noPersist && storedVal !== null && storedVal !== "") {
@@ -165,6 +180,10 @@ export function initInputPersistence() {
                             (initialPlan.status === 'valid' || getSimulatorPlanTrial(document).read().confirmed)) {
                             // Auch nach Bestätigung im selben Dokument und späterem
                             // Planverlust bleiben Preset und Darstellung seitenlokal.
+                        } else if (isWidowSetting) {
+                            writeHouseholdWidowSetting(persistenceStorage, id, element.value);
+                        } else if (isEquityPurchaseSetting) {
+                            writeHouseholdEquityPurchases(persistenceStorage, element.value);
                         } else if (element.type === 'checkbox') {
                             fieldStorage.setItem(storageKey, element.checked);
                         } else if (element.type !== 'radio' && !(id === 'pflegeKostenDriftBis' && !validCareDriftYear(element.value))) {
@@ -172,6 +191,7 @@ export function initInputPersistence() {
                             // GN-2c (Gemini P3-2): Ein ungültiges Jahr schreibt weder Preisblock noch `sim_`-Wert.
                             if (CARE_PRICE_FIELD_IDS.has(id)) writeCarePriceField(id, element.value);
                             if (id === 'mcDauer') writeMonteCarloDurationMarker(fieldStorage, element.value);
+                            if (id === 'mcMethode') writeMonteCarloMethodSource(fieldStorage);
                             fieldStorage.setItem(storageKey, element.value);
                         }
                     }

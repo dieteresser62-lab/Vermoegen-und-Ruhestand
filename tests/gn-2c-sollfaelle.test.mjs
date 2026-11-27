@@ -8,6 +8,10 @@ import { careValuesWithPrices } from '../app/shared/care-prices.js';
 import { HOUSEHOLD_CARE_VALUES_KEY } from '../app/shared/household-care-values.js';
 import { validCareDriftYear, writeCareSettingField } from '../app/shared/care-price-fields.js';
 import { PersistenceFacade as P, persistenceStorage, resetPersistenceForTests } from '../app/shared/persistence-facade.js';
+import { setAppTestDate } from '../app/shared/app-clock.js';
+import { initializePflegeUIControls } from '../app/simulator/simulator-ui-pflege.js';
+import { initInputPersistence } from '../app/simulator/simulator-main-input-persist.js';
+import { simulatorDocument } from './simulator-page-fixture.mjs';
 
 const date = '2026-10-23';
 const text = value => clean(value).replaceAll(' ', ' ');
@@ -18,9 +22,11 @@ async function compare(records) {
     return { balance, plan: text(row.plan), preview: text(row.preview), delta: text(row.delta) };
 }
 
-// Ohne Beleg: Vorschau = Reservekarte ohne Beleg (bisher Renate 105 %, Jan und Lena 50 %, Martin und Petra 125 %).
+// Ohne Beleg: Vorschau = Reservekarte ohne Beleg. Der Verkaufszufluss entspricht dem gerundeten Kopf.
 // GN-2d (Gemini P2-1): ohne vorherigen Besuch der Balance, also ohne gespeicherte Zusammenfassung mit Prozenten.
-for (const [id, expected] of Object.entries({ renate: '108 %', 'jan-lena': '52 %', 'martin-petra': '100 %', 'max-erika': '109 %', 'helga-werner': '107 %', sophie: '100 %' })) {
+// ATH-1b (FR-89, Ergänzung 3): Der Kurs liegt höchstens 5 % unter dem Tageshoch der Spielkurse vom 12.08.2026 und gilt als
+// Höchststand; die Vorschau verkauft wieder wie vor ATH-1 (nach ATH-1 ohne Grundrauschen 75 %, 76 % und 73 %).
+for (const [id, expected] of Object.entries({ renate: '105 %', 'jan-lena': '50 %', 'martin-petra': '100 %', 'max-erika': '109 %', 'helga-werner': '107 %', sophie: '100 %' })) {
     const records = createMusterHaushaltRecords(date, id);
     delete records.annual_plan_record_v1;
     const shown = await compare(records);
@@ -28,7 +34,8 @@ for (const [id, expected] of Object.entries({ renate: '108 %', 'jan-lena': '52 %
 }
 
 // Mit Beleg wie ausgeliefert: Plan = Reservekarte mit Beleg. VK-3d P4: Martin und Petra 100 % (Kauf als Summe der Zeilen 122.000 €, vorher 125 %).
-for (const [id, expected] of Object.entries({ 'max-erika': '109 %', renate: '105 %', 'jan-lena': '51 %', 'helga-werner': '108 %', sophie: '100 %', 'martin-petra': '100 %' })) {
+// HP-3: Jan und Lena 50 % statt 51 % (Verkauf 100.000 € statt 102.500 €), Helga und Werner 107 % statt 108 % (Summe der Zeilen einmal gerundet).
+for (const [id, expected] of Object.entries({ 'max-erika': '109 %', renate: '105 %', 'jan-lena': '50 %', 'helga-werner': '107 %', sophie: '100 %', 'martin-petra': '100 %' })) {
     const shown = await compare(createMusterHaushaltRecords(date, id));
     assertEqual(`${shown.balance} | ${shown.plan}`, `${expected} | ${expected}`, `GN-2c: ${id} mit Beleg, Balance | Plan`);
     const delta = Number.parseInt(shown.preview, 10) - Number.parseInt(shown.plan, 10);
@@ -37,7 +44,7 @@ for (const [id, expected] of Object.entries({ 'max-erika': '109 %', renate: '105
 
 // Sophie mit Kauf-Beleg, Tagesgeld inzwischen gesunken: Vorschau = Reservekarte. Der Kauf des Belegs geht nicht mehr auf → Plan offen,
 // nie die heutige Vorschau.
-for (const [cash, expected] of [['4000', '108 %'], ['5500', '117 %']]) {
+for (const [cash, expected] of [['4000', '100 %'], ['5500', '108 %']]) {
     const records = createMusterHaushaltRecords(date, 'sophie'), id = records.rs_current_profile;
     const shown = await compare(editRegistry(records, registry => { registry.profiles[id].data.profile_tagesgeld = cash; }));
     assertEqual(`${shown.balance} | ${shown.preview} | ${shown.plan}`, `${expected} | ${expected} | —`, `GN-2c: Sophie Tagesgeld ${cash} €, Balance | Vorschau | Plan`);
@@ -51,7 +58,7 @@ for (const [cash, expected] of [['4000', '108 %'], ['5500', '117 %']]) {
 }
 {
     const shown = await compare(createMusterHaushaltRecords(date, 'renate'));
-    assertEqual(`${shown.plan} | ${shown.preview} | ${shown.delta}`, '105 % | 108 % | +3 Prozentpunkte', 'GN-2d: Renate mit Beleg ohne Balance-Besuch, Δ aus den gezeigten Werten');
+    assertEqual(`${shown.plan} | ${shown.preview} | ${shown.delta}`, '105 % | 105 % | 0 Prozentpunkte', 'GN-2d: Renate mit Beleg ohne Balance-Besuch, Δ aus den gezeigten Werten (Grundrauschen, ATH-1b)');
 }
 
 // Gemini P3-1: Ist die erste Rate im Preisblock markiert (ohne Verlauf), aktivieren `sim_`-Verlaufsfelder und ihre Simulatorfelder
@@ -83,12 +90,46 @@ for (const [cash, expected] of [['4000', '108 %'], ['5500', '117 %']]) {
     } finally { await resetPersistenceForTests(); }
 }
 
+// FR-95: Gespeicherte Jahre bleiben beim Laden gültig, nur neue Eingaben haben eine Untergrenze.
+{
+    const key = 'sim_pflegeKostenDriftBis';
+    const previousDocument = globalThis.document;
+    P.resetPersistenceForTests({ name: 'th-1', async loadAll() { return { [key]: '2026', sim_pflegeKostenDriftDanach: '2' }; }, async saveBatch() {} });
+    await P.init({ installLifecycleHooks: false, installTauriCloseHook: false });
+    setAppTestDate('2027-01-02');
+    try {
+        const doc = globalThis.document = simulatorDocument();
+        const field = doc.getElementById('pflegeKostenDriftBis');
+        // Das Node-DOM bildet für :invalid nur die hier relevanten Zahlengrenzen nach.
+        const rangeUnderflow = () => Boolean(field.min) && Number(field.value) < Number(field.min);
+        initInputPersistence();
+        initializePflegeUIControls();
+        assertEqual(field.value, '2026', 'FR-95: Der Simulator lädt das gespeicherte Bis-Jahr');
+        assertEqual(rangeUnderflow(), false, 'FR-95: Das gespeicherte Bis-Jahr 2026 liegt im gültigen Bereich');
+        field.value = '2025';
+        assertEqual(rangeUnderflow(), true, 'FR-95: Bei gespeichertem Bis-Jahr 2026 ist ein noch früheres Jahr unter der Feldgrenze');
+        field.dispatchEvent({ type: 'change' });
+        assertEqual(persistenceStorage.getItem(key), '2026', 'FR-95: Eine neue Eingabe vor dem Testjahr wird abgewiesen');
+        assertEqual(field.value, '2026', 'FR-95: Nach einer ungültigen Eingabe zeigt das Feld wieder das gespeicherte Bis-Jahr');
+        field.value = '2027';
+        field.dispatchEvent({ type: 'change' });
+        assertEqual(persistenceStorage.getItem(key), '2027', 'FR-95: Das Testjahr wird als neue Eingabe gespeichert');
+        assertEqual(field.min, '2027', 'FR-95: Die Feldgrenze folgt dem Testjahr nach dem Speichern');
+        field.value = '2026';
+        field.dispatchEvent({ type: 'change' });
+        assertEqual(field.value, '2027', 'FR-95: Das frühere Bis-Jahr kann nach einer Änderung nicht neu eingetragen werden');
+    } finally {
+        globalThis.document = previousDocument;
+        setAppTestDate(null);
+        await resetPersistenceForTests();
+    }
+}
+
 // GN-2d Nachtrag 1 (Fable und Gemini P2): Beleg mit Gold- und Aktienkauf. Verglichen wird der gesamte Kauf, nicht die Hauptzeile
 // „Gold kaufen“. Helga und Werner mit je 150.000 € mehr Tagesgeld, Beleg = die dazu heute gerechnete Handlung (Gold + Aktien).
 {
     const { evaluateBalanceCurrentYear } = await import('../app/balance/balance-reserve-today.js');
     const { EngineAPI } = await import('../engine/index.mjs');
-    const { setAppTestDate } = await import('../app/shared/app-clock.js');
     const base = () => editRegistry(createMusterHaushaltRecords(date, 'helga-werner'), registry => {
         for (const profile of Object.values(registry.profiles)) profile.data.profile_tagesgeld = String(Number(profile.data.profile_tagesgeld) + 150000); });
     const records = base();

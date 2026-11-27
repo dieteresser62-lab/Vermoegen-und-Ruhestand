@@ -15,7 +15,7 @@ import { HOUSEHOLD_OWNED_BALANCE_STATE_KEYS } from '../app/profile/profile-stora
 
 // 1: Vorschau, Empfehlung, Beschluss, Summary und Bestände teilen dieselbe Cashbasis.
 async function finding1() {
-    for (const kind of ['Einzelprofil', 'Muster-Haushalt', 'aktive Außenperson']) {
+    for (const kind of ['Einzelprofil', 'Muster-Haushalt']) {
         const sample = readyAnnualFixture(kind), storage = annualRecordStorage(sample.records);
         const before = JSON.stringify(storage.records), activeId = sample.records.rs_current_profile;
         const cash = { people: captureCashPeople({ storage, ids: sample.scope.ids, activeId }),

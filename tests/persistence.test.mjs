@@ -11,9 +11,11 @@ import {
     isAllowedSnapshotRestoreLiveKey,
     listAllowedPersistenceImportKeys,
     LEGACY_MIGRATION_MARKER_KEYS,
-    STRESS_REPLAY_ACTIVE_STORAGE_KEY,
+    LEGACY_WORKSHOP_STORAGE_KEYS,
     PROBELAUF_STATE_KEY
 } from '../app/shared/persistence-key-policy.js';
+// WS-1: früherer Replay-Arbeitsstand der entfernten Werkstatt.
+const STRESS_REPLAY_ACTIVE_STORAGE_KEY = 'sim.stressReplay.active.v1';
 import { createLocalStorageAdapter } from '../app/shared/persistence-adapter-localstorage.js';
 import { createIndexedDbAdapter } from '../app/shared/persistence-adapter-indexeddb.js';
 import { createTauriJsonFileAdapter } from '../app/shared/persistence-adapter-tauri.js';
@@ -34,7 +36,6 @@ import {
     readSnapshot,
     writeSnapshot,
     deleteSnapshot,
-    migrateLegacySnapshotsIfNeeded,
     persistenceStorage,
     replaceLiveRecords,
     removeItemSync,
@@ -211,7 +212,6 @@ function createFakeIndexedDB(options = {}) {
             let index = 0;
             const advance = async () => {
                 if (index >= entries.length) {
-                    if (this.storeName === 'kv') await options.afterKvSnapshot?.();
                     request.result = null;
                     request.onsuccess?.();
                     return;
@@ -276,17 +276,8 @@ function createFakeIndexedDB(options = {}) {
     }
 
     const db = new FakeDatabase();
-    const pendingDeletes = [];
     return {
         db,
-        pendingDeletes,
-        releaseSnapshotDb() {
-            options.deleteBlocked = false;
-            for (const request of pendingDeletes.splice(0)) {
-                db.deletedSnapshotDb = true;
-                request.onsuccess?.();
-            }
-        },
         open(_name, version = 1) {
             const request = {};
             setTimeout(() => {
@@ -300,25 +291,6 @@ function createFakeIndexedDB(options = {}) {
                     db.version = version;
                     request.onupgradeneeded?.();
                 }
-                request.onsuccess?.();
-            }, 0);
-            return request;
-        },
-        deleteDatabase(name) {
-            const request = {};
-            const queued = pendingDeletes.length > 0;
-            pendingDeletes.push(request);
-            setTimeout(() => {
-                if (queued) return;
-                if (options.deleteBlocked && name === 'snapshotDB') {
-                    request.onblocked?.();
-                    return;
-                }
-                if (name === 'snapshotDB') {
-                    db.deletedSnapshotDb = true;
-                }
-                request.result = true;
-                pendingDeletes.splice(pendingDeletes.indexOf(request), 1);
                 request.onsuccess?.();
             }, 0);
             return request;
@@ -357,7 +329,9 @@ try {
         assert(isAllowedPersistenceImportKey('sim.dynamicFlex'), 'sim. Key ist erlaubt');
         assert(isAllowedPersistenceImportKey('balance_expenses_v1'), 'Ausgaben-Key ist erlaubt');
         assert(isAllowedPersistenceImportKey(LEGACY_MIGRATION_MARKER_KEYS.target), 'Migrationsmarker ist erlaubt');
-        assert(isAllowedPersistenceImportKey(STRESS_REPLAY_ACTIVE_STORAGE_KEY), 'Full-Backup-Policy erlaubt den Replay-Arbeitsstand');
+        assert(isAllowedPersistenceImportKey(STRESS_REPLAY_ACTIVE_STORAGE_KEY), 'Full-Backup-Policy erlaubt den früheren Replay-Arbeitsstand');
+        assert(LEGACY_WORKSHOP_STORAGE_KEYS.includes(STRESS_REPLAY_ACTIVE_STORAGE_KEY) && LEGACY_WORKSHOP_STORAGE_KEYS.every(isAllowedPersistenceImportKey),
+            'WS-1: Alle früheren Werkstattschlüssel bleiben als bekannte Altschlüssel importierbar');
         assert(!isAllowedSnapshotCaptureKey(STRESS_REPLAY_ACTIVE_STORAGE_KEY), 'Snapshots schliessen den Replay-Arbeitsstand explizit aus');
         assert(!isAllowedSnapshotRestoreLiveKey(STRESS_REPLAY_ACTIVE_STORAGE_KEY, { mode: 'full' }), 'Auch Full-Snapshot-Restore schliesst Replay explizit aus');
         assert(!isAllowedPersistenceImportKey('private_unrelated_key'), 'Fremder Key ist nicht erlaubt');
@@ -897,6 +871,25 @@ try {
         }
     }
 
+    console.log('WS-1: Alte Vollsicherung mit Werkstattschlüsseln lässt sich einspielen');
+    {
+        const workshopRecords = { 'sim.stressReplay.active.v1': JSON.stringify({ schemaVersion: 'StressReplayWorkspaceV1', variants: [] }),
+            'sim.sweep.runs': '200', 'sim.sweep.goldTarget': '0,5,10', 'sim.sweep.liquidityRunwayYears': '3:1:5' };
+        const ordinary = { rs_profiles_v1: JSON.stringify({ version: 1, profiles: { a: { meta: { id: 'a', name: 'Synthetisch' },
+            data: { profile_rente_monatlich: '1000' } } } }), rs_current_profile: 'a', rs_active_profile: 'a',
+            profile_rente_monatlich: '1000', sim_mcSeed: '42' };
+        const oldBackup = createFullBackupPayload({ ...ordinary, ...workshopRecords });
+        const normalized = normalizeFullPersistenceBackup(oldBackup);
+        assertEqual(normalized.ok, true, 'WS-1: Schema-v2-Sicherung mit Werkstattschlüsseln wird nicht als unerlaubt abgewiesen');
+        const destination = createMemoryAdapter({ rs_profiles_v1: ordinary.rs_profiles_v1, rs_current_profile: 'a', rs_active_profile: 'a' });
+        resetPersistenceForTests(destination); await init({ installLifecycleHooks: false });
+        const imported = await importFullPersistenceBackup(oldBackup);
+        assertEqual(imported.ok, true, 'WS-1: Alte Vollsicherung importiert über die produktive Facade');
+        const actual = await destination.loadAll();
+        for (const [key, value] of Object.entries(ordinary)) assertEqual(actual[key], value, 'WS-1: Andere Daten der Sicherung fehlen nicht: ' + key);
+        for (const [key, value] of Object.entries(workshopRecords)) assertEqual(actual[key], value, 'WS-1: Werkstattschlüssel wird unverändert übernommen: ' + key);
+    }
+
     console.log('P10c: Vollbackup-Rundreise erhält historische Registrystrings und eigene Importpolicy');
     {
         const legacyKey = 'ruhestandsmodell_snapshot_2026-01-20T11:48:21.709Z--Muster A';
@@ -931,12 +924,17 @@ try {
         }
         for (const key of ['ui_panel_state', 'layout_person_panel']) assertEqual(actual[key], initial[key], 'Registrybeigabe erzeugt keinen technischen Livewrite: ' + key);
         const archiveBefore = new Map([...destination.snapshots].map(([id, snapshot]) => [id, JSON.stringify(snapshot)]));
-        const recovery = await StorageManager.restoreSnapshot(imported.recoverySnapshotId, null, {
+        const recovery = await StorageManager.restoreSnapshot(imported.recoverySnapshotId, {
             guard: createNavigationGuard({ decide: async () => true }), reload: () => true
         });
         assertEqual(recovery.status, 'restored', 'Import-Recoverysnapshot mit historischen Profildaten wird produktiv zurückgeholt');
         const canonical = data => JSON.stringify(Object.entries(data).sort());
-        assertEqual(canonical(await destination.loadAll()), canonical(before), 'Import-Recovery übernimmt Registry und erlaubte Top-Level-Bytes vollständig');
+        // SV-1b: Der Punkt vor dem Vollimport umfasst alles, was der Import ersetzt; Zurückholen stellt genau diesen Umfang her,
+        // auch Funktionseinstellungen. Technische Werte außerhalb des Imports bleiben auf dem heutigen Stand.
+        const importKeys = data => Object.fromEntries(Object.entries(data).filter(([key]) => isAllowedPersistenceImportKey(key)));
+        assertEqual(canonical(importKeys(await destination.loadAll())), canonical(importKeys(before)), 'Import-Recovery stellt den ganzen vom Import ersetzten Umfang her');
+        assertEqual((await destination.loadAll()).featureFlags, before.featureFlags, 'Import-Recovery holt auch die Funktionseinstellungen zurück');
+        for (const key of ['ui_panel_state', 'layout_person_panel']) assertEqual((await destination.loadAll())[key], initial[key], 'Import-Recovery lässt technische Werte stehen: ' + key);
         assertEqual(destination.snapshots.size, archiveBefore.size + 1, 'Import-Recovery ergänzt genau einen Rückkehrpunkt');
         for (const [id, raw] of archiveBefore) {
             assertEqual(JSON.stringify(destination.snapshots.get(id)), raw, 'Import-Recovery erhält bisherigen Archivpunkt bytegleich: ' + id);
@@ -946,12 +944,11 @@ try {
         assertEqual(addedIds[0], recovery.recoverySnapshotId, 'Restore bestätigt die ID des einzigen neuen Rückkehrpunkts');
         const returnPoint = await SnapshotArchive.readSnapshot(recovery.recoverySnapshotId);
         assertEqual(JSON.stringify(returnPoint), JSON.stringify(destination.snapshots.get(recovery.recoverySnapshotId)), 'Rückkehrpunkt wird vollständig aus dem Backend zurückgelesen');
-        assertEqual(returnPoint.kind, SNAPSHOT_KINDS.beforeRestoreRecovery, 'Zusätzlicher Punkt ist eine Sicherung vor Benutzer-Restore');
-        assertEqual(returnPoint.label, 'vor Zurückholen', 'Zusätzlicher Punkt trägt den vereinbarten Anlass');
-        assertEqual(canonical(returnPoint.records), canonical(Object.fromEntries(Object.entries(actual).filter(([key]) => isAllowedPersistenceImportKey(key)))), 'Rückkehrpunkt sichert die vorherigen Bytes im tatsächlichen Vollimportumfang');
-        assertEqual(returnPoint.restoreScope.profileRegistryMode, 'replace-all-rollback', 'Rückkehrpunkt sichert sämtliche Profile');
-        assertEqual(returnPoint.restoreScope.profileLiveDataMode, 'replace-all-rollback', 'Rückkehrpunkt sichert die vollständigen Profillivewerte');
-        assertEqual(returnPoint.restoreScope.liveKeyMode, 'full-import', 'Rückkehrpunkt verwendet denselben Live-Keyumfang wie das Import-Recovery');
+        assertEqual(returnPoint.kind, SNAPSHOT_KINDS.fullBackupImportRecovery, 'Zusätzlicher Punkt ist eine Sicherung vor Benutzer-Restore');
+        assertEqual(returnPoint.label, 'Vor dem Zurückholen', 'Zusätzlicher Punkt trägt den vereinbarten Anlass');
+        assertEqual(canonical(returnPoint.records), canonical(importKeys(actual)), 'SV-1b: Rückkehrpunkt sichert den ganzen Umfang des zurückgeholten Punkts');
+        assertEqual(returnPoint.scope, 'import', 'SV-1b: Rückkehrpunkt trägt den Umfang des zurückgeholten Punkts');
+        assertEqual(returnPoint.restoreScope, undefined, 'SV-1: Punkte tragen keinen alten Wiederherstellungsumfang mehr');
 
         const invalidData = [
             ['unknown_finance_key', 'fremd'], ['ui_panel_state', 7], ['layout_person_panel', null],
@@ -1494,8 +1491,6 @@ try {
         assertEqual(afterReplace.b, undefined, 'IndexedDB replaceLiveRecords loescht Live-Key');
         assertEqual(afterReplace.d, '4', 'IndexedDB replaceLiveRecords schreibt Live-Upsert');
 
-        const migrationReport = await adapter.migrateLegacySnapshotsIfNeeded();
-        assertEqual(migrationReport.migratedCount, 0, 'IndexedDB Snapshot-Migration liefert neutralen Report');
     }
 
     console.log('Test 12b: IndexedDB adapter handles versionchange as outdated');
@@ -1556,135 +1551,6 @@ try {
         }
         assertEqual(thrown, true, 'IndexedDB Adapter lehnt blockiertes Upgrade klar ab');
         assert(events.some(event => event.type === 'persistence:upgrade-blocked'), 'IndexedDB Adapter dispatcht Upgrade-Blocked-Event');
-    }
-
-    console.log('Test 12d: IndexedDB adapter migrates legacy full-localstorage snapshots and cleans snapshotDB');
-    {
-        const fakeIndexedDB = createFakeIndexedDB();
-        const adapter = createIndexedDbAdapter({
-            indexedDB: fakeIndexedDB,
-            dbName: 'legacy-snapshot-migration-test'
-        });
-        const legacyKey = `${CONFIG.STORAGE.SNAPSHOT_PREFIX}2026-legacy`;
-        const nonRestorableKey = `${CONFIG.STORAGE.SNAPSHOT_PREFIX}2026-no-profile`;
-        await adapter.open();
-        await adapter.saveBatch({
-            upserts: [
-                [legacyKey, JSON.stringify({
-                    snapshotType: 'full-localstorage',
-                    label: 'Legacy Profil',
-                    timestamp: '2026-06-01T08:00:00.000Z',
-                    localStorage: {
-                        [CONFIG.STORAGE.LS_KEY]: '{"inputs":{"alter":66}}',
-                        [PROFILE_STORAGE_KEYS.current]: 'default',
-                        [PROFILE_STORAGE_KEYS.registry]: JSON.stringify({
-                            profiles: {
-                                default: { meta: { name: 'Standard' }, data: {} }
-                            }
-                        }),
-                        [`${CONFIG.STORAGE.SNAPSHOT_PREFIX}nested`]: 'must-not-migrate',
-                        ui_panel_state: 'technical-keep-out'
-                    }
-                })],
-                [nonRestorableKey, JSON.stringify({
-                    snapshotType: 'full-localstorage',
-                    createdAt: '2026-06-02T08:00:00.000Z',
-                    localStorage: {
-                        [CONFIG.STORAGE.LS_KEY]: '{"inputs":{"alter":67}}',
-                        [PROFILE_STORAGE_KEYS.registry]: JSON.stringify({ profiles: {} })
-                    }
-                })]
-            ],
-            deletes: []
-        });
-
-        const report = await adapter.migrateLegacySnapshotsIfNeeded();
-        const snapshots = await adapter.listSnapshots();
-        const migrated = await adapter.readSnapshot('snapshot_legacy_2026-legacy');
-        const nonRestorable = await adapter.readSnapshot('snapshot_legacy_2026-no-profile');
-        const liveRecords = await adapter.loadAll();
-        const cleanupMarker = await adapter.readMetadata('legacySnapshotDbCleanup');
-
-        assertEqual(report.migratedCount, 2, 'IndexedDB Migration migriert beide Legacy-Snapshots');
-        assertEqual(report.skippedCount, 0, 'IndexedDB Migration ueberspringt keine gueltigen Legacy-Snapshots');
-        assertEqual(report.notStandardRestorableCount, 1, 'IndexedDB Migration markiert Snapshot ohne Profil-ID als nicht standard-restore-faehig');
-        assertEqual(report.errors.length, 0, 'IndexedDB Migration bleibt fehlerfrei');
-        assertEqual(snapshots.length, 2, 'IndexedDB Migration listet migrierte Snapshots im Archiv');
-        assertEqual(migrated.activeProfileId, 'default', 'IndexedDB Migration uebernimmt aktive Profil-ID');
-        assertEqual(migrated.activeProfileName, 'Standard', 'IndexedDB Migration uebernimmt Profilnamen');
-        assertEqual(migrated.records[CONFIG.STORAGE.LS_KEY], '{"inputs":{"alter":66}}', 'IndexedDB Migration uebernimmt fachliche Records');
-        assertEqual(migrated.records[`${CONFIG.STORAGE.SNAPSHOT_PREFIX}nested`], undefined, 'IndexedDB Migration filtert verschachtelte Legacy-Snapshot-Keys');
-        assertEqual(migrated.records.ui_panel_state, undefined, 'IndexedDB Migration filtert technische UI-Keys');
-        assertEqual(nonRestorable.activeProfileId, '', 'IndexedDB Migration laesst nicht ableitbare Profil-ID leer');
-        assertEqual(liveRecords[legacyKey], undefined, 'IndexedDB Migration loescht erfolgreich migrierten Legacy-Key aus Live-KV');
-        assertEqual(fakeIndexedDB.db.deletedSnapshotDb, true, 'IndexedDB Migration bereinigt alte snapshotDB');
-        assert(cleanupMarker.completedAt, 'IndexedDB Migration schreibt Cleanup-Marker');
-    }
-
-    console.log('Test 12e: IndexedDB legacy migration is idempotent and supports direct readSnapshot');
-    {
-        const fakeIndexedDB = createFakeIndexedDB();
-        const adapter = createIndexedDbAdapter({
-            indexedDB: fakeIndexedDB,
-            dbName: 'legacy-direct-read-test'
-        });
-        const legacyKey = `${CONFIG.STORAGE.SNAPSHOT_PREFIX}direct-read`;
-        await adapter.open();
-        await adapter.saveBatch({
-            upserts: [
-                [legacyKey, JSON.stringify({
-                    snapshotType: 'full-localstorage',
-                    createdAt: '2026-06-04T08:00:00.000Z',
-                    localStorage: {
-                        [CONFIG.STORAGE.LS_KEY]: '{"inputs":{"alter":69}}',
-                        [PROFILE_STORAGE_KEYS.active]: 'fallback-profile',
-                        [PROFILE_STORAGE_KEYS.registry]: JSON.stringify({
-                            profiles: {
-                                'fallback-profile': { meta: { name: 'Fallback Profil' }, data: {} }
-                            }
-                        })
-                    }
-                })]
-            ],
-            deletes: []
-        });
-
-        const directRead = await adapter.readSnapshot(legacyKey);
-        const afterDirectReadKvScans = fakeIndexedDB.db.cursorCounts.kv;
-        const secondReport = await adapter.migrateLegacySnapshotsIfNeeded();
-        const afterSecondMigrationKvScans = fakeIndexedDB.db.cursorCounts.kv;
-        await adapter.listSnapshots();
-
-        assertEqual(directRead.id, 'snapshot_legacy_direct-read', 'Direktes readSnapshot auf Legacy-Key migriert und liest kanonische ID');
-        assertEqual(directRead.activeProfileId, 'fallback-profile', 'Migration nutzt rs_active_profile als Fallback');
-        assertEqual(directRead.activeProfileName, 'Fallback Profil', 'Migration leitet Profilnamen aus rs_active_profile ab');
-        assertEqual(secondReport.migratedCount, 0, 'Zweiter Migrationslauf migriert nichts erneut');
-        assertEqual(afterSecondMigrationKvScans, afterDirectReadKvScans, 'Migrationsmarker verhindert zweiten KV-Cursor-Scan');
-        assertEqual(fakeIndexedDB.db.cursorCounts.kv, afterDirectReadKvScans, 'listSnapshots nutzt Fast-Path ohne erneuten KV-Cursor-Scan');
-    }
-
-    console.log('Test 12f: blocked legacy snapshotDB cleanup remains bounded and retryable');
-    {
-        const fakeIndexedDB = createFakeIndexedDB({ deleteBlocked: true });
-        const adapter = createIndexedDbAdapter({
-            indexedDB: fakeIndexedDB,
-            dbName: 'legacy-snapshot-cleanup-blocked-test'
-        });
-        await adapter.open();
-
-        const outcome = await Promise.race([
-            adapter.migrateLegacySnapshotsIfNeeded().then(report => ({ report })),
-            new Promise(resolve => setTimeout(() => resolve({ timedOut: true }), 100))
-        ]);
-        const cleanupMarker = await adapter.readMetadata('legacySnapshotDbCleanup');
-
-        assertEqual(outcome.timedOut, undefined, 'Blockiertes snapshotDB-Cleanup haengt die Migration nicht auf');
-        await nextTick(); // Bereinigung läuft unabhängig vom Migrationsabschluss weiter.
-        assert(
-            outcome.report.warnings?.some(error => error.key === 'snapshotDB'),
-            'Blockiertes snapshotDB-Cleanup wird im Migrationsreport sichtbar'
-        );
-        assertEqual(cleanupMarker, null, 'Blockiertes snapshotDB-Cleanup setzt keinen falschen Abschlussmarker');
     }
 
     console.log('Test 13: Tauri JSON adapter stores records via Rust commands');
@@ -1769,156 +1635,6 @@ try {
         assertEqual(deleted, true, 'Tauri Adapter loescht vorhandenen Snapshot');
         const deletedAgain = await adapter.deleteSnapshot(snapshot.id);
         assertEqual(deletedAgain, false, 'Tauri Adapter meldet fehlenden Snapshot beim zweiten Delete');
-    }
-
-    console.log('Test 13b: Tauri JSON adapter migrates legacy full-localstorage snapshots out of live state');
-    {
-        let snapshotFileContent = '';
-        let liveFileContent = JSON.stringify({
-            schemaVersion: 1,
-            records: {
-                [`${CONFIG.STORAGE.SNAPSHOT_PREFIX}tauri-legacy`]: JSON.stringify({
-                    snapshotType: 'full-localstorage',
-                    label: 'Tauri Legacy',
-                    createdAt: '2026-06-03T08:00:00.000Z',
-                    localStorage: {
-                        [CONFIG.STORAGE.LS_KEY]: '{"inputs":{"alter":68}}'
-                    }
-                })
-            },
-            metadata: {}
-        });
-        const adapter = createTauriJsonFileAdapter({
-            invoke: async (command, args = {}) => {
-                if (command === 'load_app_state') {
-                    return args.target === 'snapshots' ? snapshotFileContent : liveFileContent;
-                }
-                if (command === 'save_app_state') {
-                    if (args.target === 'snapshots') {
-                        snapshotFileContent = args.content;
-                    } else {
-                        liveFileContent = args.content;
-                    }
-                    return null;
-                }
-                throw new Error(`unknown command ${command}`);
-            }
-        });
-
-        await adapter.open();
-        const report = await adapter.migrateLegacySnapshotsIfNeeded();
-        const snapshots = await adapter.listSnapshots();
-        const migrated = await adapter.readSnapshot('snapshot_legacy_tauri-legacy');
-        const live = await adapter.loadAll();
-
-        assertEqual(report.migratedCount, 1, 'Tauri Migration migriert Legacy-Snapshot');
-        assertEqual(report.notStandardRestorableCount, 0, 'Tauri Migration nutzt default-Fallback fuer Vor-Profilverbund-Snapshot');
-        assertEqual(snapshots.length, 1, 'Tauri Migration schreibt Snapshot ins separate Archiv');
-        assertEqual(migrated.activeProfileId, 'default', 'Tauri Migration setzt default-Fallback');
-        assertEqual(migrated.records[CONFIG.STORAGE.LS_KEY], '{"inputs":{"alter":68}}', 'Tauri Migration uebernimmt fachliche Records');
-        assertEqual(live[`${CONFIG.STORAGE.SNAPSHOT_PREFIX}tauri-legacy`], undefined, 'Tauri Migration entfernt Legacy-Key aus Live-State');
-        assert(!liveFileContent.includes(`${CONFIG.STORAGE.SNAPSHOT_PREFIX}tauri-legacy`), 'Tauri Live-Datei enthaelt keinen Legacy-Snapshot-Key mehr');
-        assert(snapshotFileContent.includes('snapshot_legacy_tauri-legacy'), 'Tauri Snapshot-Datei enthaelt kanonischen Snapshot');
-    }
-
-    console.log('Test 13c: Tauri JSON adapter supports direct readSnapshot for legacy ids');
-    {
-        let snapshotFileContent = '';
-        let liveFileContent = JSON.stringify({
-            schemaVersion: 1,
-            records: {
-                [`${CONFIG.STORAGE.SNAPSHOT_PREFIX}tauri-direct`]: JSON.stringify({
-                    snapshotType: 'full-localstorage',
-                    createdAt: '2026-06-04T09:00:00.000Z',
-                    localStorage: {
-                        [CONFIG.STORAGE.LS_KEY]: '{"inputs":{"alter":70}}',
-                        [PROFILE_STORAGE_KEYS.active]: 'tauri-fallback',
-                        [PROFILE_STORAGE_KEYS.registry]: JSON.stringify({
-                            profiles: {
-                                'tauri-fallback': { meta: { name: 'Tauri Fallback' }, data: {} }
-                            }
-                        })
-                    }
-                })
-            },
-            metadata: {}
-        });
-        const adapter = createTauriJsonFileAdapter({
-            invoke: async (command, args = {}) => {
-                if (command === 'load_app_state') {
-                    return args.target === 'snapshots' ? snapshotFileContent : liveFileContent;
-                }
-                if (command === 'save_app_state') {
-                    if (args.target === 'snapshots') {
-                        snapshotFileContent = args.content;
-                    } else {
-                        liveFileContent = args.content;
-                    }
-                    return null;
-                }
-                throw new Error(`unknown command ${command}`);
-            }
-        });
-
-        await adapter.open();
-        const directRead = await adapter.readSnapshot(`${CONFIG.STORAGE.SNAPSHOT_PREFIX}tauri-direct`);
-
-        assertEqual(directRead.id, 'snapshot_legacy_tauri-direct', 'Tauri readSnapshot migriert Legacy-ID direkt');
-        assertEqual(directRead.activeProfileId, 'tauri-fallback', 'Tauri Direktmigration nutzt rs_active_profile');
-        assertEqual(directRead.activeProfileName, 'Tauri Fallback', 'Tauri Direktmigration uebernimmt Profilnamen');
-        assert(!liveFileContent.includes(`${CONFIG.STORAGE.SNAPSHOT_PREFIX}tauri-direct`), 'Tauri Direktmigration entfernt Legacy-Key nach erfolgreichem Archivwrite');
-    }
-
-    console.log('Test 13d: Tauri JSON adapter keeps legacy keys when snapshot archive persistence fails');
-    {
-        const legacyKey = `${CONFIG.STORAGE.SNAPSHOT_PREFIX}tauri-failing-archive`;
-        let failSnapshotPersist = true;
-        let snapshotFileContent = '';
-        let liveFileContent = JSON.stringify({
-            schemaVersion: 1,
-            records: {
-                [legacyKey]: JSON.stringify({
-                    snapshotType: 'full-localstorage',
-                    createdAt: '2026-06-04T10:00:00.000Z',
-                    localStorage: {
-                        [CONFIG.STORAGE.LS_KEY]: '{"inputs":{"alter":71}}'
-                    }
-                })
-            },
-            metadata: {}
-        });
-        const adapter = createTauriJsonFileAdapter({
-            invoke: async (command, args = {}) => {
-                if (command === 'load_app_state') {
-                    return args.target === 'snapshots' ? snapshotFileContent : liveFileContent;
-                }
-                if (command === 'save_app_state') {
-                    if (args.target === 'snapshots') {
-                        if (failSnapshotPersist) throw new Error('snapshot persist failed');
-                        snapshotFileContent = args.content;
-                    } else {
-                        liveFileContent = args.content;
-                    }
-                    return null;
-                }
-                throw new Error(`unknown command ${command}`);
-            }
-        });
-
-        await adapter.open();
-        let thrown = false;
-        try {
-            await adapter.migrateLegacySnapshotsIfNeeded();
-        } catch (err) {
-            thrown = err?.message === 'snapshot persist failed';
-        }
-        const liveAfterFailure = await adapter.loadAll();
-        await adapter.saveBatch({ upserts: [['after_failure', 'still-safe']], deletes: [] });
-
-        assertEqual(thrown, true, 'Tauri Migration gibt Snapshot-Archivfehler weiter');
-        assert(liveAfterFailure[legacyKey], 'Tauri Memory-State behaelt Legacy-Key nach Archivfehler');
-        assert(liveFileContent.includes(legacyKey), 'Spaeterer Live-State-Save verliert Legacy-Key nach Archivfehler nicht');
-        failSnapshotPersist = false;
     }
 
     console.log('Test 14: Tauri JSON adapter quarantines corrupt state');
@@ -2230,10 +1946,6 @@ try {
             },
             async deleteSnapshot(id) {
                 calls.push(`delete:${id}`);
-            },
-            async migrateLegacySnapshotsIfNeeded() {
-                calls.push('migrate');
-                return { migratedCount: 1, skippedCount: 0, notStandardRestorableCount: 0, errors: [] };
             }
         };
         resetPersistenceForTests(adapter);
@@ -2243,12 +1955,10 @@ try {
         const read = await readSnapshot('s1');
         await writeSnapshot({ id: 's2' });
         await deleteSnapshot('s1');
-        const migrationReport = await migrateLegacySnapshotsIfNeeded();
 
         assertEqual(listed[0].id, 's1', 'listSnapshots delegiert an Adapter');
         assertEqual(read.records.a, '1', 'readSnapshot delegiert an Adapter');
-        assertEqual(migrationReport.migratedCount, 1, 'Legacy-Migration delegiert an Adapter');
-        assertEqual(calls.join(','), 'list,read:s1,write:s2,delete:s1,migrate', 'Snapshot-Methoden werden in erwarteter Reihenfolge delegiert');
+        assertEqual(calls.join(','), 'list,read:s1,write:s2,delete:s1', 'Snapshot-Methoden werden in erwarteter Reihenfolge delegiert');
     }
 
     console.log('Test 23: localStorage facade fallback stores snapshots outside normal records');
@@ -2266,14 +1976,12 @@ try {
         const listed = await listSnapshots();
         const read = await readSnapshot('local-snapshot');
         const deleted = await deleteSnapshot('local-snapshot');
-        const migrationReport = await migrateLegacySnapshotsIfNeeded();
 
         assertEqual(listed.length, 1, 'localStorage-Fallback listet Snapshot');
         assertEqual(listed[0].records, undefined, 'localStorage-Fallback listet nur Indexdaten');
         assertEqual(read.records[CONFIG.STORAGE.LS_KEY], '{}', 'localStorage-Fallback liest Vollsnapshot');
         assertEqual(deleted, true, 'localStorage-Fallback loescht Snapshot');
         assertEqual((await listSnapshots()).length, 0, 'localStorage-Fallback ist nach Delete leer');
-        assertEqual(migrationReport.migratedCount, 0, 'localStorage-Fallback liefert neutralen Migrationsreport');
         assert(storage.getItem('rs_snapshot_archive_v1'), 'Snapshot-Fallback nutzt separaten Archiv-Key');
     }
 
@@ -2676,82 +2384,4 @@ for (const native of [false, true]) for (const fail of [false, true]) {
     assertEqual(adapter.store.get('sim_newer'), 'new', 'QS-C P1: neuer Schlüssel bleibt dauerhaft');
     assertEqual(getItemSync('sim_old'), fail ? 'keep' : null, 'QS-C P1: eigene Änderung wird bei Fehler zurückgenommen');
 }
-{
-    const options = { deleteBlocked: true }, fake = createFakeIndexedDB(options);
-    const adapter = createIndexedDbAdapter({ indexedDB: fake, dbName: 'qs-c-blocked' });
-    resetPersistenceForTests(adapter); await init({ installLifecycleHooks: false });
-    await SnapshotArchive.createSnapshot({ id: 'qs-c-readable', activeProfileId: 'default', records: { profile_tagesgeld: '30000' } });
-    let listed = null, error = null;
-    try { listed = await listSnapshots(); } catch (cause) { error = cause; }
-    assertEqual(error, null, 'QS-C P2: aufgeschobene Bereinigung sperrt das Archiv nicht');
-    assert(listed?.some(point => point.id === 'qs-c-readable'), 'QS-C P2: gültiger Punkt bleibt aufgelistet');
-    assertEqual((await SnapshotArchive.readSnapshot('qs-c-readable')).records.profile_tagesgeld, '30000', 'QS-C P2: Punkt bleibt lesbar');
-    fake.releaseSnapshotDb();
-    await adapter.listSnapshots();
-    await nextTick();
-    assert((await adapter.readMetadata('legacySnapshotDbCleanup'))?.completedAt, 'QS-C P2: spätere Bereinigung wird wiederholt');
-}
-for (const native of [false, true]) {
-    const fake = createFakeIndexedDB();
-    const adapter = createIndexedDbAdapter({ indexedDB: fake, dbName: 'qs-c-later-legacy' });
-    resetPersistenceForTests(adapter); await init({ installLifecycleHooks: false });
-    await listSnapshots(); // leerer Scan setzt bereits den Marker
-    const legacyKey = CONFIG.STORAGE.SNAPSHOT_PREFIX + 'qs-c-later';
-    const legacy = JSON.stringify({ snapshotType: 'full-localstorage', timestamp: '2026-01-01T00:00:00Z',
-        localStorage: { profile_tagesgeld: '30000', rs_current_profile: 'default' } });
-    if (native) {
-        const result = await importFullPersistenceBackup(createFullBackupPayload({ [legacyKey]: legacy }, { schemaVersion: FULL_BACKUP_LEGACY_SCHEMA_VERSION }));
-        assertEqual(result.ok, true, 'QS-C P3: Schema-1-Vollimport gelingt');
-    } else await adapter.saveBatch({ upserts: [[legacyKey, legacy]], deletes: [] });
-    const listed = await adapter.listSnapshots();
-    assert(listed.some(point => point.id === 'snapshot_legacy_qs-c-later'), 'QS-C P3: nachträglich eingespielter Altpunkt wird sichtbar');
-    const point = await adapter.readSnapshot(legacyKey);
-    assertEqual(point.records.profile_tagesgeld, '30000', 'QS-C P3: nachträglicher Altpunkt bleibt abrufbar');
-    const bytes = JSON.stringify(point);
-    await adapter.saveBatch({ upserts: [[legacyKey, legacy.replace('30000', '90000')]], deletes: [] });
-    await adapter.listSnapshots();
-    assertEqual(JSON.stringify(await adapter.readSnapshot(legacyKey)), bytes, 'QS-C P3: migrierter Punkt bleibt bytegleich');
-}
 resetPersistenceForTests();
-
-// QS-E 4: Ein blockierter Löschauftrag bleibt in der echten IDB-Warteschlange.
-{
-    const fake = createFakeIndexedDB({ deleteBlocked: true });
-    let deleteCalls = 0;
-    const remove = fake.deleteDatabase.bind(fake);
-    fake.deleteDatabase = name => { deleteCalls++; return remove(name); };
-    const adapter = createIndexedDbAdapter({ indexedDB: fake, dbName: 'qs-e-cleanup' });
-    await adapter.writeSnapshot({ id: 'qs-e-readable', records: { profile_tagesgeld: '1000' } });
-    for (let attempt = 1; attempt <= 3; attempt++) {
-        const listed = await Promise.race([adapter.listSnapshots(), new Promise(resolve => setTimeout(() => resolve(null), 100))]);
-        assert(listed?.some(point => point.id === 'qs-e-readable'), `QS-E 4: Archivaufruf ${attempt} wartet nie auf Altbereinigung`);
-    }
-    assertEqual(deleteCalls, 1, 'QS-E 4: genau ein laufender Löschauftrag');
-    assertEqual(await adapter.readMetadata('legacySnapshotDbCleanup'), null, 'QS-E 4: kein Marker vor tatsächlichem Löscherfolg');
-    fake.releaseSnapshotDb();
-    for (let tick = 0; tick < 10 && !(await adapter.readMetadata('legacySnapshotDbCleanup')); tick++) await nextTick();
-    assert((await adapter.readMetadata('legacySnapshotDbCleanup'))?.completedAt, 'QS-E 4: späterer Erfolg desselben Auftrags schreibt Marker');
-    await adapter.listSnapshots();
-    assertEqual(deleteCalls, 1, 'QS-E 4: nach Erfolg kein weiterer Löschauftrag');
-}
-// QS-E 5: Ein Import nach der Cursor-Bestandsaufnahme darf nicht übergangen werden.
-for (const native of [false, true]) {
-    const options = {}, fake = createFakeIndexedDB(options);
-    const adapter = createIndexedDbAdapter({ indexedDB: fake, dbName: 'qs-e-generation' });
-    // Auch ein zweiter Adapter/Tab muss denselben dauerhaften Änderungsstand sehen.
-    const importer = createIndexedDbAdapter({ indexedDB: fake, dbName: 'qs-e-generation' });
-    const key = CONFIG.STORAGE.SNAPSHOT_PREFIX + 'qs-e-during-scan';
-    const value = JSON.stringify({ snapshotType: 'full-localstorage', timestamp: '2026-01-01T00:00:00Z',
-        localStorage: { profile_tagesgeld: '1000', rs_current_profile: 'default' } });
-    options.afterKvSnapshot = async () => {
-        delete options.afterKvSnapshot;
-        if (native) await importer.replaceLiveRecords({ [key]: value });
-        else await importer.saveBatch({ upserts: [[key, value]] });
-    };
-    await adapter.listSnapshots();
-    assertEqual(await adapter.readMetadata('legacySnapshotMigration'), null, `QS-E 5: Import mit Replace=${native} verhindert veralteten Scan-Abschluss`);
-    const listed = await adapter.listSnapshots();
-    assert(listed.some(point => point.id === 'snapshot_legacy_qs-e-during-scan'), 'QS-E 5: nächster Scan findet die während des Scans eingespielte Sicherung');
-    assertEqual((await adapter.readSnapshot(key)).records.profile_tagesgeld, '1000', 'QS-E 5: eingespielter Punkt vollständig lesbar');
-    assert((await adapter.readMetadata('legacySnapshotMigration'))?.completedAt, 'QS-E 5: unveränderter Folgescan darf abschließen');
-}

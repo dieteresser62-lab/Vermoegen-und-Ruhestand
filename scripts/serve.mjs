@@ -200,9 +200,9 @@ async function main() {
         const { createServer: createProxyServer } = require('../tools/yahoo-proxy.cjs');
         const proxy = createProxyServer();
         try {
-            await listen(proxy, options.proxyPort, options.host);
+            await listen(proxy, options.proxyPort, '127.0.0.1');
             servers.push(proxy);
-            console.log(`Yahoo-Proxy laeuft auf http://${options.host}:${options.proxyPort}`);
+            console.log(`Yahoo-Proxy laeuft auf http://127.0.0.1:${options.proxyPort}`);
         } catch (error) {
             console.warn(`Yahoo-Proxy nicht gestartet (${error.code || error.message}); Online-Kurse fehlen, die Suite laeuft trotzdem.`);
         }

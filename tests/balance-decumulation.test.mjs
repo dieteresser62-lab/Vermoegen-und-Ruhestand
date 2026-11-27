@@ -295,9 +295,9 @@ global.localStorage = originalLocalStorage;
 {
     const tree = [{ step: 'Verwendung (Restbetrag)', impact: '1500€ zur Liquidität addiert, da Investitionsziele (Aktien/Gold) bereits erreicht sind.' }];
     const before = JSON.stringify(tree);
-    for (const [inputData, gold] of [[{ goldAktiv: false, goldWert: 0 }, false], [{ goldAktiv: true, goldWert: 0 }, true], [{ goldAktiv: false, goldWert: 100 }, true]]) {
+    for (const [inputData, gold] of [[{ goldAktiv: false, goldWert: 0 }, false], [{ goldAktiv: true, goldWert: 0 }, false], [{ goldAktiv: false, goldWert: 100 }, true]]) {
         const result = enrichBalanceDiagnosisPayload({ formattedDiagnosis: { decisionTree: tree }, inputData });
-        assertEqual(result.decisionTree[0].impact.includes('Aktien/Gold'), gold, 'Gold wird nur bei aktivem Plan oder Bestand genannt');
+        assertEqual(result.decisionTree[0].impact.includes('Aktien/Gold'), gold, 'Gold wird nur bei Bestand genannt');
         assertEqual(JSON.stringify(tree), before, 'Beschriftung lässt die Engine-Diagnose bytegleich');
     }
 }

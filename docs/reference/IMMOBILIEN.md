@@ -1,12 +1,12 @@
 # Immobilien
 
-Wie Immobilienwert, Miete und Verkauf in der Haushaltsplanung wirken. Für Nutzer und fachlich Interessierte. Appstand geprüft am 07.11.2026.
+Wie Immobilienwert, Miete und Verkauf in der Haushaltsplanung wirken. Für Nutzer und fachlich Interessierte. Appstand geprüft am 22.11.2026.
 
 ## Auf einen Blick
 
 - Trage je Person nur ihren eigenen Wert- und Mietanteil ein.
-- Gesamtvermögen enthält Immobilien; die Budget- und Ruinrechnung verwendet Geldvermögen.
-- Ein Verkauf macht Immobilienwert zu verfügbarem Geld und beendet die zugehörige Nettomiete.
+- Gesamtvermögen enthält Immobilien; das Budget und die Prüfung, ob das Vermögen reicht, verwenden Geldvermögen.
+- Ein Heim- oder Notverkauf macht Immobilienwert zu verfügbarem Geld und beendet die zugehörige Nettomiete. Beim [Verkauf mit Wohnkapital](TOD_UND_ERBE.md#verkauf-mit-wohnkapital) geht ein Teil des Erlöses an die überlebende Person.
 - Heimverkauf und Notverkauf haben unterschiedliche Bedingungen und Wohnkostenfolgen.
 
 ## Wert und Einkommen
@@ -16,6 +16,16 @@ Wie Immobilienwert, Miete und Verkauf in der Haushaltsplanung wirken. Für Nutze
 Eine Immobilie gehört in der App zu einer Person. „Wert meines Anteils“ und Nettomiete beziehen sich auf deren Anteil, nicht auf das gesamte Objekt. Bei hälftigem Eigentum erfassen beide Personen je eine Hälfte. Bezeichnung, Nutzung, Wert und Stand müssen gültig sein; Wert und Miete dürfen null sein, aber nicht negativ.
 
 Der eingetragene Stand datiert die Kaufkraft. Für Simulatorbewertung, Verkauf und Erbe werden ältere Werte zunächst mit der eingebauten deutschen Inflation bis zum Rechenbeginn fortgeschrieben, im ersten historischen Jahr monatsanteilig. Danach wirkt die Inflation des gerechneten Pfads. Das ist kein eigenes Immobilienpreis- oder Renditemodell.
+
+### Wertverlauf und Fortschreibung
+
+Jede Immobilie hat einen Wertverlauf aus datierten Werten. Ein Eintrag entsteht, wenn du in „Personen & Vermögen“ den Wert änderst, mit dem Tagesdatum und der Herkunft „Eingabe“. Dabei springt der Stand auf den laufenden Monat, wenn du ihn selbst gleich gelassen hast. Ändert sich nur etwas anderes als der Wert, entsteht kein Eintrag. Ältere Immobilien haben noch keinen Verlauf; dann gilt ihr Wert ab ihrem Stand.
+
+Der Jahresabschluss schreibt den Wert fort (FR-85). Im Schritt „Immobilien“ („Immobilienwerte prüfen“) steht je Immobilie der Wert am 31.12. des Abschlussjahrs plus die Inflation dieses Jahres, auf ganze Euro gerundet. Es ist dieselbe Inflation wie bei Bedarf und Pflege. Du bestätigst den Vorschlag oder trägst einen eigenen Wert ein, etwa aus einem Gutachten, auf Wunsch mit Grund. „Unverändert bestätigen“ ist verfügbar, sobald die Inflation des Abschlussjahrs vorliegt. Gespeichert wird beim Abschließen: ein Eintrag zum 31.12. mit der Herkunft „Jahresabschluss“, der neue Wert und als Stand der Januar des Folgejahrs. Damit schreibt der Simulator dieses Jahr nicht noch einmal fort. Beispiel: Das Haus von Max mit 450.000 € wird bei 2,5 % zu 461.250 €; der Simulator rechnet ab 2027 mit 461.250 €.
+
+Hast du den Wert nach dem 31.12. schon geändert, bleibt dieser Wert aktuell; der Abschluss ergänzt nur den Eintrag zum 31.12. Je Immobilie und Jahr gibt es höchstens einen Eintrag aus dem Jahresabschluss; ein zweiter Abschluss desselben Jahres ändert ihn nicht. Eine Immobilie, deren erster bekannter Wert erst nach dem 31.12. datiert, erscheint nicht; ihr Wert ist schon neuer. Bleibt keine Immobilie übrig, entfällt der Schritt. Eine entfernte Immobilie behält ihren Verlauf bis zum Tag des Entfernens, erscheint aber im Jahresabschluss und in allen Rechnungen nicht mehr.
+
+Der Vermögensverlauf zählt jede Immobilie an jedem Tag mit dem damals gültigen Wert. Vor dem ersten Eintrag gilt der erste bekannte Wert, ohne Rückrechnung. Eine entfernte Immobilie zählt bis zu ihrem letzten Tag. Übersicht, Erbschaftsteuer-Vorschau und Simulator lesen weiter den aktuellen Wert.
 
 ### Miete
 
@@ -27,29 +37,37 @@ Die optionale ortsübliche Monatsmiete selbst genutzter Immobilien dient ausschl
 
 Die Übersicht zeigt „Gesamtvermögen“, darunter Geldvermögen und Immobilien. Auch selbst genutzte und vermietete Immobilien gehören in die Bestandsverteilung. Im Simulator zählt am Jahresende nur der noch im Haushalt verbliebene Eigentumsanteil. Ein bloßes Wohnrecht zählt nicht als Immobilieneigentum.
 
-Das ⓘ „Aufteilung des Vermögens“ erklärt in „Personen & Vermögen“ unter der Verteilung, dass Geldvermögen Tagesgeld und Depot enthält und Immobilien zum Gesamtvermögen zählen. In der Übersicht nennt es bei Immobilien zusätzlich die vereinfachte Darstellung des heutigen Immobilienwerts über den ganzen Zeitraum; Veränderung, Entnahmen und Rendite beziehen sich auf Geldvermögen.
+Das ⓘ „Aufteilung des Vermögens“ erklärt in „Personen & Vermögen“ unter der Verteilung, dass Geldvermögen Tagesgeld und Depot enthält und Immobilien zum Gesamtvermögen zählen. In der Übersicht nennt es bei Immobilien zusätzlich, dass sie im Verlauf an jedem Tag mit dem damals gültigen Wert zählen; Veränderung, Entnahmen und Rendite beziehen sich auf Geldvermögen.
 
-Ruin, Deckung, Entnahmequoten und Strategieentscheidungen beziehen sich auf Geldvermögen. Ein wertvolles Haus verhindert Ruin deshalb nur, wenn es nach den Modellregeln verkauft werden kann und der Erlös reicht. Bis dahin wird sein Wert nicht als Depotbestand oder Reserve ausgegeben.
+Aufgebrauchtes Vermögen, Deckung, Entnahmequoten und Strategieentscheidungen beziehen sich auf Geldvermögen. Ein wertvolles Haus verhindert deshalb nur dann, dass das Vermögen aufgebraucht ist, wenn es nach den Modellregeln verkauft werden kann und der Erlös reicht. Bis dahin wird sein Wert nicht als Depotbestand oder Reserve ausgegeben.
 
 ## Verkauf
 
+### Verkauf im Erbfall
+
+Wähle in „Partnerschaft und Todesfall“ je Erblasser „Verkauf, Miete auf Lebenszeit“ oder „Verkauf mit Wohnkapital“. Verkauft wird nur der selbst genutzte Anteil der verstorbenen Person, sofern er beim Tod noch vorhanden ist. Bei der Miete auf Lebenszeit geht der ganze Erlös aus diesem Anteil an die anderen Erben; die überlebende Person erhält lebenslang die vereinbarte Zahlung. Beim Wohnkapital erhält sie einmalig den eingetragenen Prozentsatz des Nettoerlöses (90 % des Werts) aufs Tagesgeld und zahlt die Miete danach selbst. Mit „Auszug nach“ kann sie bis zum späteren Verkauf mietfrei im Haus bleiben. Vermietete Immobilien folgen bei beiden Wahlen der Erbregel für Geldvermögen. Die Nachlassregeln zu [Miete auf Lebenszeit](TOD_UND_ERBE.md#verkauf-und-miete-auf-lebenszeit) und [Wohnkapital](TOD_UND_ERBE.md#verkauf-mit-wohnkapital) erklären die Miete und die Wirkung bei Heimpflege.
+
 ### Heimverkauf
 
-Der Simulator verkauft verfügbare eigene und geerbte Immobilienanteile, sobald alle noch lebenden Personen mindestens Pflegegrad 4 haben und „im Heim“ gepflegt werden. Externe Unterstützung zu Hause reicht nicht. Lebt eine Person im Heim und die andere zu Hause, verkauft die App nicht regulär; ein Notverkauf bleibt möglich. Nur aktive Lebenszeitregeln sperren den Verkauf; eine gespeicherte, inaktive Wohnrechtsregel sperrt ihn nicht. Einzelheiten unter [Tod und Erbe](TOD_UND_ERBE.md#wohnrecht-und-eigentum).
+Der Simulator verkauft verfügbare eigene und geerbte Immobilienanteile, sobald alle noch lebenden Personen mindestens Pflegegrad 4 haben und „im Heim“ gepflegt werden. Externe Unterstützung zu Hause reicht nicht. Lebt eine Person im Heim und die andere zu Hause, verkauft die App nicht regulär; ein Notverkauf bleibt möglich. Wohnrecht und Eigentum auf Lebenszeit sperren den Verkauf im Erbfall, wenn die jeweilige Wahl aktiv ist; eine gespeicherte, inaktive Wohnrechtsregel sperrt ihn nicht. Einzelheiten unter [Tod und Erbe](TOD_UND_ERBE.md#wohnrecht-und-eigentum).
 
 Der Erlös beträgt 90 % des fortgeschriebenen Anteilswerts und fließt aufs persönliche Tagesgeld des Eigentümers. Es fällt im Modell keine Einkommensteuer auf den Immobilienverkauf an. Der Pflegeverkauf erzeugt keine neue Wohnmiete. Balance führt solche Verkäufe nicht automatisch aus. Der Backtest zieht keine neuen Pflegeereignisse und führt diesen regulären Pflegeverkauf nicht aus.
 
+### Verkauf vor Hilfe zur Pflege
+
+Bevor der Staat Pflegekosten übernimmt, verkauft der Simulator eine Immobilie der pflegebedürftigen Person: eine vermietete, oder die selbst genutzte, wenn niemand mehr darin wohnt. Er wiederholt dazu das Jahr mit dem Verkauf zu Jahresbeginn, je Versuch eine Immobilie mehr, bis keine Hilfe mehr fällt oder keine solche Immobilie bleibt. Erlös 90 % aufs Tagesgeld der Person, keine Ersatzmiete. Das gilt für alle Haushalte, in Monte Carlo und Backtest; Einzelheiten unter [Pflege](PFLEGE.md#verwertbare-immobilien-vor-der-hilfe).
+
 ### Einzelner Notverkauf
 
-Liegt das gemeinsame Geldvermögen strikt unter einem offenen Jahresgrundbedarf einschließlich Pflege, prüft der Simulator einen Notverkauf. Im Heim zählen dabei Heimkosten und eigene Ausgaben statt des Grundbedarfsanteils der Person. Laufende Renten und sonstige Einkünfte mindern die Schwelle. Zum Geldvermögen zählen hier auch Anleihen, Gold und Pflege-Rücklage. Gleichheit an der Schwelle löst keinen Jahresanfangsverkauf aus.
+Liegt das gemeinsame Geldvermögen strikt unter einem offenen Jahresgrundbedarf ohne Pflege, prüft der Simulator einen Notverkauf. Pflegekosten zählen dafür nicht; was das Geld für die Pflege nicht trägt, zahlt der Staat als [Hilfe zur Pflege](PFLEGE.md#grundbedarf-pflege-und-erfolg). Feste geplante Ausgaben zählen zum Grundbedarf, Flex nicht. Laufende Renten, sonstige Einkünfte und geplante einmalige Zuflüsse des Jahres mindern die Schwelle. Zum Geldvermögen zählen hier auch Anleihen, Gold und Pflegereserve. Gleichheit an der Schwelle löst keinen Jahresanfangsverkauf aus.
 
-Es wird zu Jahresbeginn und erneut vor drohendem Ruin geprüft. Die App verkauft einzelne verfügbare Immobilien, bis die angepasste Deckung reicht beziehungsweise Ruin vermieden wird. Unverkaufte Immobilien behalten Wert, Miete und Erbfolge. Auch der Notverkauf verwendet 10 % Abschlag. Er wirkt im historischen Backtest und in Monte Carlo.
+Es wird zu Jahresbeginn geprüft und erneut, bevor das Vermögen aufgebraucht wäre. Das droht nur bei diesem Mangel des ganzen Haushalts; die Lücke einer einzelnen unverheirateten Person löst keinen Notverkauf aus. Bleibt eine Steuerschuld im Folgejahr offen, kann ein Notverkauf einer Immobilie der Person, die sie schuldet, die Zahlung decken. Die App verkauft einzelne verfügbare Immobilien, bis die angepasste Deckung reicht und das Vermögen nicht mehr aufgebraucht ist. Unverkaufte Immobilien behalten Wert, Miete und Erbfolge. Auch der Notverkauf verwendet 10 % Abschlag. Er wirkt im historischen Backtest und in Monte Carlo.
 
 ### Verkaufsreihenfolge und Todesjahr
 
 Beim Notverkauf kommen im Todesjahr zuerst Immobilien der verstorbenen Person, innerhalb dieser Gruppen vermietete vor selbst genutzten. In anderen Jahren gilt ebenfalls vermietet vor selbst genutzt; bei gleicher Nutzung entscheidet die Eingabereihenfolge. Der reguläre Heimverkauf verwendet die Eingabereihenfolge.
 
-Im Todesjahr wartet der reguläre Jahresanfangsverkauf auf den Nachlass am Jahresende. Droht vorher Ruin, darf ein Notverkauf stattfinden. Sein Erlös gehört zunächst dem bisherigen Eigentümer und geht danach in dessen Nachlass ein. Nach einem früheren Todesjahr kann nur der im Haushalt verbliebene Anteil verkauft werden. Bei ungeklärtem Eigentümer bleibt eine Immobilie im Paar unverkauft; das Protokoll nennt die fehlende Zuordnung.
+Im Todesjahr wartet der reguläre Jahresanfangsverkauf auf den Nachlass am Jahresende. Droht vorher das Vermögen aufgebraucht zu sein, darf ein Notverkauf stattfinden. Sein Erlös gehört zunächst dem bisherigen Eigentümer und geht danach in dessen Nachlass ein. Nach einem früheren Todesjahr kann nur der im Haushalt verbliebene Anteil verkauft werden. Bei ungeklärtem Eigentümer bleibt eine Immobilie im Paar unverkauft; das Protokoll nennt die fehlende Zuordnung.
 
 ### Entscheidung im Überblick
 
@@ -58,7 +76,7 @@ flowchart TD
     %% docs:diagram {"src":"images/immobilien-verkauf.svg","title":"Heimverkauf und Notverkauf","alt":"Verkäufliches Eigentum wird regulär verkauft, wenn alle Lebenden ab Pflegegrad 4 im Heim sind. Sonst kann eine Geldlücke einen einzelnen Notverkauf auslösen. Beide liefern 90 Prozent Erlös; nur Notverkauf bei Selbstnutzung ergänzt Wohnmiete.","legend":"Pfeile zeigen Bedingungen und Geldfolgen."}
     A["Verkäufliches Eigentum"] --> B{"Alle Lebenden Grad 4+ im Heim?"}
     B -->|"Ja, außerhalb des Todesjahrs"| C["Heimverkauf"]
-    B -->|"Nein oder vor Ruin im Todesjahr"| D{"Geldlücke oder drohender Ruin?"}
+    B -->|"Nein oder im Todesjahr, bevor das Vermögen aufgebraucht ist"| D{"Geldlücke oder Vermögen sonst aufgebraucht?"}
     D -->|"Ja"| E["Einzelner Notverkauf"]
     D -->|"Nein"| F["Eigentum und Miete behalten"]
     C --> G["90 % Erlös, Nettomiete endet"]
@@ -93,5 +111,5 @@ Die vorhandene Variante „Haus und vermietete Wohnung“ enthält 450.000 € s
 ### Modellgrenzen
 
 - Keine Beleihung, Kreditbedienung, Maklerabrechnung oder frei geplante Verkaufszeit.
-- Inflation ersetzt keine regionale Marktwertermittlung; 10 % Abschlag und 4 % Ersatzmiete sind feste Modellannahmen.
+- Inflation ersetzt keine regionale Marktwertermittlung; einen Gutachtenwert trägst du im Jahresabschluss oder in „Personen & Vermögen“ selbst ein; 10 % Abschlag und 4 % Ersatzmiete sind feste Modellannahmen.
 - Selbstnutzung spart im Modell keine zusätzlich berechnete Miete. Dein eingegebener Grundbedarf muss die heutige Wohnsituation bereits enthalten.

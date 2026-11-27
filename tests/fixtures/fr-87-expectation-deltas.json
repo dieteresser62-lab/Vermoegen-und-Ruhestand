@@ -1,0 +1,44 @@
+{
+  "reason": "FR-87 (NG-12): „Reichweite zuerst“ gleicht die operative Liquidität je Person an statt nach Reichweitenzielen zu gewichten. Nur Erwartungen im Modus runway_first ändern sich; alle anderen Modi bleiben gleich.",
+  "changes": [
+    {
+      "test": "tests/simulator-personal-accounts.test.mjs",
+      "field": "runway_first: Auszahlung je Person [a, b] bei 300 €",
+      "old": [150, 150],
+      "new": [0, 300],
+      "reason": "a hat 300 €, b 600 € Liquidität. b zahlt zuerst, bis beide gleich viel haben; die 300 € reichen genau bis zum Gleichstand."
+    },
+    {
+      "test": "tests/household-payout-regression.test.mjs",
+      "field": "runway_first: geldmarktUsed der ersten Person (b) bei 50.000 €",
+      "old": 15000,
+      "new": 10000,
+      "reason": "b hat 30.000 €, a 40.000 € Liquidität. a zahlt zuerst 10.000 € bis Gleichstand, danach je 20.000 €; b zahlt 20.000 € (10.000 € Tagesgeld, 10.000 € Geldmarkt) statt 25.000 €."
+    },
+    {
+      "test": "tests/simulator-personal-tax.test.mjs",
+      "field": "runway_first: Steuer der Auffüllung und Verkaufsanteil von a",
+      "old": { "steuer": 217.93017971493487, "anteilA": 0.3 },
+      "new": { "steuer": 13.960751101642208, "anteilA": 0.5 },
+      "reason": "Beide Personen haben 1.000 € Liquidität, also Gleichstand und Verkauf je zur Hälfte wie bei „Anteilig“. Bisher gewichteten die Reichweitenziele 3 und 7 Jahre."
+    },
+    {
+      "test": "tests/vf-2b-regression.test.mjs",
+      "field": "B9/runway_first: Haushalt verheiratet statt unverheiratet",
+      "old": "unverheiratet, Erwartung aus personalWithdrawalPlan(runway_first)",
+      "new": "verheiratet, gleiche Erwartung",
+      "reason": "Unverheiratete zahlen im Simulator nach Vermögensanteilen, unabhängig vom Modus. Die alte Erwartung stimmte nur zufällig, weil beide Reichweitenziele 5 Jahre waren und die Vermögen gleich. B9 prüft „aktuelle Bestände bestimmen den Anteil“; das gilt im Modus nur beim verheirateten Haushalt. proportional bleibt unverheiratet."
+    },
+    {
+      "test": "tests/vf-2b-regression.test.mjs",
+      "field": "B9/runway_first (FR-87-b, Gutachten P2-2): Tagesgeld von B und neue Gegenprüfung",
+      "old": { "tagesgeldB": 100000, "auszahlung": [0, 24000], "gegenpruefung": null },
+      "new": { "tagesgeldB": 10000, "auszahlung": [15000, 9000], "gegenpruefung": "Plan aus den Beständen vor dem Verkauf ergäbe [7000, 17000]" },
+      "reason": "Mit 100.000 € bei B lieferte der Ausgleich vor und nach dem Verkauf dasselbe [0, 24000]; der Test hätte veraltete Bestände nicht erkannt. Mit 10.000 € verkauft A 16.000 € vor der Zahlung, danach gleicht die Auszahlung 16.000/10.000 € aus."
+    }
+  ],
+  "fr87b": {
+    "reason": "FR-87-b (Gutachten P2-1): Bis zur Haushaltsliquidität gleicht die Auszahlung immer aus, nur der Überschuss folgt den Zieljahren. runway_first ändert sich damit nur, wenn der gemeinsame Bedarf die Haushaltsliquidität übersteigt. Keine bestehende Erwartung ändert sich dadurch; Test 4b (Liquidität 0, 750/250) bleibt.",
+    "unchanged": ["measure-ph1", "Balance-Messung FR-87 (alle vier Musterhaushalte)"]
+  }
+}

@@ -5,6 +5,7 @@ import { bindInfoPopovers } from '../shared/designsystem-info-popover.js';
 import { readPartnerInputs } from './simulator-input-pension.js';
 import { bindSimulatorInputFeedback } from './simulator-input-feedback.js';
 import { careValuesSummaryText } from '../shared/care-price-fields.js';
+import { PersistenceFacade } from '../shared/persistence-facade.js';
 
 const bindings = new WeakSet();
 const segmentGroups = new WeakMap();
@@ -134,9 +135,11 @@ export function refreshAssumptionFillStatus(doc = globalThis.document) {
             const floor = id === 'survivorFloorPercent';
             return String(raw).trim() !== '' && Number.isFinite(number) && number >= (floor ? 40 : 0) && number <= (floor ? 200 : 100) ? raw : 'ungültig';
         };
-        const text = partnerActive
+        // FZ-1c: Die Haushaltswahl gilt auch ohne zweite Person und bleibt zugeklappt sichtbar.
+        const purchases = `Zukäufe: ${value('simulatedEquityPurchases') === 'separate' ? 'eigenes Papier' : 'dasselbe Papier'}`;
+        const text = `${partnerActive
             ? `Nach dem Tod: ${percent('survivorFloorPercent')} / ${percent('survivorFlexPercent')} / ${percent('survivorMinimumFlexPercent')} % · ${pension} · Eheschließung in ${value('widowMarriageOffsetYears')} Jahren · Mindest-Ehedauer ${value('widowMinMarriageYears')} ${value('widowMinMarriageYears') === '1' ? 'Jahr' : 'Jahre'}`
-            : 'Einzelperson';
+            : 'Einzelperson'} · ${purchases}`;
         if (modelSummary.textContent !== text) modelSummary.textContent = text;
     }
     const goldActive = /** @type {HTMLSelectElement} */ (doc?.getElementById?.('goldAllokationAktiv'))?.value === 'true';
@@ -332,7 +335,9 @@ export function initializeAssumptionsUI(doc = globalThis.document) {
             { subtree: true, childList: true, attributes: true, attributeFilter: ['disabled', 'data-field-state', 'style', 'hidden'] }));
         const observer = new Observer(() => {
             observer.disconnect();
-            refreshAssumptionFillStatus(doc);
+            // SV-1: Nach einem Bereichswechsel (Spielbereich beendet) liest die alte Seite nicht mehr; die Beobachtung bleibt,
+            // damit sie nach einer zurückgenommenen Übernahme weiterläuft.
+            if (!PersistenceFacade.getPersistenceStatus?.().reloadRequired) refreshAssumptionFillStatus(doc);
             observe();
         });
         observe();

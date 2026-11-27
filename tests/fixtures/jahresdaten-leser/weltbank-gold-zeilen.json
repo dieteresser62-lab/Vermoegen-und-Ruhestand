@@ -1,0 +1,117 @@
+{
+ "hinweis": "Auszug der CMO-Arbeitsmappen vom 2026-11-17: erste Spalte und Spalte Gold; der Test baut daraus kleine XLSX-Dateien.",
+ "Annual Prices (Nominal)": [
+  [
+   "World Bank Commodity Price Data (The Pink Sheet)"
+  ],
+  [
+   "annual prices, 1960 to present, nominal US dollars"
+  ],
+  [
+   "(annual series are available in nominal and real dollars)"
+  ],
+  [
+   "Updated on September 02, 2026"
+  ],
+  [
+   ""
+  ],
+  [
+   ""
+  ],
+  [
+   "181",
+   "Gold"
+  ],
+  [
+   "3",
+   "($/troy oz)"
+  ],
+  [
+   "2023",
+   "1943"
+  ],
+  [
+   "2024",
+   "2388"
+  ],
+  [
+   "2025",
+   "3442"
+  ]
+ ],
+ "Monthly Prices": [
+  [
+   "World Bank Commodity Price Data (The Pink Sheet)"
+  ],
+  [
+   "monthly prices in nominal US dollars, 1960 to present"
+  ],
+  [
+   "(monthly series are available only in nominal US dollars)"
+  ],
+  [
+   "Updated on November 03, 2026"
+  ],
+  [
+   "178",
+   "Gold"
+  ],
+  [
+   "",
+   "($/troy oz)"
+  ],
+  [
+   "2024M12",
+   "2648"
+  ],
+  [
+   "2025M01",
+   "2710"
+  ],
+  [
+   "2025M02",
+   "2895"
+  ],
+  [
+   "2025M03",
+   "2983"
+  ],
+  [
+   "2025M04",
+   "3218"
+  ],
+  [
+   "2025M05",
+   "3309"
+  ],
+  [
+   "2025M06",
+   "3353"
+  ],
+  [
+   "2025M07",
+   "3340"
+  ],
+  [
+   "2025M08",
+   "3368"
+  ],
+  [
+   "2025M09",
+   "3668"
+  ],
+  [
+   "2025M10",
+   "4058"
+  ],
+  [
+   "2025M11",
+   "4087"
+  ],
+  [
+   "2025M12",
+   "4309"
+  ]
+ ]
+}

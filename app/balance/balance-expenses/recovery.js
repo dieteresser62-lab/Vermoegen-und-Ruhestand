@@ -1,6 +1,7 @@
 import { persistenceStorage } from '../../shared/persistence-facade.js';
 import { createExpensesCorruptionRecoveryDocument, EXPENSES_STORAGE_KEY, resetCorruptExpensesStore } from '../balance-expenses-storage.js';
 import { context, state } from './context.js';
+import { SAVE_CANCELLED_TEXT } from '../../shared/save-file.js';
 import { trackMutation, messages, notifyExpensesChange, getBackendLabel, createRecoveryFilename, readExpensesStoreForUi } from './helpers.js';
 
 export function createExpensesRecovery(view) {
@@ -13,11 +14,16 @@ export function createExpensesRecovery(view) {
                 exportedAt: context.recoveryOptions.now().toISOString()
             });
             const filename = createRecoveryFilename(context.recoveryOptions.now());
-            await context.recoveryOptions.downloadRecovery(recoveryDocument, filename);
+            const saved = await context.recoveryOptions.downloadRecovery(recoveryDocument, filename);
+            // SD-1: Abbruch im Dialog „Speichern unter“ ist kein Fehler, gibt den Reset aber nicht frei.
+            if (saved?.saved === false) {
+                messages().toast(SAVE_CANCELLED_TEXT);
+                return;
+            }
             state.recoveryExported = true;
             state.recoveryCancelled = false;
             renderCorruptExpensesState();
-            messages().toast('Recovery-Export der korrupten Ausgabendaten erstellt.');
+            messages().toast(saved?.path ? `Recovery-Export der korrupten Ausgabendaten gespeichert unter ${saved.path}.` : 'Recovery-Export der korrupten Ausgabendaten erstellt.');
         } catch {
             messages().handleActionError(new Error(
                 'Der Recovery-Export konnte nicht erstellt werden. Die korrupten Ausgabendaten bleiben unveraendert.'

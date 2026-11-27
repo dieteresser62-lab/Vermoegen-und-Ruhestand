@@ -1,0 +1,33 @@
+{
+  "reason": "FR-92 saldiert alle Kategorien je Person und Jahr und begrenzt die Jahressummen für Grundbedarf und Flex getrennt auf mindestens null. Basis 32ee13c1.",
+  "changes": [
+    {
+      "test": "tests/ng-14-expenses.test.mjs",
+      "field": "Jahreshochrechnung bei 200 € Flex-Erstattung in eigener Kategorie",
+      "old": { "floor": 1800, "flex": 2400, "total": 3000 },
+      "new": { "floor": 1800, "flex": 1200, "total": 3000 },
+      "reason": "Die Flex-Erstattung mindert die Flex-Ausgaben der Person um 200 €. Hochgerechnet aus zwei Monaten sind das 1.200 € weniger."
+    },
+    {
+      "test": "tests/ng-14-expenses.test.mjs",
+      "field": "Signierter Bedarf der Kategorie NurErstattung",
+      "old": { "floor": 0, "flex": 0, "unallocated": 0 },
+      "new": { "floor": 0, "flex": -200, "unallocated": 0 },
+      "reason": "Die Kategorienprojektion erhält den signierten Flex-Betrag. Die Untergrenze gilt für den Jahresbedarf der Person."
+    },
+    {
+      "test": "tests/fl-1-expenses-display.test.mjs",
+      "field": "Jahressegmente und Verhältnis zum Jahressaldo",
+      "old": { "floor": 240, "flex": 60, "unallocated": 200, "annualUsed": 480, "segmentSum": 500 },
+      "new": { "floor": 240, "flex": 40, "unallocated": 200, "annualUsed": 480, "segmentSum": 480 },
+      "reason": "Die eigene Erstattungskategorie mit 20 € mindert das Flex-Segment. Der Jahressaldo hat die Erstattung bereits enthalten."
+    },
+    {
+      "test": "tests/fl-1-expenses-display.test.mjs",
+      "field": "Flex-Anteil des Balkens Alltag und Beträge in der Fußzeile Wofür?",
+      "old": { "barFlexWidth": "60%", "footer": "Grundbedarf 240 € (48 %) · Flex 60 € (12 %) · ohne Aufteilung 200 € (40 %)" },
+      "new": { "barFlexWidth": "50%", "footer": "Grundbedarf 240 € (50 %) · Flex 40 € (8,3 %) · ohne Aufteilung 200 € (41,7 %)" },
+      "reason": "Die 20 € Erstattung mindern den Flex-Anteil der Person von 60 € auf 40 €. Im Balken Alltag stehen damit 40 € Flex neben 40 € Grundbedarf."
+    }
+  ]
+}

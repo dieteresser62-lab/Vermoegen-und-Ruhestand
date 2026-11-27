@@ -1,84 +1,57 @@
-import { buildSnapshot, SnapshotArchive } from '../app/shared/snapshot-archive.js';
-import { buildSnapshotRetentionPlan, previewSnapshotRetention, executeSnapshotRetention, snapshotOccasion } from '../app/shared/snapshot-retention.js';
-const now = new Date('2026-03-31T12:00:00Z');
-const point = (id, createdAt, activeProfileId = 'a', extra = {}) => buildSnapshot({ id, createdAt, activeProfileId,
-    records: { rs_profiles_v1: JSON.stringify({ profiles: { [activeProfileId]: { meta: { name: activeProfileId }, data: {} } } }) }, ...extra });
-const points = [point('boundary', new Date(now.getTime() - 30 * 86400000).toISOString()),
-    point('recent', '2026-03-15T12:00:00Z'), point('jan-old', '2026-01-01T12:00:00Z'), point('jan-last', '2026-01-31T12:00:00Z'),
-    point('feb-old', '2026-02-01T12:00:00Z'), point('feb-last', '2026-02-28T12:00:00Z'),
-    point('b-old', '2026-01-01T12:00:00Z', 'b'), point('b-last', '2026-01-30T12:00:00Z', 'b'),
-    point('dec', '2025-12-31T12:00:00Z'), point('tie-a', '2025-11-01T12:00:00Z'), point('tie-z', '2025-11-01T12:00:00Z'),
-    point('annual', '2025-01-01T12:00:00Z', 'a', { kind: 'annual-close-pre-mutation' }),
-    point('migration', '2025-01-02T12:00:00Z', 'a', { kind: 'person-data-migration-recovery' }),
-    point('full', '2025-01-03T12:00:00Z', 'a', { kind: 'full-backup-import-recovery' }),
-    point('undo', '2025-01-04T12:00:00Z', 'a', { kind: 'before-restore-recovery' }),
-    point('trial', '2025-01-05T12:00:00Z', 'a', { kind: 'probelauf-before' }),
-    point('unknown', '2025-01-06T12:00:00Z', 'a', { kind: 'future-kind' }),
-    point('missing-profile', '2025-01-07T12:00:00Z', ''),
-    point('different-scope', '2026-01-01T12:00:00Z', 'a', { restoreScope: { profileRegistryMode: 'restore-target-profile' } }),
-    { ...point('damaged', '2025-01-08T12:00:00Z'), damaged: true },
-    point('bad-state', '2026-01-30T12:00:00Z', 'a', { records: { rs_profiles_v1: '{"profiles":{"a":{"data":{}}}}', ruhestandsmodellValues_v29_guardrails: '{broken' } }),
-    { id: 'bad-date', createdAt: 'not a date', kind: 'manual', activeProfileId: 'a' }];
-const plan = buildSnapshotRetentionPlan(points, { now });
-assertEqual(plan.remove.map(item => item.id).sort().join(','), 'b-old,feb-old,jan-old,tie-a', 'Nur ältere Nichtvertreter mit passender jüngerer Deckung werden entfernt');
-for (const id of ['boundary', 'recent', 'jan-last', 'feb-last', 'b-last', 'dec', 'tie-z', 'annual', 'migration', 'full', 'undo', 'trial', 'unknown', 'missing-profile', 'different-scope', 'damaged', 'bad-date', 'bad-state'])
-    assert(plan.keep.some(item => item.id === id), 'Erhalten: ' + id);
-assertEqual(plan.keep.find(item => item.id === 'boundary').reason, 'Innerhalb von einschließlich 30 Tagen', 'Grenze exakt 30 Tage eingeschlossen');
-assertEqual(buildSnapshotRetentionPlan([point('last', '2020-01-01T12:00:00Z')], { now }).remove.length, 0, 'Letzter nicht abgedeckter Stand bleibt');
-assertEqual(buildSnapshotRetentionPlan(points.filter(item => !plan.remove.some(entry => entry.id === item.id)), { now }).remove.length, 0, 'Wiederholtes Aufräumen ist idempotent');
-assert(!buildSnapshotRetentionPlan(points, { now, neededIds: ['jan-old'] }).remove.some(item => item.id === 'jan-old'), 'Benötigter Recoverybezug schützt auch manuellen Altpunkt');
-assertEqual(buildSnapshotRetentionPlan([point('tie-a', '2025-11-01T12:00:00Z'), point('tie-z', '2025-11-01T12:00:00Z')], { now }).remove.length, 0, 'Gleichstand allein ist keine jüngere Deckung');
-assertEqual(snapshotOccasion({ kind: 'manual', label: 'Monatsabschluss 2026-01' }), 'Monatsabschluss', 'Alter Monatsanlass erkannt');
-assertEqual(snapshotOccasion({ kind: 'monthly-close-pre-mutation' }), 'Monatsabschluss', 'Neuer Monatsanlass erkannt');
-assert(snapshotOccasion({ kind: 'annual-close-pre-mutation' }).includes('dauerhaft'), 'Jahrespunkt als dauerhaft gekennzeichnet');
+// SV-1 (Nutzer 18.11.2026 „12 / immer / 3“): Aufbewahrung je Art. Nur synthetische Punkte, Testdaten fest im Jahr 2026.
+import { buildSnapshot, SnapshotArchive, SNAPSHOT_KINDS as K } from '../app/shared/snapshot-archive.js';
+import { planRestorePointPruning, pruneRestorePoints, referencedSnapshotIds, RETENTION } from '../app/shared/snapshot-retention.js';
 
-for (const outcome of ['success', 'archive-change', 'failure', 'partial', 'mid-change', 'reference', 'nested-reference', 'invalid-reference', 'trial']) {
-    const saved = new Map(points.filter(point => !['bad-date', 'damaged'].includes(point.id)).map(point => [point.id, point]));
-    const records = {}, deleted = []; let attempts = 0;
-    const persistence = { readPersistedRecords: async () => records,
-        listSnapshots: async () => [...saved.values()], readSnapshot: async id => saved.get(id),
-        deleteSnapshot: async id => {
-            attempts++;
-            if (outcome === 'failure' || outcome === 'partial' && attempts === 2) throw new Error('DELETE_FAILED');
-            saved.delete(id); deleted.push(id);
-            if (outcome === 'mid-change') saved.set('extra', point('extra', '2026-03-30T12:00:00Z'));
-        } };
-    if (outcome === 'reference') records.balance = '{"pendingCommit":{"snapshotId":"jan-old"}}';
-    if (outcome === 'nested-reference') records.rs_profiles_v1 = JSON.stringify({ profiles: { other: { data: { state: '{"pendingCommit":{"snapshotId":"jan-old"}}' } } } });
-    if (outcome === 'invalid-reference') records.rs_profiles_v1 = '{"broken"';
-    if (outcome === 'trial') records.rs_probelauf_state_v1 = 'active';
-    let preview, error;
-    try { preview = await previewSnapshotRetention({ persistence, now }); } catch (caught) { error = caught; }
-    if (outcome === 'trial') { assert(error, 'Spielbereich verhindert Aufräumen'); continue; }
-    if (outcome.includes('reference')) {
-        assert(!preview.remove.some(item => item.id === 'jan-old'), outcome + ': Referenzprojektion schützt Stand');
-        if (outcome === 'invalid-reference') assertEqual(preview.remove.length, 0, 'Beschädigte Referenzquelle bleibt konservativ ohne Löschung');
-    }
-    if (outcome === 'archive-change') saved.set('extra', point('extra', '2026-03-30T12:00:00Z'));
-    const result = await executeSnapshotRetention(preview, { persistence, archive: SnapshotArchive });
-    if (outcome === 'success') {
-        assertEqual(result.status, 'cleaned', 'Aufräumen bestätigt Abschluss');
-        assertEqual(result.deleted.length, 4, 'Genau vier gedeckte Stände entfernt');
-        assertEqual((await previewSnapshotRetention({ persistence, now })).remove.length, 0, 'Ausgeführter Löschplan bleibt idempotent');
-    }
-    if (['failure', 'archive-change'].includes(outcome)) {
-        assertEqual(result.status, 'failed', outcome + ': kein falscher Abschluss');
-        assertEqual(result.deleted.length, 0, outcome + ': kein bestätigtes Delete');
-    }
-    if (['partial', 'mid-change'].includes(outcome)) {
-        assertEqual(result.status, 'partial', outcome + ': ehrlicher Teilstatus');
-        assertEqual(result.deleted.length, 1, outcome + ': nur tatsächlich bestätigtes Delete gezählt');
-        assertEqual(attempts, outcome === 'partial' ? 2 : 1, outcome + ': Fehler stoppt weitere Löschungen');
-    }
+const point = (id, kind, createdAt) => ({ id, kind, createdAt });
+const monthStamp = (year, month, day = 10) => new Date(year, month - 1, day, 12).toISOString();
+
+// 1 · Monatspunkte: je Kalendermonat der jüngste, davon die 12 jüngsten Monate.
+{
+    const points = [];
+    for (let month = 1; month <= 12; month++) points.push(point(`m-2026-${month}`, K.monthlyClosePreMutation, monthStamp(2026, month)));
+    points.push(point('m-2025-12', K.monthlyClosePreMutation, monthStamp(2025, 12)));
+    points.push(point('m-2026-10-frueh', K.monthlyClosePreMutation, monthStamp(2026, 10, 2)));
+    const removed = planRestorePointPruning(points, K.monthlyClosePreMutation);
+    assertEqual(removed.sort().join(','), 'm-2025-12,m-2026-10-frueh', 'Monat: ältester 13. Monat und älterer Punkt im selben Monat fallen weg');
+    assertEqual(RETENTION.months, 12, 'Monat: 12 Monate');
 }
-
-const planMigrationPoints = [
-    point('new-plan', '2026-01-01T10:00:00Z', 'a', { kind: 'household-plan-migration-recovery', label: 'Vor Umstellung Haushalt & Plan' }),
-    point('old-plan', '2026-01-02T10:00:00Z', 'a', { kind: 'manual', label: 'Vor Umstellung Haushalt & Plan' }),
-    point('comparison', '2026-01-03T10:00:00Z', 'a', { kind: 'manual', label: 'Manueller Vergleich' }),
-    point('covering-month', '2026-01-31T10:00:00Z', 'a', { kind: 'monthly-close-pre-mutation' })
-];
-const migrationRetention = buildSnapshotRetentionPlan(planMigrationPoints, { now });
-assertEqual(migrationRetention.remove.map(item => item.id).join(','), 'comparison', 'Neuer und alter Umstellungspunkt bleiben über 30 Tage trotz deckendem Monatspunkt');
-for (const migration of planMigrationPoints.slice(0, 2)) assertEqual(snapshotOccasion(migration), 'Planumstellung · dauerhaft', 'Neue und alte Planumstellung ist dauerhaft beschriftet');
-assertEqual(snapshotOccasion({ kind: 'manual', label: 'Vor Umstellung Haushalt & Plan ' }), 'Manuell', 'Nur exakt benannter manueller Altpunkt wird geschützt');
+// 2 · Jahresabschluss-Punkte bleiben immer.
+{
+    const points = Array.from({ length: 20 }, (_, index) => point(`j-${index}`, K.annualClosePreMutation, monthStamp(2000 + index, 1)));
+    assertEqual(planRestorePointPruning(points, K.annualClosePreMutation).length, 0, 'Jahresabschluss: alle 20 Punkte bleiben');
+}
+// 3 · Vor dem Einspielen bzw. Zurückholen: die letzten 3; gekürzt wird nur innerhalb derselben Art.
+{
+    const points = [1, 2, 3, 4, 5].map(day => point(`e-${day}`, K.fullBackupImportRecovery, monthStamp(2026, 11, day)));
+    points.push(point('m-alt', K.monthlyClosePreMutation, monthStamp(2020, 1)));
+    assertEqual(planRestorePointPruning(points, K.fullBackupImportRecovery).sort().join(','), 'e-1,e-2', 'Einspielen: die drei jüngsten bleiben');
+    assertEqual(RETENTION.imports, 3, 'Einspielen: drei Punkte');
+    // Geschützter Quellpunkt bleibt, zählt aber mit.
+    assertEqual(planRestorePointPruning(points, K.fullBackupImportRecovery, { protectedIds: ['e-1'] }).join(','), 'e-2', 'Geschützter Quellpunkt bleibt erhalten');
+    assertEqual(planRestorePointPruning(points, K.internalRecovery).length, 0, 'Andere Arten werden nicht gekürzt');
+}
+// 4 · Verweise gespeicherter Vorgänge schützen Punkte; unlesbare Records verhindern jede Kürzung.
+{
+    const records = { ruhestandsmodellValues_v29_guardrails: JSON.stringify({ annualPeriodMetadata: { pendingCommit: { snapshotId: 'j-offen' } } }) };
+    assertEqual(referencedSnapshotIds(records).join(','), 'j-offen', 'Offener Jahresabschluss verweist auf seinen Punkt');
+    assertEqual(referencedSnapshotIds({ kaputt: '{nicht lesbar' }), null, 'Unlesbarer Record ergibt keine sichere Verweisliste');
+}
+// 5 · Echte Kürzung über das Archiv; beschädigte Punkte zählen mit und fallen bei Überzahl weg.
+{
+    const archive = new Map();
+    const storage = { writeSnapshot: async snapshot => { archive.set(snapshot.id, structuredClone(snapshot)); },
+        readSnapshot: async id => structuredClone(archive.get(id)), listSnapshots: async () => [...archive.values()].map(({ records, ...entry }) => entry),
+        deleteSnapshot: async id => archive.delete(id), readPersistedRecords: async () => ({}) };
+    for (const day of [1, 2, 3, 4]) {
+        await SnapshotArchive.writeSnapshot(buildSnapshot({ id: `e-${day}`, kind: K.fullBackupImportRecovery, createdAt: monthStamp(2026, 11, day), records: { a: String(day) } }), { storage });
+    }
+    archive.get('e-2').recordCount = 99; // beschädigt: Nutzdaten passen nicht zur Anzahl
+    const result = await pruneRestorePoints(K.fullBackupImportRecovery, { storage, protectedIds: ['e-4'] });
+    assertEqual(result.deleted.join(','), 'e-1', 'Kürzung entfernt nur den ältesten Punkt dieser Art');
+    assert(archive.has('e-2'), 'Beschädigter Punkt zählt mit und bleibt innerhalb der letzten drei');
+    const pending = await pruneRestorePoints(K.fullBackupImportRecovery, { storage,
+        records: { state: JSON.stringify({ pendingCommit: { snapshotId: 'e-2' } }) } });
+    assertEqual(pending.deleted.length, 0, 'Weniger als drei übrige Punkte: nichts zu kürzen');
+    const failing = await pruneRestorePoints(K.fullBackupImportRecovery, { storage: { listSnapshots: async () => { throw new Error('ARCHIV'); } }, records: {} });
+    assert(failing.error && failing.deleted.length === 0, 'Ein Archivfehler beim Kürzen wird gemeldet, ändert aber nichts');
+}

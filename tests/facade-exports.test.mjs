@@ -2,11 +2,13 @@ import { copyFileSync, mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSyn
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
+import { eigenesRepoPruefen, gitFreieUmgebung } from './helpers/git-isoliert.mjs';
 
 const root = mkdtempSync(path.join(os.tmpdir(), 'zl1-exports-'));
 const project = path.resolve(import.meta.dirname, '..');
 const write = (file, text) => writeFileSync(path.join(root, file), text);
-const run = (command, args) => spawnSync(command, args, { cwd: root, encoding: 'utf8' });
+const gitEnv = gitFreieUmgebung();
+const run = (command, args) => spawnSync(command, args, { cwd: root, env: gitEnv, encoding: 'utf8' });
 try {
     for (const folder of ['app', 'engine', 'workers', 'types', 'scripts']) mkdirSync(path.join(root, folder));
     symlinkSync(path.join(project, 'node_modules'), path.join(root, 'node_modules'), 'junction');
@@ -23,6 +25,7 @@ try {
             '-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'fixture']]) {
         const result = run('git', args);
         assertEqual(result.status, 0, `synthetische Git-Basis: ${result.error?.message || result.stderr}`);
+        if (args[0] === 'init') eigenesRepoPruefen(root, gitEnv);
     }
     const check = () => run(process.execPath, ['scripts/check-facade-exports.mjs', 'HEAD']);
     write('app/module.js', 'export let value = 1; export default function store() {}');

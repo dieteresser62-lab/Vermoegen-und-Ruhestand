@@ -21,6 +21,7 @@ import { CONFIG } from '../balance/balance-config.js';
 import { getPageNavigationGuard, reloadGuardedPage } from '../shared/navigation-guard-dialog.js';
 import { renderReloadRequiredNotice } from '../shared/reload-required-notice.js';
 import { startAppTabLock } from '../shared/app-tab-lock.js';
+import { startRestorePointReset } from '../shared/snapshot-reset.js';
 
 async function runPersistenceFlush(flusher) {
     if (typeof flusher !== 'function') return true;
@@ -253,6 +254,9 @@ export function initializeProfilePage(options = {}) {
                 }, notify: (controller, error) => renderProbelaufUI(doc, controller, error) });
             bindProbelaufUI(doc, probelauf);
             if (probelauf.blocked) throw new Error(probelauf.blockReason);
+            // SV-1: Einmalige Leerung des alten Archivs im echten Bereich; sie hält den Seitenstart nicht auf (Daten & Sicherung
+            // wartet vor der ersten Liste darauf). Ein Fehler bleibt folgenlos; die Leerung läuft beim nächsten Start erneut.
+            if (kind !== 'handbook') void startRestorePointReset();
             if (kind === 'handbook') {
                 installProfileBfcacheRefresh({ win, doc });
                 completeProfilePageReadiness(doc);
@@ -594,7 +598,7 @@ export async function initProfileIndexLifecycle(options = {}) {
             const incomeChanged = migrateStoredIncome().changed;
             const careChanged = migrateStoredCareForms().changed;
             const noticeShown = showCareFormsMigrationNotice(root);
-            if (incomeChanged || careChanged || noticeShown) await runPersistenceFlush(PersistenceFacade.flush);
+            if (bootstrap?.written || incomeChanged || careChanged || noticeShown) await runPersistenceFlush(PersistenceFacade.flush);
             trackCurrentProfileLiveBase();
         }
         bindProfileNavigationHandoff({ root, win });
@@ -628,7 +632,8 @@ export async function initProfileSubpageLifecycle(options = {}) {
             const incomeChanged = migrateStoredIncome().changed;
             const careChanged = migrateStoredCareForms().changed;
             const noticeShown = showCareFormsMigrationNotice(doc);
-            if (incomeChanged || careChanged || noticeShown) await runPersistenceFlush(PersistenceFacade.flush);
+            // SP-1: Hat der Start den Personenstand gespeichert, ist er vor der Bereitschaft bestätigt.
+            if (bootstrap?.written || incomeChanged || careChanged || noticeShown) await runPersistenceFlush(PersistenceFacade.flush);
             trackCurrentProfileLiveBase();
         }
         bindProfileNavigationHandoff({ root: doc, win });

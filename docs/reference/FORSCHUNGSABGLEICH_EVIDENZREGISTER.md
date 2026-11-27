@@ -293,13 +293,7 @@ Die folgenden Dossiers verbinden Mechanismus, Implementierung, Forschungsanker/R
 
 #### MAP-13 Sweep und Auto-Optimize
 
-| Feld | Befund |
-| --- | --- |
-| Mechanismus und Implementierung | Sweep/auto-optimize-Module nutzen Stichprobe, Quick-Filter, Vollbewertung, Nachbarsuche und Bestätigungsseeds für bis drei Kandidaten. |
-| Quelle, Rolle, Übertragbarkeit | FOR-VAL-04 bis FOR-VAL-06/09 Mehrfachtests, FOR-VAL-07 Auswahlbias (T4), FOR-VAL-08 Overfitting (T2/T4). |
-| Abweichung und Evidenzstatus | experimentell; Championwahl nutzt Bestätigungsset. Disjunkte Seeds desselben Generators sind kein Markt-Holdout; keine verschachtelte Validierung/Mehrfachtestkorrektur. |
-| Lokale Validierung | simulator-sweep, auto-optimizer, auto-optimize-worker-contract, simulator-heatmap, worker-parity; jeweils vorhandene `.test.mjs`, V1–V3 nach Abdeckung. |
-| Restrisiko und offene Prüfung | Unbekannte manuelle Trials/Championinstabilität. Vollständiges Versuchsinventar nicht autorisiert; Statistik-/Holdout-Owner und Speichervertrag fehlen. Übernahme ist lokaler Planversuch. |
+Entfernt, Stand 19.11.2026: Die App enthält keinen Parameter-Sweep und kein Auto-Optimize mehr. Die Kennung bleibt für bestehende Verweise erhalten. Für die verbliebene Zielwertsuche gelten die Auswahlgrenzen aus [MAP-12](#map-12) und [Zielwertsuche](SIMULATION_LESEN.md#zielwertsuche).
 
 <a id="langelbigkeit-rente-pflege"></a>
 
@@ -370,7 +364,7 @@ FR-01 bis FR-12 bezeichnen Forschungsrisiken. Alle bleiben offen; hohe Prioritä
 | FR-05 | mittel | Policyzustände klingen wie geschätzte Marktregime. | Labels als Heuristik führen und Schwellenstabilität vorab testen. |
 | FR-06 | hoch | Tail-Eventrate wird zur Crashwahrscheinlichkeit und Schocks werden doppelt gezählt. | Nur Szenarioaussage; gemeinsame Schocks und Doppelzählung challengen. |
 | FR-07 | hoch | CAPE-Horizont-, Datenraum- und Forecast-Mismatch wird übersehen. | Internationale/zeitliche Holdouts und konstante Baseline verwenden. |
-| FR-08 | hoch | Ein unbekanntes Trial-Universum lässt den Champion als verlässliches oder global bestes Ergebnis erscheinen. | Alle Trials loggen, locked/nested Holdouts, Stabilitätsintervalle und Baseline. |
+| FR-08 | hoch | Ein unbekanntes Trial-Universum lässt einen Suchfund als verlässliches oder global bestes Ergebnis erscheinen. | Alle Trials loggen, locked/nested Holdouts, Stabilitätsintervalle und Baseline. |
 | FR-09 | hoch | Perioden-/Kohorten- und Joint-Life-Fehler wirken wie individuelle Prognose. | Verbesserungs-/Kohortenszenarien, Quantilsensitivität und Partnerabhängigkeit. |
 | FR-10 | hoch | Intern abgestimmte Pflegeübergänge erscheinen extern bestätigt; Kosten und Drift wirken individuell prognostisch. | Interne Abstimmung von unabhängiger Prüfung trennen; gemeinsame externe Kalibrierung/Sensitivität auf PD-02-Einheitenvertrag. |
 | FR-11 | mittel | Bucket- oder Goldwirkung wird mit Allokationseffekt vermischt. | Ablation bei gleicher Allokation, Kosten, Rebalancing und Liquidität. |
@@ -407,8 +401,8 @@ Die folgenden Studiennachweise sind offen. Datenprovenienz, technische Prüfung 
 | FV-G02 Datenmanifest | HistoricalDataManifestV1, erzeugte Reihen, Originaldateien, Hashes und [DATA_SOURCES](DATA_SOURCES.md) | unabhängige Prüfung von Rekonstruktion, Segmentbrüchen, Indexvergleichbarkeit und Eignung für die Studie; neue Länder-/Zeitdaten und deren Nutzungsrechte |
 | FV-G03 Kosten und Steuer | dokumentierte Planungsschätzung, Verlustvortrag und Pauschbetrag | vollständiger Studienvertrag für Kosten, FX, Rebalancing und Steuer samt Sensitivitäten und qualifiziertem Rechts-/Steuerreview |
 | FV-G04 Produktverträge | Realwertfortschreibung, Prozentnormalisierung, disjunkte Outcomes, Mindest-Flex-Messung und Parameterfidelity umgesetzt | einheitliche studienspezifische Definitionen aller Inputs, Nenner und Zielgrößen über UI, Runner, Worker und Export |
-| FV-G05 vollständige Versuche | Manifest eines expliziten Backtestexports und Ergebnisdaten der Kandidatensuche | vollständiges dauerhaftes Versuchsinventar einschließlich verworfener Varianten, Fehler, Abbrüche, manueller Anpassungen und betrachteter Ergebnisse; eigener Speicher-/Datenschutzvertrag |
-| FV-G06 zurückgehaltene Daten | getrennte Train-/Bestätigungsseeds | vor Auswahl gesperrter Zeit-/Länderholdout mit verantwortlicher Zugriffskontrolle; die bekannte Historie und das zur Championwahl genutzte Seedset sind kein externer Holdout |
+| FV-G05 vollständige Versuche | Manifest eines expliziten Backtestexports | vollständiges dauerhaftes Versuchsinventar einschließlich verworfener Varianten, Fehler, Abbrüche, manueller Anpassungen und betrachteter Ergebnisse; eigener Speicher-/Datenschutzvertrag |
+| FV-G06 zurückgehaltene Daten | keine; die Endprobe der Zielwertsuche stammt aus derselben Modellwelt | vor Auswahl gesperrter Zeit-/Länderholdout mit verantwortlicher Zugriffskontrolle; die bekannte Historie ist kein externer Holdout |
 | FV-G07 Ergebnisbündel | Floor-/Outcome-, Mindest-Flex-, Entnahme-, Pflege-, Steuer-, Runway- und Vermögenskennzahlen | vollständige Verteilungen realer Floor-/Konsumlücken, ihrer Tiefe und Dauer, Liquiditätsunterschreitungen, Unsicherheit und Stabilität; negative Resultate vollständig berichten |
 | FV-G08 Reproduktion und Review | Quellmodule, Tests, Datenhashes und Laufexporte | unabhängige Methodenprüfung und je Aussage eine externe Daten-/Code-Replikation; Selbstprüfung des Implementierers ist keine Freigabe |
 

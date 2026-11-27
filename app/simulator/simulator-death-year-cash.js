@@ -10,7 +10,8 @@ const DEATH_YEAR_NO_PURCHASE = 'Kein Kauf im Sterbejahr: freie Liquidität gehö
 const DEATH_YEAR_LIMITED_PURCHASE = 'Kauf im Sterbejahr auf die eigene Liquidität begrenzt';
 
 /** Untergrenze des Geldanteils, der im Todesjahr bei der überlebenden Person bleibt.
- * Mindestbetrag und Steuergeld (FR-54) erhöhen ihn nur. 1 bedeutet: alles bleibt im Haushalt.
+ * Mindestbetrag und Steuergeld (FR-54) erhöhen ihn. Kosten und Pflichtteil können ihn bis auf null senken.
+ * 1 bedeutet: alles bleibt im Haushalt.
  *
  * @param {object} options
  * @param options.inputs Wirksame Simulationseingaben.
@@ -21,11 +22,12 @@ const DEATH_YEAR_LIMITED_PURCHASE = 'Kauf im Sterbejahr auf die eigene Liquidit�
 export function deathYearCashShare({ inputs, transition, hasLifeEvents }) {
     if (!transition?.deathThisYear || !hasLifeEvents || !inputs.partner?.aktiv
         || !(inputs.partnership || inputs.simulationPeople?.length === 2)) return 1;
-    const partnership = inputs.partnership || { status: 'married' };
+    const partnership = inputs.partnership;
     const { deceasedProfileId } = transition.survivor;
-    const rule = hasTestament(partnership, deceasedProfileId, hasInheritanceHomes(inputs.home, deceasedProfileId))
-        ? testamentRule(partnership, deceasedProfileId) : {};
-    return Math.min(1, Math.min(inheritancePercent(partnership, deceasedProfileId), rule.maximumPercent ?? 100) / 100);
+    const rule = testamentRule(partnership, deceasedProfileId);
+    if (rule.estateCosts > 0 || rule.childrenProtected) return 0;
+    const maximum = hasTestament(partnership, deceasedProfileId, hasInheritanceHomes(inputs.home, deceasedProfileId)) ? rule.maximumPercent ?? 100 : 100;
+    return Math.min(1, Math.min(inheritancePercent(partnership, deceasedProfileId), maximum) / 100);
 }
 
 /** Höchstbetrag: eigene Liquidität plus Anteil an der Liquidität der verstorbenen Person nach deren Jahresbuchungen,

@@ -1,3 +1,4 @@
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
 import { readQSCReferences } from './helpers/qs-c-expectations.mjs';
 import { readVF2DReferences } from './helpers/vf-2d-expectations.mjs';
 import { readGL1References } from './helpers/gl-1-expectations.mjs';
@@ -10,7 +11,8 @@ import { EngineAPI } from '../engine/index.mjs';
 import { initializePortfolio, prepareHistoricalData } from '../app/simulator/simulator-portfolio.js';
 import { simulateOneYear } from '../app/simulator/simulator-engine-direct.js';
 import { runHistoricalBacktest } from '../app/simulator/historical-backtest-runner.js';
-import { createHistoricalBacktestContractProvider } from '../app/simulator/historical-backtest-contract.js';
+// JD-2a: Die eingefrorenen Backtest-Belege gelten dem Grundbestand 1925–2025; der Backtest liest dessen Provider (jahresrobust).
+import { grundbestandProvider } from './helpers/grundbestand-stichprobe.mjs';
 import { portfolioTotal } from '../app/simulator/simulator-results.js';
 prepareHistoricalData();
 export const base = { startAlter:65, startVermoegen:600000, depotwertAlt:480000, einstandAlt:400000, tagesgeld:120000, geldmarktEtf:0,
@@ -22,7 +24,7 @@ export const base = { startAlter:65, startVermoegen:600000, depotwertAlt:480000,
 export const lot = (type, value, id = type) => ({ trancheId:id, sourceProfileId:'synthetic', type, category:type==='gold'?'gold':type==='geldmarkt'?'money_market':type==='anleihe'?'bonds':'equity', marketValue:value, costBasis:value*.8, purchaseDate:'2000-01-01', tqf:.3 });
 function execute(inputs, period, observer = () => {}, engine = EngineAPI) {
  const states=[];
- const result=runHistoricalBacktest({inputs,period,historicalDataProvider:createHistoricalBacktestContractProvider(),initializePortfolio,totalPortfolio:portfolioTotal,
+ const result=runHistoricalBacktest({inputs,period,historicalDataProvider:grundbestandProvider(),initializePortfolio,totalPortfolio:portfolioTotal,
  computeAdjustmentPct:()=>0, resolveHorizon:()=>({horizonYears:30,diagnostics:{longevityMode:'none'}}),
  simulateYear:(...args)=>{ observer(args[0],args[3]); const r=simulateOneYear(...args.slice(0,4),null,0,null,1,engine); states.push(JSON.parse(JSON.stringify(r.newState??null))); return r; },breakOnRuin:true});
  return {result,states};
@@ -91,7 +93,7 @@ for (const c of fixture.cases) {
     const priorHash = readQSCReferences(readGL1References(readAN1Hash(readST1Hash(bk2Controls.hashes[c.name].after))));
     if (c.name === 'drei-topf') assertEqual(priorHash, '674a00f8fa4a918630019865655466970818ff6f5d08cea375c082a45d589b9a', 'Drei Töpfe: historischer Sollstand bleibt erhalten');
     const expectedHash = c.name === 'drei-topf' ? readQSCReferences(readVF2DReferences('2d8092505491a6484ee42a63bca99ff457714620ba666782909a4d03e44d32ef')) : priorHash;
-    assertEqual(hash(projectFrozenFinancialControls(execution)), expectedHash,
+    assertEqual(hash(projectFrozenFinancialControls(execution)), readKR1cReferences(expectedHash),
         c.name + ': vollständige Finanzbytes und Folgezustände, Drei Töpfe mit FR-63, übrige BK-2-Belege unverändert');
     if (c.name === 'offene-lots') {
         for (const { row } of execution.result.rows) {

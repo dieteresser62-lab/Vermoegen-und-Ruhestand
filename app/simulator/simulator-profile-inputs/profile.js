@@ -2,7 +2,6 @@ import { localCalendarDate } from '../../shared/app-clock.js';
 import { resolveCarePrices, careDriftScheduleOf } from '../../shared/care-prices.js';
 import { careDriftInputPatch } from '../../shared/care-cost-drift.js';
 import { careReference } from '../../shared/care-needs.js';
-import { sharesHouseholdCareValues } from '../../shared/care-profile-settings.js';
 /** @import {StorageReader} from '../../../typcheck/runtime-contracts.js' */
 import { persistenceStorage } from '../../shared/persistence-facade.js';
 import { migrateCareDefaultsRecord } from '../simulator-care-flex.js';
@@ -24,13 +23,11 @@ import { residentialOwnExpensesInputPatch } from '../simulator-residential-care.
 import { resolveLiquidityRunwayYears } from '../../../types/liquidity-runway-contract.js';
 
 /** @param {Record<string, string>} profileData
- * @param {{referenceYear?: number, planValues?: object, storage?: StorageReader, profileId?: string}} [options]
- *   `profileId` nennt den Preisbesitzer: Haushaltsmitglieder lesen den gemeinsamen Preisblock, Außenpersonen ihre
- *   eigene `sim_`-Staffel (Gutachten PFA-2, Befund 5); ohne Angabe gilt das geöffnete Profil.
+ * @param {{referenceYear?: number, planValues?: object, storage?: StorageReader}} [options]
  *
  * @returns Ergebnis der Operation.
  */
-export function buildSimulatorInputsFromProfileData(profileData, { referenceYear, planValues, storage = persistenceStorage, profileId } = {}) {
+export function buildSimulatorInputsFromProfileData(profileData, { referenceYear, planValues, storage = persistenceStorage } = {}) {
     profileData = migrateCareDefaultsRecord(profileData);
     if (planValues === undefined) {
         const plan = readSimulatorHouseholdPlan();
@@ -44,9 +41,8 @@ export function buildSimulatorInputsFromProfileData(profileData, { referenceYear
     // Balance-App Inputs (falls vorhanden) liefern Defaults für fehlende Simulator-Werte.
     const balanceInputs = parseStoredBalanceInputsFromData(profileData);
     const careValues = readCareValues(storage);
-    // FR-73 P8: Preise aus dem Pflegewerte-Record, alte sim_-Beträge nur lesend als Altbestand; Außenpersonen behalten ihre Staffel.
-    const shared = profileId === undefined ? sharesHouseholdCareValues(storage) : sharesHouseholdCareValues(storage, profileId);
-    const careCosts = resolveCarePrices(careValues, profileData, { shared });
+    // FR-73 P8: Preise aus dem Pflegewerte-Record, alte sim_-Beträge nur lesend als Altbestand.
+    const careCosts = resolveCarePrices(careValues, profileData);
     const pflegeGradeConfigs = parsePflegeGradeConfigs(profileData, careCosts.costs);
     if (profileData.sim_pflegeKostenStaffelPreset === 'amtlich') {
         const costs = officialCareCosts(careValues);
@@ -277,16 +273,8 @@ export function buildSimulatorInputsFromProfileData(profileData, { referenceYear
 
     const storedRunway = {};
     const canonicalRunway = readValue(profileData, simKey('liquidityRunwayYears'));
-    const legacyRunwayTarget = readValue(profileData, simKey('runwayTargetMonths'));
-    const legacyRunwayMinimum = readValue(profileData, simKey('runwayMinMonths'));
     if (canonicalRunway !== null && canonicalRunway !== undefined && canonicalRunway !== '') {
         storedRunway.liquidityRunwayYears = canonicalRunway;
-    }
-    if (legacyRunwayTarget !== null && legacyRunwayTarget !== undefined && legacyRunwayTarget !== '') {
-        storedRunway.runwayTargetMonths = legacyRunwayTarget;
-    }
-    if (legacyRunwayMinimum !== null && legacyRunwayMinimum !== undefined && legacyRunwayMinimum !== '') {
-        storedRunway.runwayMinMonths = legacyRunwayMinimum;
     }
     const strategyInputs = {
         liquidityRunwayYears: resolveLiquidityRunwayYears(storedRunway).years,

@@ -70,7 +70,7 @@ assert(!allLivingInExternalCare({ ...homes, careToday: { grade: 4, form: 'home-s
 
 const dom = { profileCareGradeToday: { value: '3' }, profileCareFormToday: { value: 'home-support' }, profileCareAllowanceSummary: {} };
 syncManagerCareToday({ getElementById: id => dom[id] || null }, new MemoryWebStorage());
-assert(dom.profileCareAllowanceSummary.textContent.includes('kein Pflegegeld') && dom.profileCareAllowanceSummary.textContent.includes('Dienst'), 'Personenkarte erklärt fehlendes Pflegegeld');
+assert(dom.profileCareAllowanceSummary.textContent.includes('kein Pflegegeld') && dom.profileCareAllowanceSummary.textContent.includes('Pflegedienst'), 'Personenkarte erklärt fehlendes Pflegegeld');
 dom.profileCareFormToday.value = 'family';
 syncManagerCareToday({ getElementById: id => dom[id] || null }, new MemoryWebStorage());
 assert(dom.profileCareAllowanceSummary.textContent.replace(/\u00a0/g, ' ').includes('Pflegegeld 599 €/Monat kommt als Einkunft dazu'), 'Personenkarte nennt Pflegegeldbetrag');
@@ -84,7 +84,16 @@ assertEqual(JSON.stringify(displayedCare()), pristineCare, 'Person ohne Pflegegr
 assert(noCareAllowanceReason({ grade: 4, careForm: 'residential' }).includes('Heim'), 'Heim hat eigene Erklärung');
 const protocol = renderProtocolTable([{ jahr: 1, CareP1_Active: true, CareP1_Grade: 4,
     CareP2_Active: true, CareP2_Grade: 3, renteSum: 0 }], { source: 'mc', inputs });
-assert(protocol.includes('kein Pflegegeld') && protocol.includes('Kasse zahlt an den Dienst') && protocol.includes('Kasse zahlt an das Heim'), 'Protokoll-Einnahmen erklären Unterstützung und Heim getrennt');
+assert(protocol.includes('Pflegekasse den Pflegedienst direkt bezahlt.') && protocol.includes('Pflegekasse direkt an das Heim zahlt.'), 'Protokoll-Einnahmen erklären Unterstützung und Heim getrennt');
+const fallback = { jahr: 1, Person1Alive: 0, Person2Alive: 1, CareP2_Active: true, CareP2_Grade: 3,
+    CareP2_Form: 'home-support', CareP2_FamilyFallback: { reason: 'death' } };
+for (const source of ['backtest', 'mc']) {
+    const html = renderProtocolTable(source === 'mc' ? [fallback] : [{ jahr: 2000, row: fallback }], {
+        source, inputs: { partner: { aktiv: true }, simulationPeople: [{ name: 'Helga' }, { name: 'Werner' }] } });
+    assert(html.includes('Werner bekommt kein Pflegegeld, weil die Pflegekasse den Pflegedienst direkt bezahlt.</span>\n'
+        + '<span class="ds-help">Externe Unterstützung übernimmt die Pflege, weil Helga verstorben ist.</span>'),
+        `${source}: Pflegegeld und Wechselgrund stehen in getrennten Zeilen und enden mit Punkt`);
+}
 
 // Echte Vor-VF-2c-Records, als historisches v1-Profilbundle mit alten Einkunftsschlüsseln.
 const legacy = JSON.parse(readFileSync(new URL('./fixtures/vf-2c-legacy-profiles.json', import.meta.url), 'utf8'));
@@ -127,7 +136,7 @@ try {
         assert(!migrateStoredCareForms().changed, 'Nach Restore und Neustart keine zweite Migration');
     }
     const f = await playFixture('tauri', Object.fromEntries(oldStore.records)); await f.boot();
-    const point = await SnapshotArchive.createSnapshot({ kind: 'manual', label: 'Alter Pflegebestand', records: P.exportAllSync().records,
+    const point = await SnapshotArchive.createSnapshot({ kind: 'monthly-close-pre-mutation', label: 'Alter Pflegebestand', records: P.exportAllSync().records,
         activeProfileId: ids[0], restoreScope: { profileRegistryMode: 'replace-all-rollback', profileLiveDataMode: 'replace-all-rollback' } });
     migrateStoredCareForms(); await P.flush();
     const restored = await restoreSnapshotById(point.id, { reload() {}, decide: async () => true });

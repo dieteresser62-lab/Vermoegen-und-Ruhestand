@@ -82,7 +82,7 @@ export function analyzeLogEvents(context) {
         return event;
     };
     const addAmount = (type, item, nominal, sourceKeys, evidence = {}, extra = {}) => add(type, item,
-        { ...evidence, amount: moneyValue(nominal, item, moneyBasis, { yearStart: context.kind === 'monte_carlo' }) }, sourceKeys, extra);
+        { ...evidence, amount: moneyValue(nominal, item, moneyBasis, { yearStart: true }) }, sourceKeys, extra);
 
     const minimumFlex = deriveMinimumFlexPath(financial.map(item => item.row));
     for (const item of rows) {
@@ -107,7 +107,7 @@ export function analyzeLogEvents(context) {
         return value && !value.missing ? { value: value.below ? 1 : 0,
             minimumNominalEur: item.row.minimumFlexAnnual, paidNominalEur: value.paid,
             shortfallNominalEur: Math.max(0, item.row.minimumFlexAnnual - value.paid),
-            shortfallRealEur: moneyValue(Math.max(0, item.row.minimumFlexAnnual - value.paid), item, 'real', { yearStart: context.kind === 'monte_carlo' }).valueEur } : null;
+            shortfallRealEur: moneyValue(Math.max(0, item.row.minimumFlexAnnual - value.paid), item, 'real', { yearStart: true }).valueEur } : null;
     })) add('below_minimum_flex_phase', phase.first, { ...phaseEvidence(phase),
         maximumShortfallNominalEur: Math.max(...phase.observations.map(value => value.shortfallNominalEur)),
         maximumShortfallRealEur: phase.observations.every(value => finite(value.shortfallRealEur))

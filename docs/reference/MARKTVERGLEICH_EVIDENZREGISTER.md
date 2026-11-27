@@ -68,7 +68,7 @@ Es wurde kein vollständiger Fremdprodukt-Rechenlauf mit RH-01 bis RH-04 ausgef�
 
 ## Werkzeuge
 
-Alle Records dokumentieren den Abruf oder Prüfversuch am 27.10.2026. Anbieterangaben sind keine unabhängigen Audits. Produktversionen ohne öffentlichen Beleg bleiben offen. Gesamtvermögen enthält Geldvermögen und Immobilien; Entnahmen, Rendite, Ruin und Strategiequoten beziehen sich auf Geldvermögen. Kriterienverweise wie 01/02 übernehmen das Quellenpräfix derselben Zeile.
+Alle Records dokumentieren den Abruf oder Prüfversuch am 27.10.2026. Anbieterangaben sind keine unabhängigen Audits. Produktversionen ohne öffentlichen Beleg bleiben offen. Gesamtvermögen enthält Geldvermögen und Immobilien; Entnahmen, Rendite, aufgebrauchtes Vermögen und Strategiequoten beziehen sich auf Geldvermögen. Kriterienverweise wie 01/02 übernehmen das Quellenpräfix derselben Zeile.
 
 ### Vermögen und Ruhestand
 
@@ -93,7 +93,7 @@ Codeabgleich bestätigt Einkünfte-/Ausgabenlisten und Immobilien samt Nachlass.
 | K-06 Datenbasis | teilweise · MKT-RS-03 | Forschungsproxies; Anleihen als Cash-Zins-Ersatz. |
 | K-07 Stochastik | vorhanden · MKT-RS-02 | Historische/gesampelte Pfade, Stress und Seeds. |
 | K-08 Transparenz | vorhanden · MKT-RS-02 | Offene Regeln/Diagnosen; kein Wirkungsnachweis. |
-| K-09 Szenarien | teilweise · MKT-RS-01, MKT-RS-02 | Planversuche, Vergleich und Sweep; kein freier Gesamtplan-Katalog. |
+| K-09 Szenarien | teilweise · MKT-RS-01, MKT-RS-02 | Planversuche und Vergleich; kein freier Gesamtplan-Katalog. |
 | K-10 Optimierung | vorhanden · MKT-RS-02 | Experimentelle Kandidatensuche; kein globales Optimum. |
 | K-11 Datenschutz | vorhanden · MKT-RS-03 | Lokaler Bestand; Liveabrufe mit Netzpfaden, kein Audit. |
 | K-12 Offline-Fähigkeit | vorhanden · MKT-RS-03 | Kernrechnung, Reihen und Hilfe lokal; Livewerte online. |
@@ -474,7 +474,7 @@ Dokumentationsabgleich vom 27.10.2026; keine gemeinsame Ausführung aller RH-Ein
 | GAP-MKT-01 | Keine vollständige Einkommensteuer-/Sozialabgabenrechnung; Kapitalertragsteuer und Kirchensteuer vereinfacht. | MKT-RS-02, [Steuern](STEUERN.md#kapitalanlagen); keine volle deutsche Steuerplanung behaupten. |
 | GAP-MKT-02 | teilweise geschlossen: versionierte Einkünfte, Einmalzahlungen und geplante Ausgaben vorhanden; frei datierte Markt-/Inflationsfolge weiter offen. | MKT-RS-01/02; [Einkünfte](../../app/profile/profile-income.js), [Ausgaben](../../app/profile/household-planned-expenses.js); RH-01/02 nicht vollständig ausgeführt. |
 | GAP-MKT-03 | Kein frei datierter Pflegeeintritt mit Person/Grad als deterministische Oberflächenprobe. | MKT-RS-02, [mc-life-events.js](../../app/simulator/mc-life-events.js), [Pflege](PFLEGE.md); Pflegeanalyse nicht als exakter Eintrittsplan beschreiben. |
-| GAP-MKT-04 | Kein freies Speichern/Kopieren/Vergleichen ganzer Planszenarien wie in Privatplanern. | MKT-RS-01/02, [Varianten](SIMULATION_LESEN.md#varianten); Jahresbeleg/Sweep nicht damit gleichsetzen. |
+| GAP-MKT-04 | Kein freies Speichern/Kopieren/Vergleichen ganzer Planszenarien wie in Privatplanern. | MKT-RS-01/02, [Varianten](SIMULATION_LESEN.md#varianten); Jahresbeleg nicht damit gleichsetzen. |
 | GAP-MKT-05 | Formale Usability-/WCAG-/Screenreader-Prüfung nicht belegt. | MKT-RS-99; einzelne Hilfen kein Konformitätsnachweis. |
 | GAP-MKT-06 | geschlossen am 2026-07-17: Projektlizenz in Lizenztext, npm- und Cargo-Metadaten einheitlich MIT; am aktuellen Codebestand erneut bestätigt. | MKT-RS-04/05; Root-Projektmetadaten bleiben gegen Lizenztext geprüft, Abhängigkeits-/Datenrechte getrennt. |
 | GAP-MKT-07 | Kein automatischer persönlicher Rentenanspruchsabruf oder Bank-/Depotaggregation. | MKT-RS-01/02, [Rente](TOD_UND_ERBE.md#einkommen-und-bedarf), [Pflege der Eingaben](../../app/profile/profile-person-data.js); Eingabepflege bleibt Nutzeraufgabe. |

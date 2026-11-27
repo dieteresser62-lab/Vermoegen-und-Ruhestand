@@ -34,21 +34,25 @@ const normalizeYahooSymbol = (symbol) => {
   return normalized;
 };
 
-const ALLOWED_ORIGINS = ['null', 'tauri://localhost', 'https://tauri.localhost', 'http://tauri.localhost'];
-const isAllowedOrigin = (origin) =>
-  ALLOWED_ORIGINS.includes(origin) || (origin && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin));
-
-const corsOrigin = (req) => {
-  const origin = req.headers.origin || 'null';
-  return isAllowedOrigin(origin) ? origin : 'null';
+const ALLOWED_ORIGINS = ['tauri://localhost', 'https://tauri.localhost', 'http://tauri.localhost'];
+const isAllowedOrigin = (origin) => {
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  const match = /^http:\/\/(?:localhost|127\.0\.0\.1)(?::([0-9]{1,5}))?$/.exec(origin);
+  if (!match) return false;
+  const port = match[1];
+  return port === undefined || (Number(port) > 0 && Number(port) <= 65535);
 };
+
+const corsHeaders = (origin) => ({
+  ...(isAllowedOrigin(origin) ? { 'Access-Control-Allow-Origin': origin } : {}),
+  'Access-Control-Allow-Methods': 'GET,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type'
+});
 
 const sendJson = (res, status, payload) => {
   res.writeHead(status, {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': res._corsOrigin || 'null',
-    'Access-Control-Allow-Methods': 'GET,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
+    ...res._corsHeaders
   });
   res.end(JSON.stringify(payload));
 };
@@ -85,6 +89,12 @@ const fetchJson = (url) =>
         }
       },
       (resp) => {
+        const status = resp.statusCode || 500;
+        if (status === 404 || status === 429) {
+          resp.resume();
+          reject(upstreamStatusError(status));
+          return;
+        }
         let data = '';
         resp.on('data', (chunk) => (data += chunk));
         resp.on('end', () => {
@@ -95,7 +105,6 @@ const fetchJson = (url) =>
             reject(quoteError('INVALID_RESPONSE', `Ungueltiges JSON von Yahoo: ${data.slice(0, 200)}`, 502));
             return;
           }
-          const status = resp.statusCode || 500;
           if (status < 200 || status >= 300) {
             reject(upstreamStatusError(status));
             return;
@@ -139,6 +148,8 @@ const pickChartCandidate = (data) => {
     price,
     currency: meta.currency,
     asOf,
+    exchangeName: meta.exchangeName ?? null,
+    previousClose: meta.chartPreviousClose ?? meta.previousClose ?? null,
     source: 'yahoo-chart'
   };
 };
@@ -150,6 +161,8 @@ const pickQuoteCandidate = (data) => {
     price: result.regularMarketPrice,
     currency: result.currency,
     asOf: result.regularMarketTime,
+    exchangeName: result.exchange ?? null,
+    previousClose: result.regularMarketPreviousClose ?? null,
     source: 'yahoo-quote'
   };
 };
@@ -195,17 +208,21 @@ const normalizeProviderQuote = (requestedSymbol, candidate, nowSeconds = Math.fl
 
   const source = typeof candidate?.source === 'string' ? candidate.source.trim() : '';
   if (!source) throw quoteError('INVALID_RESPONSE', 'Yahoo-Antwort enthaelt keine Kursquelle.');
-  return { symbol: responseSymbol, price, currency, asOf, source };
+  return { symbol: responseSymbol, price, currency, asOf, source,
+    ...(candidate.exchangeName !== undefined ? { exchangeName: candidate.exchangeName } : {}),
+    ...(candidate.previousClose != null ? { previousClose: candidate.previousClose } : {}) };
 };
 
 const shouldStopFallback = (error) => [
   'UNSUPPORTED_CURRENCY',
   'SYMBOL_MISMATCH',
   'QUOTE_STALE',
-  'QUOTE_FROM_FUTURE'
+  'QUOTE_FROM_FUTURE',
+  'SYMBOL_NOT_FOUND',
+  'PROVIDER_RATE_LIMITED'
 ].includes(error?.code);
 
-const proxyQuote = async (rawSymbol, res) => {
+const proxyQuote = async (rawSymbol, singleAttempt, res) => {
   let symbol;
   try {
     symbol = normalizeYahooSymbol(rawSymbol);
@@ -239,7 +256,7 @@ const proxyQuote = async (rawSymbol, res) => {
       lastError = error instanceof ProxyQuoteError
         ? error
         : quoteError('PROVIDER_UNAVAILABLE', error?.message || String(error), 502);
-      if (shouldStopFallback(lastError)) break;
+      if (singleAttempt || shouldStopFallback(lastError)) break;
     }
   }
   sendError(res, lastError);
@@ -264,13 +281,9 @@ const proxyChart = async (symbol, period1, period2, interval, res) => {
 };
 
 const createServer = () => http.createServer((req, res) => {
-  res._corsOrigin = corsOrigin(req);
+  res._corsHeaders = corsHeaders(req.headers.origin);
   if (req.method === 'OPTIONS') {
-    res.writeHead(204, {
-      'Access-Control-Allow-Origin': res._corsOrigin,
-      'Access-Control-Allow-Methods': 'GET,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    });
+    res.writeHead(204, res._corsHeaders);
     res.end();
     return;
   }
@@ -282,7 +295,7 @@ const createServer = () => http.createServer((req, res) => {
       sendError(res, quoteError('INVALID_SYMBOL', 'Yahoo-Symbol fehlt.', 400));
       return;
     }
-    void proxyQuote(symbol, res);
+    void proxyQuote(symbol, url.searchParams.get('einmal') === '1', res);
     return;
   }
 
@@ -313,8 +326,8 @@ const createServer = () => http.createServer((req, res) => {
 });
 
 if (require.main === module) {
-  createServer().listen(port, () => {
-    console.log(`Yahoo proxy listening on http://localhost:${port}`);
+  createServer().listen(port, '127.0.0.1', () => {
+    console.log(`Yahoo proxy listening on http://127.0.0.1:${port}`);
   });
 }
 

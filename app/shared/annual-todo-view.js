@@ -1,30 +1,27 @@
 // FR-77: gemeinsamer Baustein „Was zu tun ist“ für Balance (Karte) und Jahresabschluss (Ergebnis, Schritt „Plan“).
-// Nur Darstellung; Zahlen kommen aus `app/balance/annual-todo.js` und der fertigen Marktprojektion.
+// Nur Darstellung; Zahlen kommen aus `app/balance/annual-todo.js`.
 import { formatDisplayNumber } from './designsystem-number-format.js';
 import { saleEntryHref, todoDate, annualPlanStatusText, stockTrancheId } from '../balance/annual-todo.js';
-import { createMarketHistory } from '../balance/balance-market-history.js';
-import { displayUp, displayMonthlyDown, displayDown, displayActionAmount, displayedBuyTotal } from './display-rounding.js';
+import { displayUp, displayDown, displayActionAmount, displayedBuyTotal, displayedSaleTotal } from './display-rounding.js';
 import { BANK_ORDER_DATE_MISSING_HINT } from '../../types/sale-fifo.js';
 
-/** @param {string|null|undefined} value */
+/** Altbestand [A7]: Datum der Wahl „Mit dem Jahreshoch“ in Belegen vor FR-89. @param {string|null|undefined} value */
 const marketChoiceDate = value => value?.split('-').reverse().join('.') || 'Datum nicht belegt';
 
 /** @typedef {NonNullable<ReturnType<typeof import('../balance/annual-todo.js').projectAnnualTodoPlan>>} TodoPlan */
 /** @typedef {NonNullable<ReturnType<typeof import('../balance/annual-todo.js').projectCashRefill>>} CashRefill */
-/** @typedef {ReturnType<typeof import('../balance/balance-market-preview.js').projectMarketPreview>} MarketView */
 
 /** @param {number|null|undefined} value */
 export const todoMoney = value => Number.isFinite(value) ? `${formatDisplayNumber(/** @type {number} */ (value), { fractionDigits: 0 })} €` : '—';
 /** FR-78: Verkaufs- und Umschichtungsbeträge, Ziele und Steuer einer Empfehlung, aufgerundet (Käufe: `displayActionAmount`, ab). Genau bleiben Verkaufserlöse,
  * Kontostände und alles in „Details & Drucken“. @param {number|null|undefined} value */
 const upMoney = value => todoMoney(displayUp(value));
-/** FR-78: Monatsbudget, abgerundet nach der Monatsstaffel. @param {number|null|undefined} value */
-const budgetMoney = value => todoMoney(displayMonthlyDown(value));
 const shownBuyPlan = displayedBuyTotal;
-/** Ergänzung 2 FR-78: Summen aus den angezeigten Beträgen. Plan = Summe der angezeigten Zeilen, ohne Zeilen der gerundete Betrag.
+/** Ergänzung 2 FR-78: Summen aus den angezeigten Beträgen; ohne Zeilen der gerundete Betrag.
+ * HP-3 (Ergänzung 6 FR-78): Die Verkaufszeilen stehen auf den Euro, der Kopf rundet ihre Summe einmal (52.298 + 37.702 € → ca. 90.000 €).
  * VK-3d P4: Ein reiner Kaufplan mit Zeilen je Person nimmt deren Summe.
  * @param {{rows: {planNet: number}[], amount?: number|null}} plan @returns {number|null} */
-const shownPlan = plan => plan.rows.length ? plan.rows.reduce((sum, row) => sum + displayUp(row.planNet), 0)
+const shownPlan = plan => plan.rows.length ? displayedSaleTotal(plan.rows)
     : /** @type {any} */ (plan).buyFlow?.lines?.length ? shownBuyPlan(/** @type {any} */ (plan).buyFlow.lines)
         : Number.isFinite(plan.amount) ? displayActionAmount(/** @type {any} */ (plan).verb, plan.amount) : null;
 /** VN-1 Punkt 4 (FR-78 Ergänzung 3): Plan, verkauft bzw. gekauft und offen einer Karte auf den Euro. Je Zeile werden Plan und Erledigtes
@@ -57,11 +54,12 @@ const buyProgress = lines => euroProgress(lines.map(line => ({ plan: line.amount
  * ganzen Euro (RD-1e); die übrigen Teile mit `round` (Verkaufserlös auf). Den Unterschied zum Gesamtbetrag nimmt der letzte Teil, der
  * kein Kauf ist, wenn er dabei nahe am genauen Wert bleibt (nicht unter seinem abgerundeten, nicht über seinem aufgerundeten Wert, über 0).
  * RD-1f: Mit Kaufanteil entfällt die obere Schranke; der Rest ist dann angezeigter Verkauf minus die übrigen Teile, solange er über 0 liegt.
- * @param {{amount: number, purchase?: boolean}[]} entries genaue Teile @param {number|null} total angezeigter Gesamtbetrag
+ * @param {{amount: number, purchase?: boolean, shown?: number}[]} entries genaue Teile, `shown` schon angezeigte Teile @param {number|null} total angezeigter Gesamtbetrag
  * @param {(value: number)=>number} [round] @returns {number[]} */
 function shownParts(entries, total, round = displayUp) {
-    const rounded = entries.map(entry => entry.purchase ? displayActionAmount(' kaufen', entry.amount) : round(entry.amount));
-    if (!Number.isFinite(total) || !entries.length) return rounded;
+    const rounded = entries.map(entry => entry.shown ?? (entry.purchase ? displayActionAmount(' kaufen', entry.amount) : round(entry.amount)));
+    // HP-5 (Ergänzung 7 FR-78): Teilbeträge wie „Deine Reserven“ (`shown`) stehen schon fest und gehen auf den Kopf auf.
+    if (!Number.isFinite(total) || !entries.length || entries.some(entry => Number.isFinite(entry.shown))) return rounded;
     if (entries.length === 1) return [/** @type {number} */ (total)];
     const restIndex = entries.map((entry, index) => entry.purchase ? -1 : index).filter(index => index >= 0).at(-1);
     if (restIndex === undefined) return rounded;
@@ -75,10 +73,6 @@ const centMoney = value => Number.isFinite(value) ? `${formatDisplayNumber(/** @
 /** WT-1b: Satz zur Umsetzung, bei Plänen ohne Verkaufszeile neutral. @param {{rows: any[], purchases: any[]}} plan */
 const decisionText = plan => plan.rows.length ? 'Die App bucht nichts – du entscheidest, wann du verkaufst.'
     : plan.purchases.length ? 'Die App bucht nichts – du entscheidest, wann du kaufst.' : 'Die App bucht nichts.';
-/** @param {number|null|undefined} value */
-const percent = value => `${formatDisplayNumber(Math.abs(Number(value) || 0), { fractionDigits: 0 })} %`;
-/** @param {number|null|undefined} value */
-const price = value => `${formatDisplayNumber(Number(value), { fractionDigits: 2 })} €`;
 
 /** @param {Document} doc @param {string} tag @param {string} [text] @param {string} [className] */
 function make(doc, tag, text, className) {
@@ -388,7 +382,6 @@ export function createTodoResult(doc, plan, { details = null } = {}) {
     head.append(make(doc, 'h3', 'Was zu tun ist'), make(doc, 'span', `Plan ${plan.year}`, 'ds-plan-chip todo-plan-chip'));
     root.append(head);
     if (plan.marketReading?.reading === 'year_high') root.append(make(doc, 'p', `Gewählt: mit dem Jahreshoch vom ${marketChoiceDate(plan.marketReading.asOf)} (vorsichtiger).`, 'ds-source todo-decided'));
-    else if (plan.marketReading?.reading === 'year_end') root.append(make(doc, 'p', 'Gewählt: nach Kursen zum Jahresende.', 'ds-source todo-decided'));
     if (plan.nothing) root.append(mainLine(doc, 'Nichts tun', null, plan.text && plan.text !== 'Nichts tun' ? plan.text.replace(/^Nichts tun – /, '') : ''));
     // VN-2 P5 / DS-1 Punkt 7: wie die Karte – Handlungszeile gerundet mit „ca.“, Zeilen je Person auf den Euro.
     else root.append(mainLine(doc, plan.verb, shownPlan(plan), plan.rows.length ? 'netto' : '', true));
@@ -451,63 +444,6 @@ export function createHeldCashNotes(doc, people) {
         note.dataset.todoHeldNote = person.profileId || '';
         return note;
     });
-}
-
-/** Verdeckter Bärenmarkt (FR-77 Punkt 5): Abstand, drei Kurse, Folgen und Hinweis auf die Wahl. In der Balance mit
- * zugeklapptem Kursverlauf; im Jahresabschluss mit der Wahl darunter (`choice`).
- * @param {Document} doc @param {MarketView} view @param {{annual?: boolean, choice?: HTMLElement|null}} [options] */
-export function createHiddenBearBlock(doc, view, { annual = false, choice = null } = {}) {
-    const root = make(doc, 'section', undefined, 'todo-bear'); root.dataset.hiddenBear = annual ? 'annual' : 'balance';
-    const year = Number(view.yearEndDate.slice(0, 4)) + 1;
-    const high = view.yearlyHigh || { price: view.high.high.value, asOf: view.high.high.asOf };
-    const today = view.quote?.price ?? view.rule.index;
-    const gap = high.price > 0 ? (high.price - today) / high.price * 100 : 0;
-    const change = Number.isFinite(view.rule.changeSinceYearEndPct) ? /** @type {number} */ (view.rule.changeSinceYearEndPct) : 0;
-    const changeText = `${change < 0 ? 'ein Minus' : 'ein Plus'} von ${percent(change)}`;
-    const head = make(doc, 'div', undefined, 'todo-bear-head');
-    head.append(make(doc, 'span', annual ? 'Wahl nötig' : 'Prüfen', 'todo-bear-badge'), make(doc, 'h4', 'Bärenmarkt, den die Jahresregel nicht sieht'));
-    root.append(head);
-    root.append(make(doc, 'p', annual
-        ? `Aktien liegen ${percent(gap)} unter dem Jahreshoch vom ${marketChoiceDate(high.asOf)}. Nach Kursen zum Jahresende (Ende ${year - 1} → Ende ${year}: ${change < 0 ? '−' : '+'}${percent(change)}) wäre es kein Bärenmarkt. Welcher Plan soll gelten?`
-        : `Aktien liegen heute ${percent(gap)} unter dem Jahreshoch vom ${marketChoiceDate(high.asOf)}. Der Jahresabschluss vergleicht nur Kurse zum Jahresende: Von Ende ${year - 1} bis heute ist das ${changeText}, also kein Bärenmarkt. Gemessen am Jahreshoch ist es einer.`));
-    if (!annual) {
-        const tiles = make(doc, 'div', undefined, 'todo-bear-tiles');
-        for (const [label, value, note] of /** @type {[string, number, string][]} */ ([[`Ende ${year - 1}`, view.stored.index, ''],
-            [`Jahreshoch ${marketChoiceDate(high.asOf).slice(0, 6)}`, high.price, ''], ['Heute', today, `${percent(gap)} unter dem Hoch`]])) {
-            const tile = make(doc, 'div', undefined, 'todo-bear-tile');
-            tile.append(make(doc, 'span', label, 'ds-source'), make(doc, 'strong', price(value)));
-            if (note) tile.append(make(doc, 'span', note, 'todo-bear-gap'));
-            tiles.append(tile);
-        }
-        root.append(tiles);
-        const rule = view.comparison.rule, highVariant = view.comparison.high;
-        if (rule && highVariant) {
-            root.append(make(doc, 'h5', `Was das für ${year + 1} heißt`, 'todo-bear-subtitle'));
-            // FR-78: Monatsbudgets abgerundet; der Unterschied ergibt sich aus den gezeigten Beträgen.
-            const delta = (displayMonthlyDown(highVariant.monthlyBudget) ?? 0) - (displayMonthlyDown(rule.monthlyBudget) ?? 0);
-            const budget = make(doc, 'span', budgetMoney(highVariant.monthlyBudget));
-            if (Math.round(delta) !== 0) budget.append(make(doc, 'small', ` (${delta < 0 ? '−' : '+'}${todoMoney(Math.abs(delta))})`, 'todo-bear-gap'));
-            // WT-1b: Die Zeile heißt nur dann „Verkauf im Januar“, wenn keine der beiden Varianten kauft.
-            const verbs = [rule, highVariant].map(variant => variant.mainAction.text).filter(text => text !== 'Nichts tun');
-            const buys = verbs.filter(text => / kaufen$/.test(text)).length, sells = verbs.length - buys;
-            const rowLabel = buys && sells ? 'Handlung im Januar' : buys ? 'Kauf im Januar' : 'Verkauf im Januar';
-            const sale = (/** @type {typeof rule} */ variant) => variant.mainAction.text === 'Nichts tun' ? buys && sells ? 'nichts' : buys ? 'kein Kauf' : 'kein Verkauf'
-                : `${variant.mainAction.text}${Number.isFinite(variant.mainAction.netAmount) ? ` · ${todoMoney(displayActionAmount(variant.mainAction.text, variant.mainAction.netAmount))}` : ''}`;
-            const comparison = table(doc, ['', 'Kurse zum Jahresende', 'Mit dem Jahreshoch'], [
-                ['Marktlage', 'kein Bärenmarkt', 'Bärenmarkt'],
-                [`Monatsbudget ${year + 1}`, budgetMoney(rule.monthlyBudget), budget],
-                [rowLabel, sale(rule), sale(highVariant)]], `Was das für ${year + 1} heißt`);
-            comparison.className = `${comparison.className} todo-bear-table`;
-            root.append(comparison);
-        }
-        root.append(make(doc, 'p', `Im Jahresabschluss wählst du, welcher Plan für ${year + 1} gilt. Bis dahin ändert sich nichts.`));
-        const history = /** @type {HTMLDetailsElement} */ (make(doc, 'details', undefined, 'todo-bear-history'));
-        history.dataset.marketHistoryDetails = '';
-        history.append(make(doc, 'summary', `Kursverlauf ${year}`), createMarketHistory(doc, view, false));
-        root.append(history);
-    }
-    if (choice) root.append(choice);
-    return root;
 }
 
 /** Jahresabschluss, Schritt „Plan“: wie viel vom alten Plan umgesetzt wurde (FR-77 Punkt 6). `result` ist die Kurzform im Ergebnis.

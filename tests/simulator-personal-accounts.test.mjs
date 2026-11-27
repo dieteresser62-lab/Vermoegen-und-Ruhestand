@@ -22,7 +22,7 @@ const assertAccounts = portfolio => {
     assertClose(portfolio.liquiditaet, portfolio.personAccounts.reduce((sum, p) => sum + p.tagesgeld + p.geldmarktEtf, 0), 1e-8, 'Personal balances reconcile');
     for (const p of portfolio.personAccounts) assert(p.tagesgeld >= 0 && p.geldmarktEtf >= 0, 'Personal accounts remain nonnegative');
 };
-for (const [mode, expected] of [['tax_optimized', [300, 0]], ['proportional', [100, 200]], ['runway_first', [150, 150]]]) {
+for (const [mode, expected] of [['tax_optimized', [300, 0]], ['proportional', [100, 200]], ['runway_first', [0, 300]]]) {
     const portfolio = fixture();
     const profiles = personalProfiles(portfolio);
     const plan = personalWithdrawalPlan(profiles, 300, mode);
@@ -112,8 +112,8 @@ for (const [mode, expected] of [['tax_optimized', [300, 0]], ['proportional', [1
     const portfolio = initializePortfolio({ tagesgeld: 300, simulationSourceProfileId: 'a', detailledTranches: [],
         simulationPeople: [{ profileId: 'a', tagesgeld: 100 }, { profileId: 'b', tagesgeld: 200 }],
         healthBucket: { enabled: true, initialAmount: 200, triggerMinGrade: 4 } });
-    assertEqual(portfolio.personAccounts[0].tagesgeld, 0, 'Reserved personal cash leaves operating account');
-    assertEqual(portfolio.personAccounts[1].tagesgeld, 100, 'Remaining reserve comes from actual second account');
+    assertClose(portfolio.personAccounts[0].tagesgeld, 100 / 3, 1e-8, 'Without personal targets a keeps one third of their cash');
+    assertClose(portfolio.personAccounts[1].tagesgeld, 200 / 3, 1e-8, 'Without personal targets b keeps one third of their cash');
     const result = applyHealthBucketCoverage({ portfolio, forcedShortfall: 200, careFloorAddition: 200,
         pflegeMeta: { active: true, grade: 4, zusatzFloorZiel: 200 } });
     assertClose(result.consumedCash.reduce((sum, row) => sum + row.amount, 0), 200, 1e-8, 'Reserve payout retains personal cash provenance');

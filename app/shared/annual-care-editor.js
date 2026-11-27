@@ -1,6 +1,6 @@
 import { createCareValuesDraft, readCareValues, residentialComponents, residentialMonthly } from './household-care-values.js';
 import { careDriftPercentForYear, projectCareValuesForYear, resolveCarePrices } from './care-prices.js';
-import { annualCareProfileId, careSettingsStorage, sharesHouseholdCareValues } from './care-profile-settings.js';
+import { careSettingsStorage } from './care-profile-settings.js';
 import { persistenceStorage } from './persistence-facade.js';
 import { parseHouseholdPlanNumber } from './household-plan-fields.js';
 import { careTodayOwnValuesForClosing } from './care-today-closing.js';
@@ -25,21 +25,22 @@ const sameAmount = (a, b) => Math.abs(a - b) < 0.005;
  */
 export function createAnnualCareEditor({ doc, targetYear, listen, storage = persistenceStorage, onState = () => {} }) {
     const planningYear = targetYear + 1;
-    // Argon FR73A B2: Preisbesitzer wie im Abschlussbatch, nicht die zuletzt geöffnete Außenperson.
-    const careProfileId = annualCareProfileId(storage);
-    const legacy = careSettingsStorage(storage, careProfileId), shared = sharesHouseholdCareValues(storage, careProfileId);
+    // Argon FR73A B2: Preisbesitzer wie im Abschlussbatch.
+    const legacy = careSettingsStorage(storage);
     // Eingefrorene Ausgangsbasis: der gespeicherte Record; jede Fortschreibung rechnet von hier aus.
     const original = readCareValues(storage);
     // Der Kostenanstieg kommt mit den Preisen: markiert aus dem Record, sonst Altbestand über den Resolver (PFA-2 B6).
     // FR-73 Punkt 8 geändert: die Rate des neuen Planjahrs (Schritt J → J+1).
-    const basePrices = resolveCarePrices(original, legacy, { shared }), driftPercent = careDriftPercentForYear(basePrices, planningYear);
+    const basePrices = resolveCarePrices(original, legacy), driftPercent = careDriftPercentForYear(basePrices, planningYear);
     const official = legacy.getItem('sim_pflegeKostenStaffelPreset') === 'amtlich';
     let inflationRate = /** @type {number|null} */ (null);
     /** Vorschlag für das neue Planjahr; ohne Inflation die unveränderte Basis mit ergänztem Preisblock. */
     const proposal = () => inflationRate === null
         ? { ...structuredClone(original), prices: { costs: { ...basePrices.costs }, maximumFloor: basePrices.maximumFloor,
+            ...(basePrices.driftMarked ? { driftPercent: basePrices.driftPercent } : {}),
+            ...(basePrices.scheduleMarked ? { driftUntilYear: basePrices.driftUntilYear, driftAfterPercent: basePrices.driftAfterPercent } : {}),
             ownExpensesMonthly: basePrices.ownExpensesMonthly, origin: basePrices.origin, priceYear: basePrices.priceYear ?? planningYear } }
-        : projectCareValuesForYear(original, { inflationRate, driftPercent, priceYear: planningYear, legacySource: legacy, shared });
+        : projectCareValuesForYear(original, { inflationRate, driftPercent, priceYear: planningYear, legacySource: legacy });
     let proposed = proposal(), proposedHome = residentialComponents(proposed.residential);
     const draft = createCareValuesDraft(proposed, planningYear);
     // Angezeigt wird auf Cent gerundet; ein unberührtes Feld behält den genauen Bestandteil.
@@ -87,7 +88,7 @@ export function createAnnualCareEditor({ doc, targetYear, listen, storage = pers
     prices.append(node('small', official ? '€/Jahr zu Hause · Simulator rechnet mit dem amtlichen Durchschnitt aus den Heimwerten' : '€/Jahr zu Hause'), priceTiles);
     const extra = node('div', '', 'annual-care-home');
     const maxFloor = node('strong', `${money(proposed.prices.maximumFloor)} €/Jahr`), ownExpenses = node('strong', `${money(proposed.prices.ownExpensesMonthly)} €/Monat`);
-    extra.append(node('span', 'Maximaler Pflege-Floor je Person'), maxFloor, node('span', 'Eigene Ausgaben im Heim je Person'), ownExpenses); prices.append(extra);
+    extra.append(node('span', 'Maximaler Grundbedarf mit Pflege je Person'), maxFloor, node('span', 'Eigene Ausgaben im Heim je Person'), ownExpenses); prices.append(extra);
     displays.set('maxFloor', maxFloor); displays.set('ownExpenses', ownExpenses);
     // FR-73 Punkt 13: eigene Werte „Pflegekosten heute über die Kasse hinaus“ je Person, fortgeschrieben wie die Staffel;
     // unter „Werte ändern …“ je Person änderbar (Gutachten PFA-4, Befund 3), der bestätigte Betrag geht in den Abschlussbatch.
@@ -119,7 +120,7 @@ export function createAnnualCareEditor({ doc, targetYear, listen, storage = pers
     const fieldSpecs = [...[2, 3, 4, 5].map(grade => [String(grade), `Pflegegeld Grad ${grade} (€/Monat)`]),
         ...HOME_PARTS.map(([, field, title]) => [field, `Heim: ${title} (€/Monat)`]),
         ...GRADES.map(grade => [`cost${grade}`, `Pflege zu Hause Grad ${grade} (€/Jahr)`]),
-        ['maxFloor', 'Maximaler Pflege-Floor (€/Jahr)'], ['ownExpenses', 'Eigene Ausgaben im Heim (€/Monat)'],
+        ['maxFloor', 'Maximaler Grundbedarf mit Pflege (€/Jahr)'], ['ownExpenses', 'Eigene Ausgaben im Heim (€/Monat)'],
         ...ownRows.map(row => [ownKey(row.profileId), `Pflege zu Hause ${row.name}: eigener Wert (€/Monat)`]), ['from', 'gültig ab']];
     for (const [key, label] of fieldSpecs) {
         const row = node('div', '', 'ds-field'), input = node('input'), title = node('label', label), error = node('small', '', 'household-plan-error');

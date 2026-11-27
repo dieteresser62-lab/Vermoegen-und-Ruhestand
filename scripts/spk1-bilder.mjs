@@ -11,7 +11,7 @@ export async function captureSPK1({ browser, baseUrl, newProbelauf, goto, tab, p
         const { page } = session;
         await goto(session, 'Simulator.html', '2026-10-23');
         await poll(page, () => window.__simulatorOpeningBacktestDone === true, null, 'Start-Backtest', 60000);
-        for (const view of ['ergebnis', 'annahmen', 'backtesting', 'montecarlo', 'werkstatt']) {
+        for (const view of ['ergebnis', 'annahmen', 'backtesting', 'montecarlo']) {
             await tab(page, view);
             await page.mouse.move(1910, 1070);
             await page.evaluate(() => document.fonts.ready);
@@ -27,7 +27,7 @@ export async function captureSPK1({ browser, baseUrl, newProbelauf, goto, tab, p
         if (!before) {
             const original = await fs.readFile('/tmp/spk1-vorher/buttons.json', 'utf8');
             if (!isDeepStrictEqual(JSON.parse(original), styles)) throw new Error('Simulator-Knopfstile haben sich geändert.');
-            for (const view of ['ergebnis', 'annahmen', 'backtesting', 'montecarlo', 'werkstatt']) {
+            for (const view of ['ergebnis', 'annahmen', 'backtesting', 'montecarlo']) {
                 const urls = await Promise.all(['vorher', 'nachher'].map(async stage =>
                     'data:image/png;base64,' + (await fs.readFile(`/tmp/spk1-${stage}/${view}.png`)).toString('base64')));
                 const difference = await page.evaluate(async urls => {

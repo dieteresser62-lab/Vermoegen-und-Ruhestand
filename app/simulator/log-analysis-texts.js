@@ -12,8 +12,8 @@ const range = event => {
     return `von ${yearLabel(e.startYear, event.source)} bis ${yearLabel(e.endYear, event.source)}`;
 };
 
-const policyNames = { SafetyCapActive: 'Bereitschaft der Leitplanke', SafetyCapApplied: 'Eingriff der Leitplanke',
-    SevereFlexEmergencyActive: 'Notfallregel für Flex', Alarm: 'Alarm', safety_stage_current: 'Sicherheitsstufe' };
+const policyNames = { SafetyCapActive: 'die Bereitschaft der Leitplanke', SafetyCapApplied: 'der Eingriff der Leitplanke',
+    SevereFlexEmergencyActive: 'die Notfallregel für Flex', Alarm: 'der Alarm', safety_stage_current: 'die Sicherheitsstufe' };
 const status = value => value === true ? 'aktiv' : value === false ? 'inaktiv' : `${value ?? 'unbekannt'}`;
 
 /** Ein Satz und kurze Kartenwerte je Ereignis, ohne HTML oder Ursachenvermutung.
@@ -44,13 +44,14 @@ export function describeLogAnalysisEvent(event, context = {}) {
     case 'floor_shortfall': return result('Grundbedarf ungedeckt', money(e), `${at} fehlen laut Laufbeleg ${money(e)} zur Deckung des Grundbedarfs.`);
     case 'minimum_flex_held': return result('Mindest-Flex gehalten', '0 Jahre darunter', `Der bezahlte Haushalts-Flex einschließlich Rentenbeitrag liegt in keinem der ${e.years} abgeschlossenen Jahre unter dem angewandten Mindest-Flex.`);
     case 'below_minimum_flex_phase': return result('Unter Mindest-Flex', years(e.durationYears), `Der bezahlte Haushalts-Flex einschließlich Rentenbeitrag liegt ${range(event)} für ${years(e.durationYears)} unter dem angewandten Mindest-Flex, mit einem jährlichen Fehlbetrag von bis zu ${euro(real ? e.maximumShortfallRealEur : e.maximumShortfallNominalEur)} ${basis}${e.openAtEnd ? ' und noch am Laufende' : ''}.`);
-    case 'decision_flex_cut_phase': return result('Flex-Entnahme gekürzt', years(e.durationYears), `Die vorgesehene Flex-Entnahme aus dem Vermögen wird ${range(event)} ${inYears(e.durationYears)} um mindestens 10 % gekürzt, jährlich höchstens ${number(e.maximumAnnualValue)} %${e.openAtEnd ? ' und noch am Laufende' : ''}.`);
+    // HP-5: die größte Kürzung eines Jahres; bei 100 % fiel die Flex-Entnahme ganz weg (gilt für Monte Carlo und Backtest).
+    case 'decision_flex_cut_phase': return result('Flex-Entnahme gekürzt', years(e.durationYears), `Die vorgesehene Flex-Entnahme aus dem Vermögen wird ${range(event)} ${inYears(e.durationYears)} um mindestens 10 % gekürzt${e.openAtEnd ? ' und noch am Laufende' : ''}, ${number(e.maximumAnnualValue) === '100' ? 'in einem Jahr fiel die Flex-Entnahme ganz weg' : `in einem Jahr um bis zu ${number(e.maximumAnnualValue)} %`}.`);
     case 'household_flex_cut_phase': return result('Haushalts-Flex gekürzt', years(e.durationYears), `Der Haushalts-Flex wird ${range(event)} auf der ${e.basis === 'static_input' ? 'statischen Wunschbasis' : e.basis === 'effective_vpw_plus_pension_surplus' ? 'dynamischen Basis mit Rentenüberschuss' : `protokollierten Basis „${e.basis}“`} für ${years(e.durationYears)} um mindestens 10 % gekürzt${e.openAtEnd ? ' und noch am Laufende' : ''}.`);
     case 'flex_basis_change': return result('Flex-Bezugsgröße wechselt', yearLabel(event.year, event.source), `${at} wechselt die protokollierte Bezugsgröße des Haushalts-Flex, deshalb werden Kürzungsphasen auf diesen Basen getrennt ausgewiesen.`);
     case 'policy_state_change': return result('Leitplanke oder Alarm', status(e.to), `${at} wechselt ${policyNames[e.field]} von ${status(e.from)} auf ${status(e.to)}.`);
     case 'initial_policy_observation': return result('Beobachteter Sicherheitsstatus', status(e.to), `${at} ist ${policyNames[e.field]} mit „${status(e.to)}“ protokolliert; der Beginn dieses Zustands ist nicht belegt.`);
-    case 'market_regime_change': return result('Marktphase wechselt', `${e.from} → ${e.to}`, `${at} wechselt die Marktklassifikation der Engine von „${e.from}“ zu „${e.to}“.`);
-    case 'extreme_bear': return result('Extrembär protokolliert', yearLabel(event.year, event.source), `${at} klassifiziert die Engine den Markt als Extrembär.`);
+    case 'market_regime_change': return result('Marktphase wechselt', `${e.from} → ${e.to}`, `${at} wechselt die Marktphase der Rechnung von „${e.from}“ zu „${e.to}“.`);
+    case 'extreme_bear': return result('Extrembär protokolliert', yearLabel(event.year, event.source), `${at} stuft die App den Markt als Extrembär ein.`);
     case 'minimum_real_year_end_wealth': return result('Stand im Kaufkraft-Tief', money(e), `${at} liegt der nach Kaufkraft niedrigste beobachtete Jahresendstand einschließlich Pflegevorsorge bei ${money(e)}${e.missingFinancialYears ? `; für ${years(e.missingFinancialYears)} fehlen reale Werte` : ''}.`);
     case 'real_wealth_recovery': return result('Reales Hoch wieder erreicht', yearLabel(event.year, event.source), `${at} erreicht das Geldvermögen erstmals seit Beginn des Rückgangs in ${yearLabel(e.fromYear, event.source)} wieder die Kaufkraft des früheren Hochs von ${euro(target)} ${basis}.`);
     case 'real_wealth_unrecovered': return result('Reales Hoch noch nicht erreicht', euro(target), `Bis ${yearLabel(e.observationEnd, event.source)} wird die Kaufkraft des früheren Hochs von ${euro(target)} ${basis} in den zusammenhängend beobachteten Jahresendständen nicht wieder erreicht.`);

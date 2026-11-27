@@ -5,7 +5,7 @@ import { buildBalanceEngineInputFromStorage } from '../../app/balance/balance-in
 import { PersistenceFacade as P } from '../../app/shared/persistence-facade.js';
 import { setAppTestDate } from '../../app/shared/app-clock.js';
 import { annualRecordStorage } from '../../app/balance/balance-annual-storage.js';
-import { evaluateBalanceFileInputs } from '../../app/balance/balance-file-service.js';
+import { evaluateBalanceInputs } from '../../app/balance/balance-evaluation.js';
 import { evaluateStoredAnnualHousehold } from '../../app/balance/balance-main-profilverbund.js';
 import { createBalanceDisplayEngineApi, buildBalanceRendererPayload } from '../../app/balance/balance-update-pipeline.js';
 import { projectNextYearBudget } from '../../app/balance/balance-next-year-budget.js';
@@ -55,7 +55,7 @@ export async function renderCard(records, date = '2026-10-23') {
     setAppTestDate(date);
     const storage = annualRecordStorage(records), api = createBalanceDisplayEngineApi(EngineAPI);
     const calculation = buildBalanceEngineInputFromStorage({ storage }), plan = calculation.householdPlan;
-    const evaluation = evaluateBalanceFileInputs({ inputData: calculation.inputData, persistentState: calculation.history.persistentState,
+    const evaluation = evaluateBalanceInputs({ inputData: calculation.inputData, persistentState: calculation.history.persistentState,
         profiles: calculation.history.profiles, profileId: records.rs_current_profile, engineApi: api, publish: false,
         planInputs: plan.entry.values, marketPreviewContext: { calculation, storage },
         profilverbundHandlers: { runProfilverbundProfileSimulations: (input, profiles, state) => evaluateStoredAnnualHousehold(input, profiles, state,

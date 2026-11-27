@@ -6,7 +6,6 @@ import { ANNUAL_PLAN_RECORD_KEY } from '../app/profile/annual-plan-record.js';
 import { projectAnnualActionProgress } from '../app/balance/annual-action-progress.js';
 import { displayedReserves } from '../app/balance/balance-reserves.js';
 import { createAnnualPlanResult } from '../app/shared/annual-close-result.js';
-import { createAnnualMarketChoice } from '../app/shared/annual-market-choice.js';
 import { roundedHouseholdPlanComparison } from '../app/profile/household-plan-comparison.js';
 import { projectOverviewFromRecords } from '../app/overview/overview-model.js';
 import { MockDocument } from './helpers/balance-page-fixture.mjs';
@@ -80,16 +79,8 @@ const martinPetra = await renderCard(createMusterHaushaltRecords(DATE, 'martin-p
     assert(text.includes('65.000 € im Jahr'), `Jahresabschluss (GN-1): Bedarf 65.000 € = 32.500 + 32.500 € (angezeigte Teile) (${text.slice(0, 300)})`);
 }
 
-// 6 (P3 Wahl und Übersicht): gleich aussehende Optionen genau; „geändert“ nur bei geändertem Text.
+// 6 (P3 Übersicht): „geändert“ nur bei geändertem Text. Die Marktwahl im Jahresabschluss entfällt seit FR-89.
 {
-    const option = (monthlyBudget, netAmount) => ({ monthlyBudget, mainAction: { text: 'Aktien verkaufen', netAmount } });
-    const choice = clean(createAnnualMarketChoice(new MockDocument(), { yearEndDate: '2025-12-31', high: { high: { value: 165.79, asOf: '2026-08-12' } },
-        comparison: { rule: option(5433, 37640), high: option(5333, 39900), difference: { monthlyBudget: -100 } } }, null, () => {}).textContent);
-    assert(choice.includes('Monatsbudget 5.433 € · Aktien verkaufen 37.640 €') && choice.includes('Monatsbudget 5.333 € · Aktien verkaufen 39.900 €'),
-        `Wahl: gerundet gleich (5.250 € · 40.000 €), deshalb genau (${choice})`);
-    const distinct = clean(createAnnualMarketChoice(new MockDocument(), { yearEndDate: '2025-12-31', high: { high: { value: 165.79, asOf: '2026-08-12' } },
-        comparison: { rule: option(7388, 37640), high: option(6990, 37640), difference: { monthlyBudget: -398 } } }, null, () => {}).textContent);
-    assert(distinct.includes('Monatsbudget 7.250 €') && distinct.includes('Monatsbudget 6.750 €'), 'Wahl: unterscheidbare Optionen bleiben gerundet');
     const view = { recordStatus: 'valid', confirmedAction: { action: { type: 'TRANSACTION', quellen: [{ kind: 'aktien_neu', brutto: 38000, steuer: 360, netto: 37640 }], verwendungen: { liquiditaet: 37640 } } },
         rows: [{ label: 'Handlungsanweisung', plan: 'Aktien verkaufen · 37.640 € netto', preview: 'Aktien verkaufen · 38.100 € netto', delta: 'geändert' }] };
     const shown = roundedHouseholdPlanComparison(view, { previewSummary: { action: { verb: 'Aktien verkaufen', amount: 38100, amountUnit: '€ netto' } } }).rows[0];
@@ -109,8 +100,9 @@ const martinPetra = await renderCard(createMusterHaushaltRecords(DATE, 'martin-p
     assertEqual(clean(shown(renate).find(row => row.label === 'Monatsbudget').plan), '2.800 €', 'Übersicht echt: Renate Plan 2.850 € → 2.800 €');
     assertEqual(clean(renate.planComparison.rows.find(row => row.label === 'Monatsbudget').plan), '2.850 €', 'Übersicht echt: das Modell bleibt genau');
     const janLena = model('jan-lena');
-    assert(clean(shown(janLena).find(row => row.label === 'Handlungsanweisung').plan).includes('102.500 € netto'),
-        'Übersicht echt: Jan und Lena Plan = Summe der angezeigten Zeilen 60.000 + 42.500 = 102.500 €');
+    // HP-3 (Ergänzung 6 FR-78): wie der Kopf der Karte die Summe der Zeilen auf den Euro, einmal gerundet (vorher 60.000 + 42.500 = 102.500 €).
+    assert(clean(shown(janLena).find(row => row.label === 'Handlungsanweisung').plan).includes('100.000 € netto'),
+        'Übersicht echt: Jan und Lena Plan = Summe der Zeilen 58.118 + 41.882 = 100.000 €, einmal gerundet');
 }
 
 // RD-1e (Nachprüfung P2-N1, P3-3): Kaufanteile in „Wohin das Geld geht“ in jedem Status abgerundet, kleiner Kauf nicht als 0 €.
@@ -123,8 +115,9 @@ const martinPetra = await renderCard(createMusterHaushaltRecords(DATE, 'martin-p
         return { records, action };
     };
     const open = await renderCard(withGold(undefined, liquidity => ({ gold: 10300, liquiditaet: liquidity - 10300 })).records);
-    assert(open.card.includes('Aktien verkaufenca. 89.500 €') && open.card.includes('In Gold10.000 €') && open.card.includes('der Rest in den Geldmarkt79.500 €'),
-        `Kaufanteil offen: Gold 10.300 → 10.000 €, Rest 89.500 − 10.000 = 79.500 € (${open.card.slice(0, 420)})`);
+    // HP-3 (Ergänzung 6 FR-78): Kopf 90.000 € statt 89.500 €, der Rest nimmt den Unterschied.
+    assert(open.card.includes('Aktien verkaufenca. 90.000 €') && open.card.includes('In Gold10.000 €') && open.card.includes('der Rest in den Geldmarkt80.000 €'),
+        `Kaufanteil offen: Gold 10.300 → 10.000 €, Rest 90.000 − 10.000 = 80.000 € (${open.card.slice(0, 420)})`);
     const partial = await renderCard(withGold('teilweise', liquidity => ({ gold: 10300, liquiditaet: liquidity - 10300 })).records);
     assert(partial.card.includes('In Gold10.000 €'), `Kaufanteil teilweise: Gold 10.300 → 10.000 € (${partial.card.slice(0, 420)})`);
     const { action } = withGold(undefined, liquidity => ({ gold: 10300, liquiditaet: liquidity - 10300 }));
@@ -148,7 +141,8 @@ const martinPetra = await renderCard(createMusterHaushaltRecords(DATE, 'martin-p
     const { projectAnnualTodoPlan } = await import('../app/balance/annual-todo.js');
     const { createTodoResult } = await import('../app/shared/annual-todo-view.js');
     const people = [{ id: 'muster_a', name: 'Max' }, { id: 'muster_b', name: 'Erika' }];
-    for (const [gold, rest] of [[14900, '75.500'], [10300, '79.500'], [300, '89.250']]) {
+    // HP-3: Kopf 90.000 € statt 89.500 €, jeder Rest 500 € höher.
+    for (const [gold, rest] of [[14900, '76.000'], [10300, '80.000'], [300, '89.750']]) {
         const records = createMusterHaushaltRecords(DATE, 'max-erika');
         const record = JSON.parse(records[ANNUAL_PLAN_RECORD_KEY]), action = Object.values(record.entries)[0].adopted.action;
         action.verwendungen = { gold, liquiditaet: action.verwendungen.liquiditaet - gold };
@@ -156,8 +150,8 @@ const martinPetra = await renderCard(createMusterHaushaltRecords(DATE, 'martin-p
         // Ergänzung 4 FR-78: 300 € → 250 € (Stufe 250 € unter 5.000 €).
         const goldShown = gold === 300 ? '250' : (Math.floor(gold / 1000) * 1000).toLocaleString('de-DE');
         const card = (await renderCard(records)).card;
-        assert(card.includes('Aktien verkaufenca. 89.500 €') && card.includes(`In Gold${goldShown} €`) && card.includes(`der Rest in den Geldmarkt${rest} €`),
-            `Anteile Karte: Gold ${gold} → ${goldShown} € + ${rest} € = 89.500 € (${card.slice(0, 420)})`);
+        assert(card.includes('Aktien verkaufenca. 90.000 €') && card.includes(`In Gold${goldShown} €`) && card.includes(`der Rest in den Geldmarkt${rest} €`),
+            `Anteile Karte: Gold ${gold} → ${goldShown} € + ${rest} € = 90.000 € (${card.slice(0, 420)})`);
         const result = clean(createTodoResult(new MockDocument(), projectAnnualTodoPlan({ confirmed: { year: 2027, action }, people })).textContent);
         assert(result.includes(`In Gold${goldShown} €`) && result.includes(`der Rest in den Geldmarkt${rest} €`), `Anteile Jahresabschluss: Gold ${gold} → ${goldShown} € + ${rest} €`);
     }

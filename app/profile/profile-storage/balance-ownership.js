@@ -13,8 +13,14 @@ export const HOUSEHOLD_OWNED_BALANCE_STATE_KEYS = Object.freeze([
     'needsAdjustedForInflationYear',
     'lastInflationAppliedAtYear',
     'annualMarketDataMeta',
-    'capeMeta'
+    'capeMeta',
+    // ATH-1b: markierte Tageskurse und Splits gehören wie die Jahresmarktdaten dem Haushalt.
+    'athCorrections'
 ]);
+/** Haushaltskopien der Profilverbund-Rechnung: Sie liegen im Live-Stand und in jedem Personenstand; die Haushaltsrechnung nimmt die erste
+ * vorhandene Kopie. Zusammen mit den Jahresfeldern oben ist das das vollständige Haushaltseigentum im Balance-Stand. */
+export const HOUSEHOLD_BALANCE_COPY_KEYS = Object.freeze(['profilverbundHouseholdInputs', 'profilverbundHouseholdLastState']);
+export const HOUSEHOLD_BALANCE_STATE_FIELDS = Object.freeze([...HOUSEHOLD_OWNED_BALANCE_STATE_KEYS, ...HOUSEHOLD_BALANCE_COPY_KEYS]);
 
 /**
  * @param {unknown} raw

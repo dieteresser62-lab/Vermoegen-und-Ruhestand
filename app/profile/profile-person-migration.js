@@ -1,12 +1,13 @@
 /** @import * as P from "../../typcheck/profile-ui.js" */
 import { appNow } from '../shared/app-clock.js';
-import { assertProfileIdentityRecords } from './profile-storage.js';
-import { loadProfileRegistry } from './profile-registry.js';
+import { assertProfileIdentityRecords, ProfileRecoveryError } from './profile-storage.js';
+import { PROFILE_LOAD_STATUS } from './profile-state.js';
+import { loadProfileRegistry, householdMemberCount, HOUSEHOLD_LIMIT_REASON } from './profile-registry.js';
 import { CONFIG } from '../balance/balance-config.js';
 import { PERSON_VALUE_KEYS, BALANCE_PERSON_FIELDS, stripBalancePersonInputs, personReferenceYear, validateIsoDate, personAge } from './profile-person-data.js';
 import { isProfileScopedKey } from './profile-key-policy.js';
 import { isAllowedSnapshotCaptureKey } from '../shared/persistence-key-policy.js';
-import { PersistenceFacade } from '../shared/persistence-facade.js';
+import { PersistenceFacade, syncWriteBlockMessage } from '../shared/persistence-facade.js';
 import { SnapshotArchive } from '../shared/snapshot-archive.js';
 import { requestPageChoice } from '../shared/page-choice-dialog.js';
 import { showConfirmedPersonMigrationNotice } from '../shared/person-data-status.js';
@@ -21,7 +22,24 @@ const P1 = { alter: ['p1StartAlter', 'startAlter'], geschlecht: ['p1Geschlecht',
     kirchensteuerPct: ['p1KirchensteuerPct', 'kirchensteuerSatz'], sparerPauschbetrag: ['p1SparerPauschbetrag', 'startSPB'] };
 const P2 = { alter: ['r2StartAlter'], geschlecht: ['r2Geschlecht'], renteMonatlich: ['r2Monatsrente', 'r2Brutto'],
     offset: ['r2StartInJahren'], kirchensteuerPct: ['r2KirchensteuerPct'], sparerPauschbetrag: ['r2SparerPauschbetrag'], renteSteuerquotePct: ['r2Steuerquote'] };
+export const MIGRATION_NEW_PERSON_LIMIT_MESSAGE = `${HOUSEHOLD_LIMIT_REASON} Ordne den gespeicherten Partner einer vorhandenen Person zu; für eine weitere Person legst du einen eigenen Haushalt an.`;
 export const LEGACY_PERSON_KEYS = Object.freeze([...new Set([...Object.values(P1).flat(), ...Object.values(P2).flat(), 'partnerAktiv', 'chkPartnerAktiv'].map(id => `sim_${id}`))]);
+/** ST6-FIX (P2-2): Beschädigter Balance-Stand führt zur Wiederherstellung statt zu einem rohen SyntaxError.
+ *
+ * @param {string|undefined|null} raw Gespeicherter Balance-Stand.
+ * @returns {any} Geparstes Objekt, bei leerem Wert `{}`.
+ */
+function parseBalanceRecord(raw) {
+    if (!raw) return {};
+    let value;
+    try { value = JSON.parse(raw); } catch { value = null; }
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        throw new ProfileRecoveryError({ status: PROFILE_LOAD_STATUS.CORRUPT, scope: 'profile-load', storageKey: CONFIG.STORAGE.LS_KEY, raw: null,
+            code: 'PROFILE_LOAD_LIVE_BALANCE_CORRUPT',
+            message: 'Der aktuelle Balance-Stand ist beschädigt. Hole unter „Daten & Sicherung“ einen früheren Stand zurück.', canReset: false });
+    }
+    return value;
+}
 const defaults = { geschlecht: 'm', renteMonatlich: 0, sonstigeEinkuenfte: 0, offset: 0, rentenanpassungArt: 'wage', rentenanpassungPct: 0, kirchensteuerPct: 0, sparerPauschbetrag: 0, renteSteuerquotePct: 0, geburtsdatum: '', rentenbeginn: '' };
 const missing = value => value === undefined || value === null || value === '';
 const same = (a, b) => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
@@ -57,7 +75,7 @@ function collectCandidates(data, source, map, add) {
     }
 }
 
-/** Ausschließlich Entwurf aus Rohrecords. Auch Außenprofile bleiben enthalten. */
+/** Ausschließlich Entwurf aus Rohrecords. */
 /**
  * @param records Rohrecords des gewählten Speicherbereichs.
  * @param options Optionen und Abhängigkeiten des bestehenden Aufrufers.
@@ -72,7 +90,7 @@ export function buildPersonMigrationDraft(records, { referenceYear = appNow().ge
     assertProfileIdentityRecords(registry, records[CURRENT], records[ACTIVE], records[REGISTRY] ?? null);
     if (!Object.keys(registry.profiles).length) {
         const hasLegacyPerson = Object.keys(records).some(key => LEGACY_PERSON_KEYS.includes(key) || Object.values(K).includes(key))
-            || BALANCE_PERSON_FIELDS.some(field => Object.hasOwn(JSON.parse(records[CONFIG.STORAGE.LS_KEY] || '{}').inputs || {}, field));
+            || BALANCE_PERSON_FIELDS.some(field => Object.hasOwn(parseBalanceRecord(records[CONFIG.STORAGE.LS_KEY]).inputs || {}, field));
         registry.profiles.default = { meta: { id: 'default', name: 'Default', belongsToHousehold: true },
             data: hasLegacyPerson ? {} : { [K.personSchemaVersion]: '1' } };
     }
@@ -84,8 +102,8 @@ export function buildPersonMigrationDraft(records, { referenceYear = appNow().ge
     const people = Object.entries(registry.profiles).map(([id, profile]) => {
         const data = id === currentId ? { ...profile.data, ...live } : profile.data;
         if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Ungültiger Profilbestand.');
-        const balance = data[CONFIG.STORAGE.LS_KEY] ? JSON.parse(data[CONFIG.STORAGE.LS_KEY]) : {};
-        const storedBalance = profile.data[CONFIG.STORAGE.LS_KEY] ? JSON.parse(profile.data[CONFIG.STORAGE.LS_KEY]) : {};
+        const balance = parseBalanceRecord(data[CONFIG.STORAGE.LS_KEY]);
+        const storedBalance = parseBalanceRecord(profile.data[CONFIG.STORAGE.LS_KEY]);
         const old = LEGACY_PERSON_KEYS.some(key => Object.hasOwn(data, key))
             || BALANCE_PERSON_FIELDS.some(field => Object.hasOwn(balance.inputs || {}, field) || Object.hasOwn(storedBalance.inputs || {}, field));
         return { id, name: profile.meta?.name || id, data, needed: String(data[K.personSchemaVersion]) !== '1' || old, candidates: {}, sources: {} };
@@ -112,7 +130,7 @@ export function buildPersonMigrationDraft(records, { referenceYear = appNow().ge
         const balanceSources = [[person.data, 'Balance']];
         if (person.id === currentId) balanceSources.push([originals[person.id], 'Balance · Registry']);
         for (const [data, source] of balanceSources) {
-            const balance = data[CONFIG.STORAGE.LS_KEY] ? JSON.parse(data[CONFIG.STORAGE.LS_KEY]).inputs || {} : {};
+            const balance = parseBalanceRecord(data[CONFIG.STORAGE.LS_KEY]).inputs || {};
             for (const [field, alias] of Object.entries({ alter: 'aktuellesAlter', renteMonatlich: 'renteMonatlich', sonstigeEinkuenfte: 'sonstigeEinkuenfte', sparerPauschbetrag: 'sparerPauschbetrag', kirchensteuerPct: 'kirchensteuerSatz' })) {
                 const value = candidateValue(field, balance[alias], alias === 'kirchensteuerSatz' ? alias : '');
                 if (value !== undefined) append(field, value, source);
@@ -131,14 +149,16 @@ export function buildPersonMigrationDraft(records, { referenceYear = appNow().ge
     for (const person of [...people]) {
         const hasPartner = Object.values(P2).flat().some(alias => !missing(person.data[`sim_${alias}`]));
         if (!hasPartner) continue;
-        const household = people.filter(p => p.id !== person.id && registry.profiles[p.id].meta?.belongsToHousehold !== false);
+        const household = people.filter(p => p.id !== person.id);
         let targetId = partnerTargets[person.id];
-        if (!targetId && registry.profiles[person.id].meta?.belongsToHousehold !== false && household.length === 1) targetId = household[0].id;
+        if (!targetId && household.length === 1) targetId = household[0].id;
         if (!targetId) { pendingAssignments.push({ id: person.id, name: person.name }); continue; }
         if (targetId === '__new__') {
+            // AP-1b: Eine neue Person darf die Haushaltsgrenze von zwei Personen nicht überschreiten.
+            if (householdMemberCount(registry) >= 2) throw new Error(MIGRATION_NEW_PERSON_LIMIT_MESSAGE);
             targetId = `legacy-partner-${person.id}`;
             if (registry.profiles[targetId]) throw new Error('Partner-ID ist bereits belegt. Bitte vorhandene Person wählen.');
-            registry.profiles[targetId] = { meta: { id: targetId, name: `Übernommene Person (${person.name})`, belongsToHousehold: false }, data: {} };
+            registry.profiles[targetId] = { meta: { id: targetId, name: `Übernommene Person (${person.name})`, belongsToHousehold: true }, data: {} };
             people.push({ id: targetId, name: registry.profiles[targetId].meta.name, data: {}, needed: true, candidates: {}, sources: {} });
         }
         const target = people.find(p => p.id === targetId);
@@ -263,7 +283,7 @@ export function migratePersonData({ storage = PersistenceFacade, archive = Snaps
     const lifecycle = createNavigationOperationLifecycle({ guard, message: 'Personendaten werden sicher übernommen – bitte warten.' });
     const capture = () => Object.fromEntries(storage.keysSync().filter(isAllowedSnapshotCaptureKey).map(key => [key, storage.getItemSync(key)]));
     const task = lifecycle.run({}, async operation => {
-        if (storage.hasSyncWriteBlocks?.()) throw new Error('Personenumstellung ist bis zum Reload/Recovery schreibend blockiert.');
+        if (storage.hasSyncWriteBlocks?.()) throw new Error(syncWriteBlockMessage());
         if (await storage.flush() === false) throw new Error('PERSISTENCE_FLUSH_FAILED');
         operation.check();
         const original = capture();
@@ -271,75 +291,83 @@ export function migratePersonData({ storage = PersistenceFacade, archive = Snaps
         const referenceYear = personReferenceYear(state.annualPeriodMetadata, now);
         let draft = buildPersonMigrationDraft(original, { referenceYear, inspectOnly: true });
         if (!draft.people.some(person => person.needed)) return { ok: true, status: 'current' };
-        const snapshot = await archive.createSnapshot({ kind: 'person-data-migration-recovery', label: 'Vor Umstellung der Personendaten',
-            records: original, activeProfileId: draft.currentId, activeProfileName: draft.registry.profiles[draft.currentId].meta?.name,
-            restoreScope: { profileRegistryMode: 'replace-all-rollback', profileLiveDataMode: 'replace-all-rollback' } }, { storage, navigationOperation: operation });
-        const recovered = await archive.readSnapshot(snapshot.id, { storage });
-        if (!same(original, recovered.records)) throw new Error('Recovery-Snapshot ist nicht bytegleich.');
-        draft = buildPersonMigrationDraft(original, { referenceYear });
-        const unchanged = () => { operation.check(); if (!same(original, capture())) throw new Error('Der Rohbestand oder die Profilidentität hat sich geändert.'); };
-        unchanged();
-        const choices = {};
-        let explicitlyAccepted = false;
-        const conflictRows = person => Object.entries(person.candidates).filter(([field, candidates]) => field !== 'renteSteuerquotePct' && candidates.length > 1).map(([field, candidates]) => {
-            const preferred = preferredMigrationCandidate(person, field);
-            return { id: `${person.id}:${field}`, kind: 'radio', selected: String(preferred),
-                label: (draft.people.filter(p => p.needed).length > 1 ? `${person.name} · ` : '')
-                    + (typeof fieldLabels[field] === 'function' ? fieldLabels[field](referenceYear) : fieldLabels[field]),
-                options: candidates.map((candidate, index) => ({ value: String(index), suggested: index === preferred,
-                    label: presentMigrationCandidate(field, candidate, referenceYear) + (field === 'renteMonatlich' && index === preferred && person.suggestionReason ? ` · ${person.suggestionReason}` : '') })) };
-        });
-        const collectChoices = result => {
-            for (const person of draft.people) {
-                choices[person.id] = Object.fromEntries(Object.keys(person.candidates).map(field => [field, result[`${person.id}:${field}`] ?? String(preferredMigrationCandidate(person, field))]));
-            }
-        };
-        let committed = false, /** @type {import("../../typcheck/datenvertraege.js").StringRecords} */ next;
-        const commitChoices = async () => {
-            next = applyPersonMigrationChoices(draft, choices);
+        // SV-1: Interne Rücksicherung; sie erscheint nicht in der Liste und entfällt nach Erfolg.
+        const snapshot = await archive.createInternalRecovery(original, { label: 'Vor Umstellung der Personendaten', storage, navigationOperation: operation });
+        if (!same(original, snapshot.records)) throw new Error('Recovery-Snapshot ist nicht bytegleich.');
+        let keepRecovery = false;
+        try {
+            draft = buildPersonMigrationDraft(original, { referenceYear });
+            const unchanged = () => { operation.check(); if (!same(original, capture())) throw new Error('Der Rohbestand oder die Profilidentität hat sich geändert.'); };
             unchanged();
-            const release = storage.blockSyncWrites?.(Object.keys(original), 'Personenübernahme läuft – bitte warten.', { prefixes: ['profile_', 'sim_'] });
-            try {
-                await storage.replaceRecordsTransactional(next, { probelaufDomainWrite: true,
-                    allowKey: isAllowedSnapshotCaptureKey, expectedRecords: original, navigationOperation: operation });
-                committed = true;
-            } catch (error) {
-                if (error.code === 'rollback_failed') storage.blockSyncWrites?.([...Object.keys(original), ...Object.keys(next)],
-                    'Personenübernahme und Rollback unbestätigt. Bitte neu laden und den Recovery-Snapshot wiederherstellen.', { prefixes: ['profile_', 'sim_'] });
-                throw error;
-            } finally { release?.(); }
-        };
-        const mappingRows = draft.pendingAssignments.map(person => ({ id: `mapping:${person.id}`, label: `Gespeicherter Partner von ${person.name}`, required: true, refreshRows: true,
-            options: [{ value: '', label: 'Person ausdrücklich zuordnen' }, ...draft.people.filter(p => p.id !== person.id).map(p => ({ value: p.id, label: p.name })),
-                { value: '__new__', label: 'Als neue Außenperson übernehmen' }] }));
-        const pendingAssignments = [...draft.pendingAssignments];
-        const withTargets = values => buildPersonMigrationDraft(original, { referenceYear,
-            partnerTargets: Object.fromEntries(pendingAssignments.map(person => [person.id, values[`mapping:${person.id}`]])) });
-        const rows = [...mappingRows, ...draft.people.filter(p => p.needed).flatMap(conflictRows)];
-        if (rows.length) {
-            const chooseAndCommit = async result => {
-                unchanged();
-                if (mappingRows.length) draft = withTargets(result);
-                collectChoices(result);
-                await commitChoices();
+            const choices = {};
+            let explicitlyAccepted = false;
+            const conflictRows = person => Object.entries(person.candidates).filter(([field, candidates]) => field !== 'renteSteuerquotePct' && candidates.length > 1).map(([field, candidates]) => {
+                const preferred = preferredMigrationCandidate(person, field);
+                return { id: `${person.id}:${field}`, kind: 'radio', selected: String(preferred),
+                    label: (draft.people.filter(p => p.needed).length > 1 ? `${person.name} · ` : '')
+                        + (typeof fieldLabels[field] === 'function' ? fieldLabels[field](referenceYear) : fieldLabels[field]),
+                    options: candidates.map((candidate, index) => ({ value: String(index), suggested: index === preferred,
+                        label: presentMigrationCandidate(field, candidate, referenceYear) + (field === 'renteMonatlich' && index === preferred && person.suggestionReason ? ` · ${person.suggestionReason}` : '') })) };
+            });
+            const collectChoices = result => {
+                for (const person of draft.people) {
+                    choices[person.id] = Object.fromEntries(Object.keys(person.candidates).map(field => [field, result[`${person.id}:${field}`] ?? String(preferredMigrationCandidate(person, field))]));
+                }
             };
-            const needed = draft.people.filter(p => p.needed);
-            const result = await /** @type {import("../../typcheck/overview-ui.js").PersonChoice} */ (decide)({ title: mappingRows.length ? 'Personendaten und gespeicherte Partner übernehmen'
-                : needed.length === 1 ? `Zwei Angaben für ${needed[0].name} – welche stimmt?` : 'Personendaten übernehmen – welche Angaben stimmen?',
-                description, rows, updateRows: mappingRows.length ? values => [...mappingRows, ...withTargets(values).people.filter(p => p.needed).flatMap(conflictRows)] : undefined,
-                confirmLabel: 'Übernehmen', cancelLabel: 'Später', onConfirm: chooseAndCommit, doc, signal: operation.controller.signal });
-            if (!result) return { ok: false, status: 'cancelled' };
-            explicitlyAccepted = true;
-            // Injizierte Entscheider ohne Bestätigungsphase behalten ihren Vertrag.
-            if (!committed) await chooseAndCommit(result);
-        } else await commitChoices();
-        if (explicitlyAccepted) {
-            const registry = JSON.parse(next[REGISTRY]);
-            const names = draft.people.filter(person => person.needed
-                && personAge(registry.profiles[person.id].data, referenceYear).status === 'missing').map(person => person.name);
-            showConfirmedPersonMigrationNotice(names, doc);
+            let committed = false, /** @type {import("../../typcheck/datenvertraege.js").StringRecords} */ next;
+            const commitChoices = async () => {
+                next = applyPersonMigrationChoices(draft, choices);
+                unchanged();
+                const release = storage.blockSyncWrites?.(Object.keys(original), 'Personenübernahme läuft – bitte warten.', { prefixes: ['profile_', 'sim_'] });
+                try {
+                    await storage.replaceRecordsTransactional(next, { probelaufDomainWrite: true,
+                        allowKey: isAllowedSnapshotCaptureKey, expectedRecords: original, navigationOperation: operation });
+                    committed = true;
+                } catch (error) {
+                    if (error.code === 'rollback_failed') storage.blockSyncWrites?.([...Object.keys(original), ...Object.keys(next)],
+                        'Personenübernahme und Rücknahme unbestätigt. Bitte neu laden und den Stand prüfen. Hilft das nicht, spiele deine letzte Vollsicherung ein.', { prefixes: ['profile_', 'sim_'] });
+                    throw error;
+                } finally { release?.(); }
+            };
+            const mappingRows = draft.pendingAssignments.map(person => ({ id: `mapping:${person.id}`, label: `Gespeicherter Partner von ${person.name}`, required: true, refreshRows: true,
+                options: [{ value: '', label: 'Person ausdrücklich zuordnen' }, ...draft.people.filter(p => p.id !== person.id).map(p => ({ value: p.id, label: p.name })),
+                    // AP-1b: „Neue Person“ nur, solange der Haushalt unter zwei Personen bleibt.
+                    ...(householdMemberCount(draft.registry) < 2 ? [{ value: '__new__', label: 'Als neue Person übernehmen' }] : [])] }));
+            const pendingAssignments = [...draft.pendingAssignments];
+            const withTargets = values => buildPersonMigrationDraft(original, { referenceYear,
+                partnerTargets: Object.fromEntries(pendingAssignments.map(person => [person.id, values[`mapping:${person.id}`]])) });
+            const rows = [...mappingRows, ...draft.people.filter(p => p.needed).flatMap(conflictRows)];
+            if (rows.length) {
+                const chooseAndCommit = async result => {
+                    unchanged();
+                    if (mappingRows.length) draft = withTargets(result);
+                    collectChoices(result);
+                    await commitChoices();
+                };
+                const needed = draft.people.filter(p => p.needed);
+                const result = await /** @type {import("../../typcheck/overview-ui.js").PersonChoice} */ (decide)({ title: mappingRows.length ? 'Personendaten und gespeicherte Partner übernehmen'
+                    : needed.length === 1 ? `Zwei Angaben für ${needed[0].name} – welche stimmt?` : 'Personendaten übernehmen – welche Angaben stimmen?',
+                    description, rows, updateRows: mappingRows.length ? values => [...mappingRows, ...withTargets(values).people.filter(p => p.needed).flatMap(conflictRows)] : undefined,
+                    confirmLabel: 'Übernehmen', cancelLabel: 'Später', onConfirm: chooseAndCommit, doc, signal: operation.controller.signal });
+                if (!result) return { ok: false, status: 'cancelled' };
+                explicitlyAccepted = true;
+                // Injizierte Entscheider ohne Bestätigungsphase behalten ihren Vertrag.
+                if (!committed) await chooseAndCommit(result);
+            } else await commitChoices();
+            if (explicitlyAccepted) {
+                const registry = JSON.parse(next[REGISTRY]);
+                const names = draft.people.filter(person => person.needed
+                    && personAge(registry.profiles[person.id].data, referenceYear).status === 'missing').map(person => person.name);
+                showConfirmedPersonMigrationNotice(names, doc);
+            }
+            return { ok: true, status: 'migrated', snapshotId: snapshot.id };
+        } catch (error) {
+            // Nur eine unbestätigte Rücknahme behält die interne Rücksicherung.
+            if (error.code === 'rollback_failed') keepRecovery = true;
+            throw error;
+        } finally {
+            if (!keepRecovery) await archive.discardInternalRecovery(snapshot.id, { storage, navigationOperation: operation });
         }
-        return { ok: true, status: 'migrated', snapshotId: snapshot.id };
     });
     coordinators.set(storage, task);
     task.finally(() => { if (coordinators.get(storage) === task) coordinators.delete(storage); }).catch(() => {});

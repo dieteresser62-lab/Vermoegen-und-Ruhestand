@@ -328,7 +328,8 @@ try {
             einstandAlt: 400000,
             tagesgeld: 20000,
             startFlexBedarf: 12000,
-            minimumFlexAnnual: 12000,
+            // FR-88: Mit der vorschüssigen VPW-Rate wären 12.000 € in keinem Jahr angewandt; 10.000 € behält den Zeugen (rk-1-merge-expectation-deltas.json).
+            minimumFlexAnnual: 10000,
             flexBudgetAnnual: 0,
             marketCapeRatio: 35,
             dynamicFlex: 'true',
@@ -373,7 +374,8 @@ try {
             )),
             'Applied minimum flex should reconcile as fulfilled after final quantization'
         );
-        assert(withMinimumFlexRows.every(r => Math.abs(Number(r.row?.portfolio_flow_delta) || 0) < 1), 'FlowDelta should remain near zero with minimum flex');
+        assert(withMinimumFlexRows.every(r => Number.isFinite(r.row?.portfolio_flow_delta)
+            && Math.abs(r.row.portfolio_flow_delta) < 1), 'FlowDelta should remain near zero with minimum flex');
     }
 
     // --- TEST 9: 3-Bucket and Mindest-Flex stay balanced in backtest accounting ---
@@ -414,7 +416,8 @@ try {
             '3-Bucket log should expose the minimum-flex decision status in every year');
         assert(rows.some(r => r.row?.minimumFlexStatus === 'blocked_emergency'),
             '3-Bucket log should visibly block minimum flex during the measured liquidity emergency');
-        assert(rows.every(r => Math.abs(Number(r.row?.portfolio_flow_delta) || 0) < 1), '3-Bucket FlowDelta should remain near zero with minimum flex');
+        assert(rows.every(r => Number.isFinite(r.row?.portfolio_flow_delta)
+            && Math.abs(r.row.portfolio_flow_delta) < 1), '3-Bucket FlowDelta should remain near zero with minimum flex');
     }
 
     // --- TEST 10: Negative Cashzinsen bleiben signiert und reconciliert ---

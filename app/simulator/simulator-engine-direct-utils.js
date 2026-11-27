@@ -121,8 +121,6 @@ export function calculateTargetLiquidityBalanceLike(inputs, marketData, floorBed
         renteAktiv: renteJahr > 0,
         renteMonatlich: renteJahr / 12
     };
-    delete inputForTarget.runwayTargetMonths;
-    delete inputForTarget.runwayMinMonths;
     delete inputForTarget.targetEq;
 
     return TransactionEngine.calculateTargetLiquidity(profil, market, inflatedBedarf, inputForTarget);
@@ -165,6 +163,7 @@ export function buildDetailedTranchesFromPortfolio(portfolio) {
             ...(Number.isFinite(shares) && shares > 0 ? { shares } : {}),
             ...(Number.isFinite(purchasePrice) && purchasePrice > 0 ? { purchasePrice } : {}),
             purchaseDate: t.purchaseDate || null,
+            ...(t.simulationPurchaseOrder !== undefined ? { simulationPurchaseOrder: t.simulationPurchaseOrder } : {}),
             ...(Number.isFinite(currentPrice) && currentPrice > 0 ? { currentPrice } : {}),
             marketValue,
             costBasis: Number(t.costBasis) || 0,

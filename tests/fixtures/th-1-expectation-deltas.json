@@ -1,0 +1,11 @@
+{
+  "test": "tests/decision-comparison.test.mjs",
+  "field": "row.inheritance.funding.reserveTarget",
+  "reason": "Seit JA-1 gilt bei Max und Erika ohne Partnerschaftsstatus der Freibetrag für Unverheiratete (FR-94). Im betroffenen Todesjahr fallen 132.360 € Erbschaftsteuer an. Das Reserveziel für ihre Finanzierung enthält in der Variante die inflationsangepasste geplante Ausgabe von 25.000 €.",
+  "reserveTarget": {
+    "runIndex": 7,
+    "jahr": 4,
+    "old": { "baseline": null, "variant": null },
+    "new": { "baseline": 28900, "variant": 57818.99937942017 }
+  }
+}

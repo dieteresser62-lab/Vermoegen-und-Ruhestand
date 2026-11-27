@@ -215,7 +215,7 @@ try {
         assert(doc.getElementById(id).innerHTML.includes('<h2>Reicht das Vermögen?</h2>') && doc.getElementById(id).innerHTML.includes('Grundbedarf gedeckt bis Laufende')
             && doc.getElementById(id).innerHTML.includes('Am Laufende · Gesamtvermögen'), 'Eine Antwort enthält Deckung und Endvermögen');
     }
-    assert(doc.getElementById('overviewMonteCarlo').innerHTML.includes('Seed 12345'), 'SE-1b: Seed ohne Tausenderpunkt');
+    assert(doc.getElementById('overviewMonteCarlo').innerHTML.includes('Zufallsstartwert 12345'), 'SE-1b: Zufallsstartwert ohne Tausenderpunkt');
     const original = answerHost.innerHTML, runBytes = JSON.stringify(runHeads.read('montecarlo').last);
     assert(original.includes('96,0 %') && original.includes('12,0 %') && !original.includes('Annahmen seitdem geändert'), 'Laufabschluss zeigt frische Kernantworten');
     for (let change = 0; change < 3; change++) renderSimulatorOverview();
@@ -255,8 +255,8 @@ try {
         const previousCrisis = doc.getElementById('overviewCrises').innerHTML;
         runHeads.observe('backtest', { ...values, inputs: { startVermoegen: 200000 } }); renderSimulatorOverview();
         const output = doc.getElementById('overviewBacktest').innerHTML;
-        assert(runHeads.read('backtest').stale && output.includes(outcome === 'completed' ? 'Ja. Dein Plan' : 'Der Floor wäre')
-            && output.includes(outcome === 'completed' ? '>überstanden</span>' : '>Floor nicht gedeckt</span>'),
+        assert(runHeads.read('backtest').stale && output.includes(outcome === 'completed' ? 'Ja. Dein Plan' : 'Der Grundbedarf wäre')
+            && output.includes(outcome === 'completed' ? '>überstanden</span>' : '>Grundbedarf nicht gedeckt</span>'),
             outcome + ': gewöhnliche Annahmenänderung erhält Urteil und Ergebnisstatus');
         assert(output.includes('<p class="ds-hint">Annahmen seitdem geändert</p>') && !output.includes('Veraltetes Ergebnis')
             && !output.includes('Veralteter Lauf'), outcome + ': bisheriger Annahmenhinweis bleibt erhalten');

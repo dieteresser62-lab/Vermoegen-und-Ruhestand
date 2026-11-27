@@ -22,6 +22,7 @@ function stateFor(doc) {
     if (!states.has(doc)) states.set(doc, { draft: null, raw: {}, open: null, fresh: false, reveal: null, focusHome: null, notify: () => {}, blocked: () => false, refresh: () => {} });
     return states.get(doc);
 }
+const currentMonth = () => { const now = appNow(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`; };
 // Ein halb getippter Stand bleibt beim Neuaufbau lesbar.
 const standText = stand => /^\d{4}-\d{2}$/.test(stand || '') ? incomeMonthDisplay(stand) : stand || '';
 const segments = (key, value, options) => `<div class="pv-person-segments" role="group" aria-label="${key === 'nutzung' ? 'Nutzung' : 'Anpassung der Miete'}">${options.map(([id, text]) => `<button type="button" class="ds-button ds-button-secondary" data-home-choice="${key}" data-value="${id}" aria-pressed="${id === value}">${text}</button>`).join('')}</div>`;
@@ -118,8 +119,7 @@ export function bindPersonImmobilien(doc, options = {}) {
         if (name === 'cancel') { close(state.open); return; }
         if (name === 'add') {
             if (state.draft) { status('Bitte zuerst speichern oder abbrechen.'); return; }
-            const now = appNow();
-            state.open = null; state.fresh = true; state.raw = {}; state.draft = { id: globalThis.crypto.randomUUID(), bezeichnung: '', nutzung: 'selbst', wert: 0, stand: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`, mieteNetto: 0, anpassung: 'keine' };
+            state.open = null; state.fresh = true; state.raw = {}; state.draft = { id: globalThis.crypto.randomUUID(), bezeichnung: '', nutzung: 'selbst', wert: 0, stand: currentMonth(), mieteNetto: 0, anpassung: 'keine' };
             render(doc); node(doc, 'home-bezeichnung')?.focus(); state.notify(); return;
         }
         if (!state.draft) return;
@@ -135,7 +135,14 @@ export function bindPersonImmobilien(doc, options = {}) {
             const errors = immobilienErrors([state.draft]);
             for (const el of host.querySelectorAll('[data-home-error]')) el.textContent = errors.find(error => error.field === `immobilie-0-${el.dataset.homeError}`)?.message || '';
             if (errors.length) return;
-            if (state.fresh) homes.push({ ...state.draft }); else homes[index] = { ...state.draft };
+            // Geänderter Wert: Den Verlauf ergänzt erst das Speichern der Person (FR-85); der Entwurf trägt keinen veralteten Verlauf.
+            const saved = { ...state.draft };
+            if (saved.wertverlauf && saved.wertverlauf.at(-1)?.wert !== saved.wert) delete saved.wertverlauf;
+            // JV-1: Der Verlauf führt einen geänderten Wert ab heute. Ein unverändert gelassener Stand folgt ihm, sonst schreibt
+            // der Simulator den neuen Wert ab dem alten Monat mit Inflation fort.
+            const before = state.fresh ? null : homes[index];
+            if (before && saved.wert !== before.wert && saved.stand === before.stand) saved.stand = currentMonth();
+            if (state.fresh) homes.push(saved); else homes[index] = saved;
             // Die Gruppe der gespeicherten Immobilie bleibt nach dem Neuaufbau offen.
             state.reveal = state.draft.id;
         } else return;

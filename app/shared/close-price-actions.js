@@ -34,7 +34,7 @@ export function createClosePriceActions({ doc = globalThis.document, win = globa
                 const result = await lifecycle.run({}, async operation => {
                     const abort = () => { if (operation.phase !== 'commit') operation.controller.abort(); };
                     signal?.addEventListener('abort', abort, { once: true });
-                    try { return await coordinator({ source: source(), operation, valid, progress: report }); }
+                    try { return await coordinator({ source: source(), operation, valid, progress: report, singleExchange: true }); }
                     finally { signal?.removeEventListener('abort', abort); }
                 });
                 if (!valid()) return null;

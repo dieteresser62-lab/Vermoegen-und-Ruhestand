@@ -171,27 +171,6 @@ try {
     assertEqual(readDocumentPersonInputs(doc).combined.startAlter, 69, 'Jahrwechsel aktualisiert tatsächliche Projektion');
     assertEqual(Number(doc.getElementById('p1StartAlter').value), 69, 'Jahrwechsel synchronisiert den DOM-Wertträger');
 
-    // Echte Optimizer-Lauf-/Veröffentlichungs-/Übernahmebesitzer mit kleinen injizierten Evaluationen.
-    const { handleRunAutoOptimize } = await import('../app/simulator/auto_optimize_ui.js');
-    const { runAutoOptimize } = await import('../app/simulator/auto_optimize.js');
-    const { applyChampionToForm } = await import('../app/simulator/auto-optimize-apply.js');
-    for (const id of ['ao_run_btn','ao_cancel_btn','ao_progress','ao_result','ao_apply_btn','liquidityRunwayYears']) addField(doc, id, id === 'liquidityRunwayYears' ? '3' : '');
-    fire('personDeviationToggle', true); fire('p1Monatsrente', 2400);
-    let entered, release, evaluations = 0;
-    const reached = new Promise(resolve => entered = resolve), gate = new Promise(resolve => release = resolve);
-    const aoConfig = { objective: { metric: 'EndWealth_P50', direction: 'max' }, params: { liquidityRunwayYears: { min: 1, max: 3, step: .5 } },
-        modelAssumptions: { monteCarloParameters: { anzahl: 2, maxDauer: 2, blockSize: 1, seed: 42, methode: 'block', rngMode: 'per-run-seed' }, useCapeSampling: false },
-        runsPerCandidate: 2, seedsTrain: 1, seedsTest: 1, constraints: {}, maxDauer: 2,
-        evaluateCandidateFn: async () => { if (++evaluations === 1) { entered(); await gate; } return { metricContract: { schemaVersion: 'AutoOptimizeMetricResultV1' }, medianEndWealth: 500000, successProbFloor: 1, depletionRate: 0, worst5Drawdown: 0, timeShareWRgt45: 0, medianWithdrawalRate: .03 }; } };
-    const optimizer = handleRunAutoOptimize({ readConfig: () => aoConfig, run: runAutoOptimize });
-    await reached; fire('p1Monatsrente', 9900); release(); await optimizer;
-    assertEqual(window.aoChampionResult.personDataContext.persons[0].changes.find(x => x.field === 'profile_rente_monatlich').effectiveValue, 2400, 'Produktiver Optimizer veröffentlicht eigenen Startbeleg');
-    assert(doc.getElementById('ao_result').innerHTML.includes('2400') && !doc.getElementById('ao_result').innerHTML.includes('9900'), 'Optimizerhinweis zeigt gerechnete statt spätere Alternativen');
-    applyChampionToForm({ championCfg: window.aoChampionResult.championCfg, doc });
-    await PersistenceFacade.flush();
-    const afterApply = await backend.loadAll();
-    assertEqual(afterApply.profile_rente_monatlich, '1000', 'Optimizerübernahme schreibt keine zentrale Rente');
-    assertEqual(afterApply.sim_p1Monatsrente, '1111', 'Optimizerübernahme speichert keine alternative Rente und verändert keine Altquelle');
     resetPersonOverrides(doc);
     for (const subset of [entries.slice(0, 1), entries]) {
         const baselineEntries = JSON.stringify(subset);

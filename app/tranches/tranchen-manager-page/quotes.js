@@ -1,5 +1,6 @@
 // @ts-check
 import { byId } from './helpers.js';
+import { renderManagerQuoteContext } from '../tranchen-manager-renderer.js';
 import { state, QUOTE_BATCH_TIMEOUT_MS, QUOTE_BATCH_CONCURRENCY } from './state.js';
 import { createBatchQuoteFetcher, resolveTrancheQuote, quoteErrorDetails } from '../tranchen-price-service.js';
 import { calculateTrancheDerivedValues } from '../tranchen-manager-state.js';
@@ -63,7 +64,8 @@ export async function executePriceBatch(batchId, controller, navigationOperation
                         ...tranche,
                         ticker: quote.symbol,
                         currentPrice: quote.price,
-                        asOf: quote.asOf
+                        asOf: quote.asOf,
+                        quoteExchange: quote.exchange || undefined
                     }));
                 }
             } catch (error) {
@@ -160,6 +162,10 @@ export function updatePrices() {
         }
     });
     state.quoteBatchPromise = batchPromise;
+    // OP-3 Punkt 3: Die Kursanzeige im Kopf meldet den Lauf; danach zeigt sie wieder den gespeicherten Kursstand.
+    const quoteHost = byId('managerQuoteContext');
+    if (quoteHost) quoteHost.textContent = 'Kurse werden aktualisiert …';
+    void batchPromise.finally(() => { if (state.quoteBatchId === batchId) renderManagerQuoteContext(document, state.tranchen); }).catch(() => {});
     renderPersistenceState();
     return batchPromise;
 }

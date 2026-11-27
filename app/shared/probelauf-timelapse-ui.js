@@ -44,7 +44,7 @@ export function requestTimeLapse({ doc, controller, opener } = {}) {
     });
 }
 
-/** Der Zugang sitzt auf allen Seiten im bestehenden Spielbereich-Band. Ausführung auf der Übersicht.
+/** Der Zugang sitzt auf allen Seiten im bestehenden Spielbereich-Band, „Spielbereich beenden“ im Kopf. Ausführung auf der Übersicht.
  *
  * @param doc Dokument der Seite.
  * @param controller Besitzer des laufenden Vorgangs.
@@ -65,8 +65,7 @@ export function renderTimeLapseUI(doc, controller) {
         const progress = doc.createElement('span'); progress.id = 'probelaufTimeLapseProgress'; progress.setAttribute('role', 'status');
         const info = createInfoPopover(doc, 'Zeitraffer erklären', explanation);
         const actions = band.querySelector?.('.ds-actions') || band;
-        const end = actions.querySelector?.('[data-probelauf-action="end"]');
-        for (const element of [start, info, stop]) actions.insertBefore(element, end || null);
+        for (const element of [start, info, stop]) actions.insertBefore(element, null);
         actions.append(progress); bindInfoPopovers(doc);
         const runner = createTimeLapse({ controller, session, notify: () => renderTimeLapseUI(doc, controller),
             loadServices: async () => (await import('../overview/overview-timelapse.js')).createTimeLapseServices({ controller, win, guard: getPageNavigationGuard(doc, win) }) });
@@ -101,7 +100,8 @@ export function renderTimeLapseUI(doc, controller) {
         || doc.documentElement?.dataset.suitePage === 'index' && !binding.ready);
     update(stop, 'hidden', !locked); update(stop, 'disabled', !running);
     update(progress, 'textContent', runner.state?.message || '');
-    for (const button of band.querySelectorAll?.('[data-probelauf-action]') || []) update(button, 'disabled', locked || controller.busy || controller.waiting
+    // OP-1 (Punkt 2): Auch „Spielbereich beenden“ im Kopf bleibt während des Zeitraffers gesperrt.
+    for (const button of doc.querySelectorAll?.('[data-probelauf-action]') || []) update(button, 'disabled', locked || controller.busy || controller.waiting
         || !controller.runtime?.canContinue || (controller.blocked || controller.state.phase !== 'active') && button.dataset.probelaufAction !== 'end');
     // Eingaben während der automatischen Schritte verhindern; das Band bleibt bedienbar.
     const main = doc.getElementById('suiteMain');

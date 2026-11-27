@@ -67,7 +67,7 @@ import { createDialogFixture } from './close-dialog.test.mjs?fixture';
     annual.needsReview.monthsWithBreakdown = 10; annual.needsReview.monthsWithoutBreakdown = 2; ui.refreshExpenses();
     assert(hint().includes('aus 10 Monaten mit Aufteilung') && hint().includes('(2 Monate ohne Aufteilung)'), 'FL-2: Hinweis nutzt Mehrzahl');
     annual.needsReview.monthsWithBreakdown = 12; annual.needsReview.monthsWithoutBreakdown = 0; ui.refreshExpenses();
-    assertEqual(annualNeedsTiles(preview, annual)[2].detail, 'Floor +10.000 € · Flex −10.000 €', 'FL-2: Abweichungen mit echtem Minus');
+    assertEqual(annualNeedsTiles(preview, annual)[2].detail, 'Grundbedarf +10.000 € · Flex −10.000 €', 'FL-2: Abweichungen mit echtem Minus');
     const settle = async () => { for (let i = 0; i < 50 && ui.read().pending; i++) await Promise.resolve(); assert(ui.read().valid, 'FF-3b: gültige Vorschau'); };
     const receipt = () => {
         const { recommended, adopted, adjustedFields } = ui.read().result;

@@ -138,9 +138,11 @@ for (const prefix of ['mc', 'backtest']) {
     assertEqual(options.map(match => match[3]).join('/'), `Nominal · Kontowert/Real · ${prefix === 'backtest' ? 'Euro von Laufstart' : 'heutige Kaufkraft'}`, prefix + ': verständliche Beschriftungen');
     infos.push(html.match(new RegExp(`<span id="${prefix}EuroInfo" class="ds-info-pop" role="tooltip">(.*?)</span>`))[1]);
 }
-assertEqual(infos[0], infos[1], 'Beide Reiter erklären Nominal und Real mit demselben Info-Baustein');
-assert(infos[0].includes('Kaufkraft zum Laufstart') && infos[0].includes('Kontobeträge') && infos[0].includes('Mehr im Handbuch'), 'Kurze Info erklärt beide Eurobasen und verlinkt die ausführliche Hilfe');
+assert(infos.every(info => info.includes('Kontobeträge') && info.includes('Mehr im Handbuch')), 'Beide Infos erklären die Kontobeträge und verlinken das Handbuch');
+assert(infos[0].includes('Kaufkraft zum Laufstart'), 'Monte Carlo erklärt die Kaufkraft zum Laufstart');
 assert(html.indexOf('id="backtestWealthMode"') < html.indexOf('id="simulationResults"'), 'Backtest-Schalter steht in der Zeitraumleiste oberhalb der Ergebnisse (SE-2)');
 assert(!html.includes('id="backtestEuroHint"'), 'Langer Hinweis neben dem Schalter entfällt');
 
-assert(infos[1].includes('beim Backtest ist das die Kaufkraft des Startjahres'), 'Backtest-Info unterscheidet historische und heutige Kaufkraft');
+assert(infos[1].includes('Kaufkraft des Startjahres'), 'Backtest-Info nennt die historische Kaufkraft');
+assert(infos[1].includes('Zahlungen des Jahres und Anfangsbestände in Euro vom Jahresanfang, Zinsen und Endbestände in Euro vom Jahresende.')
+    && infos[1].includes('Der Unterschied ist der Kaufkraftverlust des Jahres.'), 'Euro-Wahl erklärt die Lücke in derselben Jahreszeile');

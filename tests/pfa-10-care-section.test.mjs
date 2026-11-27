@@ -1,5 +1,5 @@
 // PFA-10: Pflegewerte in Personen & Vermögen › Pflege. Dieselbe Eingabe schreibt dieselben Records wie bisher im Simulator,
-// Balance und Simulator Jahr 1 rechnen gleich, Außenpersonen und Spielbereich wie überall; Lesen schreibt nie. Testdatum 23.10.2026.
+// Balance und Simulator Jahr 1 rechnen gleich, der Spielbereich wie überall; Lesen schreibt nie. Testdatum 23.10.2026.
 import { pfa2Records, countingStorage, IDS } from './helpers/pfa-2-balance.mjs';
 import { setAppTestDate } from '../app/shared/app-clock.js';
 import { PersistenceFacade as P, persistenceStorage, resetPersistenceForTests } from '../app/shared/persistence-facade.js';
@@ -139,26 +139,6 @@ assertEqual(JSON.parse(viaManager.records.sim_pflegeCustomCosts).values[3], '210
     assert(text.includes('Kostenanstieg Inflation + 3,5 %') && text.includes('Preisstand 2026'), 'Simulator-Zeile nennt Kostenanstieg und Preisstand');
 }
 
-// 4. Außenperson: Bereich zeigt und ändert ihren eigenen Preisblock wie der Simulator; der Haushalt bleibt unverändert.
-{
-    const records = structuredClone(base);
-    const registry = JSON.parse(records.rs_profiles_v1);
-    registry.profiles.muster_aussen = structuredClone(registry.profiles[IDS[1]]);
-    Object.assign(registry.profiles.muster_aussen.meta, { id: 'muster_aussen', name: 'Muster außen', belongsToHousehold: false });
-    records.rs_profiles_v1 = JSON.stringify(registry);
-    for (const key of Object.keys(records)) if (/^(profile_|sim_pflege)/.test(key)) delete records[key];
-    Object.assign(records, registry.profiles.muster_aussen.data, { rs_current_profile: 'muster_aussen', rs_active_profile: 'muster_aussen' });
-    const outsideSteps = [['pflegeStufe2Zusatz', '7000'], ['pflegeKostenDrift', '4']];
-    const sim = await run(records, simulatorPath(outsideSteps));
-    const manager = await run(records, managerPath(outsideSteps));
-    assertEqual(JSON.stringify(care(manager.records)), JSON.stringify(care(sim.records)), 'Außenperson: gleiche Records wie im Simulator');
-    assertEqual(manager.records.household_care_values_v1 ?? null, records.household_care_values_v1 ?? null, 'Außenperson ändert die Pflegewerte des Haushalts nicht');
-    assertEqual(JSON.parse(manager.records.sim_pflegePreise).costs[2], 7000, 'Außenperson: eigener Preisblock beim eigenen Preisbesitzer');
-    const page = managerDocument();
-    renderManagerCareValues(page.doc, { storage: countingStorage(manager.records).storage });
-    assert(!page.nodes.get('managerCareOwner').hidden && page.nodes.get('managerCareOwner').textContent.includes('Muster außen'), 'Bereich nennt die Außenperson als Besitzerin der Werte');
-}
-
 // 5. Spielbereich: Eingaben im Bereich Pflege landen nur in der Spielkopie.
 {
     const f = await playFixture('tauri', base); await f.boot();
@@ -249,15 +229,6 @@ assertEqual(JSON.parse(viaManager.records.sim_pflegeCustomCosts).values[3], '210
     });
     assertEqual(JSON.stringify(care(invalid.records)), JSON.stringify(before), 'Ungültiges Flex-Level ändert nichts');
 
-    const outside = structuredClone(base), outsideRegistry = JSON.parse(outside.rs_profiles_v1);
-    outsideRegistry.profiles.muster_aussen = structuredClone(outsideRegistry.profiles[IDS[1]]);
-    Object.assign(outsideRegistry.profiles.muster_aussen.meta, { id: 'muster_aussen', name: 'Muster außen', belongsToHousehold: false });
-    outside.rs_profiles_v1 = JSON.stringify(outsideRegistry);
-    for (const key of Object.keys(outside)) if (/^(profile_|sim_pflege)/.test(key)) delete outside[key];
-    Object.assign(outside, outsideRegistry.profiles.muster_aussen.data, { rs_current_profile: 'muster_aussen', rs_active_profile: 'muster_aussen' });
-    const outsideSim = await run(outside, simulatorPath(flexSteps)), outsideManager = await run(outside, managerPath(flexSteps));
-    assertEqual(JSON.stringify(care(outsideManager.records)), JSON.stringify(care(outsideSim.records)), 'Außenperson: Zuschlag und Flex-Level wie im Simulator');
-
     const html = readFileSync(new URL('../Simulator.html', import.meta.url), 'utf8');
     const section = html.slice(html.indexOf('data-fieldset="pflege"'), html.indexOf('</details></section>', html.indexOf('data-fieldset="pflege"')));
     const visible = section.slice(0, section.indexOf('id="simCareValueCarrier"'));
@@ -285,6 +256,14 @@ assertEqual(JSON.parse(viaManager.records.sim_pflegeCustomCosts).values[3], '210
     assertEqual(counts.setItem + counts.removeItem, 0, 'Altbestand: Lesen im Bereich Pflege schreibt nie');
     assertEqual(GRADES.map(grade => page.nodes.get(`managerCareFlex${grade}`).value).join('/'), '100/100/50/0/0', 'Alte Vorgabe erscheint wie im Simulator als 100/100/50/0/0');
     assert(summary.includes('Flex-Level 100 / 100 / 50 / 0 / 0 %'), `Simulator-Zeile nennt die wirksame Staffel: ${summary}`);
+
+    // HL-1 (H-FLEX-ALT): Schon vor jeder Eingabe rechnet die Balance die alte Vorgabe ohne Marke wie der Simulator
+    // (Grad 3: 50 % statt roh 10 %) und schreibt dabei nichts.
+    const legacyRead = countingStorage(legacy);
+    const legacyBalance = buildBalanceEngineInputFromStorage({ storage: legacyRead.storage, scope: pfa2Records({}).scope, referenceYear: 2026 });
+    assertEqual(legacyBalance.inputData.flexBedarf, 10500, 'H-FLEX-ALT: Balance projiziert die alte Vorgabe, Wunsch-Flex 10.500 €');
+    assertEqual(legacyBalance.inputData.minimumFlexAnnual, 5250, 'H-FLEX-ALT: Mindest-Flex 5.250 €');
+    assertEqual(legacyRead.counts.setItem + legacyRead.counts.removeItem, 0, 'H-FLEX-ALT: Balance schreibt beim Lesen nichts');
 
     const steps = [['pflegeStufe1FlexCut', '90']];
     const sim = await run(legacy, simulatorPath(steps));

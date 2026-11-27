@@ -2,13 +2,14 @@
 /** @import * as I from "../../typcheck/speicher-integration.js" */
 import { withAnnualWriteAccess } from '../shared/annual-operation-lock.js';
 import { appNow } from '../shared/app-clock.js';
-import { OVERVIEW_SIMULATION_KEY, simulationEntryKey, assertSimulationRecord, readSimulationRecord } from './overview-simulation-summary.js';
+import { OVERVIEW_SIMULATION_KEY, SIMULATION_KINDS, simulationEntryKey, assertSimulationRecord, readSimulationRecord } from './overview-simulation-summary.js';
 import { PersistenceFacade, persistenceStorage } from '../shared/persistence-facade.js';
 import { loadProfileRegistry, getCurrentProfileId } from '../profile/profile-registry.js';
 import { getPageNavigationGuard } from '../shared/navigation-guard-dialog.js';
 import { prepareHouseholdCash, liveCashData } from '../profile/profile-cash-update.js';
 import { localHistoryDate } from '../tranches/tranchen-history-store.js';
 import { SnapshotArchive, SNAPSHOT_KINDS } from '../shared/snapshot-archive.js';
+import { pruneRestorePoints } from '../shared/snapshot-retention.js';
 import { createNavigationOperationLifecycle } from '../shared/navigation-guard.js';
 
 export const OVERVIEW_BACKUP_KEY = 'overview_last_full_backup_v1';
@@ -74,12 +75,7 @@ async function storeMonthWithCash(request, { storage, flush, now, guard, navigat
         const archived = await archive.listSnapshots();
         if (recovery && !archived.some(entry => entry.id === /** @type {NonNullable<typeof recovery>} */ (recovery).id)) recovery = /** @type {undefined} */ (/** @type {unknown} */ (null));
         if (!recovery || recovery.key !== retryKey) {
-            const saved = await archive.createSnapshot({ records: source,
-                id: `month_${month}_${globalThis.crypto.randomUUID()}`,
-                activeProfileId: expectedProfileId, activeProfileName: /** @type {D.ProfileRegistry} */ (registry).profiles[/** @type {string} */ (expectedProfileId)].meta.name,
-                restoreScope: scope.kind === 'household'
-                    ? { profileRegistryMode: 'replace-all-rollback', profileLiveDataMode: 'replace-all-rollback' } : undefined,
-                kind: SNAPSHOT_KINDS.monthlyClosePreMutation, label: `Monatsabschluss ${month}`, createdAt: date.toISOString() }, { navigationOperation: operation, guard });
+            const saved = await createMonthPoint({ archive, records: source, month, expectedProfileId, registry, date, operation, guard });
             recovery = { key: retryKey, id: saved.id, records: saved.records };
             monthRecovery.set(storage, recovery);
         }
@@ -97,8 +93,26 @@ async function storeMonthWithCash(request, { storage, flush, now, guard, navigat
         await persistence.replaceRecordsTransactional(records, { probelaufDomainWrite: true, navigationOperation: operation,
             allowKey, expectedRecords: expected, postValidate: () => { check(); return true; } });
         monthRecovery.delete(storage);
+        await pruneMonthPoints(archive, recovery.id, operation, /** @type {(storage?: D.RecordStorage) => D.StringRecords} */ (liveCashData)(storage));
         return true;
     });
+}
+
+/** SV-1: Jeder Monatsabschluss legt vor dem Speichern einen Punkt des ganzen Haushalts an, mit oder ohne Tagesgeldbuchung.
+ * @param {{archive: typeof SnapshotArchive, records: D.StringRecords, month: string, expectedProfileId: string|undefined,
+ *   registry: D.ProfileRegistry, date: Date, operation: unknown, guard: unknown}} options */
+function createMonthPoint({ archive, records, month, expectedProfileId, registry, date, operation, guard }) {
+    return archive.createSnapshot({ records, id: `month_${month}_${globalThis.crypto.randomUUID()}`,
+        activeProfileId: expectedProfileId, activeProfileName: registry.profiles[/** @type {string} */ (expectedProfileId)]?.meta?.name,
+        kind: SNAPSHOT_KINDS.monthlyClosePreMutation, label: `Monatsabschluss ${month}`, createdAt: date.toISOString() },
+    /** @type {Parameters<typeof SnapshotArchive.createSnapshot>[1]} */ ({ navigationOperation: operation, guard }));
+}
+
+/** Nach dem bestätigten Monatsabschluss kürzen (12 Monate); der gerade angelegte Punkt bleibt.
+ * @param {typeof SnapshotArchive} archive @param {string} id @param {unknown} operation @param {D.StringRecords} records */
+async function pruneMonthPoints(archive, id, operation, records) {
+    if (typeof archive.deleteSnapshot !== 'function') return;
+    await pruneRestorePoints(SNAPSHOT_KINDS.monthlyClosePreMutation, { archive, storage: PersistenceFacade, protectedIds: [id], records, navigationOperation: operation });
 }
 
 /**
@@ -229,10 +243,7 @@ function matchesMonthContext(storage, expectedProfileId, scope) {
     if (storage.getItem('rs_current_profile') !== expectedProfileId) return false;
     const activeId = storage.getItem('rs_active_profile');
     if (activeId !== null && activeId !== expectedProfileId) return false;
-    const ids = Object.entries(registry.profiles).filter(([, profile]) => profile.meta.belongsToHousehold !== false).map(([id]) => id);
-    // Wie die Seitenprojektion: Ohne Haushaltsmitglieder gilt das geöffnete
-    // Profil allein. Eine vorhandene Mitgliedschaft bleibt weiterhin maßgeblich.
-    if (!ids.length) ids.push(expectedProfileId);
+    const ids = Object.keys(registry.profiles);
     const current = overviewScope(ids.length === 1 && ids[0] === expectedProfileId ? 'single' : 'household', ids);
     return current?.key === scope.key;
 }
@@ -278,6 +289,19 @@ function storeMonthProvisionOwned({ month, scope: suppliedScope, expectedProfile
     const lease = reasons.some(ownsCommit) ? null : guard?.register(Symbol('overview-month'), {
         read: () => ({ phase: 'commit', message: 'Monatshaken wird gespeichert – bitte warten.' })
     });
+    // Ein Punkt braucht einen Besitzer; ohne geliehenen Vorgang zählt die eigene Lease oben.
+    const pointOperation = navigationOperation || { check() {}, commit() {} };
+    /** @returns {Promise<true | {id: string}>} `true`: Monat ist schon abgeschlossen, kein Punkt nötig. */
+    const createPointWithoutCash = async () => {
+        const registry = /** @type {D.ProfileRegistry} */ (/** @type {I.LoadRegistry} */ (/** @type {unknown} */ (loadProfileRegistry))(storage).value);
+        if (scope.ids.every(id => readMonthProvision(id === expectedProfileId ? storage.getItem(OVERVIEW_MONTH_KEY)
+            : registry.profiles[id].data[OVERVIEW_MONTH_KEY], month, scope))) return true;
+        const raw = /** @type {(storage?: D.RecordStorage) => D.StringRecords} */ (liveCashData)(storage);
+        const records = archive.captureCurrentRecords({ keys: Object.keys(raw), getItem: key => raw[key] });
+        const saved = await createMonthPoint({ archive, records, month, expectedProfileId, registry, date: now(), operation: pointOperation, guard });
+        if (JSON.stringify((await archive.readSnapshot(saved.id)).records) !== JSON.stringify(saved.records)) throw new Error('OVERVIEW_SNAPSHOT_READBACK_FAILED');
+        return saved;
+    };
     const job = (async () => {
         let /** @type {string | null} */ liveBefore, /** @type {string | undefined} */ writtenLive, previous = /** @type {D.StringRecords} */ ({}), written = /** @type {D.StringRecords} */ ({});
         const restore = () => {
@@ -302,6 +326,10 @@ function storeMonthProvisionOwned({ month, scope: suppliedScope, expectedProfile
             if (await flush() === false) throw new Error('PERSISTENCE_FLUSH_FAILED');
             navigationOperation?.check();
             if (isBlocked() || !matchesMonthContext(storage, expectedProfileId, scope)) return false;
+            const point = await createPointWithoutCash();
+            if (point === true) return true;
+            navigationOperation?.check();
+            if (isBlocked() || !matchesMonthContext(storage, expectedProfileId, scope)) return false;
             const registry = structuredClone(/** @type {I.LoadRegistry} */ (/** @type {unknown} */ (loadProfileRegistry))(storage).value);
             liveBefore = storage.getItem(OVERVIEW_MONTH_KEY);
             const sources = scope.ids.map(id => id === expectedProfileId ? liveBefore : /** @type {D.ProfileRegistry} */ (registry).profiles[id].data[OVERVIEW_MONTH_KEY]);
@@ -322,6 +350,7 @@ function storeMonthProvisionOwned({ month, scope: suppliedScope, expectedProfile
             if (await flush() === false) throw new Error('PERSISTENCE_FLUSH_FAILED');
             navigationOperation?.check();
             if (isBlocked() || !matchesMonthContext(storage, expectedProfileId, scope)) throw new Error('OVERVIEW_CONTEXT_CHANGED');
+            await pruneMonthPoints(archive, point.id, pointOperation, /** @type {(storage?: D.RecordStorage) => D.StringRecords} */ (liveCashData)(storage));
             return true;
         } catch (error) {
             restore();
@@ -346,7 +375,7 @@ export function storeSimulationSummary(summary, { expectedProfileId, storage = p
     isCurrent = () => true, isBlocked = () => PersistenceFacade.hasSyncWriteBlocks() || Boolean(globalThis.window?.__profileRecoveryBlocker)
 } = {}) {
     const scope = overviewScope(summary?.scope?.kind, summary?.scope?.ids);
-    if (!scope || scope.key !== summary.scope.key || !isCurrent() || isBlocked()
+    if (!scope || scope.key !== summary.scope.key || !SIMULATION_KINDS.includes(summary.kind) || !isCurrent() || isBlocked()
         || guard?.reasons().some(reason => ['preparing', 'cancelling'].includes(/** @type {string} */ (reason.phase)))) return Promise.resolve(false);
     const matches = () => {
         if (!isCurrent() || isBlocked() || storage.getItem('rs_current_profile') !== expectedProfileId) return false;
@@ -355,8 +384,7 @@ export function storeSimulationSummary(summary, { expectedProfileId, storage = p
         const registry = /** @type {I.LoadRegistry} */ (/** @type {unknown} */ (loadProfileRegistry))(storage).value;
         if (!registry?.profiles[expectedProfileId] || scope.ids.some(id => !/** @type {D.ProfileRegistry} */ (registry).profiles[id])) return false;
         if (scope.kind === 'single') return scope.ids[0] === expectedProfileId;
-        const ids = Object.keys(registry.profiles).filter(id => /** @type {D.ProfileRegistry} */ (registry).profiles[id].meta.belongsToHousehold !== false);
-        return overviewScope('household', ids)?.key === scope.key;
+        return overviewScope('household', Object.keys(registry.profiles))?.key === scope.key;
     };
     if (!matches()) return Promise.resolve(false);
     summary = structuredClone({ ...summary, scope });

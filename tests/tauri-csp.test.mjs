@@ -195,3 +195,18 @@ assert(tauriLib.includes('if !is_household_id(id) { return Err(') && (tauriLib.m
     'Ordner- und Spiellöschkommandos prüfen die Haushaltskennung, bevor ein Pfad entsteht');
 assert(tauriLib.includes('Command::new("explorer.exe")') && tauriLib.includes('command.arg(directory)'), 'Explorer erhält genau ein natives Ordnerargument ohne Shellstring');
 assert(tauriLib.includes('app_directory_commands_have_only_injected_app_handle') && tauriLib.includes('app_directory_command_keeps_one_argument_without_shell'), 'Rust-Laufzeitproben prüfen Befehls- und Argumentgrenze; Cargo bleibt separates Gate');
+
+// KF-1: Die Desktop-App holt Tageskurse nur über den lokalen Kursvermittler in der EXE, nie über den Handy-Worker.
+const textFiles = /\.(?:[cm]?js|json|html|css|rs|toml)$/;
+const skippedDirs = new Set(['target', 'gen', 'icons', 'node_modules']);
+const listTextFiles = dir => fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) return skippedDirs.has(entry.name) ? [] : listTextFiles(full);
+    return textFiles.test(entry.name) ? [full] : [];
+});
+const desktopFiles = ['app', 'src-tauri'].flatMap(dir => listTextFiles(path.join(repoRoot, dir)));
+assert(desktopFiles.some(file => file.endsWith(path.join('app', 'shared', 'kurswahl.js'))) && desktopFiles.includes(tauriLibPath),
+    'Die Prüfung liest App-Code und Rust-Quellen');
+const workerHits = desktopFiles.filter(file => /workers\.dev/i.test(fs.readFileSync(file, 'utf8')))
+    .map(file => path.relative(repoRoot, file));
+assertEqual(workerHits.join(', '), '', 'app/ und src-tauri/ enthalten keine workers.dev-Adresse');

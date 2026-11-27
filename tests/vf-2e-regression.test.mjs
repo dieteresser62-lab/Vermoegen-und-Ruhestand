@@ -29,12 +29,11 @@ import { inputs as replayInputs } from './extended/parity-replay-fixture.mjs';
 const store = new MemoryWebStorage();
 const registry = { version: 1, profiles: {
     a: { meta: { belongsToHousehold: true }, data: { sim_pflegeKostenStaffelPreset: 'custom', sim_pflegeStufe3Form: 'family' } },
-    b: { meta: { belongsToHousehold: true }, data: { profile_care_grade_today: '3', sim_pflegeStufe3Form: 'residential' } },
-    c: { meta: { belongsToHousehold: false }, data: { sim_pflegeKostenStaffelPreset: 'custom', profile_care_grade_today: '2', profile_care_form_today: 'family' } }
+    b: { meta: { belongsToHousehold: true }, data: { profile_care_grade_today: '3', sim_pflegeStufe3Form: 'residential' } }
 } };
 store.setItem('rs_profiles_v1', JSON.stringify(registry)); store.setItem('rs_current_profile', 'b');
 store.setItem('profile_care_grade_today', '3'); store.setItem('sim_pflegeStufe3Form', 'residential');
-assertEqual(readProfileCareSettings(store, 'c').preset, 'custom', '1 Außenperson verwendet eigene Einstellungen');
+assertEqual(readProfileCareSettings(store, 'b').preset, 'custom', '1 Zweite Person verwendet die Staffel des Hauptprofils');
 assertEqual(careTodayFromStorage(store).form, 'family', '2 Personenkarte löst fehlende Form mit der Hauptstaffel auf');
 const records = createMusterHaushaltRecords('2026-10-23', 'max-erika');
 const people = Object.entries(JSON.parse(records.rs_profiles_v1).profiles).map(([profileId, p], i) => ({ profileId,

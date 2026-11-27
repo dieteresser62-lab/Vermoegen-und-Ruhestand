@@ -1,4 +1,7 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import './helpers/grundbestand-sicht-aktiv.mjs';
 import nodeAssert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 const A = globalThis.__wrapExternalAssert(nodeAssert);
 import { inputs as fixture, runFixture } from './extended/parity-replay-fixture.mjs';
 import { EngineAPI } from '../engine/index.mjs';
@@ -48,12 +51,13 @@ if (selected(1)) {
     const mc = await chunk(reserveInputs());
     A.equal(mc.technicalInventory.technicalError, 0);
     A.equal(mc.totals.failCount, 1);
-    A.equal(mc.totals.totalHealthBucketUsed, 10000);
-    A.equal(mc.pathSummaries.healthBucketUsedRealEur[0], 10000, 'Ruinjahr zählt auch in heutigen Euro');
+    // KR-1c (NG-5): Die Rücklage bekommt den Zins des Jahres (3,17 %) vor der Nutzung; das Ruinjahr verbraucht 10.317 €.
+    A.equal(mc.totals.totalHealthBucketUsed, 10317);
+    A.equal(mc.pathSummaries.healthBucketUsedRealEur[0], 10317, 'Ruinjahr zählt auch in heutigen Euro');
     const merged = finalize(mc);
     const real = buildEuroAggregates(merged.pathSummaries, merged.pathMissingness, 1, codes).real;
-    A.equal(real.healthBucket.usedMedian, 10000);
-    A.equal(real.healthBucket.usedP90, 10000);
+    A.equal(real.healthBucket.usedMedian, 10317);
+    A.equal(real.healthBucket.usedP90, 10317);
     A.equal(real.healthBucket.endMedian, 0);
     A.equal(merged.pathSummaries.withdrawalP10NominalEur[0], 0, 'Ruinentnahme bleibt null');
 
@@ -131,11 +135,14 @@ if (selected(3)) {
 }
 
 if (selected(4)) {
+    const zr1 = JSON.parse(readFileSync(new URL('./fixtures/zr-1-expectation-deltas.json', import.meta.url))).changes
+        .find(change => change.test === 'tests/qs-d-regressions.test.mjs');
     for (const [cash, floor, ruinYear] of [[30000, 12000, 2002], [10000, 20000, 2000]]) {
         const historical = runFixture({ input: reserveInputs(cash, floor) });
         A.equal(historical.outcome.kind, 'ruin');
         A.equal(historical.ruinYear, ruinYear);
-        if (ruinYear === 2002) A.equal(historical.rows.at(-2).row.health_bucket_end.toFixed(2), '5816.68');
+        // Der Zins bleibt auf dem Stand vor der Nutzung. Die Steuer von 2000 mindert das freie Tagesgeld für 2001.
+        if (ruinYear === 2002) A.equal(historical.rows.at(-2).row.health_bucket_end.toFixed(2), zr1.new);
         const terminal = historical.rows.at(-1).row;
         A.equal(terminal.health_bucket_enabled, true, 'Erschöpfte Rücklage bleibt aktiviert');
         A.equal(terminal.health_bucket_end, 0);

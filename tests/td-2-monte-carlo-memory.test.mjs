@@ -4,6 +4,7 @@ import { prepareHistoricalDataOnce } from '../app/simulator/simulator-engine-hel
 import { displayMonteCarloResults } from '../app/simulator/simulator-results.js';
 import { getPageNavigationGuard } from '../app/shared/navigation-guard-dialog.js';
 import { setStorageArea } from '../app/shared/persistence-area-storage.js';
+import { setAppTestDate, localCalendarDate } from '../app/shared/app-clock.js';
 
 // Werte aus result-memory.js / result-restore.js; Grenze und Sonderwerte prüft simulator-monte-carlo-contract.test.mjs.
 const MONTE_CARLO_MEMORY_KEY = 'rs_simulator_mc_result_v1', MONTE_CARLO_MEMORY_LIMIT = 3000000;
@@ -111,7 +112,7 @@ try {
     const source = second.getElementById('mcResultMemory');
     assert(!source.hidden && /^Ergebnis von \d\d:\d\d · Eingaben unverändert$/.test(source.textContent), 'Quellzeile nennt Uhrzeit und unveränderte Eingaben: ' + source.textContent);
     assertEqual(reason(second), undefined, 'Wiederhergestelltes Ergebnis erzeugt keinen Verlustgrund');
-    assertEqual(summaryCalls.join(','), 'montecarlo', 'Wiederherstellen bindet die Werkstatt-Herkunft wie ein Laufbeginn');
+    assertEqual(summaryCalls.join(','), '', 'Wiederherstellen legt keine neue Ergebnisablage an');
 
     // Ergebnis von einem anderen Tag nennt das Datum.
     const yesterday = new Date(Date.now() - 86400000).toISOString();
@@ -121,6 +122,12 @@ try {
     assertEqual(await restoreMonteCarloResult({ doc: nextDay, dependencies: restoreDependencies() }), 'restored', 'Ergebnis vom Vortag wird wiederhergestellt');
     assert(/^Ergebnis vom \d\d\.\d\d\. \d\d:\d\d · Eingaben unverändert$/.test(nextDay.getElementById('mcResultMemory').textContent),
         'Quellzeile nennt bei anderem Tag das Datum: ' + nextDay.getElementById('mcResultMemory').textContent);
+    // SH-1: Der Vergleich nutzt die App-Uhr; mit Testdatum gilt dessen Tag als heute.
+    setAppTestDate(localCalendarDate(new Date(yesterday)));
+    const playDay = page();
+    globalThis.document = playDay;
+    try { await restoreMonteCarloResult({ doc: playDay, dependencies: restoreDependencies() }); } finally { setAppTestDate(null); }
+    assert(/^Ergebnis von \d\d:\d\d · /.test(playDay.getElementById('mcResultMemory').textContent), 'SH-1: Quellzeile vergleicht mit der App-Uhr');
 
     // Ein Laufstart während des Wiederherstellens hat Vorrang, auch wenn er sofort scheitert.
     const raced = page();

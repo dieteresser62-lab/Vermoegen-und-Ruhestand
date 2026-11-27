@@ -1,4 +1,4 @@
-import { bindInfoPopovers, createInfoPopover } from './designsystem-info-popover.js';
+import { bindInfoPopovers, createInfoPopover, dismissOpenInfoPopover } from './designsystem-info-popover.js';
 import { patchInPlace } from './dom-patch.js';
 
 /** Schreibfreie Abschlusskomponente. Fachzustand und Speicherbesitz bleiben beim Aufrufer. */
@@ -92,7 +92,8 @@ export function createCloseDialog({ doc = document, id, title, eyebrow = 'Monats
             for (const [id, row] of rows) {
                 const neutral = ['not_applicable', 'skipped', 'entered'].includes(row.step.state);
                 const done = row.step.progressByVisit ? visited.has(id) : row.step.done;
-                const label = row.step.statusLabel || (row.step.progressByVisit ? (done ? 'angesehen' : 'offen') : row.step.preparing ? 'wird vorbereitet …' : row.step.prepared && row.step.done ? (visited.has(id) ? 'geprüft' : 'bereit') : row.step.done ? 'erledigt' : row.step.state === 'entered' ? 'eingetragen' : row.step.state === 'not_applicable' ? 'entfällt' : row.step.state === 'skipped' ? 'übersprungen' : 'offen');
+                const visitedLabel = row.step.resultTone === 'warning' ? 'über Budget' : 'angesehen';
+                const label = row.step.statusLabel || (row.step.progressByVisit ? (done ? visitedLabel : 'offen') : row.step.preparing ? 'wird vorbereitet …' : row.step.prepared && row.step.done ? (visited.has(id) ? 'geprüft' : 'bereit') : row.step.done ? 'erledigt' : row.step.state === 'entered' ? 'eingetragen' : row.step.state === 'not_applicable' ? 'entfällt' : row.step.state === 'skipped' ? 'übersprungen' : 'offen');
                 const state = done ? 'done' : neutral ? row.step.state : id === current ? 'current' : 'open';
                 row.root.dataset.state = state;
                 row.root.dataset.visited = String(visited.has(id));
@@ -100,7 +101,8 @@ export function createCloseDialog({ doc = document, id, title, eyebrow = 'Monats
                 row.button.dataset.state = state; row.button.dataset.tone = row.step.resultTone || '';
                 row.root.hidden = id !== current;
                 row.button.setAttribute('aria-label', `${row.step.title} · ${label}${id === current ? ' · aktuell' : ''}`);
-                row.symbol.textContent = done || row.step.state === 'entered' ? '✓' : neutral ? '–' : String(row.index + 1);
+                // OP-3 Punkt 2: Der Reiter zeigt immer seine Nummer; den Stand nennt allein die Pille.
+                row.symbol.textContent = String(row.index + 1);
                 row.body.hidden = id !== current;
                 row.result.hidden = !row.step.result;
                 row.pill.textContent = label;
@@ -131,7 +133,7 @@ export function createCloseDialog({ doc = document, id, title, eyebrow = 'Monats
                     const fullTitle = element('h3', 'close-dialog-step-heading');
                     const name = element('span', 'close-dialog-step-name'), result = element('p', 'close-dialog-step-result'), body = element('div', 'close-dialog-step-body');
                     body.id = `${id}-${step.id}`; button.setAttribute('aria-controls', body.id);
-                    button.append(symbol, pill, name); tabs.append(button);
+                    button.append(symbol, name, pill); tabs.append(button);
                     root.append(fullTitle, result, body); content.append(root);
                     listen(button, 'click', () => { if (!busy && !row.step.locked) activate(step.id); }, stepRemovers);
                     const nextButton = element('button', 'ds-button ds-button-secondary close-dialog-next'); nextButton.type = 'button'; nextButton.dataset.closeDialogNext = step.id;
@@ -227,10 +229,20 @@ export function createCloseDialog({ doc = document, id, title, eyebrow = 'Monats
         listen(cross, 'click', requestClose);
         listen(dialog, 'cancel', event => { event.preventDefault(); void requestClose(); });
         listen(dialog, 'close', () => { if (!busy) close(false); });
+        // Während gespeichert wird, tut Escape nichts – auch wenn der Fokus nach dem Ausblenden eines Knopfs nicht mehr im Dialog liegt.
+        if (typeof doc.addEventListener === 'function') listen(doc, 'keydown', event => {
+            if (busy && event.key === 'Escape' && !event.defaultPrevented && topmost()) { event.preventDefault(); event.stopPropagation?.(); }
+        });
         listen(dialog, 'keydown', event => {
-            if (event.defaultPrevented || !topmost()) return;
-            if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation?.(); void requestClose(); }
-            if (event.key !== 'Tab') return;
+            if (!topmost()) return;
+            if (event.key === 'Escape') {
+                // Ein fokussiertes ⓘ kann sein eigenes Escape bereits verarbeitet haben.
+                const dismissed = dismissOpenInfoPopover(dialog);
+                if (event.defaultPrevented) return;
+                event.preventDefault(); event.stopPropagation?.();
+                if (!dismissed) void requestClose();
+            }
+            if (event.defaultPrevented || event.key !== 'Tab') return;
             const focusable = dialogElements(dialog).filter(node => {
                 const tag = node.tagName?.toLowerCase() || node.tag;
                 if (!(['button', 'input', 'select', 'textarea'].includes(tag) || tag === 'a' && (node.href || node.getAttribute?.('href')) || node.tabIndex >= 0)) return false;

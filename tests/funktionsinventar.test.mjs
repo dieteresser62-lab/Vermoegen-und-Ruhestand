@@ -530,8 +530,9 @@ const i02 = entries.find(entry => entry.id === 'I02');
 assert(i02.initialStates.some(state => state.kind === 'technisch verborgen' && state.selectors.includes('#overviewHousehold'))
     && i02.coverage.node.some(ref => ref.path === 'tests/tranchen-manager-profiles.test.mjs'),
     'I02: verborgene Haushaltspille (seit Mehrere Haushalte) und geschützter Managerwechsel ersetzen den entfernten Profilselect');
-assert(i02.coverage.node.some(ref => ref.path === 'tests/profile-ui-contract.test.mjs' && ref.evidence.includes('Sofortiger Reload')),
-    'I02: dauerhafte Profilbestätigung hat eigenen Handler-/Reloadbeleg');
+const i09 = entries.find(entry => entry.id === 'I09');
+assert(i09.coverage.node.some(ref => ref.path === 'tests/profile-ui-contract.test.mjs' && ref.evidence.includes('Recoverywiederholung')),
+    'I09: Recoveryreset, Retry und Reload haben ihren Handler-Beleg (profile-recovery-ui.js)');
 for (const id of ['V05', 'V06', 'V14']) {
     assert(entries.find(entry => entry.id === id).coverage.node.some(ref => ref.path === 'tests/designsystem-selection-text.test.mjs'),
         `${id}: Managerauswahl hat Kürzungs-/Resetbeleg`);
@@ -562,8 +563,8 @@ assert(!json.includes('6.2a'), 'Kein alter 6.2a-Paketbezug');
 for (const id of ['V08', 'V09', 'V13', 'V14', 'V15', 'V23']) {
     assertEqual(entries.find(e => e.id === id).target.firstPackage, '5', `${id}: korrigierte erste Paketzuordnung`);
 }
-assert(entries.find(e => e.id === 'B42').coverage.gaps.some(g => g.kind === 'Testschuld' && g.evidence.includes('Telemetrie') || g.kind === 'Testschuld' && g.evidence.includes('worker-telemetry')), 'B42-Telemetrie ausdrücklich als Testschuld');
-assert(entries.find(e => e.id === 'B42').coverage.gaps.some(g => g.kind === 'Änderungsrisiko' && g.package === '2'), 'B42-Kontext-/Druckumbau getrennt von Telemetrieschuld');
+assert(!entries.find(e => e.id === 'B42').selectors.static.includes('#devTools') && !entries.find(e => e.id === 'B42').coverage.gaps.some(g => g.kind === 'Testschuld'), 'B42: Balance hat keine Entwicklertelemetrie mehr');
+assert(entries.find(e => e.id === 'B42').coverage.gaps.some(g => g.kind === 'Änderungsrisiko' && g.package === '2'), 'B42-Kontext-/Druckumbau bleibt als Änderungsrisiko');
 for (const entry of entries) for (const dynamic of entry.selectors.dynamic) {
     assertEqual(validateAnchorEvidence(dynamic, sources, { id: entry.id, page: entry.page }).ok, true, `${entry.id}: Einzelprüfung ${dynamic.selector} (${dynamic.status})`);
     if (dynamic.status === DYNAMIC_STATUSES[1]) assert(entry.coverage.gaps.some(gap => gap.kind === 'Änderungsrisiko' && gap.selector === dynamic.selector), `${entry.id}: fehlender Anker mit konkretem Änderungsrisiko`);
@@ -645,10 +646,9 @@ assert(s03Loss.errors.some(error => ['S03', 'Simulator.html', s03Field.selector,
 for (const [id, selector, expectedStatus] of [
     ['I09', '[data-profile-recovery]', DYNAMIC_STATUSES[0]], ['I10', importSelector, DYNAMIC_STATUSES[0]],
     ['B26', 'td[data-month][data-profile]', DYNAMIC_STATUSES[0]], ['B26', '[data-month-total]', DYNAMIC_STATUSES[0]],
-    ['B46', '[id^="balance-action-error-text-"]', DYNAMIC_STATUSES[0]], ['S60', 'svg', DYNAMIC_STATUSES[0]],
-    ['S66', '[id^="ao_param_"]', DYNAMIC_STATUSES[0]], ['V24', 'button[title][aria-label]', DYNAMIC_STATUSES[0]],
-    ['B28', '[data-action]', DYNAMIC_STATUSES[0]], ['S69', '[data-auto-optimize-model-warning]', DYNAMIC_STATUSES[0]],
-    ['S69', '[data-auto-optimize-model-status]', DYNAMIC_STATUSES[0]], ['V01', '[data-profile-id]', DYNAMIC_STATUSES[0]],
+    ['B46', '[id^="balance-action-error-text-"]', DYNAMIC_STATUSES[0]], ['S38', 'svg.heatmap-v4-svg', DYNAMIC_STATUSES[0]],
+    ['V24', 'button[title][aria-label]', DYNAMIC_STATUSES[0]],
+    ['B28', '[data-action]', DYNAMIC_STATUSES[0]], ['V01', '[data-profile-id]', DYNAMIC_STATUSES[0]],
     ['V22', '[data-cash-status]', DYNAMIC_STATUSES[0]], ['V22', '[data-target-action-id]', DYNAMIC_STATUSES[2]]
 ]) {
     const record = realEvidence(id, selector);
@@ -656,7 +656,7 @@ for (const [id, selector, expectedStatus] of [
     assertEqual(validateAnchorEvidence(record, sources, { id, page: entries.find(entry => entry.id === id).page }).ok, true,
         id + ': tatsächlicher SOURCE-Beleg ' + selector);
 }
-for (const [id, selector, className] of [['S60', 'svg', 'heatmap-v4-svg'], ['V24', 'button[title][aria-label]', 'icon-action']]) {
+for (const [id, selector, className] of [['S38', 'svg.heatmap-v4-svg', 'heatmap-v4-svg'], ['V24', 'button[title][aria-label]', 'icon-action']]) {
     assertEqual(realEvidence(id, selector).anchor.value, className, id + ': eigener Klassenanker am passenden Element');
 }
 
@@ -1291,14 +1291,12 @@ for (const selector of ['#mcButton', '#mcAdvancedDisclosure', '#mcAdvancedSummar
     assert(simulatorSelectors.includes(selector), 'P16: Inventar enthält aktuellen Bedien-/Wertelistenanker: ' + selector);
 }
 
-// pT1: Alle acht Appbefunde haben konkrete Node-Belege an tatsächlichen Bedienhosts.
+// pT1: Die Appbefunde 2 bis 8 haben konkrete Node-Belege an tatsächlichen Bedienhosts (Befund 1, die Balance-Verlaufsnavigation, entfällt mit den alten Sprungzielen).
 for (const [finding, ids, file] of [
-    [1, ['B29', 'B30'], 'tests/wealth-history-navigation.test.mjs'],
-    [1, ['B26', 'B44'], 'tests/balance-expenses-wealth-capture.test.mjs'],
     [2, ['S03', 'S13', 'S14', 'S15', 'S16', 'S54'], 'tests/simulator-household-context-regression.test.mjs'],
     [3, ['B39', 'S03', 'S29', 'S73', 'I09'], 'tests/simulator-profile-recovery-regression.test.mjs'],
     [4, ['S31', 'S43', 'S55'], 'tests/monte-carlo-export-contract.test.mjs'],
-    [5, ['S60'], 'tests/designsystem-selection-text.test.mjs'],
+    [5, ['S71'], 'tests/designsystem-selection-text.test.mjs'],
     [6, ['S73'], 'tests/profile-storage.test.mjs'],
     [6, ['S73'], 'tests/profile-navigation.test.mjs'],
     [7, ['S32', 'S55'], 'tests/protocol-columns.test.mjs'],

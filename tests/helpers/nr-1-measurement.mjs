@@ -17,7 +17,7 @@ async function setup(root) {
     const { dynamicFlexPresetPatch } = await from(root, 'app/shared/dynamic-flex-presets.js');
     const { EngineAPI } = await from(root, 'engine/index.mjs');
     const { runMonteCarloChunk } = await from(root, 'app/simulator/monte-carlo-runner.js');
-    const { normalizeWidowOptions } = await from(root, 'app/simulator/simulator-sweep-utils.js');
+    const { normalizeWidowOptions } = await from(root, 'app/simulator/simulator-run-utils.js');
     const { annualData } = await from(root, 'app/simulator/simulator-data.js');
     const input = { ...structuredClone(inputs), ...dynamicFlexPresetPatch('offensiv'), rentAdjMode: 'wage', rentAdjPct: 2,
         pflegefallLogikAktivieren: false, kirchensteuerSatz: 0, stressPreset: 'NONE' };

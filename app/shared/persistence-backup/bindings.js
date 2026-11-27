@@ -5,12 +5,13 @@ import { createNavigationGuard, createNavigationOperationLifecycle } from '../na
 import { getPageNavigationGuard } from '../navigation-guard-dialog.js';
 import { PersistenceFacade } from '../persistence-facade.js';
 import { flushPendingProfileInputSave } from '../../profile/profile-navigation.js';
-import { FullBackupLiveChangedError } from './schema.js';
+import { FullBackupLiveChangedError, FULL_BACKUP_RELOAD_MESSAGE } from './schema.js';
 import { collectImportDecisionRecords, recordsMatch } from './records.js';
 import { normalizeFullPersistenceBackup } from './format.js';
 import { assertFullBackupAllowed } from './guard.js';
 import { downloadFullPersistenceBackup, downloadRecoveryPersistenceBackup } from './download.js';
 import { prepareFullBackupRecovery, importFullPersistenceBackup } from './restore.js';
+import { BACKUP_SAVE_CANCELLED_TEXT } from '../save-file.js';
 
 // HV-1: Bei mehreren Haushalten nennt die Bestätigung das Ziel des Imports.
 function importTargetText() {
@@ -42,6 +43,9 @@ function showBackupError(status, error, doc) {
     if (!status) return;
     status.dataset.kind = /** @type {I.AppError} */ (error)?.name === 'AbortError' ? '' : 'error';
     status.textContent = /** @type {I.AppError} */ (error)?.name === 'AbortError' ? 'Import abgebrochen.' : /** @type {I.AppError} */ (error)?.message || 'Backupaktion fehlgeschlagen.';
+    // Eine Seite mit technischen Details nimmt die Prüfmeldung dort auf.
+    const technical = /** @type {{technical?: unknown}} */ (error)?.technical;
+    if (typeof technical === 'string' && 'technical' in status) /** @type {any} */ (status).technical = technical;
     if (status.textContent.includes('Spielbereich')) {
         const card = /** @type {HTMLDetailsElement | null} */ (doc.getElementById?.('daten-sicherung'));
         if (card) card.open = true;
@@ -65,13 +69,20 @@ export function bindFullBackupButton(options = {}) {
             status.textContent = 'Backup wird erstellt...';
         }
         try {
-            const { backup } = await downloadFullPersistenceBackup({ ...options, document: doc });
-            if (status) {
+            const { backup, delivery, path } = await downloadFullPersistenceBackup({ ...options, document: doc });
+            if (status && delivery === 'abgebrochen') {
+                // Abbruch im Speicherdialog ist kein Fehler; der bisherige Sicherungsstand bleibt.
+                status.dataset.kind = '';
+                status.textContent = BACKUP_SAVE_CANCELLED_TEXT;
+            } else if (status) {
                 status.dataset.kind = 'ok';
                 const excludedText = backup.excludedRecordCount
                     ? ` ${backup.excludedRecordCount} UI-/Layout-Einstellungen sind nicht enthalten.`
                     : '';
-                status.textContent = `Komplettes fachliches Backup erstellt (${backup.recordCount} Eintraege). Dateiausgabe der Vollsicherung angestoßen.${excludedText}`;
+                // SD-1: Die Desktop-App nennt den im Dialog gewählten Pfad.
+                status.textContent = delivery === 'bestaetigt'
+                    ? `Komplettes fachliches Backup gespeichert${path ? ` unter ${path}` : ''} (${backup.recordCount} Einträge).${excludedText}`
+                    : `Komplettes fachliches Backup erstellt (${backup.recordCount} Einträge). Sicherung angestoßen – bitte Ablage prüfen.${excludedText}`;
             }
         } catch (err) {
             showBackupError(status, err, doc);
@@ -132,7 +143,7 @@ export function bindFullBackupImport(options = {}) {
                     }));
                     await assertFullBackupAllowed(options);
                     navigationOperation.check();
-                    const normalized = normalizeFullPersistenceBackup(JSON.parse(text));
+                    const payload = JSON.parse(text), normalized = normalizeFullPersistenceBackup(payload);
                     if (!normalized.ok) throw new Error(normalized.message);
                     const backup = normalized.backup;
                     if (await flushPendingProfileInputSave(doc) === false) throw new Error('Die ausstehende Eingabe konnte nicht gesichert werden. Bitte den Stand prüfen und den Import erneut versuchen.');
@@ -157,6 +168,11 @@ export function bindFullBackupImport(options = {}) {
                     } catch (error) {
                         throw new Error(`Import abgebrochen: Recovery-Backup konnte nicht erstellt werden (${/** @type {I.AppError} */ (error)?.message || 'unbekannter Fehler'}).`);
                     }
+                    // SD-1: Ohne gespeicherte Rettungsdatei (Dialog abgebrochen) wird nichts ersetzt.
+                    if (recoveryResult?.saved === false) {
+                        if (status) { status.dataset.kind = ''; status.textContent = `${BACKUP_SAVE_CANCELLED_TEXT} Import abgebrochen; die gespeicherten Daten wurden nicht ersetzt.`; }
+                        return null;
+                    }
                     navigationOperation.check();
                     await assertFullBackupAllowed(options);
                     if (!recordsMatch(decisionRecords, collectImportDecisionRecords())) throw new FullBackupLiveChangedError();
@@ -175,7 +191,7 @@ export function bindFullBackupImport(options = {}) {
                 opener: button,
                 subscribeChanges: notify => PersistenceFacade.observeInputChanges(notify, doc),
                 mutate: async navigationOperation => {
-                    const result = await importFullPersistenceBackup(prepared.backup, { probelaufController: options.probelaufController, navigationOperation, preparedRecovery: prepared.preparedRecovery });
+                    const result = await importFullPersistenceBackup(prepared.backup, { probelaufController: options.probelaufController, navigationOperation, preparedRecovery: prepared.preparedRecovery, lockUntilReload: true });
                     importResult = result;
                     if (status && !result.ok) {
                         status.dataset.kind = 'error';
@@ -195,8 +211,7 @@ export function bindFullBackupImport(options = {}) {
                 const recoveryText = prepared.recoveryResult?.skipped
                     ? ' Keine Wiederherstellungssicherung nötig, da vorher keine Daten gespeichert waren.'
                     : ' Wiederherstellungssicherung wurde vorher erstellt.';
-                status.textContent = navigated ? `${importResult.message}${recoveryText}`
-                    : 'Import gespeichert; Reload wegen einer Zustandsänderung abgebrochen. Bitte erneut prüfen.';
+                status.textContent = navigated ? `${importResult.message}${recoveryText}` : FULL_BACKUP_RELOAD_MESSAGE;
             }
         } catch (error) {
             showBackupError(status, error, doc);

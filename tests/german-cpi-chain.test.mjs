@@ -8,10 +8,15 @@ import {
 import {
     annualData,
     HISTORICAL_DATA,
-    HISTORICAL_DATA_MANIFEST
+    HISTORICAL_DATA_MANIFEST,
+    HISTORICAL_DATENSTAND
 } from '../app/simulator/simulator-data.js';
 import { canonicalizeHistoricalContractValue } from '../app/simulator/historical-backtest-contract.js';
 import { SIMULATION_DATA_INVENTORY } from '../app/simulator/simulation-data-inventory.js';
+
+// JD-1: Endjahr und Jahresanzahl kommen aus dem Datenstand; Werte bis 2025 bleiben fest.
+const DATA_END_YEAR = HISTORICAL_DATENSTAND.endYear;
+const DATA_YEAR_COUNT = DATA_END_YEAR - HISTORICAL_DATENSTAND.startYear + 1;
 
 console.log('--- German CPI Research Chain Tests ---');
 
@@ -23,7 +28,7 @@ console.log('Test 1: identity, period, source files and licences are pinned');
 assertEqual(GERMAN_CPI_RESEARCH_CHAIN.schemaVersion, 'GermanCpiResearchChainV1', 'Chain schema should be versioned');
 assertEqual(GERMAN_CPI_RESEARCH_CHAIN.seriesId, 'german_consumer_price_inflation', 'Chain should use the canonical neutral ID');
 assertEqual(GERMAN_CPI_RESEARCH_CHAIN.period.startYear, 1925, 'Chain should start in 1925');
-assertEqual(GERMAN_CPI_RESEARCH_CHAIN.period.endYear, 2025, 'Chain should end in 2025');
+assertEqual(GERMAN_CPI_RESEARCH_CHAIN.period.endYear, DATA_END_YEAR, 'Chain should end at the data status end year');
 assertEqual(
     GERMAN_CPI_RESEARCH_CHAIN.validation.publishedRateVsRoundedLevelTolerancePp,
     0.05,
@@ -55,7 +60,7 @@ console.log('✓ identity, inputs and licences OK');
 
 console.log('Test 2: all 101 rates and synthetic levels are contiguous and projected at runtime');
 let previousLevel = GERMAN_CPI_RESEARCH_CHAIN.base.syntheticLevel;
-for (let year = 1925; year <= 2025; year += 1) {
+for (let year = 1925; year <= DATA_END_YEAR; year += 1) {
     const rate = GERMAN_CPI_INFLATION_RATES[year];
     const level = GERMAN_CPI_SYNTHETIC_INDEX_LEVELS[year];
     assert(Number.isFinite(rate) && rate > -100, `${year} annual CPI rate should be finite and above -100%`);
@@ -65,8 +70,8 @@ for (let year = 1925; year <= 2025; year += 1) {
     assertEqual(annualData[year - 1925].inflation, rate, `${year} sampling data should use the generated CPI rate`);
     previousLevel = level;
 }
-assertEqual(Object.keys(GERMAN_CPI_INFLATION_RATES).length, 101, 'Rate chain should contain 101 years');
-assertEqual(Object.keys(GERMAN_CPI_SYNTHETIC_INDEX_LEVELS).length, 101, 'Synthetic index should contain 101 years');
+assertEqual(Object.keys(GERMAN_CPI_INFLATION_RATES).length, DATA_YEAR_COUNT, `Rate chain should contain ${DATA_YEAR_COUNT} years`);
+assertEqual(Object.keys(GERMAN_CPI_SYNTHETIC_INDEX_LEVELS).length, DATA_YEAR_COUNT, `Synthetic index should contain ${DATA_YEAR_COUNT} years`);
 console.log('✓ contiguous chain and runtime projection OK');
 
 console.log('Test 3: source and territory seams are exact, gap-free and stable');
@@ -81,7 +86,7 @@ assertEqual(
         { startYear: 1950, endYear: 1962, evidenceClass: 'official' },
         { startYear: 1963, endYear: 1991, evidenceClass: 'official' },
         { startYear: 1992, endYear: 2024, evidenceClass: 'official' },
-        { startYear: 2025, endYear: 2025, evidenceClass: 'official' }
+        { startYear: 2025, endYear: DATA_END_YEAR, evidenceClass: 'official' }
     ]),
     'Generated evidence segments should match the canonical chain contract'
 );
@@ -169,7 +174,8 @@ console.log('✓ hashes and metadata alignment OK');
 
 console.log('Test 5: runtime source has no remaining hand-maintained inflation literals');
 {
-    const runtimeSource = fs.readFileSync(new URL('../app/simulator/simulator-data.js', import.meta.url), 'utf8');
+    const runtimeSource = ['simulator-data.js', 'historical-data-records.js']
+    .map(file => fs.readFileSync(new URL(`../app/simulator/${file}`, import.meta.url), 'utf8')).join('\n');
     const generatedSource = fs.readFileSync(new URL('../app/simulator/german-cpi-chain.js', import.meta.url), 'utf8');
     assertEqual(
         /inflation_de:\s*-?\d/.test(runtimeSource),

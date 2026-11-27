@@ -56,7 +56,7 @@ export function requestHouseholdPlanMigration(analysis, { doc = globalThis.docum
             dialog.appendChild(explanation);
         }
         const status = doc.createElement('p'); status.dataset.householdPlanValidation = ''; status.setAttribute('role', 'status'); dialog.appendChild(status);
-        const reset = doc.createElement('p'); reset.dataset.householdPlanReset = ''; reset.textContent = 'Diese Auswahl setzt bei der nächsten Balance-Rechnung den bisherigen Guardrail-Verlauf zurück.'; dialog.appendChild(reset);
+        const reset = doc.createElement('p'); reset.dataset.householdPlanReset = ''; reset.textContent = 'Diese Auswahl setzt bei der nächsten Balance-Rechnung den bisherigen Leitplanken-Verlauf zurück.'; dialog.appendChild(reset);
         const selections = () => ({ ...Object.fromEntries([...fields].map(([path, select]) => [path, select.value])),
             ...(corrections.size ? { corrections: Object.fromEntries([...corrections].map(([path, input]) => [path, input.value.trim() ? Number(input.value) : NaN])) } : {}) });
         const validate = () => {

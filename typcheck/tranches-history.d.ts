@@ -13,7 +13,7 @@ export type PriceResult = {currency: string; days: number[]; closes: number[]; i
 export interface CommitOptions {storage?: D.RecordStorage; flush?: ()=>Promise<boolean|void>; operation?: I.Operation; valid?: ()=>boolean;}
 export interface InitOptions extends CommitOptions {today?: string;}
 export interface FetchOptions {fetchImpl?: typeof fetch; proxyBase?: string; signal?: AbortSignal; deadline?: number; now?: ()=>number; valid?: ()=>boolean; schedule?: typeof setTimeout; unschedule?: typeof clearTimeout;}
-export interface RunOptions extends FetchOptions, InitOptions {firstPlanningYear?: number; withOperation?: <T>(execute: (operation: I.Operation|null)=>Promise<T>)=>Promise<T>;}
+export interface RunOptions extends FetchOptions, InitOptions {firstPlanningYear?: number; referenceSymbol?: string|null; withOperation?: <T>(execute: (operation: I.Operation|null)=>Promise<T>)=>Promise<T>;}
 export interface FetchReport {status: string; completed?: number; issues?: {profileId: string; trancheId: string; reason: string}[]; hints?: string[]; reason?: string;}
 export interface BindFetchOptions {doc?: Document; win?: Window & typeof globalThis; afterStartup?: Promise<unknown>; firstPlanningYear?: number|(()=>number);
     guard?: ReturnType<typeof import('../app/shared/navigation-guard-dialog.js').getPageNavigationGuard>; coordinator?: (options: RunOptions)=>Promise<FetchReport>;
@@ -23,7 +23,7 @@ export interface HistoryEvent {eventType: string; profileId: string; trancheId?:
 /** Das Modell liest sowohl kanonische Lots als auch umhüllte, gespeicherte Verlaufslots. */
 export type HistoryLot = Partial<Omit<R.CanonicalTranche, "type">> & {type?: string; tranche?: R.CanonicalTranche & {source?: string}; source?: string; remainingShares?: number; status?: string;
     uncertainty?: {fromDate: string; originalTranche: R.CanonicalTranche}; manualCorrectionAt?: string;};
-export interface HistoryProfile {id: string; belongsToHousehold?: boolean; error?: string; lots?: HistoryLot[]; currentCash?: number; cashHistory?: Pick<D.CashHistory, 'baselineValue'|'entries'>;}
+export interface HistoryProfile {id: string; name?: string; error?: string; lots?: HistoryLot[]; currentCash?: number; cashHistory?: Pick<D.CashHistory, 'baselineValue'|'entries'>;}
 export interface ModelOptions {profiles: HistoryProfile[]; prices?: Pick<DailyPrices, 'symbols'>; events?: HistoryEvent[]; startDate: string; today: string;
     period?: string; profileId?: string|null; assetType?: string|null; includeAssetDetails?: boolean;}
 export interface Point {day: number; date?: string; total: number|null; known?: number|null; allocation?: Record<string, number|null>;

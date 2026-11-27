@@ -1,15 +1,11 @@
 import { buildSimulatorInputsFromProfileData, combineSimulatorProfiles } from '../app/simulator/simulator-profile-inputs.js';
 import { INCOME_KEY, writeIncome } from '../app/profile/profile-income.js';
 import { EngineAPI } from '../engine/index.mjs';
-import { initMcRunState, prepareHistoricalDataOnce, getDataVersion } from '../app/simulator/simulator-engine-helpers.js';
+import { initMcRunState, prepareHistoricalDataOnce } from '../app/simulator/simulator-engine-helpers.js';
 import { simulateOneYear } from '../app/simulator/simulator-engine-direct.js';
 import { portfolioTotal } from '../app/simulator/simulator-results.js';
 import { validateSimulatorInputs } from '../app/simulator/simulator-input-validation.js';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
-import { runSweepChunk } from '../app/simulator/sweep-runner.js';
-import { createStressReplayCaptureRequest, materializeStressReplayPathV1 } from '../app/simulator/stress-replay-path-materializer.js';
-import { createStressReplayFingerprint } from '../app/simulator/stress-replay-contract.js';
-import { runStressReplayPathV1 } from '../app/simulator/stress-replay-runner.js';
 import { backtest } from './helpers/ek-1b-measurement.mjs';
 import { creditFixedIncomeSurplus } from '../app/simulator/simulator-fixed-income.js';
 
@@ -43,9 +39,9 @@ prepareHistoricalDataOnce();
     close(history.rows[0].row.sonstige_einkuenfte, 48000, 'Backtest verwendet dieselben kalendarischen Einkünfte im historischen Startjahr');
 }
 {
-    // Cash-only: konstanter VPW-Zins 0,5 %, 30 Jahre; kein Verkauf oder Zinscashflow.
+    // Cash-only: konstanter VPW-Zins 0,5 %, 30 Jahre, vorschüssige Rate (FR-88); kein Verkauf oder Zinscashflow.
     // Vorab gutgeschriebene 2.800 EUR gehören bereits zur VPW-Vermögensbasis.
-    const rate = .005 / (1 - Math.pow(1.005, -30));
+    const rate = .005 / (1.005 * (1 - Math.pow(1.005, -30)));
     const cash = 9600 / rate - 2800;
     const exact = { ...inputs, startFloorBedarf: 22000, startFlexBedarf: 8000,
         dynamicFlex: true, horizonYears: 30,
@@ -168,17 +164,12 @@ for (const scenario of [inputs, { ...empty, renteMonatlich: 4000, renteStartOffs
     same(merged.fixedIncome.map(row => row.profileId), ['erika', 'max'], 'Haushaltsauswahl und Hauptperson bestimmen Einkunftseigentümer');
     const params = { anzahl: 2, maxDauer: 6, blockSize: 3, seed: 12345, methode: 'regime_markov', rngMode: 'per-run-seed', startYearMode: 'UNIFORM' };
     const request = { inputs, widowOptions: inputs.widowOptions, monteCarloParams: params, useCapeSampling: false };
-    const source = await runMonteCarloChunk({ ...request, runRange: { start: 0, count: 2 }, logIndices: [0, 1], stressReplayCapture: createStressReplayCaptureRequest([0]), engine: EngineAPI });
+    const boundary = [];
+    const source = await runMonteCarloChunk({ ...request, runRange: { start: 0, count: 2 }, logIndices: [0, 1],
+        engine: { ...EngineAPI, simulateSingleYear(input, ...args) { boundary.push(input); return EngineAPI.simulateSingleYear(input, ...args); } } });
     assertEqual(source.technicalInventory.technicalError, 0, 'Monte Carlo rechnet feste Einkünfte ohne technische Fehler');
     const meta = source.runMeta.find(row => row.index === 0);
     close(meta.logDataRows[0].sonstige_einkuenfte, inputs.fixedIncome ? 48000 : 0, 'Gemeinsamer MC-Jahresweg trennt Gehalt und Rente');
     close(meta.logDataRows[0].einkuenfte_gespart, 12000, 'Gemeinsamer MC-Jahresweg spart den gesamten Gehalts- oder Rentenrest');
-    const path = materializeStressReplayPathV1({ capture: meta.stressReplayCapture, sourceLogRows: meta.logDataRows, sourceRequest: request,
-        dataFingerprint: createStressReplayFingerprint({ dataVersion: getDataVersion() }), engineFingerprint: createStressReplayFingerprint({ engineVersion: EngineAPI.version }), scenarioKey: 'ek-1b', selectionMetric: 'nominal_terminal_wealth_eur' });
-    assertEqual(runStressReplayPathV1({ path, baselineInputs: inputs, sourceScenarioLog: meta.logDataRows, engine: EngineAPI }).reconciliation.matched, true, 'Schatten-/Stress-Replay rechnet Einkommen im selben Jahrespfad');
-    const boundary = [];
-    const sweep = runSweepChunk({ baseInputs: inputs, paramCombinations: [{ liquidityRunwayYears: 5 }], sweepConfig: { anzahlRuns: 2, maxDauer: 6, blockSize: 3, seed: 12345, methode: 'regime_markov', rngMode: 'per-run-seed' },
-        engine: { ...EngineAPI, simulateSingleYear(input, ...args) { boundary.push(input); return EngineAPI.simulateSingleYear(input, ...args); } } });
-    assertEqual(sweep.results[0].metrics.comparison.runCount, 2, 'Sweep rechnet beide Pfade');
-    assert(boundary.some(input => input.renteMonatlich >= 4000), 'Sweep übergibt feste Einkünfte an denselben Engine-Nettovertrag');
+    assert(boundary.some(input => input.renteMonatlich >= 4000), 'MC übergibt feste Einkünfte an denselben Engine-Nettovertrag');
 }

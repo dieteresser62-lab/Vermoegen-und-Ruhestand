@@ -1,15 +1,14 @@
 /** PFA-10: Bereich „Pflege“ in Personen & Vermögen. Zeigt den heutigen Pflegezustand des Haushalts und die Pflegewerte
  * (seit PFA-11 auch regionalen Zuschlag und Flex-Level je Grad),
  * mit denen Balance, Simulator, Jahresabschluss und Personenkarten rechnen. Geschrieben wird über denselben Weg wie im
- * Simulator (`care-price-fields.js`); Lesen schreibt nie. Bei einer Außenperson zeigt und ändert der Bereich ihre
- * eigenen Werte, wie der Simulator. Seit UR-1 stehen die Werte in Aufklappzeilen (`tranchen-manager-care-rows.js`). */
+ * Simulator (`care-price-fields.js`); Lesen schreibt nie. Seit UR-1 stehen die Werte in Aufklappzeilen (`tranchen-manager-care-rows.js`). */
 import { CARE_DRIFT_YEAR_RANGE } from '../shared/care-cost-drift.js';
 import { PersistenceFacade, persistenceStorage } from '../shared/persistence-facade.js';
 import { CARE_FORMS } from '../shared/care-benefits.js';
 import { CARE_RECORD_FIELDS, CARE_RECORD_LIMITS, careRecordLimitText, PFLEGE_COST_PRESETS, readCareFieldValues, writeCarePreset, writeCareRecordField, writeCareSettingField, validCareDriftYear } from '../shared/care-price-fields.js';
 import { officialCareCosts, readCareValues, residentialComponents, residentialMonthly } from '../shared/household-care-values.js';
 import { resolveCarePrices } from '../shared/care-prices.js';
-import { careSettingsStorage, sharesHouseholdCareValues } from '../shared/care-profile-settings.js';
+import { careSettingsStorage } from '../shared/care-profile-settings.js';
 import { projectHouseholdCareNeeds } from '../shared/care-hint.js';
 import { readHouseholdPersonStatus } from '../shared/person-data-status.js';
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
@@ -64,22 +63,15 @@ const setText = (doc, id, text) => { const node = doc.getElementById(id); if (no
 export function renderManagerCareValues(doc, { storage = persistenceStorage } = {}) {
     const panel = doc?.getElementById?.('managerCarePanel');
     if (!panel) return false;
-    let values, careValues, prices, shared;
+    let values, careValues, prices;
     try {
-        values = readCareFieldValues(storage); careValues = readCareValues(storage); shared = sharesHouseholdCareValues(storage);
-        prices = resolveCarePrices(careValues, careSettingsStorage(storage), { shared });
+        values = readCareFieldValues(storage); careValues = readCareValues(storage);
+        prices = resolveCarePrices(careValues, careSettingsStorage(storage));
     } catch (error) {
         setText(doc, 'managerCareStatus', `Pflegewerte nicht lesbar: ${error.message}`);
         return false;
     }
     const preset = values.pflegeKostenStaffelPreset, official = preset === 'amtlich';
-    const owner = doc.getElementById('managerCareOwner');
-    if (owner) {
-        let name = '';
-        try { name = JSON.parse(storage.getItem('rs_profiles_v1') || 'null')?.profiles?.[storage.getItem('rs_current_profile')]?.meta?.name || ''; } catch { name = ''; }
-        owner.hidden = shared;
-        owner.textContent = shared ? '' : `Du siehst die eigenen Pflegewerte von ${name || 'dieser Person'}. Sie gehört nicht zum Haushalt; der Haushalt rechnet mit seinen Werten.`;
-    }
     const today = careToday(storage, values);
     const host = doc.getElementById('managerCareToday');
     if (host) host.innerHTML = today.entries.length ? today.entries.map(entry => personCard(entry, prices, preset)).join('')
@@ -122,15 +114,13 @@ export function renderManagerCareValues(doc, { storage = persistenceStorage } = 
         input.value = text(input); input.dataset.renderedValue = input.value;
     }
     const components = residentialComponents(careValues.residential);
-    // UR-2: Pflegegeld und Heim-Bestandteile als Felder; sie gehören dem Haushalt, eine Außenperson sieht sie nur.
+    // UR-2: Pflegegeld und Heim-Bestandteile als Felder; sie gehören dem Haushalt.
     const record = { careAllowance2: careValues.allowance.values[2], careAllowance3: careValues.allowance.values[3], careAllowance4: careValues.allowance.values[4],
         careAllowance5: careValues.allowance.values[5], careResidentialCare: components.care, careResidentialBoard: components.board, careResidentialInvest: components.invest };
     for (const [field, value] of Object.entries(record)) {
         const input = /** @type {HTMLInputElement|null} */ (doc.getElementById(RECORD_INPUT_IDS[field]));
         if (!input) continue;
         if (doc.activeElement !== input) input.value = displayDecimalInput(String(Number(value.toFixed(2))), input);
-        input.disabled = !shared;
-        input.title = shared ? '' : 'Pflegegeld und Heimwerte gelten für den Haushalt; ändern in der Ansicht einer Person im Haushalt.';
     }
     setText(doc, 'managerCareHeimSource', `${careOriginText(careValues.residential, 'residential')} · ändern hier oder im Jahresabschluss unter „Werte ändern …“`);
     const years = doc.getElementById('managerCareHeimYears');
@@ -170,10 +160,26 @@ export function bindManagerCareValues(doc, { openPerson = () => {}, blocked = ()
         status(saved ? 'Gespeichert' : 'Nicht gespeichert. Bitte erneut versuchen.');
         return saved;
     };
+    // OP-2 (Punkt 4): Nach einer Abweisung zeigt das Feld wieder den gespeicherten Wert. Tippt man genau diesen Wert erneut,
+    // meldet der Browser keine Änderung; beim Verlassen des Felds verschwinden Meldung und roter Rahmen trotzdem.
+    const typing = new WeakMap();
+    panel.addEventListener('focusin', event => {
+        const field = /** @type {HTMLInputElement} */ (event.target);
+        if (field?.dataset?.careField && field.tagName === 'INPUT') typing.set(field, { value: field.value, edited: false, changed: false });
+    });
+    panel.addEventListener('input', event => { const entry = typing.get(/** @type {HTMLInputElement} */ (event.target)); if (entry) entry.edited = true; });
+    panel.addEventListener('focusout', event => {
+        const field = /** @type {HTMLInputElement} */ (event.target), entry = typing.get(field);
+        typing.delete(field);
+        if (!entry?.edited || entry.changed || field.value !== entry.value || field.getAttribute?.('data-field-state') !== 'error') return;
+        fieldReason(field, ''); status('Gespeichert');
+    });
     panel.addEventListener('change', event => {
         const field = /** @type {HTMLInputElement|HTMLSelectElement} */ (event.target);
         const id = field?.dataset?.careField;
         if (!id || field.disabled) return;
+        const entry = typing.get(/** @type {HTMLInputElement} */ (field));
+        if (entry) entry.changed = true;
         if (field.tagName === 'SELECT') { void commit(() => writeCareSettingField(id, field.value)); return; }
         const canonical = canonicalDecimalInput(field.value, field);
         const flexLevel = /FlexCut$/.test(id);
@@ -193,7 +199,7 @@ export function bindManagerCareValues(doc, { openPerson = () => {}, blocked = ()
             void commit(() => writeCareRecordField(id, canonical));
             return;
         }
-        // GN-2b (Gemini 5): Das letzte Jahr der ersten Rate ist ein ganzes Jahr von 2026 bis 2100; sonst wird nichts gespeichert.
+        // GN-2b (Gemini 5): Das letzte Jahr der ersten Rate ist ein ganzes Jahr im Bereich CARE_DRIFT_YEAR_RANGE; sonst wird nichts gespeichert.
         // GN-2c (Gemini P3-2): auch leer oder negativ mit der Jahresmeldung am Feld, vor der allgemeinen Betragsprüfung.
         if (id === 'pflegeKostenDriftBis') {
             if (!validCareDriftYear(canonical)) {

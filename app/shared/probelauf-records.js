@@ -18,7 +18,7 @@ export const parseRecord = raw => {
     try { return JSON.parse(raw); } catch { return raw; }
 };
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
-const omitted = new Set(['version', 'schemaVersion', 'createdAt', 'updatedAt', 'importedAt', 'asOf', 'currentPrice', 'lastPrice', 'priceSource', 'quoteSource']);
+const omitted = new Set(['version', 'schemaVersion', 'createdAt', 'updatedAt', 'importedAt', 'asOf', 'quoteExchange', 'currentPrice', 'lastPrice', 'priceSource', 'quoteSource']);
 const priceInput = /^(?:endeVJ(?:_\d)?|ath|jahreSeitAth|inflation|capeRatio|marketCapeRatio|zinssatz|lohnWachstum)$/;
 const ignoredKey = key => !isAllowedPersistenceImportKey(key) || isSnapshotTechnicalKey(key) || isLegacySnapshotKey(key)
     || /^(?:overview_(?!month_provision)|rs_(?:current|active)_profile|etfProxy|showCare|.*LogDetail|logDetail|sim\.)/.test(key)
@@ -179,7 +179,7 @@ const labels = {
     shares: 'Stück', purchasePrice: 'Kaufpreis', purchaseDate: 'Kaufdatum', type: 'Anlageart', name: 'Name',
     tagesgeld: 'Tagesgeld', geldmarktEtf: 'Geldmarkt-ETF', depotwertAlt: 'Altaktien', depotwertNeu: 'Neuaktien', goldBestand: 'Goldbestand',
     profile_tagesgeld: 'Tagesgeld', goldAktiv: 'Gold', goldZielProzent: 'Gold-Zielanteil',
-    startFlexBedarf: 'Wunschbedarf (Flex) im Jahr', startFloorBedarf: 'Grundbedarf (Floor) im Jahr'
+    startFlexBedarf: 'Wunschbedarf (Flex) im Jahr', startFloorBedarf: 'Grundbedarf im Jahr'
 };
 const trancheLabels = { name: 'Name', type: 'Anlageart', category: 'Anlageklasse', shares: 'Stück', purchasePrice: 'Kaufpreis', purchaseDate: 'Kaufdatum', ticker: 'Börsenkürzel', isin: 'ISIN', notes: 'Notiz', taxExempt: 'Steuerfrei', tqf: 'Teilfreistellung', correctionHistory: 'Korrekturen', legacyCorrectionAt: 'Frühere Stückzahl nicht gespeichert, Korrektur am' };
 const trancheValue = (value, field) => field === 'correctionHistory' ? String(Array.isArray(value) ? value.length : 0)
@@ -329,7 +329,6 @@ export function summarizeProbelaufChanges(realRecords, playRecords, { beforeDoma
     for (const id of allKeys(real.profiles, play.profiles)) {
         const before = real.profiles[id], after = play.profiles[id], name = after?.meta?.name || before?.meta?.name || 'Person';
         add('Personen', name, before?.meta?.name, after?.meta?.name);
-        add('Personen', `${name} · Im Haushalt`, before?.meta?.belongsToHousehold, after?.meta?.belongsToHousehold);
         dataRows(before?.data, after?.data, name);
     }
     dataRows(real.records, play.records);

@@ -2,7 +2,7 @@ import { requestPageConfirmation } from '../shared/page-dialog.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import { validateProfileManagementRecords } from '../shared/persistence-backup.js';
 import { isAllowedPersistenceImportKey } from '../shared/persistence-key-policy.js';
-import { setProfileVerbundMembership as validateMembershipOnCopy, householdMemberCount, HOUSEHOLD_MINIMUM_REASON } from './profile-registry.js';
+import { householdMemberCount, HOUSEHOLD_MINIMUM_REASON } from './profile-registry.js';
 import { PROFILE_STORAGE_KEYS } from './profile-state.js';
 import { INCOME_KEY, INCOME_MIGRATION_KEY, readIncome } from './profile-income.js';
 import { captureProfileData } from './profile-live-storage.js';
@@ -11,7 +11,7 @@ import { WEALTH_CAPTURES_KEY } from '../../types/wealth-capture-contract.js';
 import { getProbelaufController } from '../shared/probelauf-state.js';
 import { PROBELAUF_RESTORE_HINT } from '../shared/probelauf-runtime.js';
 import { createProfile, renameProfile, deleteProfile, switchProfile, listProfiles,
-    getProfileMeta, getProfileData, getCurrentProfileId, setProfileVerbundMembership } from './profile-storage.js';
+    getProfileMeta, getProfileData, getCurrentProfileId } from './profile-storage.js';
 
 /** Gemeinsame Namensprüfung für Startseite und Manager; keine Speicherung. */
 export function validateProfileName(name) {
@@ -31,7 +31,7 @@ export async function confirmUnchangedProfileContext(ask, { storage = persistenc
     return confirmed === true && !signal?.aborted && keys.every((key, index) => storage.getItem(key) === before[index]);
 }
 
-/** Günstige Prüfungen vor dem Rückkehrpunkt; alle Änderungen bleiben auf einer Kopie. */
+/** Günstige Prüfungen vor dem Schreiben; alle Änderungen bleiben auf einer Kopie. */
 export function validateProfileManagementAction(request, storage = persistenceStorage) {
     const records = Object.fromEntries(Array.from({ length: storage.length }, (_, index) => storage.key(index))
         .filter(isAllowedPersistenceImportKey).map(key => [key, storage.getItem(key)]));
@@ -39,12 +39,7 @@ export function validateProfileManagementAction(request, storage = persistenceSt
     const id = records[PROFILE_STORAGE_KEYS.current];
     if (!registry?.profiles?.[id] || records[PROFILE_STORAGE_KEYS.active] !== id) throw new Error('Die Person ist nicht eindeutig zugeordnet.');
     if (!registry.profiles[request.profileId]) throw new Error('Die Person ist nicht mehr vorhanden.');
-    const next = { ...records };
-    if (request.kind === 'membership') validateMembershipOnCopy(request.profileId, request.belongs, {
-        storage: { getItem: key => next[key] ?? null, setItem: (key, value) => { next[key] = String(value); } }
-    });
-    if (request.kind === 'delete' && registry.profiles[request.profileId].meta.belongsToHousehold !== false
-        && householdMemberCount(registry) <= 1) throw new Error(HOUSEHOLD_MINIMUM_REASON);
+    if (request.kind === 'delete' && householdMemberCount(registry) <= 1) throw new Error(HOUSEHOLD_MINIMUM_REASON);
     if (request.kind === 'delete' && request.profileId === 'default' && Object.keys(registry.profiles).length <= 1)
         throw new Error('Das Standard-Profil kannst Du erst löschen, wenn ein weiteres Profil existiert.');
     const profileIds = [request.profileId];
@@ -52,7 +47,7 @@ export function validateProfileManagementAction(request, storage = persistenceSt
         const remaining = Object.keys(registry.profiles).filter(profileId => profileId !== id);
         profileIds.push(remaining.includes('default') ? 'default' : remaining[0]);
     }
-    validateProfileManagementRecords(next, profileIds, { liveProfile: request.profileId === id });
+    validateProfileManagementRecords({ ...records }, profileIds, { liveProfile: request.profileId === id });
     return records;
 }
 
@@ -62,8 +57,9 @@ export async function confirmProfileDeletion(profileId, ask, options = {}) {
         throw new Error('Das Standard-Profil kannst Du erst löschen, wenn ein weiteres Profil existiert.');
     }
     const name = getProfileMeta(profileId)?.name || profileId;
+    // SV-1: Kein eigener Punkt mehr; außerhalb des Spielbereichs der Hinweis auf die Vollsicherung.
     const recovery = getProbelaufController(options.doc || globalThis.document)?.state ? PROBELAUF_RESTORE_HINT
-        : `Vorher wird der Wiederherstellungspunkt „Vor dem Löschen von ${name}“ angelegt; die Person ist über Daten & Sicherung zurückholbar.`;
+        : 'Erstelle vorher eine Vollsicherung unter Daten & Sicherung.';
     const description = `Person „${name}“ wirklich löschen? ${recovery} Partnerschaft, Testament, gemeinsamer Plan und gemeinsame Ausgaben bleiben eingetragen und müssen danach angepasst werden.`;
     return confirmUnchangedProfileContext(() => ask ? ask(description) : requestPageConfirmation({
         title: 'Person löschen', description, confirmLabel: 'Person löschen', danger: true, ...options
@@ -100,8 +96,8 @@ function isUntouchedDefault(storage = persistenceStorage) {
 }
 
 /** Aufrufer besitzt Autosaveabschluss, Navigationsschutz, Flush und Recovery.
- * @param {{kind: string, profileId?: string, name?: string, belongs?: boolean}} request */
-export function applyProfileManagementAction({ kind, profileId, name, belongs }) {
+ * @param {{kind: string, profileId?: string, name?: string}} request */
+export function applyProfileManagementAction({ kind, profileId, name }) {
     if (kind === 'create') {
         // Gutachten 05.11.2026: Ein unberührtes „Default“ als einzige Person wird zur ersten echten Person
         // umbenannt; sonst entsteht unbemerkt ein Zwei-Personen-Haushalt (Erststart und jeder neue Haushalt).
@@ -112,6 +108,5 @@ export function applyProfileManagementAction({ kind, profileId, name, belongs })
     }
     if (kind === 'rename') return renameProfile(profileId, validateProfileName(name));
     if (kind === 'delete') return deleteProfile(profileId);
-    if (kind === 'membership') return setProfileVerbundMembership(profileId, belongs);
     throw new Error('PROFILE_ACTION_INVALID');
 }

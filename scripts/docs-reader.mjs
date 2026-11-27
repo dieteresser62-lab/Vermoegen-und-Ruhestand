@@ -11,7 +11,7 @@ export const READER_PAGES = Object.freeze([
         'JAHRESBUDGET', 'HANDLUNGSANWEISUNG', 'STRATEGIEN', 'SIMULATION_LESEN',
         'MARKTVERGLEICH', 'MARKTVERGLEICH_EVIDENZREGISTER',
         'WISSENSCHAFTLICHER_RAHMEN', 'FORSCHUNGSABGLEICH_EVIDENZREGISTER',
-        'SICHERUNG', 'BEISPIELHAUSHALTE', 'TECHNICAL', 'DATENVERTRAEGE', 'DATA_SOURCES', 'FACHKONZEPT']
+        'SICHERUNG', 'BEISPIELHAUSHALTE', 'TECHNICAL', 'DATENVERTRAEGE', 'DATA_SOURCES', 'JAHRESDATEN', 'FACHKONZEPT']
         .map(name => `docs/reference/${name}.md`)
 ]);
 export const READER_STYLES = Object.freeze(['css/tokens.css', 'css/fonts.css', 'css/components.css', 'css/docs-reader.css']);

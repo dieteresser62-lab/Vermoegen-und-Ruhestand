@@ -1,39 +1,11 @@
 /**
  * Module: Simulator Portfolio Pension
  * Purpose: Calculating pension payments.
- *          Handles standard indexing, adjustments, and legacy logic.
+ *          Handles standard indexing and adjustments.
  * Usage: Called by simulator-portfolio.js facade.
  * Dependencies: None (pure logic)
  */
 "use strict";
-
-/**
- * Berechnet jährliche Rente basierend auf Indexierung
- * VERALTET: Wird durch computePensionNext ersetzt (nur noch für Abwärtskompatibilität)
- *
- * @param {object} options
- * @param options.yearIndex
- * @param options.baseMonthly
- * @param options.startOffset
- * @param options.lastAnnualPension
- * @param options.indexierungsArt
- * @param options.inflRate
- * @param options.lohnRate
- * @param options.festerSatz
- * @returns {number} Ergebnis der Operation.
- */
-export function computeYearlyPension({ yearIndex, baseMonthly, startOffset, lastAnnualPension, indexierungsArt, inflRate, lohnRate, festerSatz }) {
-    if (!baseMonthly || yearIndex < startOffset) return 0;
-    let anpassungsSatz = 0;
-    switch (indexierungsArt) {
-        case 'inflation': anpassungsSatz = Math.max(0, inflRate) / 100; break;
-        case 'lohn': anpassungsSatz = Math.max(0, lohnRate ?? inflRate) / 100; break;
-        case 'fest': anpassungsSatz = festerSatz / 100; break;
-    }
-    if (yearIndex === startOffset) return baseMonthly * 12;
-    const last = lastAnnualPension > 0 ? lastAnnualPension : baseMonthly * 12;
-    return last * (1 + anpassungsSatz);
-}
 
 /**
  * Berechnet die nächste jährliche Rente mit gemeinsamer Anpassungsrate

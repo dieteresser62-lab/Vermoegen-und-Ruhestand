@@ -2,16 +2,19 @@
  * FR-75: Mit Geburtsjahr gilt die Kohortentafel V2 dieses Jahrgangs, ohne Geburtsjahr die Periodentafel. */
 import { resolveTargetMortalityTable } from '../simulator/target-mortality.js';
 import { BMF_LIFETIME_USE_2026 } from './bmf-lifetime-use-2026.js';
+import { BMF_LIFETIME_USE_2027 } from './bmf-lifetime-use-2027.js';
 
-/** FR-64, § 14 BewG: amtliche Tabelle 2026; fehlendes Geschlecht vorsichtig weiblich.
+/** FR-64, § 14 BewG: amtliche Tabelle zum Stichtag, bei fehlendem Geschlecht der Frauenwert.
  *
  * @param age Wert für den bestehenden Aufrufvertrag.
  * @param gender Wert für den bestehenden Aufrufvertrag.
+ * @param {number} [valuationYear] Bewertungsjahr. Ohne Angabe gilt die Tabelle 2026.
  * @returns {number} Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
-export function lifetimeUseMultiplier(age, gender) {
+export function lifetimeUseMultiplier(age, gender, valuationYear = 2026) {
     if (!Number.isFinite(age) || age < 0) throw new RangeError('Wohnrecht: Das Alter des Partners fehlt.');
-    return BMF_LIFETIME_USE_2026[gender === 'm' ? 'm' : 'w'][Math.min(100, Math.floor(age))];
+    const table = valuationYear >= 2027 ? BMF_LIFETIME_USE_2027 : BMF_LIFETIME_USE_2026;
+    return table[gender === 'm' ? 'm' : 'w'][Math.min(100, Math.floor(age))];
 }
 
 function clamp(value, min, max) {

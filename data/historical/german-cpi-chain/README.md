@@ -3,6 +3,9 @@
 Die festgeschriebenen, lizenzierten Quelldateien liefern die deutsche jährliche
 Verbraucherpreisinflation des Simulators für 1925-2025.
 
+Ein neues Datenjahr kommt nur als Jahreslieferung unter `jahre/<Jahr>/` dazu; Ablauf und Regeln stehen unter
+[Jahresdaten pflegen](../../../docs/reference/JAHRESDATEN.md).
+
 ## Erzeugen und prüfen
 
 ```text

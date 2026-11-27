@@ -169,11 +169,10 @@ const row = (view, id) => view.distribution.rows.find(item => item.profileId ===
     assert(find(kept, node => node.dataset?.saleFlowKeepCashRevoke !== undefined), 'P3-3: „Doch in den Geldmarkt“ neben „Entschieden: …“');
 }
 
-// P2-04 (Gemini) · Standard-Wiederherstellung einer Person behält die Entscheidungen wie den Verkaufsverlauf; die volle setzt sie zurück.
+// SV-1: Zurückholen setzt den ganzen Haushalt zurück, auch Entscheidungen und Jahresbeleg.
 {
-    assertEqual(isAllowedSnapshotRestoreLiveKey('annual_plan_resolutions_v1', { mode: 'standard' }), false, 'P2-04: Standard-Wiederherstellung rollt Entscheidungen nicht allein zurück');
-    assertEqual(isAllowedSnapshotRestoreLiveKey('annual_plan_resolutions_v1', { mode: 'full' }), true, 'P2-04: volle Wiederherstellung setzt sie mit dem Verlauf zurück');
-    assertEqual(isAllowedSnapshotRestoreLiveKey('annual_plan_record_v1', { mode: 'standard' }), true, 'P2-04: Jahresbeleg unverändert wie bisher');
+    assertEqual(isAllowedSnapshotRestoreLiveKey('annual_plan_resolutions_v1'), true, 'P2-04: Wiederherstellung setzt Entscheidungen mit dem Verlauf zurück');
+    assertEqual(isAllowedSnapshotRestoreLiveKey('annual_plan_record_v1'), true, 'SP-1c: Wiederherstellung setzt den Jahresbeleg zurück');
 }
 
 // P3-1 · „So ändert sich … Depot“ je Tranche aus derselben Aufteilung, die gespeichert wird (Bankreihenfolge).

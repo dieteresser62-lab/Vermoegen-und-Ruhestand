@@ -26,13 +26,15 @@ export function handbookChapter(entry) {
         H09: 'haushalt-plan', H10: 'erste-schritte', H11: 'begriffe', H12: 'haeufige-fragen',
         H13: 'haeufige-fragen', H14: 'haeufige-fragen', H15: 'daten-sicherung' })[entry.id] || 'erste-schritte';
     if (/sicherung|backup|restore|import|export|recovery/.test(text)) return 'daten-sicherung';
+    if (/verkauf im erbfall|rente aus dem erbe/.test(text)) return 'tod-und-erbe';
     if (/immobilien/.test(text)) return 'immobilien';
     if (/partnerschaft|erbentscheidung|erbanteil/.test(text)) return 'tod-und-erbe';
     if (entry.page === 'depot-tranchen-manager.html' && /pflege/.test(text)) return 'pflege';
     if (entry.page === 'depot-tranchen-manager.html') return /verkauf|ausführung|cashstatus|abgleich/.test(text)
         ? 'verkauf' : /tranche|depot|kurs/.test(text) ? 'kauf' : 'haushalt-plan';
-    if (entry.page === 'Simulator.html') return /replay|sweep|optimi|werkstatt/.test(text) ? 'werkstatt'
-        : /monte|szenario|protokoll|risiko|verteilung|vergleich|zielwert/.test(text) ? 'monte-carlo' : 'simulator';
+    if (entry.id === 'S79') return 'monte-carlo-personen';
+    if (entry.page === 'Simulator.html') return /monte|szenario|protokoll|risiko|verteilung|vergleich|zielwert/.test(text)
+        ? 'monte-carlo' : 'simulator';
     if (entry.page === 'Balance.html') return 'balance';
     return 'erste-schritte';
 }

@@ -67,13 +67,13 @@ if (selected(1)) {
     const records = { [PARTNERSHIP_KEY]: JSON.stringify(legacy) };
     await useRecords(records);
     const ui = editorFixture(records);
-    nodeAssert.ok(!ui.nodes.managerInheritance.innerHTML.includes('data-testament-person="a" disabled'));
+    nodeAssert.ok(!ui.nodes.managerInheritance.innerHTML.includes('class="pv-testament pv-testament-limits" disabled'));
     const enabled = await ui.toggle(true);
     nodeAssert.equal(enabled.activeInheritanceRule.a, 'home-and-tax');
     nodeAssert.equal(hasTestament(enabled, 'a'), false);
     close(preview(enabled).home, 600000);
     nodeAssert.deepEqual(enabled.testament.a, rule);
-    nodeAssert.ok(ui.nodes.managerInheritance.innerHTML.includes('data-testament-person="a" disabled'));
+    nodeAssert.ok(ui.nodes.managerInheritance.innerHTML.includes('class="pv-testament pv-testament-limits" disabled'));
     nodeAssert.equal((await ui.toggle(false)).activeInheritanceRule.a, 'testament');
     nodeAssert.throws(() => readPartnership({ ...legacy, activeInheritanceRule: { a: 'unknown' } }));
     const backupRecords = createMusterHaushaltRecords('2026-10-23', 'martin-petra', 'testament');
@@ -102,11 +102,11 @@ if (selected(2)) {
     const records = { [PARTNERSHIP_KEY]: JSON.stringify(explicit) };
     await useRecords(records);
     const ui = editorFixture(records, []);
-    nodeAssert.ok(!ui.nodes.managerInheritance.innerHTML.includes('data-testament-person="a" disabled'));
+    nodeAssert.ok(!ui.nodes.managerInheritance.innerHTML.includes('class="pv-testament pv-testament-limits" disabled'));
     nodeAssert.ok(ui.nodes.managerInheritance.innerHTML.includes('54.000'));
     ui.projection.profiles[0].values.immobilien = [{ nutzung: 'selbst', wert: 600000 }];
     renderManagerPartnership(ui.doc, ui.projection);
-    nodeAssert.ok(ui.nodes.managerInheritance.innerHTML.includes('data-testament-person="a" disabled'));
+    nodeAssert.ok(ui.nodes.managerInheritance.innerHTML.includes('class="pv-testament pv-testament-limits" disabled'));
     nodeAssert.equal(readPartnership(records[PARTNERSHIP_KEY]).activeInheritanceRule.a, 'home-and-tax');
     const emptyRecords = { [PARTNERSHIP_KEY]: JSON.stringify({ ...legacy, testament: undefined }) };
     await useRecords(emptyRecords);
@@ -178,7 +178,9 @@ if (selected(5)) {
         const result = applyUnmarriedInheritance({ portfolio, inputs, inflationFactor: 1,
             transition: { deathThisYear: true, survivor: { deceasedProfileId: 'muster_martin', survivorProfileId: 'muster_petra' } },
             pension: { rente1BruttoEigen: 0, rente2BruttoEigen: 0 }, personalInterest: { items: [] }, actionResult: { steuer: 0 } });
-        if (mode !== 'residence') close(result.erbschaftsteuer, 33000);
+        // VB-1: Ohne Hinterbliebenenrente gilt der volle Versorgungsfreibetrag; (300.000 − 256.000) × 7 % statt 300.000 × 11 % = 33.000 €.
+        // Die Vorschau bleibt ohne Versorgungsfreibetrag bei 33.000 €.
+        if (mode !== 'residence') close(result.erbschaftsteuer, 3080);
         else nodeAssert.ok(result.inheritance.residenceCapital > 0);
         const records = { [PARTNERSHIP_KEY]: JSON.stringify({ ...inputs.partnership, marriedInheritance: { a: 100 },
             ...(mode ? { testament: { a: { home: mode, maximumPercent: 100 } } } : {}) }) };

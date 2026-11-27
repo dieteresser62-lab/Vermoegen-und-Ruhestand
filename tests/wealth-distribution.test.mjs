@@ -118,7 +118,7 @@ for (const [mode, expectedLimit] of [['nominal', 7850], ['real', 3925]]) {
     const html = renderWealthDistribution(model);
     assert(html.includes('Das 10-%-Perzentil des Gesamtvermögens am Laufende liegt bei 0 €.'), 'Null-P10 verwendet den beauftragten Alltagssatz');
     assert(html.includes('Rest →') && html.includes('Oberhalb '), 'Echter Rest zeigt Balken und Hinweis');
-    assert(html.includes('Perzentile über alle auswertbaren Läufe, einschließlich Ruin.'), 'Lesart nennt die gesamte Finanzpopulation');
+    assert(html.includes('Perzentile über alle auswertbaren Läufe, einschließlich der Läufe mit aufgebrauchtem Vermögen.'), 'Lesart nennt die gesamte Finanzpopulation');
     assert(html.includes('Ausgewählte Szenarien mit Jahresprotokoll'), 'Einzelpfade werden in ihre eigene Ansicht verwiesen');
     assert(!html.includes('Index floor') && !html.includes('Beobachtungspopulation'), 'Sichtbare Lesart vermeidet technische Begriffe');
 }

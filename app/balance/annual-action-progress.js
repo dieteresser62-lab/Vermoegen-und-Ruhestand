@@ -8,9 +8,6 @@ import { PROFILE_WEALTH_LOTS_KEY } from '../profile/profile-wealth-history.js';
 import { CONFIG as ENGINE_CONFIG } from '../../engine/config.mjs';
 import { readAnnualPlanResolutions, annualPlanLineKey, KEEP_IN_DEPOT } from '../profile/annual-plan-resolutions.js';
 
-/** Ungenutzt seit RD-1 (FR-77 Punkt 2 geändert: Erledigt-Grenze nach Rundungsstaffel); bleibt als Export erhalten. */
-export const ANNUAL_ACTION_DONE_SHARE = 0.98;
-
 /** FR-77 Punkt 2 (geändert 12.11.2026): Eine Planzeile ist erledigt, wenn höchstens eine halbe Rundungsstufe des Planbetrags
  * fehlt. Stufe nach der Engine-Staffel `QUANTIZATION_TIERS` (< 10.000 € → 1.000 €, < 50.000 € → 5.000 €, < 200.000 € → 10.000 €,
  * darüber 25.000 €). Mehr verkauft ist ebenfalls erledigt; ohne Verkauf ist nichts erledigt. @param {number} plan Planbetrag netto @returns {number} */

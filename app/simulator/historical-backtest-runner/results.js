@@ -45,6 +45,20 @@ function buildHealthBucketSummary(rows) {
     return { enabled: false, end: 0, realCoveragePct: null, targetGap: 0 };
 }
 
+/** FR-84: Jahre mit Hilfe zur Pflege (erstes Kalenderjahr, Anzahl, Summe nominal); nur wenn der Staat zahlt. */
+function buildCareAidSummary(rows) {
+    const years = rows.filter(entry => Number(entry?.row?.hilfe_zur_pflege) > 0);
+    return years.length ? { careAid: { firstYear: years[0].jahr, years: years.length,
+        sumNominal: years.reduce((sum, entry) => sum + Number(entry.row.hilfe_zur_pflege), 0) } } : {};
+}
+
+/** NK-2 (FR-84 Punkt 16): Jahre mit entfallener Einmalausgabe (erstes Kalenderjahr, Anzahl, Summe nominal); nur wenn eine entfällt. */
+function buildDroppedExpenseSummary(rows) {
+    const years = rows.filter(entry => Number(entry?.row?.geplante_ausgaben_gekuerzt) > 0);
+    return years.length ? { droppedExpense: { firstYear: years[0].jahr, years: years.length,
+        sumNominal: years.reduce((sum, entry) => sum + Number(entry.row.geplante_ausgaben_gekuerzt), 0) } } : {};
+}
+
 export function buildSummary({
     rows,
     portfolioStart,
@@ -63,7 +77,9 @@ export function buildSummary({
         reductionYears,
         reductionDenominator: completedYears,
         totalTaxes,
-        healthBucket: buildHealthBucketSummary(rows)
+        healthBucket: buildHealthBucketSummary(rows),
+        ...buildCareAidSummary(rows),
+        ...buildDroppedExpenseSummary(rows)
     };
 }
 

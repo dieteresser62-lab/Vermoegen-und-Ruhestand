@@ -1,15 +1,16 @@
 /** @import {BacktestOptions, BindInfoPopovers} from '../../typcheck/simulator-ui.js' */
-import { lastWealthRow, rowWealthParts, rowWealthInfo } from './wealth-display.js';
+import { lastWealthRow, rowEndFactor, rowWealthParts, rowWealthInfo } from './wealth-display.js';
 import { simulatorRunAssumptions } from './simulator-run-assumptions.js';
+import { appNow } from '../shared/app-clock.js';
 import { beginSimulationSummary, completeSimulationSummary } from './simulator-overview-summary.js';
 import { personDataContextFor, readDocumentPersonInputs } from './simulator-person-overrides.js';
-import { createProtocolPersonContext } from './protocol-columns.js';
+import { createProtocolPersonContext, protocolRowFlags } from './protocol-columns.js';
 import { projectMinimumFlexDisplay } from './results-metrics.js';
 import { renderProtocolSummary } from './protocol-renderer.js';
 import { renderBacktestAnalysis } from './backtest-log-analysis.js';
-import { bindInfoPopovers } from '../shared/designsystem-info-popover.js';
+import { bindInfoPopovers, infoPopoverHtml } from '../shared/designsystem-info-popover.js';
 import { bindEuroMode, getEuroMode, resetEuroMode } from './euro-display.js';
-import { backtestEuroBasis, backtestStartYear, projectBacktestEuroMetrics } from './backtest-euro-display.js';
+import { backtestEndPriceFactor, backtestEuroBasis, backtestStartYear, projectBacktestEuroMetrics } from './backtest-euro-display.js';
 "use strict";
 
 import { getPageNavigationGuard } from '../shared/navigation-guard-dialog.js';
@@ -29,13 +30,13 @@ import { showSimulatorInputError } from './simulator-input-feedback.js';
 import {
     buildBacktestColumnDefinitions,
     computeAdjPctForYear,
-    formatColumnValue,
-    triggerDownload
+    formatColumnValue, triggerDownload
 } from './simulator-main-helpers.js';
+import { lockWhileSaving } from '../shared/save-file.js';
 import { renderThreeBucketPortfolioChart, disposeThreeBucketPortfolioChart } from './simulator-portfolio-chart.js';
 import { STRATEGY_OPTIONS } from '../../types/strategy-options.js';
 import { formatCurrency } from './simulator-utils.js';
-import { beginOverviewRun, completeOverviewRun, failOverviewRun, readOverviewAssumptions, setOverviewBacktestStatus } from './simulator-result-overview.js';
+import { backtestCutMissingDetails, beginOverviewRun, completeOverviewRun, failOverviewRun, readOverviewAssumptions, setOverviewBacktestStatus } from './simulator-result-overview.js';
 import { resolveDynamicFlexRunnerHorizon } from './dynamic-flex-runner-horizon.js';
 import { createHistoricalBacktestContractProvider } from './historical-backtest-contract.js';
 import { runHistoricalBacktest } from './historical-backtest-runner.js';
@@ -144,16 +145,54 @@ function currencyOrDash(value) {
         ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value) : '—';
 }
 
+/** FR-84: Hilfe zur Pflege im Backtest (nur wenn der Staat Pflegekosten übernimmt), nominal. */
+function careAidItem(careAid) {
+    if (!careAid) return '';
+    return `<div class="summary-item ds-card ds-metric sim-metric-row"><strong>Hilfe zur Pflege</strong><span>${escapeBacktestHtml(`ab ${careAid.firstYear} · ${careAid.years} ${careAid.years === 1 ? 'Jahr' : 'Jahre'} · Summe ${currencyOrDash(careAid.sumNominal)}`)}</span><small class="summary-description">${escapeBacktestHtml('Pflegekosten, die das Geldvermögen nicht mehr trägt, zahlt der Staat, samt Pflegeanteil der Steuer aus Verkäufen oder Zinsen für die Pflege (nominal). Die Hilfe beendet den Lauf nicht; scheitern kann er nur, wenn das Geld den Grundbedarf ohne Pflege nicht mehr deckt.')}</small></div>`;
+}
+
+/** NK-2b (Fable P3-9): In Läufen mit Steuerschuld oder Steueranteil der Hilfe heißt die Summe „Steuern (festgesetzt)“ und nennt, was davon
+ * offen blieb bzw. der Staat trug; sonst wie bisher „Gezahlte Steuern“. @param {any[]|undefined} rows @param {Function} moneyItem */
+function taxItem(rows, moneyItem) {
+    const data = (rows || []).map(entry => entry?.row || {});
+    const aid = data.reduce((sum, row) => sum + (Number(row.hilfe_zur_pflege_steuer) || 0), 0), open = Number(data.at(-1)?.steuer_offen) || 0;
+    if (!(aid > 0.5) && !(open > 0.5)) return moneyItem('Gezahlte Steuern', 'tax_total_nominal_eur', true);
+    const note = [open > 0.5 ? `offen am Ende ${currencyOrDash(open)}` : '', aid > 0.5 ? `vom Staat getragen ${currencyOrDash(aid)}` : ''].filter(Boolean).join(' · ');
+    return moneyItem('Steuern (festgesetzt)', 'tax_total_nominal_eur', true).replace('</div>', `<small class="summary-description">${escapeBacktestHtml(`davon ${note} (nominal)`)}</small></div>`);
+}
+
+/** NK-2 (FR-84 Punkt 16): Jahre mit entfallener Einmalausgabe. @param {any} dropped */
+function droppedExpenseItem(dropped) {
+    if (!dropped) return '';
+    return `<div class="summary-item ds-card ds-metric sim-metric-row"><strong>Entfallene Ausgabe</strong><span>${escapeBacktestHtml(`ab ${dropped.firstYear} · ${dropped.years} ${dropped.years === 1 ? 'Jahr' : 'Jahre'} · Summe ${currencyOrDash(dropped.sumNominal)}`)}</span><small class="summary-description">${escapeBacktestHtml('Geplante Einmalausgaben, die das Geld nach Grundbedarf und Pflege nicht mehr trägt, entfallen ganz (nominal).')}</small></div>`;
+}
+
+/** Befund 1039: Ohne Zahl zeigen die Kürzungskarten den kurzen Grund wie der Reiter „Ergebnis“; das ⓘ erklärt ihn,
+ * bei den Jahren mit der Zahl aus dem Jahresprotokoll. @param {any} result */
+function cutCountsGap(result) {
+    const { reason, explanation } = backtestCutMissingDetails(result);
+    const years = (result?.rows || []).filter(entry => protocolRowFlags(entry, 'backtest').cut).length;
+    return { reason: reason || '—', explanation, protocolNote: `Das Jahresprotokoll zählt jede Kürzung, auch kleinere, und kommt auf ${years} ${years === 1 ? 'Jahr' : 'Jahre'} mit einer Kürzung.` };
+}
+
 function renderBacktestSummary(result, moneyBasis = getEuroMode(document)) {
     const summaryElement = document.getElementById('simulationSummary');
     if (!summaryElement) return;
     const metrics = result?.metrics?.values || {};
+    const cutYears = metrics.flex_reduction_years_gte_10_pct, cutStreak = metrics.flex_reduction_longest_streak_gte_10_pct;
+    const cutGap = Number.isFinite(cutYears) && Number.isFinite(cutStreak) ? null : cutCountsGap(result);
     const bases = projectBacktestEuroMetrics(result);
     const display = bases[moneyBasis];
+    // ST7-FIX (Gutachten ST7 P2-2): Die Ruin-Zeile hat keinen eigenen Preisfaktor; Immobilien nehmen dann denselben Endfaktor wie das
+    // Geldvermögen. Ohne Geldwert gibt es keinen Gesamtwert, statt still 0 € zu zeigen.
+    const wealthRow = lastWealthRow(result.rows), ownFactor = rowEndFactor(wealthRow);
+    const wealthFactor = ownFactor > 0 ? ownFactor : backtestEndPriceFactor(result) ?? NaN;
+    const homes = mode => rowWealthParts(wealthRow, mode, wealthFactor);
+    const totalWealth = mode => Number.isFinite(bases[mode].wealth_end_nominal_eur) ? bases[mode].wealth_end_nominal_eur + (homes(mode)?.total || 0) : null;
     const otherBasisLine = id => {
         const otherMode = moneyBasis === 'real' ? 'nominal' : 'real';
         const base = bases[otherMode][id];
-        const other = Number.isFinite(base) && id === 'wealth_end_nominal_eur' ? base + (rowWealthParts(lastWealthRow(result.rows), otherMode)?.total || 0) : base;
+        const other = id === 'wealth_end_nominal_eur' ? totalWealth(otherMode) : base;
         const label = backtestEuroBasis(result, otherMode);
         return `${label} ${Number.isFinite(other) ? `etwa ${currencyOrDash(other)}` : 'unbekannt'}`;
     };
@@ -165,7 +204,7 @@ function renderBacktestSummary(result, moneyBasis = getEuroMode(document)) {
     const outcome = result?.outcome?.kind || 'technical_error';
     const outcomeLabel = {
         completed: 'Vollständig',
-        ruin: 'Ruin',
+        ruin: 'Vermögen aufgebraucht',
         incomplete: 'Unvollständig',
         technical_error: 'Technischer Fehler'
     }[outcome] || outcome;
@@ -181,20 +220,26 @@ function renderBacktestSummary(result, moneyBasis = getEuroMode(document)) {
     // SE-2: Kennzahlleiste mit fünf Werten, darunter eine Zeile mit Jahresinventar und „▸ Weitere Kennzahlen“.
     summaryElement.innerHTML = `<div class="summary-grid sim-backtest-primary">
         ${summaryItem({ label: 'Ergebnis', displayValue: outcomeLabel, rawValue: outcome, resultField: 'outcome', detailHtml: `<small class="summary-description">${escapeBacktestHtml(`${result.completedYears ?? '—'} von ${result.requestedYears ?? '—'} Jahren ausgewertet`)}</small>` })}
-        ${summaryItem({ label: 'Gesamtvermögen', displayValue: currencyOrDash(display.wealth_end_nominal_eur + (rowWealthParts(lastWealthRow(result.rows), moneyBasis)?.total || 0)), displayRawValue: display.wealth_end_nominal_eur, rawValue: metrics.wealth_end_nominal_eur, metricId: 'wealth_end_nominal_eur', detailHtml: Number.isFinite(lastWealthRow(result.rows).immobilien_wert_end) ? `<small class="sim-money-detail">davon Geldvermögen ${currencyOrDash(display.wealth_end_nominal_eur)} · Immobilien ${currencyOrDash(rowWealthParts(lastWealthRow(result.rows), moneyBasis)?.total)}</small>` : '', infoHtml: rowWealthInfo(lastWealthRow(result.rows), moneyBasis), otherBasisLine: otherBasisLine('wealth_end_nominal_eur') })}
+        ${summaryItem({ label: 'Gesamtvermögen', displayValue: currencyOrDash(totalWealth(moneyBasis)), displayRawValue: display.wealth_end_nominal_eur, rawValue: metrics.wealth_end_nominal_eur, metricId: 'wealth_end_nominal_eur', detailHtml: Number.isFinite(wealthRow.immobilien_wert_end) ? `<small class="sim-money-detail">davon Geldvermögen ${currencyOrDash(display.wealth_end_nominal_eur)} · Immobilien ${currencyOrDash(homes(moneyBasis)?.total)}</small>` : '', infoHtml: rowWealthInfo(wealthRow, moneyBasis, wealthFactor), otherBasisLine: otherBasisLine('wealth_end_nominal_eur') })}
         ${moneyItem('Entnahmen Geldvermögen', 'withdrawal_total_nominal_eur')}
-        ${summaryItem({ label: 'Jahre mit Kürzung (≥ 10 %)', displayValue: `${metrics.flex_reduction_years_gte_10_pct ?? '—'} von ${result.completedYears ?? '—'}`, rawValue: metrics.flex_reduction_years_gte_10_pct, metricId: 'flex_reduction_years_gte_10_pct' })}
-        ${summaryItem({ label: 'Max. Kürzungsdauer (≥ 10 %)', displayValue: `${metrics.flex_reduction_longest_streak_gte_10_pct ?? '—'} Jahre`, rawValue: metrics.flex_reduction_longest_streak_gte_10_pct, metricId: 'flex_reduction_longest_streak_gte_10_pct' })}
+        ${summaryItem({ label: 'Jahre mit Kürzung ab 10 %', displayValue: Number.isFinite(cutYears) ? `${cutYears} von ${result.completedYears ?? '—'}` : cutGap.reason, rawValue: cutYears, metricId: 'flex_reduction_years_gte_10_pct',
+            infoHtml: Number.isFinite(cutYears) ? infoPopoverHtml('Welche Kürzungen zählen?', 'Hier zählen Kürzungen des Wunsch-Flex ab 10 %. Das Jahresprotokoll zählt auch kleinere Kürzungen.')
+                : infoPopoverHtml('Erläuterung zu den Jahren mit Kürzung', `${cutGap.explanation} ${cutGap.protocolNote}`.trim()) })}
+        ${summaryItem({ label: 'Max. Kürzungsdauer ab 10 %', displayValue: Number.isFinite(cutStreak) ? `${cutStreak} Jahre` : cutGap.reason, rawValue: cutStreak, metricId: 'flex_reduction_longest_streak_gte_10_pct',
+            infoHtml: Number.isFinite(cutStreak) ? '' : infoPopoverHtml('Erläuterung zur Kürzungsdauer', cutGap.explanation || cutGap.protocolNote) })}
     </div><details class="household-plan-more sim-backtest-more-metrics"${moreOpen ? ' open' : ''}><summary class="household-plan-summary-toggle"><span class="sim-backtest-inventory">Jahreszeilen ${anchor('row_count', result.rows?.length ?? 0, result.rows?.length ?? 0, 'Jahreszeilen')} · angeforderte und wirtschaftlich ausgewertete Jahre ${anchor('requested_years', result.requestedYears ?? '—', result.requestedYears, 'Angeforderte Jahre')} / ${anchor('completed_years', result.completedYears ?? '—', result.completedYears, 'Wirtschaftlich ausgewertete Jahre')} · Startjahr ${anchor('period_start', result.request?.startYear ?? '—', result.request?.startYear, 'Startjahr')} · Endjahr ${anchor('period_end', result.request?.endYear ?? '—', result.request?.endYear, 'Endjahr')}</span><span class="household-plan-disclosure-action"><span>▸ Weitere Kennzahlen</span><span>▾ Weitere Kennzahlen</span></span></summary><div class="sim-metric-list sim-backtest-supplementary">
         <div class="summary-item ds-card ds-metric sim-metric-row"><strong>${escapeBacktestHtml(restriction.title)}</strong><span>${escapeBacktestHtml(restrictionValue)}</span><small class="summary-description">${escapeBacktestHtml(restriction.legacy ? restriction.basisNote : restriction.valid ? '' : restriction.reason)}</small></div>
+        ${careAidItem(result?.summary?.careAid)}
+        ${droppedExpenseItem(result?.summary?.droppedExpense)}
         ${moneyItem('Startvermögen', 'wealth_start_nominal_eur', true)}
-        ${moneyItem('Gezahlte Steuern', 'tax_total_nominal_eur', true)}
-        ${moneyItem(healthBucket.enabled ? 'Pflegebucket am Laufende (im Endvermögen enthalten)' : 'Pflegebucket am Laufende (deaktiviert; im Endvermögen enthalten)', 'health_bucket_end_nominal_eur', true)}
+        ${taxItem(result?.rows, moneyItem)}
+        ${moneyItem(healthBucket.enabled ? 'Pflegereserve am Laufende (im Endvermögen enthalten)' : 'Pflegereserve am Laufende (deaktiviert; im Endvermögen enthalten)', 'health_bucket_end_nominal_eur', true)}
         ${summaryPair('Pflegereserve: Zieldeckung · Lücke', [
-            { field: 'health_bucket_coverage_pct', display: healthCoverage, raw: healthBucket.realCoveragePct, title: 'Pflegebucket-Zieldeckung' },
-            { field: 'health_bucket_target_gap', display: currencyOrDash(display.health_bucket_target_gap), raw: healthBucket.targetGap, title: `Pflegebucket-Ziellücke · ${backtestEuroBasis(result, moneyBasis)}` }
+            { field: 'health_bucket_coverage_pct', display: healthCoverage, raw: healthBucket.realCoveragePct, title: 'Zieldeckung der Pflegereserve' },
+            { field: 'health_bucket_target_gap', display: currencyOrDash(display.health_bucket_target_gap), raw: healthBucket.targetGap, title: `Ziellücke der Pflegereserve · ${backtestEuroBasis(result, moneyBasis)}` }
         ])}
     </div></details>`;
+    /** @type {BindInfoPopovers} */ (bindInfoPopovers)(document, { root: summaryElement });
 }
 
 function setBacktestResultsVisible(visible) {
@@ -330,7 +375,7 @@ function executeBacktest(options = {}) {
             entries.find(entry => entry.profileId === person.profileId)));
         const overviewToken = beginOverviewRun('backtest', readOverviewAssumptions('backtest', inputs, {
             startYear: validation.startYear, endYear: validation.endYear
-        }), { startedAt: new Date().toISOString(), automatic: dependencies.automatic === true,
+        }), { startedAt: appNow().toISOString(), automatic: dependencies.automatic === true,
             opening: dependencies.opening === true });
         const summaryContext = (dependencies.beginSimulationSummary || beginSimulationSummary)('backtest', inputs, { startYear: validation.startYear, endYear: validation.endYear });
         const engineApi = dependencies.engineApi || window?.EngineAPI;
@@ -583,7 +628,8 @@ export function exportBacktestLogData(format = 'json') {
         const download = createHistoricalBacktestDownload(backtestData.result, format, {
             personDataContext: backtestData.personDataContext
         });
-        triggerDownload(download.filename, download.content, download.mimeType);
+        // SD-1: Beide Exportknöpfe bleiben gesperrt, solange „Speichern unter“ offen ist.
+        void lockWhileSaving(['exportBacktestJson', 'exportBacktestCsv'].map(id => /** @type {HTMLButtonElement | null} */ (document.getElementById(id))), triggerDownload(download.filename, download.content, download.mimeType));
     } catch (error) {
         const known = {
             HISTORICAL_EXPORT_SOURCE_COMMIT_REQUIRED: {
@@ -599,7 +645,7 @@ export function exportBacktestLogData(format = 'json') {
             HISTORICAL_EXPORT_QUANTIZATION_CONTRACT_REQUIRED: {
                 title: 'Quantisierungsvertrag fehlt oder ist ungültig',
                 summary: 'Der JSON-Export kann die beim Lauf verwendeten Rundungsregeln nicht vollständig belegen.',
-                action: 'Aktualisiere Anwendung und Engine gemeinsam und führe den Backtest erneut aus.'
+                action: 'Aktualisiere die App und führe den Backtest erneut aus.'
             },
             HISTORICAL_EXPORT_PORTFOLIO_BOUNDARY_MISMATCH: {
                 title: 'Portfoliogrenzen sind widersprüchlich',

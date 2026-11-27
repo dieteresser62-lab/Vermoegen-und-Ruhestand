@@ -82,6 +82,9 @@ export function calculateHouseholdPensionForYear({
     let bereavementQuarterP2 = 0;
     let widowBaseP1 = 0;
     let widowBaseP2 = 0;
+    // VB-1 (§ 17 ErbStG): Jahreswert nach voller Anrechnung auf Jahresbasis, ohne die Dreimonatsskalierung des Todesjahrs.
+    let survivorAnnualP1 = 0;
+    let survivorAnnualP2 = 0;
     const offsetMonths = (startIndex, months) => Math.min(deathThisYear ? 3 : 12,
         12 * pensionPaymentFactor(yearIndex, startIndex, months));
 
@@ -99,6 +102,7 @@ export function calculateHouseholdPensionForYear({
         const fullOffset = Math.min(widowBaseP1, survivorIncomeOffset(
             yearIndex >= r1StartOffsetYears ? currentAnnualPension / 12 : 0, pensionValue) * 12);
         const overlap = offsetMonths(r1StartOffsetYears, inputs.renteStartMonate);
+        survivorAnnualP1 = Math.max(0, widowBaseP1 - fullOffset);
         widowIncomeOffsetP1 = fullOffset * (overlap / 12);
         widowBenefitP1ThisYear = overlap === (deathThisYear ? 3 : 12)
             ? (widowBaseP1 - fullOffset) * (deathThisYear ? 0.25 : 1)
@@ -134,6 +138,7 @@ export function calculateHouseholdPensionForYear({
         const fullOffset = Math.min(widowBaseP2, survivorIncomeOffset(
             yearIndex >= partnerStartOffsetYears ? currentAnnualPension2 / 12 : 0, pensionValue) * 12);
         const overlap = offsetMonths(partnerStartOffsetYears, inputs.partner?.renteStartMonate);
+        survivorAnnualP2 = Math.max(0, widowBaseP2 - fullOffset);
         widowIncomeOffsetP2 = fullOffset * (overlap / 12);
         widowBenefitP2ThisYear = overlap === (deathThisYear ? 3 : 12)
             ? (widowBaseP2 - fullOffset) * (deathThisYear ? 0.25 : 1)
@@ -154,7 +159,7 @@ export function calculateHouseholdPensionForYear({
     const inflatedFlex = Math.max(0, (baseFlex * temporaryFlexFactor) - pensionSurplus);
     const widowAdjFactor = 1 + (rentAdjPct / 100);
 
-    return {
+    const result = {
         rentAdjPct,
         currentAgeP1,
         rente1BruttoEigen,
@@ -184,6 +189,11 @@ export function calculateHouseholdPensionForYear({
         nextAnnualPension: currentAnnualPension * (1 + rentAdjPct / 100),
         nextAnnualPension2: currentAnnualPension2 * (1 + rentAdjPct / 100)
     };
+    // Nicht aufzählbar: Jahresprotokoll, Replay und Prüfsummen bleiben unverändert; nur die Erbschaftsteuer liest die Werte.
+    return /** @type {typeof result & {survivorAnnualP1: number; survivorAnnualP2: number}} */ (Object.defineProperties(result, {
+        survivorAnnualP1: { value: survivorAnnualP1, enumerable: false },
+        survivorAnnualP2: { value: survivorAnnualP2, enumerable: false }
+    }));
 }
 
 /** Der Anteil kürzt nur die Auszahlung, niemals die nächste Jahresbasis.

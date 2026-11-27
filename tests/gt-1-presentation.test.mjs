@@ -5,10 +5,8 @@ import { PersistenceFacade as P } from '../app/shared/persistence-facade.js';
 import { initializeProbelaufPage } from '../app/shared/probelauf-state.js';
 import { PROBELAUF_RESTORE_HINT } from '../app/shared/probelauf-runtime.js';
 import { confirmProfileDeletion, applyProfileManagementAction } from '../app/profile/profile-manager-bindings.js';
-import { createProfileManagementRecovery } from '../app/profile/profile-management-recovery.js';
 import { SnapshotArchive } from '../app/shared/snapshot-archive.js';
 import { projectDataModel } from '../app/data/data-model.js';
-import { snapshotBlockReason } from '../app/data/data-snapshot-presentation.js';
 import { renderDataPage } from '../app/data/data-renderer.js';
 import { createPresentationTestDocument } from './designsystem-source-contract.mjs';
 import { measurementInputs, parameters } from './helpers/ek-1b-measurement.mjs';
@@ -32,25 +30,25 @@ controller = await initializeProbelaufPage({ doc, win: f.win });
 assert(controller.state?.active, 'Echter Spielbereich aktiv');
 let description;
 assert(await confirmProfileDeletion('muster_petra', text => { description = text; return true; }, { doc }), 'Löschrückfrage bestätigbar');
-assert(description.includes(PROBELAUF_RESTORE_HINT) && !description.includes('über Daten & Sicherung zurückholbar'), 'Spielbereich-Rückfrage verspricht kein Zurückholen');
-const point = await createProfileManagementRecovery('Vor dem Löschen von Petra');
+assert(description.includes(PROBELAUF_RESTORE_HINT) && !description.includes('Vollsicherung'), 'Spielbereich-Rückfrage verlangt keine gesperrte Vollsicherung');
+// SV-1: Der Spielbereich zeigt keine Punkte; außerhalb erscheint jeder Punkt mit „Zurückholen …“.
+const point = await SnapshotArchive.createSnapshot({ kind: 'monthly-close-pre-mutation', label: 'Monatsabschluss 2026-09', activeProfileId: 'muster_petra',
+    records: SnapshotArchive.captureCurrentRecords({ keys: () => P.keysSync(), getItem: key => P.getItemSync(key) }) });
 applyProfileManagementAction({ kind: 'delete', profileId: 'muster_petra' }); await P.flush();
 assert(!JSON.parse(P.getItemSync('rs_profiles_v1')).profiles.muster_petra, 'Petra aus dem Beispielhaushalt tatsächlich gelöscht');
 const model = await projectDataModel({ records: await P.readPersistedRecords(() => true), snapshots: await SnapshotArchive.listSnapshots() });
-assertEqual(snapshotBlockReason(point, model), 'trial-active', 'Nach echter Personenlöschung ist der vollständige Punkt gesperrt');
 renderDataPage(doc, model);
-assertEqual(doc.getElementById('dataSnapshotCount').textContent, '0 verfügbar · 1 gesperrt', 'Spielbereich zählt den Punkt als gesperrt');
-const nodes = descendants(doc.getElementById('dataSnapshotList'));
-assert(nodes.some(node => node.dataset?.restorePreview === point.id && node.disabled), 'Zurückholen am Punkt deaktiviert');
-assert(nodes.some(node => node.textContent === PROBELAUF_RESTORE_HINT), 'Grund steht unmittelbar am Punkt');
+let nodes = descendants(doc.getElementById('dataSnapshotList'));
+assert(!nodes.some(node => node.dataset?.restorePoint), 'Spielbereich zeigt keinen Punkt');
+assert(nodes.some(node => node.textContent === PROBELAUF_RESTORE_HINT), 'Grund steht in der Liste');
 const outside = { ...model, trialActive: false };
-assertEqual(snapshotBlockReason(point, outside), null, 'Vollständiger Personenpunkt bleibt außerhalb verfügbar');
 renderDataPage(doc, outside);
-assertEqual(doc.getElementById('dataSnapshotCount').textContent, '1 verfügbar · 0 gesperrt', 'Außerhalb bleibt Zähler unverändert');
+nodes = descendants(doc.getElementById('dataSnapshotList'));
+assert(nodes.some(node => node.dataset?.restorePoint === point.id && !node.disabled), 'Außerhalb ist der Punkt zurückholbar, auch nach Personenlöschung');
 renderDataPage(doc, { ...outside, snapshots: [] });
 assert(doc.getElementById('dataSnapshotList').children.some(node => node.textContent === 'Noch keine Wiederherstellungspunkte.'), 'Leere Liste erklärt fehlende Punkte');
 await confirmProfileDeletion('muster_martin', text => { description = text; return false; }, { doc: {} });
-assert(description.includes('über Daten & Sicherung zurückholbar') && !description.includes(PROBELAUF_RESTORE_HINT), 'Rückfrage außerhalb unverändert');
+assert(description.includes('Erstelle vorher eine Vollsicherung') && !description.includes(PROBELAUF_RESTORE_HINT), 'Rückfrage außerhalb erinnert an die Vollsicherung');
 
 // Jahreszeilen aus vollständigen, reproduzierbaren Musterläufen; keine erfundenen Nachlasszeilen.
 for (const householdId of ['martin-petra', 'max-erika']) {
@@ -62,7 +60,7 @@ for (const householdId of ['martin-petra', 'max-erika']) {
     const rows = result.runMeta.flatMap(run => run.logDataRows);
     const death = rows.find(row => row.inheritance && row.inflation_factor_cum > 1);
     assert(death, householdId + ': protokollierter Todesfall mit Inflation vorhanden');
-    const bytes = JSON.stringify(death), allowance = inheritancePersonalAllowance(inputs.partnership?.status ?? 'married');
+    const bytes = JSON.stringify(death), allowance = inheritancePersonalAllowance(inputs.partnership?.status);
     const money = value => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
     const options = { source: 'mc', inputs, startYear: 2026 };
     const real = renderProtocolTable([death], { ...options, moneyBasis: 'real' });
@@ -72,7 +70,8 @@ for (const householdId of ['martin-petra', 'max-erika']) {
     for (const difference of [0, .4, .6]) {
         const row = { ...death, inflation_factor_cum: allowance / (allowance - difference) };
         const html = renderProtocolTable([row], { ...options, moneyBasis: 'real' });
-        assertEqual(html.includes('gilt nominal, in Euro von heute'), difference > .5,
+        // HP-4: Der steuerpflichtige Erwerb im Steuer-ⓘ hat einen eigenen Zusatz; geprüft wird der Satz zum Freibetrag.
+        assertEqual(html.includes(`Freibetrag ${money(allowance)} gilt nominal, in Euro von heute`), difference > .5,
             `${householdId}: Freibetragshinweis nur bei Unterschied auf ganze Euro (${difference} Euro)`);
     }
     assertEqual(JSON.stringify(death), bytes, householdId + ': Rohzeile bytegleich');

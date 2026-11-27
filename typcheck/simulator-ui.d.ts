@@ -7,11 +7,6 @@ export interface ValidationIssue { name?: string; message?: string; code?: strin
 export type TrancheOverride = R.EngineTranche[] & { simulationSourceProfileId?: string };
 export type MinimumFlexProfile = { profileId?: string; minimumFlexAnnual: number; [key: string]: unknown };
 export interface ProfileBlocker { status?: string; message?: string; }
-export type SweepRow = R.SweepChunkResult['results'][number];
-export interface SweepExecution {
-    schemaVersion: string; personDataContext?: R.PersonDataContext | null; request: R.SweepRequest;
-    metricMetadata: unknown; comparisonRandomness: unknown; results: SweepRow[];
-}
 export interface BacktestData {
     automatic: boolean; personDataContext: R.PersonDataContext | null;
     personDisplayContext: ReturnType<typeof import('../app/simulator/protocol-columns.js').createProtocolPersonContext>;
@@ -28,9 +23,6 @@ declare global {
         __profilverbundMinFlexProfilesOverride?: MinimumFlexProfile[] | null;
         __personDataBlocker?: ProfileBlocker | null;
         __profileRecoveryActionGuardsInstalled?: boolean;
-        __profileRecoveryLocalActionGuardsInstalled?: boolean;
-        __profileRecoveryBlockedActionCount?: number;
-        __profileRecoveryAutoOptimizeObserver?: MutationObserver;
         __simulatorOpeningBacktestError?: unknown;
         __simulatorOpeningBacktestDone?: boolean;
         simulateOneYear?: typeof import('../app/simulator/simulator-engine-wrapper.js').simulateOneYear;
@@ -38,23 +30,10 @@ declare global {
         annualData?: typeof import('../app/simulator/simulator-data.js').annualData;
         runMonteCarlo?: typeof import('../app/simulator/simulator-monte-carlo.js').runMonteCarlo;
         runBacktest?: typeof import('../app/simulator/simulator-backtest.js').runBacktestWithRuntimeProvenance;
-        runParameterSweep?: typeof import('../app/simulator/simulator-sweep.js').runParameterSweep;
-        displaySweepResults?: typeof import('../app/simulator/simulator-sweep.js').displaySweepResults;
         formatCurrency?: typeof import('../app/simulator/simulator-utils.js').formatCurrency;
-        runSweepSelfTest?: typeof import('../app/simulator/simulator-main-sweep-selftest.js').runSweepSelfTest;
         renderBacktestLog?: typeof import('../app/simulator/simulator-backtest.js').renderBacktestLog;
         exportBacktestLogData?: typeof import('../app/simulator/simulator-backtest.js').exportBacktestLogData;
-        cancelParameterSweep?: typeof import('../app/simulator/simulator-sweep.js').cancelParameterSweep;
-        findAndDisplayBest?: () => void;
-        showSensitivityAnalysis?: () => void;
-        showParetoDialog?: () => Promise<void>;
-        runMultiObjectiveDemo?: () => void;
-        runConstraintBasedDemo?: () => void;
         globalBacktestData?: BacktestData | null;
-        sweepResults?: SweepRow[];
-        sweepParamRanges?: Record<string, number[]>;
-        sweepExecution?: SweepExecution;
-        paretoMetrics?: { metric1: string; metric2: string };
     }
 }
 
@@ -100,7 +79,7 @@ export type SharedPlanOptions = {
 export type CreateSharedPlanTrial = (options?: SharedPlanOptions) => ReturnType<typeof import('../app/shared/plan-trial.js').createPlanTrial>;
 export type SourceFingerprint = (options: Omit<Parameters<typeof import('../app/overview/overview-simulation-summary.js').sourceFingerprint>[0], 'referenceYear'>
     & {referenceYear?: number}) => string | null;
-/** Jobs liefern je nach Payload MC-Chunks oder Sweep-Ergebnisse. */
+/** Jobs liefern Monte-Carlo-Chunks. */
 export type WorkerJobConstructor = new (options: Omit<import('./simulator-analysis.js').WorkerRunnerOptions, 'mergeResult'> & {
     // Jobtyp und Validator bestimmen die offene Nachricht erst an der jeweiligen Merge-Grenze.
     mergeResult: (result: any, start: number, count: number) => void;
@@ -134,7 +113,7 @@ declare global {
 export interface ValidationInputs {
     [key: string]: unknown; partner?: R.SimulatorInputs['partner']; minimumFlexAnnual?: unknown; startFlexBedarf?: unknown;
     survivorFloorPercent?: unknown; survivorFlexPercent?: unknown; survivorMinimumFlexPercent?: unknown;
-    liquidityRunwayYears?: unknown; runwayTargetMonths?: unknown; runwayMinMonths?: unknown;
+    liquidityRunwayYears?: unknown;
     tailRiskHorizonYears?: unknown; tailRiskValidationErrors?: {fieldId: string; message?: string}[];
 }
 export interface PensionFields {

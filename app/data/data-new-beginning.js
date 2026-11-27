@@ -1,5 +1,6 @@
 import { PersistenceFacade } from '../shared/persistence-facade.js';
-import { SnapshotArchive, SNAPSHOT_KINDS } from '../shared/snapshot-archive.js';
+import { SnapshotArchive, SNAPSHOT_KINDS, SNAPSHOT_SCOPES, IMPORT_POINT_LABELS } from '../shared/snapshot-archive.js';
+import { pruneRestorePoints } from '../shared/snapshot-retention.js';
 import { assertFullBackupAllowed, validatePersistenceDomainRecords } from '../shared/persistence-backup.js';
 import { isAllowedPersistenceImportKey, isNewBeginningRecordKey } from '../shared/persistence-key-policy.js';
 import { recordIdentity } from '../shared/snapshot-restore.js';
@@ -61,6 +62,8 @@ export function createNewBeginningController({ persistence = PersistenceFacade, 
             if (busy || blocked || !canConfirmNewBeginning(selection)) return { status: 'not_confirmed' };
             busy = true;
             let snapshotId, deletionStarted = false, cleared = false, /** @type {(()=>void)|undefined} */ release;
+            /** @type {string[]} */
+            const warnings = [];
             try {
                 const result = await withAnnualWriteAccess(() => guard.reload({ opener, returnResult: true,
                     mutate: async operation => {
@@ -69,45 +72,50 @@ export function createNewBeginningController({ persistence = PersistenceFacade, 
                         const { records } = await assertNewBeginningAllowed(options());
                         release = persistence.blockSyncWrites([], 'Neu beginnen läuft. Bitte bis zum Neuladen keine Daten ändern.', { predicate: isNewBeginningRecordKey });
                         operation.commit();
-                        if (!selection.deleteSnapshots) {
-                            const preferences = await persistence.captureNewBeginningPreferences?.(win) || {};
-                            const snapshot = await archive.createSnapshot({ id: `new_beginning_${globalThis.crypto.randomUUID()}`,
-                                label: 'Vor Neu beginnen', kind: SNAPSHOT_KINDS.newBeginningBefore,
-                                records: { ...preferences, ...records },
-                                activeProfileId: records.rs_current_profile || records.rs_active_profile || '',
-                                restoreScope: { profileRegistryMode: 'replace-all-rollback', profileLiveDataMode: 'replace-all-rollback', liveKeyMode: 'new-beginning' }
-                            }, { storage: persistence, navigationOperation: operation });
-                            const readback = await archive.readSnapshot(snapshot.id, { storage: persistence });
-                            if (JSON.stringify(snapshot) !== JSON.stringify(readback)) throw new Error('Der Punkt „Vor Neu beginnen“ konnte nicht bytegleich bestätigt werden. Es wurde nichts gelöscht.');
-                            snapshotId = snapshot.id;
-                        }
-                        // Optimistischer Vergleich vor dem einzigen Hauptspeicher-Batch.
-                        deletionStarted = true;
+                        // SV-1: „Neu beginnen“ ersetzt den Stand wie ein Einspielen und legt deshalb einen Punkt dieser Art an.
+                        // SV-1b: Er umfasst alles, was danach gelöscht wird, auch Tageskurse, Sicherungszeit und technische Werte.
+                        const snapshot = await archive.createSnapshot({ id: `new_beginning_${globalThis.crypto.randomUUID()}`,
+                            label: IMPORT_POINT_LABELS.newBeginning, kind: SNAPSHOT_KINDS.fullBackupImportRecovery, scope: SNAPSHOT_SCOPES.all,
+                            records, activeProfileId: records.rs_current_profile || records.rs_active_profile || ''
+                        }, { storage: persistence, navigationOperation: operation });
+                        const readback = await archive.readSnapshot(snapshot.id, { storage: persistence });
+                        if (JSON.stringify(snapshot) !== JSON.stringify(readback)) throw new Error('Der Punkt „Vor Neu beginnen“ konnte nicht bytegleich bestätigt werden. Es wurde nichts gelöscht.');
+                        snapshotId = snapshot.id;
                         clearProfilesBundleHandoff(win);
-                        await persistence.replaceRecordsTransactional({}, { allowKey: isNewBeginningRecordKey,
-                            expectedRecords: records, navigationOperation: operation });
-                        if (selection.deleteSnapshots) {
-                            for (const point of await archive.listSnapshots({ storage: persistence })) {
-                                await archive.deleteSnapshot(point.id, { storage: persistence, navigationOperation: operation });
-                            }
-                            if ((await archive.listSnapshots({ storage: persistence })).length) throw new Error('Wiederherstellungspunkte konnten nicht vollständig gelöscht werden.');
-                            // Der localStorage-Fallback soll auch den leeren Archivcontainer entfernen.
-                            await persistence.replaceRecordsTransactional({}, { allowKey: key => key === 'rs_snapshot_archive_v1', navigationOperation: operation });
+                        // Optimistischer Vergleich vor dem einzigen Hauptspeicher-Batch. Nimmt er sich bestätigt zurück, ist nichts gelöscht.
+                        try {
+                            await persistence.replaceRecordsTransactional({}, { allowKey: isNewBeginningRecordKey,
+                                expectedRecords: records, navigationOperation: operation });
+                        } catch (error) {
+                            deletionStarted = /** @type {{code?: string}} */ (error)?.code === 'rollback_failed';
+                            throw error;
                         }
-                        await persistence.resetNewBeginningBrowserStorage?.({ window: win, deleteSnapshots: selection.deleteSnapshots, navigationOperation: operation });
-                        if (await persistence.flush({ navigationOperation: operation }) === false) throw new Error('PERSISTENCE_FLUSH_FAILED');
-                        if (recordIdentity(await persistence.readPersistedRecords(isNewBeginningRecordKey)) !== recordIdentity({})) throw new Error('Der Hauptspeicher ist nicht vollständig leer.');
-                        cleared = true;
-                    }, reload: navigate, flush: () => persistence.flush()
+                        deletionStarted = true; cleared = true;
+                        // Ab hier ist der Haushalt gelöscht. Reste in Browser- und Sitzungsspeicher sind nur noch eine Warnung.
+                        const warn = async (/** @type {string} */ text, /** @type {() => Promise<unknown>} */ step) => {
+                            try { await step(); } catch (error) { warnings.push(`${text} ${/** @type {Error} */ (error)?.message || ''}`.trim()); }
+                        };
+                        await warn('Browser- und Sitzungsreste konnten nicht vollständig entfernt werden.',
+                            async () => persistence.resetNewBeginningBrowserStorage?.({ window: win, navigationOperation: operation }));
+                        await warn('Der leere Hauptspeicher konnte nicht bestätigt werden.', async () => {
+                            if (await persistence.flush({ navigationOperation: operation }) === false) throw new Error('PERSISTENCE_FLUSH_FAILED');
+                            if (recordIdentity(await persistence.readPersistedRecords(isNewBeginningRecordKey)) !== recordIdentity({})) throw new Error('Der Hauptspeicher ist nicht vollständig leer.');
+                        });
+                        await pruneRestorePoints(SNAPSHOT_KINDS.fullBackupImportRecovery, { storage: persistence, archive,
+                            protectedIds: [snapshot.id], records: {}, navigationOperation: operation });
+                    }, flush: () => persistence.flush(),
+                    // SV-1c: Mit einer Warnung bleibt die Seite stehen, damit sie den Nutzer erreicht; der Dialog nennt sie und den Weg zur Übersicht.
+                    reload: () => { if (warnings.length) throw new Error('NEW_BEGINNING_WARNING_SHOWN'); navigate(); }
                 }), { locks: win?.navigator?.locks });
                 blocked = deletionStarted;
                 if (!deletionStarted) release?.();
+                const warning = warnings.length ? warnings.join(' ') : undefined;
                 return { status: cleared && result.status === 'reloaded' ? 'restarted' : cleared ? 'reload_required' : result.error ? 'failed' : 'cancelled',
-                    snapshotId, error: result.error, deletionStarted };
+                    snapshotId, error: cleared ? undefined : result.error, warning, deletionStarted };
             } catch (error) {
                 blocked = deletionStarted;
                 if (!deletionStarted) release?.();
-                return { status: 'failed', snapshotId, error, deletionStarted };
+                return { status: cleared ? 'reload_required' : 'failed', snapshotId, error, deletionStarted };
             } finally { busy = false; }
         }
     };

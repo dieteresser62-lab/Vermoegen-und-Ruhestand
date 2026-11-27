@@ -1,4 +1,4 @@
-import { careSettingsStorage, readProfileCareSettings, sharesHouseholdCareValues } from '../shared/care-profile-settings.js';
+import { careSettingsStorage, readProfileCareSettings } from '../shared/care-profile-settings.js';
 import { readCareValues } from '../shared/household-care-values.js';
 import { resolveCarePrices } from '../shared/care-prices.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
@@ -6,7 +6,7 @@ import { CARE_BENEFITS_2026, careAllowanceAnnual, careSettingsFromRecord, effect
 import { readIncome } from '../profile/profile-income.js';
 import { localCalendarDate } from '../shared/app-clock.js';
 import { projectHouseholdCareNeeds, refreshCareHints } from '../shared/care-hint.js';
-import { readHouseholdPersonStatus, readSingleProfileStatus } from '../shared/person-data-status.js';
+import { readHouseholdPersonStatus } from '../shared/person-data-status.js';
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
 import { canonicalDecimalInput } from './tranchen-manager-decimal-input.js';
 import { genitive } from './tranchen-manager-household-adoption.js';
@@ -15,18 +15,14 @@ const money = value => value.toLocaleString('de-DE', { maximumFractionDigits: 2 
 const euro = value => `${formatDisplayNumber(value, { fractionDigits: 0 })}\u00a0€`;
 
 /** Gespeicherte Bedarfsprojektion der angezeigten Person aus der gemeinsamen Bedarfsrechnung (wie Reiter Pflege, Balance
- * und Simulator); null ohne Treffer. UR-1c/UR-1d: Eine Person außerhalb des Haushalts rechnet als Einzelprofil mit ihren
- * eigenen Pflegewerten, Zuschlag, Deckel und ihrem bestätigten Einzelplan; ohne ihn keine Projektion. */
+ * und Simulator); null ohne Treffer. */
 function storedCareRow(storage) {
     try {
         const id = storage.getItem?.('rs_current_profile');
         if (!id) return null;
-        const household = readHouseholdPersonStatus({ storage });
-        const member = household?.entries?.some(entry => entry.profileId === id);
-        const status = member ? household : readSingleProfileStatus({ storage });
+        const status = readHouseholdPersonStatus({ storage });
         if (!status?.ready || !status.entries?.some(entry => entry.profileId === id)) return null;
-        // UR-1d: Die Außenperson rechnet mit ihrem eigenen Einzelplan (profileId), wie der Simulator sie allein rechnet.
-        return projectHouseholdCareNeeds({ storage, status, ...(member ? {} : { profileId: id }) })?.persons?.find(person => person.profileId === id) || null;
+        return projectHouseholdCareNeeds({ storage, status })?.persons?.find(person => person.profileId === id) || null;
     } catch { return null; }
 }
 
@@ -105,7 +101,7 @@ export function syncManagerCareToday(doc, storage = persistenceStorage) {
     const ownField = doc.getElementById('profileCareHomeCostsField');
     if (ownField) ownField.hidden = !grade || formField?.value === 'residential';
     const ownInput = doc.getElementById('profileCareHomeCostsMonthly');
-    const prices = grade ? resolveCarePrices(careValues, careSettingsStorage(storage), { shared: sharesHouseholdCareValues(storage) }) : null;
+    const prices = grade ? resolveCarePrices(careValues, careSettingsStorage(storage)) : null;
     // Platzhalter nennt den Staffelbetrag des heutigen Grads (€/Monat), den ein leeres Feld bedeutet.
     if (ownInput && prices) ownInput.placeholder = `Staffel ${money(prices.costs[grade] / 12)}`;
     const ownHelp = doc.getElementById('profileCareHomeCostsHelp');

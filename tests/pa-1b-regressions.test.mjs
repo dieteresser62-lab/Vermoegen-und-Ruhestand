@@ -25,7 +25,7 @@ if (!selected || selected === '1' || selected === '2') {
         assert(laterDeath.length > 0, 'PA-1b/1: echte Todesjahre nach früherem Wechsel wegen Partnerpflege vorhanden');
         for (const row of laterDeath) {
             const html = renderProtocolTable([row], { source: 'mc', inputs });
-            assert(html.includes('Pflegeform: externe Unterstützung, weil Helga verstorben ist.'),
+            assert(html.includes('Externe Unterstützung übernimmt die Pflege, weil Helga verstorben ist.'),
                 'PA-1b/1: aktueller Tod ersetzt den früheren Pflegegrad im Protokollgrund');
             assert(!html.includes('weil Helga selbst Pflegegrad'), 'PA-1b/1: nach Tod kein veralteter Pflegegrund');
         }
@@ -36,7 +36,7 @@ if (!selected || selected === '1' || selected === '2') {
         assert(laterGrade.length > 0, 'PA-1b/2: echte Fortschrittsjahre nach früherem Wechsel vorhanden');
         for (const row of laterGrade) {
             const html = renderProtocolTable([row], { source: 'mc', inputs });
-            assert(html.includes(`Pflegeform: externe Unterstützung, weil Helga selbst Pflegegrad ${row.CareP1_Grade} hat.`),
+            assert(html.includes(`Externe Unterstützung übernimmt die Pflege, weil Helga selbst Pflegegrad ${row.CareP1_Grade} hat.`),
                 'PA-1b/2: Protokollgrund nennt den aktuellen Partnergrad');
             assert(!html.includes(`weil Helga selbst Pflegegrad ${row.CareP2_FamilyFallback.grade} hat`),
                 'PA-1b/2: früherer Partnergrad wird nicht mehr als aktueller Anlass ausgegeben');
@@ -53,13 +53,13 @@ if (!selected || selected === '3') {
     const result = backtest(inputs, 2000, 2002), before = JSON.stringify(result);
     assertEqual(result.outcome.kind, 'completed', 'PA-1b/3: Einzel-Backtest mit alten Partnerangaben läuft');
     const html = renderProtocolTable(result.rows, { source: 'backtest', inputs });
-    assert(html.includes('Helga: kein Pflegegeld'), 'PA-1b/3: Pflegegrund der aktiven Person bleibt sichtbar');
-    assert(!html.includes('Werner: kein Pflegegeld') && !html.includes('Person 2: kein Pflegegeld'),
+    assert(html.includes('Helga bekommt kein Pflegegeld'), 'PA-1b/3: Pflegegrund der aktiven Person bleibt sichtbar');
+    assert(!html.includes('Werner bekommt kein Pflegegeld') && !html.includes('Person 2 bekommt kein Pflegegeld'),
         'PA-1b/3: inaktiver Partner erhält trotz careToday keine Begründungszeile');
     assertEqual(JSON.stringify(result), before, 'PA-1b/3: Anzeige erhält das vollständige Backtestergebnis bytegleich');
     inputs.partner.aktiv = true;
     const couple = backtest(inputs, 2000, 2002);
-    assert(renderProtocolTable(couple.rows, { source: 'backtest', inputs }).includes('Werner: kein Pflegegeld'),
+    assert(renderProtocolTable(couple.rows, { source: 'backtest', inputs }).includes('Werner bekommt kein Pflegegeld'),
         'PA-1b/3: aktiver Partner behält seine Begründungszeile');
 }
 

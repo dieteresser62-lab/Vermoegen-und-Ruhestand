@@ -13,13 +13,13 @@ import { initDynamicFlexControls, refreshDynamicFlexControls } from '../app/simu
 import { UIReader, initUIReader } from '../app/balance/balance-reader.js';
 import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input-storage.js';
 import { renderBalanceInflationSource } from '../app/balance/balance-inflation-source.js';
-import { StorageManager, initStorageManager } from '../app/balance/balance-storage.js';
+import { StorageManager } from '../app/balance/balance-storage.js';
 import { UIBinder, initUIBinder, preserveUIBinderStateForTests, trackBalanceInputSave } from '../app/balance/balance-binder.js';
 import { createProfilverbundHandlers } from '../app/balance/balance-main-profilverbund.js';
 import { createProfileSyncHandlers } from '../app/balance/balance-main-profile-sync.js';
 import { PROFILE_VALUE_KEYS } from '../app/profile/profile-state.js';
 import { readBalancePersonStatus, showPersonDataStatus } from '../app/shared/person-data-status.js';
-import { evaluateBalanceFileInputs } from '../app/balance/balance-file-service.js';
+import { evaluateBalanceInputs } from '../app/balance/balance-evaluation.js';
 import { postprocessBalanceAction } from '../app/balance/balance-action-postprocessor.js';
 import { buildBalanceOverviewSummary } from '../app/overview/overview-model.js';
 import { storeOverviewSummary, overviewScope } from '../app/overview/overview-storage.js';
@@ -126,15 +126,15 @@ try {
             let field = doc.getElementById(id); if (!field) field = addField(doc, id);
             field.value = value ?? ''; field.checked = value === true; if (typeof value === 'boolean') field.type = 'checkbox'; dom.inputs[id] = field;
         }
-        initUIReader(dom); initStorageManager(dom, state, { toast() {} }); StorageManager.loadState();
+        initUIReader(dom); StorageManager.loadState();
         const trial = getBalancePlanTrial(doc); renderBalancePlanTrial(doc, { project: true });
         const handlers = createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS: { mode: 'household_withdrawal_mode' } });
         const deps = { projectNextYearBudget, ...pipeline, dom, appState: state, getBalancePlanTrial, renderBalanceInflationSource, UIReader, StorageManager, UIUtils,
             buildBalanceEngineInputFromStorage, readBalanceHouseholdPlan, stripBalancePlanInputs, stageBalancePlanPatch,
             readBalancePersonStatus, showPersonDataStatus, getCurrentProfileId: () => storage.getItem('rs_current_profile'),
             profileSyncHandlers: createProfileSyncHandlers({ dom, PROFILE_VALUE_KEYS }), profilverbundHandlers: handlers,
-            persistenceStorage: storage, PROFILVERBUND_STORAGE_KEYS: { mode: 'household_withdrawal_mode' }, evaluateBalanceFileInputs,
-            refreshBalanceWealthHistory() {}, postprocessBalanceAction, withGuardrailCardValues: value => value,
+            persistenceStorage: storage, PROFILVERBUND_STORAGE_KEYS: { mode: 'household_withdrawal_mode' }, evaluateBalanceInputs,
+            postprocessBalanceAction, withGuardrailCardValues: value => value,
             ANNUAL_MARKET_DATA_META_KEY: 'annualMarketDataMeta', overviewScope, buildBalanceOverviewSummary, storeOverviewSummary,
             UIRenderer: { clearError() {}, renderContext() {}, renderBedarfAnpassungUI() {}, render() {}, renderDiagnosis() {},
                 formatDiagnosisPayload() { return null; }, handleError(error) { errors.push(error); } } };

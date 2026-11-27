@@ -1,7 +1,8 @@
 /** @import {SimulatorControl} from '../../typcheck/simulator-ui.js' */
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import { readCareValues } from '../shared/household-care-values.js';
-import { PFLEGE_COST_PRESETS, PFLEGE_CUSTOM_COSTS_KEY, carePresetValues, normalizePflegeKostenPreset, rememberCareCostValues } from '../shared/care-price-fields.js';
+import { PFLEGE_COST_PRESETS, PFLEGE_CUSTOM_COSTS_KEY, carePresetValues, normalizePflegeKostenPreset, readCareFieldValues, rememberCareCostValues, validCareDriftYear } from '../shared/care-price-fields.js';
+import { CARE_DRIFT_YEAR_RANGE } from '../shared/care-cost-drift.js';
 "use strict";
 
 import { SUPPORTED_PFLEGE_GRADES, PFLEGE_GRADE_LABELS } from './simulator-data.js';
@@ -168,6 +169,23 @@ export function updatePflegeUIInfo() {
  * @returns {void}
  */
 export function initializePflegeUIControls() {
+    // FR-95: Die HTML-Grenze lässt den Altwert zu. Für neue Eingaben gilt das laufende Jahr.
+    const driftUntil = /** @type {HTMLInputElement|null} */ (document.getElementById('pflegeKostenDriftBis'));
+    if (driftUntil) {
+        const updateMin = () => {
+            const currentYear = CARE_DRIFT_YEAR_RANGE.min;
+            driftUntil.min = String(Math.min(currentYear, Number(driftUntil.value || currentYear)));
+        };
+        updateMin();
+        driftUntil.max = String(CARE_DRIFT_YEAR_RANGE.max);
+        driftUntil.addEventListener('change', () => {
+            const valid = validCareDriftYear(driftUntil.value);
+            if (!valid) driftUntil.value = readCareFieldValues().pflegeKostenDriftBis;
+            updateMin();
+            if (valid) setFieldState(driftUntil, 'editable');
+            else setFieldState(driftUntil, 'error', `Bitte ein ganzes Jahr von ${CARE_DRIFT_YEAR_RANGE.min} bis ${CARE_DRIFT_YEAR_RANGE.max} eintragen; der bisherige Wert bleibt.`);
+        });
+    }
     document.getElementById('simCareTodaySummary')?.addEventListener('care-today-change', refreshPflegeAvailability);
     const CARE_GRADE_FIELD_IDS = SUPPORTED_PFLEGE_GRADES.flatMap(grade => [
         `pflegeStufe${grade}Zusatz`,

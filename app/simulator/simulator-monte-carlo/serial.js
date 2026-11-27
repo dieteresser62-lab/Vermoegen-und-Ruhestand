@@ -1,24 +1,24 @@
-import { createStressReplayCaptureRequest } from '../stress-replay-path-materializer.js';
 import { throwIfRunCancelled } from './helpers.js';
 import { runMonteCarloChunk, attachMonteCarloBatchOutcome, buildMonteCarloAggregates } from '../monte-carlo-runner.js';
 import { normalizeMonteCarloParametersV1 } from '../monte-carlo-parameters.js';
 import { annualData } from '../simulator-data.js';
 import { ScenarioAnalyzer } from '../scenario-analyzer.js';
 
-async function runMonteCarloSerialRerunForIndices({
+/**
+ * @param {object} options
+ * @returns Ergebnis der Operation.
+ */
+export async function runMonteCarloLogsForIndices({
     inputs,
     widowOptions,
     monteCarloParams,
     useCapeSampling,
     runIndices,
     generationId,
-    signal = null,
-    captureStressReplay = false
+    signal = null
 }) {
     const logsByIndex = new Map();
-    const capturesByIndex = new Map();
-    if (!Array.isArray(runIndices) || runIndices.length === 0) return { logsByIndex, capturesByIndex };
-    const captureRequest = captureStressReplay ? createStressReplayCaptureRequest(runIndices) : null;
+    if (!Array.isArray(runIndices) || runIndices.length === 0) return logsByIndex;
     for (const runIdx of runIndices) {
         throwIfRunCancelled(signal, generationId);
         // Re-run a single index with logging enabled to get full log rows.
@@ -29,7 +29,6 @@ async function runMonteCarloSerialRerunForIndices({
             useCapeSampling,
             runRange: { start: runIdx, count: 1 },
             logIndices: [runIdx],
-            stressReplayCapture: captureRequest,
             signal
         });
         throwIfRunCancelled(signal, generationId);
@@ -37,26 +36,8 @@ async function runMonteCarloSerialRerunForIndices({
         if (meta && meta.logDataRows && meta.logDataRows.length) {
             logsByIndex.set(meta.index, meta.logDataRows);
         }
-        if (meta?.stressReplayCapture) capturesByIndex.set(meta.index, meta.stressReplayCapture);
     }
-    return { logsByIndex, capturesByIndex };
-}
-
-/**
- * @param {object} options
- * @returns Ergebnis der Operation.
- */
-export async function runMonteCarloLogsForIndices(options) {
-    const { logsByIndex } = await runMonteCarloSerialRerunForIndices(options);
     return logsByIndex;
-}
-
-/**
- * @param {object} options
- * @returns Ergebnis der Operation.
- */
-export async function runMonteCarloReplayCaptureForIndices(options) {
-    return runMonteCarloSerialRerunForIndices({ ...options, captureStressReplay: true });
 }
 
 /**
@@ -78,7 +59,7 @@ export async function runMonteCarloSerial({ inputs, monteCarloParams, widowOptio
     const analyzer = scenarioAnalyzer || new ScenarioAnalyzer(parameters.anzahl);
     const chunk = await runMonteCarloChunk({
         inputs, monteCarloParams: parameters, widowOptions, useCapeSampling,
-        onProgress, signal, runRange: { start: 0, count: parameters.anzahl }, collectWealthFan: true
+        onProgress, signal, runRange: { start: 0, count: parameters.anzahl }, collectWealthFan: true, collectPersonOutcomes: true
     });
     throwIfRunCancelled(signal);
     for (const meta of chunk.runMeta || []) {
@@ -92,8 +73,10 @@ export async function runMonteCarloSerial({ inputs, monteCarloParams, widowOptio
         inputs, totalRuns: parameters.anzahl, buffers: chunk.buffers,
         heatmap: chunk.heatmap, bins: chunk.bins, totals: chunk.totals,
         lists: chunk.lists, pathSummaries: chunk.pathSummaries, pathMissingness: chunk.pathMissingness,
-        allRealWithdrawalsSample: chunk.allRealWithdrawalsSample, wealthFan: chunk.wealthFan, displayHomeValueFan: chunk.displayHomeValueFan
-    }), chunk.technicalInventory);
+        allRealWithdrawalsSample: chunk.allRealWithdrawalsSample, wealthFan: chunk.wealthFan, displayHomeValueFan: chunk.displayHomeValueFan,
+        careAid: chunk.careAid || null,
+        droppedExpense: chunk.droppedExpense || null
+    }), chunk.technicalInventory, chunk.personOutcomeCounts);
     onProgress(100, { phase: 'evaluating', completedRuns: parameters.anzahl, totalRuns: parameters.anzahl });
     return {
         aggregatedResults, failCount: chunk.totals.failCount,

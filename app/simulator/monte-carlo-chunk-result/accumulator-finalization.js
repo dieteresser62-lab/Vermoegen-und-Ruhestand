@@ -140,6 +140,8 @@ export function finalizeMonteCarloChunkAccumulatorV1(accumulator) {
         completedRuns: accumulator.totalRuns,
         wealthFan: accumulator.wealthFanMissing ? null : accumulator.wealthFan,
         ...(accumulator.displayHomeValueFan ? { displayHomeValueFan: accumulator.displayHomeValueFan } : {}),
+        ...(accumulator.careAid ? { careAid: sortedCareAid(accumulator.careAid) } : {}),
+        ...(accumulator.droppedExpense ? { droppedExpense: sortedCareAid(accumulator.droppedExpense) } : {}),
         buffers: accumulator.buffers,
         pathSummaries: accumulator.pathSummaries,
         pathMissingness: accumulator.pathMissingness,
@@ -154,4 +156,12 @@ export function finalizeMonteCarloChunkAccumulatorV1(accumulator) {
         worstRunCare,
         runMeta
     };
+}
+
+/** FR-84: Läufe mit Hilfe zur Pflege in globaler Laufreihenfolge, unabhängig von der Reihenfolge der Pakete.
+ * @param {{runIndices: number[], firstYears: number[], sumsNominal: number[]}} careAid */
+function sortedCareAid(careAid) {
+    const order = careAid.runIndices.map((_, index) => index).sort((a, b) => careAid.runIndices[a] - careAid.runIndices[b]);
+    return { runIndices: order.map(index => careAid.runIndices[index]), firstYears: order.map(index => careAid.firstYears[index]),
+        sumsNominal: order.map(index => careAid.sumsNominal[index]) };
 }

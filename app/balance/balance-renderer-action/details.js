@@ -17,7 +17,7 @@ function previewModeText(fallback = []) {
     const entries = Array.isArray(summaries) && summaries.length ? summaries : fallback;
     if (!(entries.length > 1)) return '';
     try {
-        const plan = readBalanceHouseholdPlan({ storage: persistenceStorage, profileId: persistenceStorage.getItem('rs_current_profile') });
+        const plan = readBalanceHouseholdPlan({ storage: persistenceStorage });
         if (plan.status !== 'valid') return '';
         return withdrawalModeText(plan.entry.values.householdWithdrawalMode || '', entries.map(entry => ({ id: entry.profileId, name: entry.name || entry.profileId })));
     } catch { return ''; }
@@ -124,7 +124,7 @@ export const detailsMethods = {
             const sources = plan.sourceRows.filter(row => !taxes.includes(row));
             if (sources.length) {
                 const taxLabel = !plan.household && (plan.displaySteuer > 0 || action.moneyMarketTaxReduction > 0)
-                    ? `Steuern (${action.taxSettlement && !action.taxEstimated ? 'final, Settlement' : 'geschätzt'})` : 'Steuern';
+                    ? `Steuern (${action.taxSettlement && !action.taxEstimated ? 'abgerechnet' : 'geschätzt'})` : 'Steuern';
                 const columns = [...(plan.household ? ['Profil'] : []), 'Quelle', 'Tranche', 'Brutto', taxLabel, 'Netto'];
                 const values = sources.map(row => {
                     const q = row.source;
@@ -138,7 +138,7 @@ export const detailsMethods = {
             }
             const additional = plan.sourceSummaryRows.filter(row => !['Summe Quellen (Brutto):', 'Steuern (gesamt):'].includes(row.label));
             const taxDetails = taxes.filter(row => !sources.length || plan.household
-                || additional.length > 0 && row.label.includes('Settlement'));
+                || additional.length > 0 && row.label.includes('abgerechnet'));
             const details = [...taxDetails.map(row => ({ ...row, label: plan.household && row.profile ? `${row.profile}: ${row.label}` : row.label })), ...additional];
             if (details.length) content.appendChild(rowTable('Quellen- und Steuerdetails', details));
         }
@@ -251,7 +251,7 @@ export const detailsMethods = {
         set('printFooter', footer); texts.push(footer);
         if (engineVersion && outputs.printFooter) {
             const version = document.createElement('small'); version.className = 'balance-action-engine-version';
-            version.textContent = ` · Engine ${engineVersion}`; outputs.printFooter.appendChild(version);
+            version.textContent = ` · Rechenkern ${engineVersion}`; outputs.printFooter.appendChild(version);
         }
         this.copyText = texts.filter(Boolean).join('\n');
         bindInfoPopovers(content.ownerDocument || document, { root: content });

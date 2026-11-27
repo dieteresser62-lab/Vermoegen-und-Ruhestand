@@ -10,9 +10,14 @@ import {
     ESTIMATED_HISTORY_CUTOFF_YEAR,
     ESTIMATED_HISTORY_MAX_YEAR,
     HISTORICAL_DATA,
-    HISTORICAL_DATA_MANIFEST
+    HISTORICAL_DATA_MANIFEST,
+    HISTORICAL_DATENSTAND
 } from '../app/simulator/simulator-data.js';
 import { canonicalizeHistoricalContractValue } from '../app/simulator/historical-backtest-contract.js';
+
+// JD-1: Endjahr und Jahresanzahl kommen aus dem Datenstand; Werte bis 2025 bleiben fest.
+const DATA_END_YEAR = HISTORICAL_DATENSTAND.endYear;
+const DATA_YEAR_COUNT = DATA_END_YEAR - HISTORICAL_DATENSTAND.startYear + 1;
 
 console.log('--- Global Equity Research Chain Tests ---');
 
@@ -122,19 +127,28 @@ function independentAnnualReturnRecalculation() {
     }));
     const totalModernWeight = Object.values(modernWeights).reduce((sum, weight) => sum + weight, 0);
     for (const iso of countries) modernWeights[iso] /= totalModernWeight;
-    const currencyPerEur = (iso, period) => (
-        currencies[iso] === 'EUR'
-            ? 1
-            : Number(ecb.get(`${currencies[iso]}:${period}`).obs_value)
-    );
-
-    for (let year = 2021; year <= 2025; year += 1) {
+    // JD-2a: Jahre nach dem Grundbestand rechnet der Test aus den Eingangswerten im Fortschreibungsblock nach
+    // (Dezember Y aus `werte`, Dezember Y−1 aus `anschluss`), alle übrigen aus den gefilterten Eingaben.
+    const appendedInputs = new Map((GLOBAL_EQUITY_RESEARCH_CHAIN.fortschreibung?.lieferungen ?? []).map(entry => [entry.jahr, entry]));
+    for (let year = 2021; year <= DATA_END_YEAR; year += 1) {
         const previousPeriod = `${year - 1}-12`;
         const currentPeriod = `${year}-12`;
+        const appended = appendedInputs.get(year);
+        const delivered = period => (period === currentPeriod ? appended.werte : appended.anschluss.werte);
+        const shareIndex = (iso, period) => (appended
+            ? delivered(period).oecdDezember[iso]
+            : Number(oecd.get(`${iso}:${period}`).obs_value));
+        const currencyPerEur = (iso, period) => (
+            currencies[iso] === 'EUR'
+                ? 1
+                : appended
+                    ? delivered(period).ezbDezember[currencies[iso]]
+                    : Number(ecb.get(`${currencies[iso]}:${period}`).obs_value)
+        );
         returns[year] = countries.reduce((sum, iso) => {
             const priceReturn = (
-                Number(oecd.get(`${iso}:${currentPeriod}`).obs_value)
-                / Number(oecd.get(`${iso}:${previousPeriod}`).obs_value)
+                shareIndex(iso, currentPeriod)
+                / shareIndex(iso, previousPeriod)
                 - 1
             );
             const dividendReturn = Number(jst.get(`${iso}:2020`).eq_div_rtn);
@@ -154,7 +168,7 @@ console.log('Test 1: generated chain identity, period and source inputs are pinn
 assertEqual(GLOBAL_EQUITY_RESEARCH_CHAIN.schemaVersion, 'GlobalEquityResearchChainV1', 'Chain schema should be versioned');
 assertEqual(GLOBAL_EQUITY_RESEARCH_CHAIN.seriesId, 'global_equity_research_index', 'Chain should use the neutral canonical ID');
 assertEqual(GLOBAL_EQUITY_RESEARCH_CHAIN.period.startYear, 1925, 'Chain should start in 1925');
-assertEqual(GLOBAL_EQUITY_RESEARCH_CHAIN.period.endYear, 2025, 'Chain should end in 2025');
+assertEqual(GLOBAL_EQUITY_RESEARCH_CHAIN.period.endYear, DATA_END_YEAR, 'Chain should end at the data status end year');
 assertEqual(GLOBAL_EQUITY_RESEARCH_CHAIN.countryUniverse.length, 16, 'Chain should retain the fixed 16-country universe');
 assertEqual(GLOBAL_EQUITY_RESEARCH_CHAIN.numeraireTransition.usdThroughYear, 1950, 'USD proxy should include the complete 1950 return');
 assertEqual(GLOBAL_EQUITY_RESEARCH_CHAIN.numeraireTransition.germanInvestorCurrencyFromYear, 1951, 'German investor currency should start with the 1951 return');
@@ -173,7 +187,7 @@ console.log('✓ identity and pinned inputs OK');
 
 console.log('Test 2: every annual return and level is contiguous and linked exactly once');
 let previousLevel = GLOBAL_EQUITY_RESEARCH_CHAIN.base.level;
-for (let year = 1925; year <= 2025; year += 1) {
+for (let year = 1925; year <= DATA_END_YEAR; year += 1) {
     const annualReturn = GLOBAL_EQUITY_RESEARCH_CHAIN.annualReturns[year];
     const level = GLOBAL_EQUITY_RESEARCH_CHAIN.indexLevels[year];
     assert(Number.isFinite(annualReturn) && annualReturn > -1, `${year} annual return should be finite and above -100%`);
@@ -184,8 +198,8 @@ for (let year = 1925; year <= 2025; year += 1) {
     assertEqual(Object.prototype.hasOwnProperty.call(HISTORICAL_DATA[year], 'msci_eur'), false, `${year} should not retain the retired field`);
     previousLevel = level;
 }
-assertEqual(Object.keys(GLOBAL_EQUITY_RESEARCH_CHAIN.annualReturns).length, 101, 'Return chain should contain 101 years');
-assertEqual(Object.keys(GLOBAL_EQUITY_RESEARCH_INDEX_LEVELS).length, 101, 'Level chain should contain 101 years');
+assertEqual(Object.keys(GLOBAL_EQUITY_RESEARCH_CHAIN.annualReturns).length, DATA_YEAR_COUNT, `Return chain should contain ${DATA_YEAR_COUNT} years`);
+assertEqual(Object.keys(GLOBAL_EQUITY_RESEARCH_INDEX_LEVELS).length, DATA_YEAR_COUNT, `Level chain should contain ${DATA_YEAR_COUNT} years`);
 console.log('✓ contiguous chain and runtime projection OK');
 
 console.log('Test 3: documented country gaps and evidence segments stay explicit');
@@ -244,7 +258,7 @@ console.log('✓ hashes and modern reference years OK');
 console.log('Test 5: all 101 annual returns are independently recalculated from the filtered inputs');
 {
     const independentlyCalculated = independentAnnualReturnRecalculation();
-    for (let year = 1925; year <= 2025; year += 1) {
+    for (let year = 1925; year <= DATA_END_YEAR; year += 1) {
         assertClose(
             independentlyCalculated[year],
             GLOBAL_EQUITY_RESEARCH_CHAIN.annualReturns[year],

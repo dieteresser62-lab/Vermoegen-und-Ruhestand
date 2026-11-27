@@ -2,8 +2,8 @@
  * Die Feldkennungen bleiben die des Simulators (`sim_<id>`); geschrieben wird genau das, was der Simulator bei derselben
  * Eingabe schreibt. Lesen schreibt nie. */
 import { parseRememberedCareCosts, rememberedCareCostsRecord, resolveCareSetting } from './care-cost-resolver.js';
-import { careSettingsStorage, sharesHouseholdCareValues } from './care-profile-settings.js';
-import { OWN_CARE_PRICES_KEY, careDriftScheduleOf, careValuesWithPrices, ownCarePricesWithPatch, resolveCarePrices } from './care-prices.js';
+import { careSettingsStorage } from './care-profile-settings.js';
+import { careDriftScheduleOf, careValuesWithPrices, resolveCarePrices } from './care-prices.js';
 import { careDriftLabel, CARE_DRIFT_YEAR_RANGE } from './care-cost-drift.js';
 import { HOUSEHOLD_CARE_VALUES_KEY, officialCareCosts, parseCareValues, readCareValues, residentialComponents, residentialMonthly } from './household-care-values.js';
 import { defaultCareForm, normalizeCareForm } from './care-benefits.js';
@@ -78,7 +78,7 @@ export const normalizePflegeKostenPreset = value => value === 'stationaer' ? 'cu
 export function rememberedCareCosts(storage = persistenceStorage) {
     const remembered = parseRememberedCareCosts(careSettingsStorage(storage).getItem(PFLEGE_CUSTOM_COSTS_KEY));
     if (!remembered || remembered.marked || !remembered.defaultGrades.length) return remembered?.values ?? null;
-    const prices = resolveCarePrices(readCareValues(storage), careSettingsStorage(storage), { shared: sharesHouseholdCareValues(storage) });
+    const prices = resolveCarePrices(readCareValues(storage), careSettingsStorage(storage));
     return Object.fromEntries(GRADES.map(grade => [grade, remembered.defaultGrades.includes(grade) ? String(prices.costs[grade]) : remembered.values[grade]]));
 }
 
@@ -104,16 +104,15 @@ export function carePresetValues(presetKey, storage = persistenceStorage) {
     return PFLEGE_COST_PRESETS[presetKey]?.values ?? null;
 }
 
-/** GN-2b/GN-2c: Das letzte Jahr der ersten Rate ist ein ganzes Jahr von 2026 bis 2100; leer, negativ oder anders → ungültig.
+/** GN-2b/GN-2c: Das letzte Jahr der ersten Rate ist ein ganzes Jahr im Bereich CARE_DRIFT_YEAR_RANGE; leer, negativ oder anders → ungültig.
  * @param {unknown} raw Feldwert. @returns {boolean} */
 export function validCareDriftYear(raw) {
     const text = String(raw ?? '').trim(), year = Number(text.replace(',', '.'));
     return text !== '' && Number.isInteger(year) && year >= CARE_DRIFT_YEAR_RANGE.min && year <= CARE_DRIFT_YEAR_RANGE.max;
 }
 
-/** Bewusste Eingabe des Nutzers: Preisblock mit Herkunft „von Hand“ schreiben; die Markierung schützt vor Umdeutung (B3).
- * Haushaltsmitglieder schreiben den Pflegewerte-Record, Außenpersonen ihren eigenen Preisblock beim eigenen Preisbesitzer
- * (Gutachten PFA-4, Befund 2); abgeleitete amtliche Beträge werden nicht gespeichert.
+/** Bewusste Eingabe des Nutzers: Preisblock mit Herkunft „von Hand“ in den Pflegewerte-Record schreiben; die Markierung
+ * schützt vor Umdeutung (B3). Abgeleitete amtliche Beträge werden nicht gespeichert.
  *
  * @param {string} id Feldkennung.
  * @param {string} raw Feldwert.
@@ -131,10 +130,6 @@ export function writeCarePriceField(id, raw, { preset = /** @type {HTMLSelectEle
         : id === 'pflegeKostenDriftDanach' ? { driftAfterPercent: value } : { costs: { [grade]: value } };
     if (!patch) return;
     const priceYear = appNow().getFullYear(), owner = careSettingsStorage(persistenceStorage);
-    if (!sharesHouseholdCareValues(persistenceStorage)) {
-        owner.setItem(OWN_CARE_PRICES_KEY, JSON.stringify(ownCarePricesWithPatch(owner, patch, { priceYear })));
-        return;
-    }
     const next = careValuesWithPrices(persistenceStorage.getItem(HOUSEHOLD_CARE_VALUES_KEY), patch, { priceYear, legacySource: owner });
     persistenceStorage.setItem(HOUSEHOLD_CARE_VALUES_KEY, JSON.stringify(next));
 }
@@ -184,7 +179,7 @@ export function writeCarePreset(next, previous, currentCosts) {
  */
 export function readCareFieldValues(storage = persistenceStorage) {
     const owner = careSettingsStorage(storage);
-    const prices = resolveCarePrices(readCareValues(storage), owner, { shared: sharesHouseholdCareValues(storage) });
+    const prices = resolveCarePrices(readCareValues(storage), owner);
     const stored = id => resolveCareSetting(`sim_${id}`, owner.getItem(`sim_${id}`));
     // PFA-12: Alte Flex-Vorgabe ohne Marke nur projizieren, wie der Simulator sie beim Start umstellt.
     const flexKeys = [...CARE_FLEX_FIELD_KEYS, CARE_FLEX_MIGRATION_KEY];
@@ -227,8 +222,7 @@ export function careRecordLimitText(id) {
 /** UR-2: Ein Pflegegeld- oder Heimbetrag (€/Monat) in den Pflegewerte-Record des Haushalts, wie „Werte ändern …“ im
  * Jahresabschluss: Geändert werden nur der Wert, `origin: 'von Hand'`, `asOf` und `validFrom` (laufender Monat, im
  * Spielbereich das Testdatum); Quelle und Bestätigungsjahr bleiben. Beim Heim rechnet der Eigenanteil des ersten Jahres
- * neu. Geprüft mit `parseCareValues`; ein unveränderter Betrag schreibt nichts. Die Werte gelten für den Haushalt,
- * deshalb ändert sie nur eine Person, die zum Haushalt gehört.
+ * neu. Geprüft mit `parseCareValues`; ein unveränderter Betrag schreibt nichts. Die Werte gelten für den Haushalt.
  *
  * @param {string} id Kennung aus {@link CARE_RECORD_FIELDS}.
  * @param {string|number} raw Betrag in €/Monat (kanonischer Text oder Zahl).
@@ -238,7 +232,6 @@ export function careRecordLimitText(id) {
 export function writeCareRecordField(id, raw, { storage = persistenceStorage } = {}) {
     const target = CARE_RECORD_FIELDS[id];
     if (!target) throw new Error(`Unbekanntes Pflegewertfeld: ${id}`);
-    if (!sharesHouseholdCareValues(storage)) throw new Error('Pflegegeld und Heimwerte gelten für den Haushalt; ändern in der Ansicht einer Person im Haushalt.');
     const text = String(raw ?? '').trim(), value = Number(text.replace(',', '.'));
     if (!text || !Number.isFinite(value) || value < 0) throw new Error('Bitte einen Betrag ab 0 eintragen.');
     if (value > CARE_RECORD_LIMITS[target[0]]) throw new Error(careRecordLimitText(id));
@@ -266,13 +259,12 @@ export function writeCareRecordField(id, raw, { storage = persistenceStorage } =
  */
 export function careValuesSummaryText(storage = persistenceStorage) {
     const values = readCareFieldValues(storage), careValues = readCareValues(storage);
-    const owner = careSettingsStorage(storage), shared = sharesHouseholdCareValues(storage);
-    const prices = resolveCarePrices(careValues, owner, { shared });
+    const prices = resolveCarePrices(careValues, careSettingsStorage(storage));
     const staffel = values.pflegeKostenStaffelPreset === 'amtlich' ? 'Amtlicher Durchschnitt'
         : `Staffel ${GRADES.map(grade => euro(prices.costs[grade] / 12)).join(' / ')} €/Monat`;
     const stand = prices.priceYear ? `Preisstand ${prices.priceYear}` : prices.origin;
     const percent = id => Number(values[id]).toLocaleString('de-DE');
     const regional = values.pflegeRegionalZuschlag === '0' ? '' : `, regionaler Zuschlag ${percent('pflegeRegionalZuschlag')} %`;
     const flex = `Flex-Level ${GRADES.map(grade => percent(`pflegeStufe${grade}FlexCut`)).join(' / ')} %`;
-    return `${shared ? '' : 'eigene Werte · '}${staffel}, Heim ${euro(careValues.residential.monthly)} €/Monat im ersten Jahr, Kostenanstieg ${careDriftLabel(careDriftScheduleOf(prices))}${regional} · ${flex} · ${stand}`;
+    return `${staffel}, Heim ${euro(careValues.residential.monthly)} €/Monat im ersten Jahr, Kostenanstieg ${careDriftLabel(careDriftScheduleOf(prices))}${regional} · ${flex} · ${stand}`;
 }

@@ -49,6 +49,9 @@ function createRestoreError(cause, rollbackError = null) {
  */
 export async function replaceRecordsTransactionalWith(storage, records, options = {}) {
     const allowKey = typeof options.allowKey === 'function' ? options.allowKey : () => true;
+    // NG-15: Die Rücknahme kann eine eigene, zustandsfreie Schlüsselprüfung erhalten. Sonst scheitert sie an derselben
+    // Frischeprüfung wie der Schreibvorgang und sperrt sich selbst.
+    const rollbackAllowKey = typeof options.rollbackAllowKey === 'function' ? options.rollbackAllowKey : allowKey;
     if (!records || typeof records !== 'object' || Array.isArray(records)) {
         throw new Error('Restore-Records muessen ein Objekt sein.');
     }
@@ -120,25 +123,27 @@ export async function replaceRecordsTransactionalWith(storage, records, options 
         };
     } catch (cause) {
         let rollbackError = null;
+        const rollbackOwnKey = key => rollbackAllowKey(key) && unchanged(key);
+        const rollbackOwnRecords = records => Object.fromEntries(Object.entries(records).filter(([key]) => rollbackOwnKey(key)));
         try {
-            const currentRecords = await storage.readPersistedRecords(allowKey);
+            const currentRecords = await storage.readPersistedRecords(rollbackAllowKey);
             const rollbackVisibleKeys = Object.fromEntries(
                 [...new Set([
                     ...Object.keys(currentRecords),
                     ...Object.keys(targetRecords)
                 ])].map(key => [key, currentRecords[key] ?? targetRecords[key]])
             );
-            const rollbackPlan = createFullReplacePlan(previousRecords, rollbackVisibleKeys, ownKey);
+            const rollbackPlan = createFullReplacePlan(previousRecords, rollbackVisibleKeys, rollbackOwnKey);
             await storage.replaceLiveRecords(previousRecords, {
                 ...options,
                 ...rollbackPlan,
                 postValidate: undefined,
                 restoreLock: true
             });
-            const confirmedRollback = await storage.readPersistedRecords(allowKey);
-            const confirmedRollbackCache = await storage.captureRecordsByPolicy(allowKey);
-            if (!recordsMatch(ownRecords(previousRecords), ownRecords(confirmedRollback))
-                || !recordsMatch(ownRecords(previousRecords), ownRecords(confirmedRollbackCache))) {
+            const confirmedRollback = await storage.readPersistedRecords(rollbackAllowKey);
+            const confirmedRollbackCache = await storage.captureRecordsByPolicy(rollbackAllowKey);
+            if (!recordsMatch(rollbackOwnRecords(previousRecords), rollbackOwnRecords(confirmedRollback))
+                || !recordsMatch(rollbackOwnRecords(previousRecords), rollbackOwnRecords(confirmedRollbackCache))) {
                 throw createPersistenceError(
                     'persistence_rollback_readback_mismatch',
                     'Backend oder Cache ist nach dem Rollback nicht bytegleich zum vorherigen Livebestand.'

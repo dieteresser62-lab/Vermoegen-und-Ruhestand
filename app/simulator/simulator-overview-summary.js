@@ -9,25 +9,9 @@ import { effectiveRunAssumptions } from './simulator-run-assumptions.js';
 import { personDataContextFor } from './simulator-person-overrides.js';
 import { projectMinimumFlexDisplay } from './results-metrics.js';
 import { quantile } from './simulator-utils.js';
+import { appNow } from '../shared/app-clock.js';
 
 const generations = new Map();
-const workshopProvenanceByInputs = new WeakMap();
-/**
- * @param inputs Wirksame Simulationseingaben.
- * @returns Ergebnis der Operation.
- */
-export const workshopProvenanceFor = inputs => workshopProvenanceByInputs.get(inputs) || null;
-/** Nur ein vorhandener Laufbeleg darf den isolierten Anzeigeklon begleiten.
- *
- * @param inputs Wirksame Simulationseingaben.
- * @returns Ergebnis der Operation.
- */
-export function cloneWorkshopInputsForDisplay(inputs) {
-    const clone = structuredClone(inputs || {});
-    const provenance = workshopProvenanceFor(inputs);
-    if (provenance) workshopProvenanceByInputs.set(clone, provenance);
-    return clone;
-}
 const numeric = value => Number.isFinite(value) ? value : null;
 function liveValues(storage) {
     return Object.fromEntries(Array.from({ length: storage.length }, (_, index) => storage.key(index)).filter(Boolean)
@@ -41,44 +25,29 @@ function liveValues(storage) {
  * @param [settings]
  * @param {object} [options]
  * @param [options.storage]
- * @param [options.workshopProvenance]
  * @returns Ergebnis der Operation.
  */
-export function beginSimulationSummary(kind, inputs, settings = {}, { storage = persistenceStorage, workshopProvenance = null } = {}) {
+export function beginSimulationSummary(kind, inputs, settings = {}, { storage = persistenceStorage } = {}) {
     try {
-        // Ein neuer MC-Start darf keinen Beleg eines früheren Starts wiederverwenden.
-        if (kind === 'montecarlo' && inputs && typeof inputs === 'object') workshopProvenanceByInputs.delete(inputs);
         const planDeviationApplied = Boolean(planTrialContextFor(inputs)?.deviationApplied);
         const activeId = storage.getItem('rs_current_profile'), registry = loadProfileRegistry(storage).value;
         if (!registry?.profiles[activeId] || PersistenceFacade.hasSyncWriteBlocks() || globalThis.window?.__profileRecoveryBlocker) return null;
-        const ids = Object.keys(registry.profiles).filter(id => registry.profiles[id].meta.belongsToHousehold !== false);
+        const ids = Object.keys(registry.profiles);
         const scope = overviewScope(ids.length === 1 && ids[0] === activeId ? 'single' : 'household', ids);
         const liveData = liveValues(storage);
         const source = /** @type {SourceFingerprint} */ (sourceFingerprint)({ registry, activeId, liveData, scope, kind });
         if (!source) return null;
-        if (kind === 'montecarlo' && !planDeviationApplied && inputs && typeof inputs === 'object') {
-            const workshopSource = /** @type {SourceFingerprint} */ (sourceFingerprint)({ registry, activeId, liveData, scope, kind: 'workshop' });
-            if (workshopSource) workshopProvenanceByInputs.set(inputs, Object.freeze({
-                expectedProfileId: activeId, fingerprintVersion: FINGERPRINT_VERSION,
-                scope: Object.freeze({ ...scope, ids: Object.freeze([...scope.ids]) }), sourceFingerprint: workshopSource
-            }));
-        }
-        if (kind === 'workshop' && (!workshopProvenance
-            || workshopProvenance.fingerprintVersion !== FINGERPRINT_VERSION
-            || workshopProvenance.expectedProfileId !== activeId
-            || fingerprint(workshopProvenance.scope) !== fingerprint(scope)
-            || workshopProvenance.sourceFingerprint !== source)) return null;
         const generation = Symbol(kind);
         generations.set(kind, generation);
-        return Object.freeze({ kind, scope, planDeviationApplied, expectedProfileId: activeId, sourceFingerprint: kind === 'workshop' ? workshopProvenance.sourceFingerprint : source,
-            fingerprintVersion: FINGERPRINT_VERSION, runFingerprint: fingerprint(effectiveRunAssumptions(kind === 'workshop' ? 'backtest' : kind, inputs, settings)),
-            deviationApplied: kind === 'workshop' || Boolean(personDataContextFor(inputs)?.deviationApplied), generation });
+        return Object.freeze({ kind, scope, planDeviationApplied, expectedProfileId: activeId, sourceFingerprint: source,
+            fingerprintVersion: FINGERPRINT_VERSION, runFingerprint: fingerprint(effectiveRunAssumptions(kind, inputs, settings)),
+            deviationApplied: Boolean(personDataContextFor(inputs)?.deviationApplied), generation });
     } catch (error) { console.error('Ausgangsbasis der Ergebnisablage nicht verfügbar:', error); return null; }
 }
 
 /** @param {ReturnType<typeof beginSimulationSummary>} context @param {JsonRecord} result
- * @param {{completedAt?: Date; requestedRuns?: number; preferredVariantId?: string}} [options] @returns Ergebnisbeleg oder null, wenn keine gültige Ablage möglich ist. */
-export function buildSimulationSummary(context, result, { completedAt = new Date(), requestedRuns, preferredVariantId } = {}) {
+ * @param {{completedAt?: Date; requestedRuns?: number}} [options] @returns Ergebnisbeleg oder null, wenn keine gültige Ablage möglich ist. */
+export function buildSimulationSummary(context, result, { completedAt = appNow(), requestedRuns } = {}) {
     if (!context || context.planDeviationApplied) return null;
     /** @type {Record<string, number | null>} */
     let metrics, statement, priceBasis;
@@ -101,39 +70,27 @@ export function buildSimulationSummary(context, result, { completedAt = new Date
         const complete = Array.isArray(values) && values.length === runs && values.every(Number.isFinite);
         metrics = { runs, covered: inventory.all_dead + inventory.horizon_exhausted, successPct: inventory.floorCoveragePct,
             median: complete ? numeric(quantile(values, .5)) : null, p5: complete ? numeric(quantile(values, .05)) : null };
-        statement = 'Floor gedeckt bis Laufende';
+        statement = 'Grundbedarf gedeckt bis Laufende';
         priceBasis = 'Geldvermögen nominal, am Laufende einschließlich Pflegereserve';
-    } else if (context.kind === 'workshop') {
-        const candidates = (result?.variantOrder || []).filter(id => result.pairwise?.some(pair => pair.variantId === id && pair.comparable));
-        const id = candidates.includes(preferredVariantId) ? preferredVariantId : candidates.at(-1);
-        const variant = result?.variants?.find(item => item.variantId === id);
-        const outcomeLabels = { ruin: 'Floor nicht gedeckt', all_dead: 'Haushalt verstorben', horizon_exhausted: 'Zeitraum überstanden' };
-        if (!variant || !outcomeLabels[variant.terminalStatus]) return null;
-        const baseline = result.variants.find(item => item.variantId === 'baseline');
-        statement = `${String(variant.label || 'Alternative').slice(0, 65)} gegen ${String(baseline?.label || 'Baseline').slice(0, 45)}: ${outcomeLabels[variant.terminalStatus]}`.slice(0, 180).replace(/[\x00-\x1f]/g, ' ');
-        metrics = { endWealthReal: numeric(variant.summary?.finalValueRealEur) };
-        priceBasis = 'hypothetischer Vergleich auf einem fixierten Pfad · real, Preise zum Pfadstart';
     } else return null;
-    if (context.kind !== 'workshop') {
-        const backtest = context.kind === 'backtest';
-        const display = projectMinimumFlexDisplay(result, { backtest });
-        const block = backtest ? result?.metrics?.minimumFlexRestriction ?? result?.minimumFlexRestriction : result?.minimumFlexRestriction;
-        if (display.legacy) {
-            const value = backtest ? result?.metrics?.values?.flex_reduction_years_gte_10_pct : result?.cutYearSharePct?.p50;
-            if (Number.isFinite(value)) metrics[backtest ? 'legacyFlexCutYearCount' : 'legacyFlexCutYearSharePct'] = value;
-        }
-        if (block) {
-            metrics.minimumFlexStartNominalEur = numeric(block.startMinimumFlexAnnual);
-            const path = backtest ? block.path : block;
-            metrics.minimumFlexYearSharePct = display.valid ? numeric(backtest ? path.yearSharePct : block.yearSharePctP50) : null;
-            if (backtest) {
-                metrics.minimumFlexAffectedYearCount = display.valid ? numeric(path.affectedYearCount) : null;
-                metrics.minimumFlexObservationCount = display.valid ? numeric(path.observationCount) : null;
-            } else metrics.minimumFlexAffectedRunSharePct = display.valid ? numeric(block.affectedRunSharePct) : null;
-            metrics.flexPaidMedianNominalEur = display.valid ? numeric(backtest ? path.paidMedianNominalEur : block.paidMedianNominalEurP50) : null;
-            metrics.flexDesiredMedianNominalEur = display.valid ? numeric(backtest ? path.desiredMedianNominalEur : block.desiredMedianNominalEurP50) : null;
-            metrics.flexPaidMinimumNominalEur = display.valid ? numeric(backtest ? path.paidMinimumNominalEur : block.paidMinimumNominalEurP50) : null;
-        }
+    const backtest = context.kind === 'backtest';
+    const display = projectMinimumFlexDisplay(result, { backtest });
+    const block = backtest ? result?.metrics?.minimumFlexRestriction ?? result?.minimumFlexRestriction : result?.minimumFlexRestriction;
+    if (display.legacy) {
+        const value = backtest ? result?.metrics?.values?.flex_reduction_years_gte_10_pct : result?.cutYearSharePct?.p50;
+        if (Number.isFinite(value)) metrics[backtest ? 'legacyFlexCutYearCount' : 'legacyFlexCutYearSharePct'] = value;
+    }
+    if (block) {
+        metrics.minimumFlexStartNominalEur = numeric(block.startMinimumFlexAnnual);
+        const path = backtest ? block.path : block;
+        metrics.minimumFlexYearSharePct = display.valid ? numeric(backtest ? path.yearSharePct : block.yearSharePctP50) : null;
+        if (backtest) {
+            metrics.minimumFlexAffectedYearCount = display.valid ? numeric(path.affectedYearCount) : null;
+            metrics.minimumFlexObservationCount = display.valid ? numeric(path.observationCount) : null;
+        } else metrics.minimumFlexAffectedRunSharePct = display.valid ? numeric(block.affectedRunSharePct) : null;
+        metrics.flexPaidMedianNominalEur = display.valid ? numeric(backtest ? path.paidMedianNominalEur : block.paidMedianNominalEurP50) : null;
+        metrics.flexDesiredMedianNominalEur = display.valid ? numeric(backtest ? path.desiredMedianNominalEur : block.desiredMedianNominalEurP50) : null;
+        metrics.flexPaidMinimumNominalEur = display.valid ? numeric(backtest ? path.paidMinimumNominalEur : block.paidMinimumNominalEurP50) : null;
     }
     const { kind, scope, sourceFingerprint: source, runFingerprint, fingerprintVersion, deviationApplied } = context;
     return { kind, scope, sourceFingerprint: source, runFingerprint, fingerprintVersion, deviationApplied,

@@ -8,23 +8,18 @@ import { prepareHistoricalData, updateStartPortfolioDisplay } from './simulator-
 import { initTranchenStatus, syncTranchenToInputs } from '../tranches/depot-tranchen-status.js';
 import { initializePflegeUIControls } from './simulator-ui-pflege.js';
 import { initRente2ConfigWithLocalStorage } from './simulator-ui-rente.js';
-import { initAutoOptimizeUI, setAutoOptimizeDefaults } from './auto_optimize_ui.js';
-import { initSweepDefaultsWithLocalStorageFallback } from './simulator-sweep.js';
 import { initializeBacktestUI } from './simulator-backtest.js';
 import { initInputPersistence } from './simulator-main-input-persist.js';
 import { initRentAdjModeUI } from './simulator-main-rent-adjust.js';
 import { initDynamicFlexControls, refreshDynamicFlexControls, syncDynamicFlexPresetSelection } from './simulator-main-dynamic-flex.js';
-import { initSweepUIControls } from './simulator-main-sweep-ui.js';
 import { initTabSwitching } from './simulator-main-tabs.js';
 import { initPartnerToggle } from './simulator-main-partner.js';
 import { initStressPresetOptions } from './simulator-main-stress.js';
 import { initSimulatorProfileSelection } from './simulator-main-profiles.js';
 import { initMonteCarloMethodControls, initMonteCarloStartYearControls } from './monte-carlo-ui.js';
 import { initThreeBucketControls } from './simulator-main-3bucket.js';
-import { initStressReplayUI } from './stress-replay-ui.js';
 import { initMonteCarloResultCockpit } from './mc-result-cockpit.js';
 import { initDecisionComparison } from './decision-comparison-ui.js';
-import { initWorkshopUI } from './simulator-workshop-ui.js';
 import { initializeAssumptionsUI } from './simulator-assumptions-ui.js';
 import { initializeSimulatorTrancheAdapter } from './simulator-portfolio-display.js';
 
@@ -37,7 +32,7 @@ export function selfCheckEngine() {
     if (typeof window.EngineAPI === 'undefined' || typeof window.EngineAPI.getVersion !== 'function') {
         const footer = document.getElementById('engine-mismatch-footer');
         if (footer) {
-            footer.textContent = `FEHLER: Die Engine-Datei 'engine.js' konnte nicht geladen werden!`;
+            footer.textContent = `Der Rechenkern konnte nicht geladen werden.`;
             footer.style.display = 'block';
         }
         return;
@@ -81,18 +76,8 @@ export async function initializeSimulatorApp() {
     initMonteCarloMethodControls();
     initMonteCarloStartYearControls();
     initMonteCarloResultCockpit();
-    initStressReplayUI();
 
     initTabSwitching();
-    initWorkshopUI();
-
-    // Sweep defaults with localStorage persistence
-    initSweepDefaultsWithLocalStorageFallback();
-    initSweepUIControls();
-
-    // Auto-Optimize UI initialization
-    setAutoOptimizeDefaults();
-    initAutoOptimizeUI();
 
     // Partner/Rente-2 configuration with localStorage persistence
     initRente2ConfigWithLocalStorage();

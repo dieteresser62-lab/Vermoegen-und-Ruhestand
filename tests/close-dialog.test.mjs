@@ -1,4 +1,5 @@
 import { createCloseDialog, dialogElements } from '../app/shared/close-dialog.js';
+import { createInfoPopover } from '../app/shared/designsystem-info-popover.js';
 
 /** DOM-Mechanik allein wird gedoppelt; alle Fachtests verwenden die Produktdienste. */
 export function createDialogFixture() {
@@ -34,14 +35,18 @@ export function createDialogFixture() {
             replaceChildren(...children) { [...this.children].forEach(child => child.remove()); this.textContent = ''; this.append(...children); },
             appendChild(child) { child.remove(); child.parent = this; this.children.push(child); return child; },
             insertBefore(child, before) { child.remove(); child.parent = this; const index = this.children.indexOf(before); this.children.splice(index < 0 ? this.children.length : index, 0, child); return child; },
-            remove() { if (this.parent) this.parent.children = this.parent.children.filter(child => child !== this); this.parent = null; },
+            remove() {
+                if (this.isConnected && doc.activeElement && this.contains(doc.activeElement)) doc.activeElement = doc.body;
+                if (this.parent) this.parent.children = this.parent.children.filter(child => child !== this);
+                this.parent = null;
+            },
             querySelectorAll(selector) { return dialogElements(this).slice(1).filter(node => matches(node, selector)); },
             querySelector(selector) { return this.querySelectorAll(selector)[0] || null; },
             addEventListener(type, fn) { if (!listeners.has(type)) listeners.set(type, new Set()); listeners.get(type).add(fn); },
             removeEventListener(type, fn) { listeners.get(type)?.delete(fn); },
             fire(type, fields = {}) {
                 const event = { target: this, prevented: false, defaultPrevented: false, preventDefault() { this.prevented = true; this.defaultPrevented = true; }, stopPropagation() {}, ...fields };
-                const jobs = []; for (let node = this; node; node = ['click', 'input', 'change'].includes(type) ? node.parent : null) for (const fn of [...node.listeners.get(type) || []]) jobs.push(fn(event));
+                const jobs = []; for (let node = this; node; node = ['click', 'input', 'change', 'keydown'].includes(type) ? node.parent : null) for (const fn of [...node.listeners.get(type) || []]) jobs.push(fn(event));
                 return Promise.all(jobs);
             },
             listeners, focus() { doc.activeElement = this; },
@@ -64,7 +69,7 @@ export function createDialogFixture() {
 }
 
 /** FR-4/FR-5: bestehende Speichertests besuchen Schritte und bestätigen Pflegewerte. */
-export async function prepareCloseFixture(doc, { marketReading = 'year_end' } = {}) {
+export async function prepareCloseFixture(doc, { confirmTagesgeld = true, confirmCape = true } = {}) {
     const findRoot = () => dialogElements(doc.body).find(node => Object.hasOwn(node.dataset || {}, 'closeDialogHost'));
     for (let turn = 0; turn < 400 && !findRoot(); turn++) await new Promise(resolve => setTimeout(resolve, 1));
     const root = findRoot();
@@ -74,9 +79,10 @@ export async function prepareCloseFixture(doc, { marketReading = 'year_end' } = 
         if (row.dataset.visited !== 'true' && row.dataset.locked !== 'true') await root.querySelector(`[data-close-dialog-activate="${row.dataset.closeDialogStep}"]`)?.fire('click');
     }
     for (const node of elements().filter(node => Object.hasOwn(node.dataset || {}, 'annualCareConfirm'))) await node.fire('click');
+    // JA-4: Alte Tagesgeld-Stände (NG-13) und ein großer CAPE-Sprung (S2) werden wie die Pflegewerte bestätigt.
+    if (confirmTagesgeld) for (const node of elements().filter(node => Object.hasOwn(node.dataset || {}, 'tagesgeldConfirmPerson'))) await node.fire('click');
+    if (confirmCape) for (const node of elements().filter(node => Object.hasOwn(node.dataset || {}, 'annualCapeConfirm'))) await node.fire('click');
     await settleAnnualReading(doc);
-    const choice = marketReading && doc.querySelector(`[data-annual-market-reading="${marketReading}"]`);
-    if (choice) { choice.checked = true; await choice.fire('change'); await settleAnnualReading(doc); }
 }
 
 export async function settleAnnualReading(doc) {
@@ -84,7 +90,7 @@ export async function settleAnnualReading(doc) {
         await new Promise(resolve => setTimeout(resolve, 0));
         if (doc.querySelector('[data-annual-reading-pending]')?.dataset.annualReadingPending !== 'true') return;
     }
-    throw new Error('Jahreshochvergleich wurde nicht fertig.');
+    throw new Error('Allzeithoch und Marktlage wurden nicht fertig.');
 }
 
 // Fixtureimporte führen keine fremden Assertions vor deren eigenem Suiteeintrag aus.
@@ -113,6 +119,29 @@ if (!new URL(import.meta.url).searchParams.has('fixture')) {
     handle.setBusy(false); await handle.root.fire('keydown', { key: 'Escape' }); await handle.closed;
     assert(f.doc.activeElement === returned && !f.doc.body.children.length, 'Cleanup entfernt Host und gibt Fokus zurück');
     assert(f.nodes.every(node => [...node.listeners.values()].every(set => !set.size)), 'Komponentenlistener vollständig entfernt');
+}
+{
+    const { doc } = createDialogFixture(), body = doc.createElement('div');
+    const info = createInfoPopover(doc, 'Erklärung', 'Ein Hinweis zum Abschluss.');
+    const otherInfo = createInfoPopover(doc, 'Weitere Erklärung', 'Ein weiterer Hinweis zum Abschluss.');
+    const input = doc.createElement('input');
+    body.append(info, otherInfo, input);
+    const handle = createCloseDialog({ doc, id: 'infoEscape', title: 'Abschluss', steps: [{ id: 'step', title: 'Schritt', content: body }] });
+    const button = info.querySelector('.ds-info-button');
+    input.focus();
+    await button.fire('click');
+    await otherInfo.fire('mouseenter');
+    assert(info.dataset.visible === 'true' && otherInfo.dataset.visible === 'true', 'Angeheftetes und mit der Maus geöffnetes ⓘ sind sichtbar');
+    await input.fire('keydown', { key: 'Escape' });
+    assert(handle.root.open && info.dataset.visible === 'false' && otherInfo.dataset.visible === 'false' && doc.activeElement === input, 'Ein Escape schließt beide ⓘ und belässt den Eingabefokus');
+    button.focus();
+    await info.fire('focusin');
+    await otherInfo.fire('mouseenter');
+    await button.fire('keydown', { key: 'Escape' });
+    assert(handle.root.open && info.dataset.visible === 'false' && otherInfo.dataset.visible === 'false', 'Escape am Info-Knopf schließt beide ⓘ');
+    await button.fire('keydown', { key: 'Escape' });
+    assert(!handle.root.open, 'Zweites Escape erreicht den Dialog trotz Fokus am geschlossenen ⓘ');
+    await handle.closed;
 }
 {
     const f = createDialogFixture(), returned = f.doc.createElement('button');
@@ -149,7 +178,7 @@ if (!new URL(import.meta.url).searchParams.has('fixture')) {
     await f.doc.querySelector('[data-close-dialog-activate="b"]').fire('click');
     const neutral = f.doc.querySelector('[data-close-dialog-step="b"]');
     assertEqual(neutral.dataset.state, 'not_applicable', 'Entfällt bleibt neutral auch bei Wiederöffnung');
-    assertEqual(f.doc.querySelector('[data-close-dialog-activate="b"]').querySelector('.close-dialog-step-symbol').textContent, '–', 'Entfällt hat keinen Haken');
+    assertEqual(f.doc.querySelector('[data-close-dialog-activate="b"]').querySelector('.close-dialog-step-symbol').textContent, '2', 'OP-3: Entfällt zeigt die Nummer, den Stand nennt die Pille');
     h.setBusy(true); await f.doc.querySelector('[data-close-dialog-next="b"]').fire('click');
     assertEqual(f.doc.querySelector('[data-close-dialog-activate="b"]').getAttribute('aria-current'), 'step', 'Busy sperrt Weiter');
     h.setBusy(false); h.close(false);
@@ -193,14 +222,14 @@ if (!new URL(import.meta.url).searchParams.has('fixture')) {
             { id: 'month', title: 'Januar', awaitingYear: true }] });
     const cash = f.doc.querySelector('[data-close-dialog-step="cash"]');
     assertEqual(f.doc.querySelector('[data-close-dialog-activate="cash"]').querySelector('.close-dialog-step-pill').textContent, 'eingetragen', 'Vorbereiteter Cashentwurf hat eigene Beschriftung');
-    assertEqual(f.doc.querySelector('[data-close-dialog-activate="cash"]').querySelector('.close-dialog-step-symbol').textContent, '✓', 'Gültiger Entwurf hat einen Haken mit eigener Eingetragen-Beschriftung');
+    assertEqual(f.doc.querySelector('[data-close-dialog-activate="cash"]').querySelector('.close-dialog-step-symbol').textContent, '1', 'OP-3: Gültiger Entwurf behält die Nummer; die Pille nennt „eingetragen“');
     h.activate('preview');
     assertEqual(f.doc.getElementById('annualPreparedSubtitle').textContent, 'A + B · 2 von 3 Schritten angesehen', 'Fortschritt zählt sichtbare Vorbereitung ohne Ergebnisbereich');
     assert(!f.doc.querySelector('[data-close-dialog-next="preview"]') && writes === 0, 'Letzte Vorbereitung hat keinen Weiterknopf und schreibt nichts');
     h.activate('month'); assertEqual(f.doc.querySelector('[data-close-dialog-activate="month"]').getAttribute('aria-current'), 'step', 'Monatsansicht vor Jahreswrite bleibt zugänglich');
     h.updateSteps([{ id: 'cash', title: 'Tagesgeld', state: 'skipped', result: 'Ungeprüft' }]);
     assertEqual(f.doc.querySelector('[data-close-dialog-activate="cash"]').querySelector('.close-dialog-step-pill').textContent, 'übersprungen', 'Unerfüllte Empfehlung bleibt neutral übersprungen');
-    assertEqual(f.doc.querySelector('[data-close-dialog-activate="cash"]').querySelector('.close-dialog-step-symbol').textContent, '–', 'Übersprungen behauptet keinen Prüferfolg');
+    assertEqual(f.doc.querySelector('[data-close-dialog-activate="cash"]').querySelector('.close-dialog-step-symbol').textContent, '1', 'OP-3: Übersprungen behält die Nummer und behauptet keinen Prüferfolg');
     h.close(false);
 }
 for (const failure of ['create-dialog', 'create-title', 'showModal', 'missing-showModal']) {
@@ -297,4 +326,18 @@ for (const failure of ['create-dialog', 'create-title', 'showModal', 'missing-sh
     h.close(false);
 }
 
+}
+
+// OP-2 (Punkt 2): Reiter gleich breit, solange jeder Name passt; ein Name, dessen längstes Wort nicht passt, bekommt die nötige Breite
+// (im Browser gemessen im Prüfskript: kein Schrittkopf ragt bei acht Schritten und 1200 px Dialogbreite über seinen Rahmen).
+{
+    const { readFileSync } = await import('node:fs');
+    const css = readFileSync(new URL('../css/components.css', import.meta.url), 'utf8');
+    assert(/\.close-dialog-tabs \{[^}]*grid-auto-columns: minmax\(min-content, 1fr\)/.test(css), 'OP-2 Punkt 2: Reiterspalten mindestens so breit wie der Name');
+    assert(/\.close-dialog-step-name \{[^}]*min-width: min-content/.test(css), 'Name bricht nie mitten im Wort um (VN-4)');
+    // Nachtrag 2 (P2-1): Nur der Name bestimmt die Mindestbreite; der Stand rutscht unter den Namen und zählt nicht mit.
+    // OP-3 Punkt 2: Nummer, Name und Stand stehen je in eigener Zeile, der Stand unten, damit alle Reiter gleich aussehen.
+    assert(/\.close-dialog-step-title \{[^}]*display: grid; grid-template-columns: minmax\(min-content, 1fr\); grid-template-rows: auto 1fr auto/.test(css), 'OP-3 Punkt 2: Nummer, Name und Stand je in eigener Zeile');
+    assert(/\.close-dialog-step-pill \{[^}]*align-self: end/.test(css), 'OP-3 Punkt 2: Stände stehen unten auf einer Linie');
+    assert(/\.close-dialog-step-pill \{[^}]*min-width: 0;[^}]*overflow-wrap: anywhere/.test(css), 'OP-2 Punkt 2: Der Stand vergrößert die Mindestbreite des Reiters nicht');
 }

@@ -5,7 +5,7 @@ import { buildBalanceEngineInputFromStorage } from './balance-input-storage.js';
 import { HOUSEHOLD_PLAN_KEY, stripBalancePlanInputs, readBalanceHouseholdPlan, stageBalancePlanPatch } from '../profile/household-plan.js';
 import { initializeHouseholdPlanPage } from '../profile/household-plan-dialog.js';
 import { migrateHouseholdPlans } from '../profile/household-plan-migration.js';
-import { evaluateBalanceFileInputs } from './balance-file-service.js';
+import { evaluateBalanceInputs } from './balance-evaluation.js';
 import { readBalancePersonStatus, showPersonDataStatus } from '../shared/person-data-status.js';
 import { buildBalanceOverviewSummary, parseOverviewTarget } from '../overview/overview-model.js';
 import { storeOverviewSummary, overviewScope } from '../overview/overview-storage.js';
@@ -28,13 +28,12 @@ import { whenProfileDisplayReady, initializeProfilePage } from '../profile/profi
  */
 
 import { BALANCE_UPDATE_DEBOUNCE_MS, CONFIG, REQUIRED_ENGINE_API_VERSION_PREFIX } from './balance-config.js';
-import { StorageManager, initStorageManager } from './balance-storage.js';
+import { StorageManager } from './balance-storage.js';
 import { UIReader, initUIReader } from './balance-reader.js';
 import { displayDiagnosisText } from './balance-diagnosis-transaction.js';
 import { withGuardrailCardValues } from './balance-diagnosis-guardrails.js';
 import { UIRenderer, initUIRenderer } from './balance-renderer.js';
-import { consumeAnnualRetry } from './balance-binder-snapshots.js';
-import { UIBinder, initUIBinder, openBalanceDataTarget, trackBalanceInputSave } from './balance-binder.js';
+import { UIBinder, initUIBinder, trackBalanceInputSave } from './balance-binder.js';
 import { syncTranchenToInputs } from '../tranches/depot-tranchen-status.js';
 import { loadProfilverbundProfiles } from '../profile/profilverbund-balance.js';
 import { createProfilverbundHandlers } from './balance-main-profilverbund.js';
@@ -44,7 +43,6 @@ import { PersistenceFacade, getPersistenceStatus, init as initPersistence, persi
 import { PROFILE_VALUE_KEYS } from '../profile/profile-state.js';
 import { postprocessBalanceAction } from './balance-action-postprocessor.js';
 import { ANNUAL_MARKET_DATA_META_KEY } from './balance-annual-marketdata.js';
-import { initializeBalanceWealthHistory, refreshBalanceWealthHistory } from './balance-wealth-history-renderer.js';
 import {
     BALANCE_UPDATE_MODE,
     BALANCE_UPDATE_STATUS,
@@ -75,7 +73,6 @@ import {
 const appState = {
     debounceTimer: null,
     unsavedInput: null,
-    snapshotHandle: null,
     diagnosisData: null,
     lastUpdateTimestamp: null,
     lastMarktData: null,
@@ -93,15 +90,12 @@ const dom = {
         balanceOverview: document.getElementById('results'),
         balancePlanningYear: document.getElementById('balancePlanningYear'),
         balanceScope: document.getElementById('balanceScope'),
-        balanceScopeText: document.getElementById('balanceScopeText'),
-        balanceActiveProfile: document.getElementById('balanceActiveProfile'),
         balancePlanningYearPill: document.getElementById('balancePlanningYearPill'),
         balanceMarketDate: document.getElementById('balanceMarketDate'),
         balanceMarketSource: document.getElementById('balanceMarketSource'),
         balanceActionPeriod: document.getElementById('balanceActionPeriod'),
         balanceMarketAlarm: document.getElementById('balanceMarketAlarm'),
         balanceMarketAlarmText: document.getElementById('balanceMarketAlarmText'),
-        balanceActionIcon: document.getElementById('balanceActionIcon'),
 
         balanceMonthlyBudget: document.getElementById('balanceMonthlyBudget'),
         balanceAnnualBudget: document.getElementById('balanceAnnualBudget'),
@@ -117,12 +111,7 @@ const dom = {
         balanceAnnualRecovery: document.getElementById('balanceAnnualRecovery'),
         balanceActionTitle: document.getElementById('balanceActionTitle'),
         balanceActionAmount: document.getElementById('balanceActionAmount'),
-        balanceActionNote: document.getElementById('balanceActionNote'),
-        balanceActionPurpose: document.getElementById('balanceActionPurpose'),
-        balanceActionCoverage: document.getElementById('balanceActionCoverage'),
-        balanceActionFootnote: document.getElementById('balanceActionFootnote'),
         balanceNeedProfiles: document.getElementById('balanceNeedProfiles'),
-        balanceActionTransfer: document.getElementById('balanceActionTransfer'),
         neuerBedarf: document.getElementById('neuerBedarf'),
         zielLiquiditaet: document.getElementById('zielLiquiditaet'),
         liquiditaetBalken: document.getElementById('liquiditaetBalken'),
@@ -141,20 +130,11 @@ const dom = {
         entnahmeBreakdown: document.getElementById('entnahme-breakdown'),
         healthBucketSummary: document.getElementById('healthBucketSummary'),
         marketDataProvenance: document.getElementById('marketDataProvenance'),
-        snapshotList: document.getElementById('snapshotList'),
         printFooter: document.getElementById('print-footer')
     },
     inputs: {}, // Wird in init() gefüllt
     controls: {
-        exportBtn: document.getElementById('exportBtn'),
-        importBtn: document.getElementById('importBtn'),
-        importFile: document.getElementById('importFile'),
-        btnJahresUpdateLog: document.getElementById('btnJahresUpdateLog'),
-        copyAction: document.getElementById('copyAction'),
-        connectFolderBtn: document.getElementById('connectFolderBtn'),
-        snapshotStatus: document.getElementById('snapshotStatus'),
-        goldPanel: document.getElementById('goldPanel'),
-        captureWealthBtn: document.getElementById('captureWealthBtn')
+        copyAction: document.getElementById('copyAction')
     },
     containers: {
         error: document.getElementById('error-container'),
@@ -176,19 +156,6 @@ const dom = {
         guardrails: document.getElementById('diag-guardrails'),
         transaction: document.getElementById('diag-transaction'),
         keyParams: document.getElementById('diag-key-params')
-    },
-    wealthHistory: {
-        panel: document.getElementById('tab-history'),
-        date: document.getElementById('wealthHistoryDate'),
-        count: document.getElementById('wealthHistoryCount'),
-        title: document.getElementById('wealthHistoryTitle'),
-        profileContext: document.getElementById('suiteProfileContext'),
-        metrics: document.getElementById('wealthHistoryMetrics'),
-        chart: document.getElementById('wealthHistoryChart'),
-        table: document.getElementById('wealthHistoryTable'),
-        hint: document.getElementById('wealthHistoryHint'),
-        scrollHint: document.getElementById('wealthHistoryScrollHint'),
-        status: document.getElementById('wealthHistoryStatus')
     }
 };
 
@@ -226,7 +193,6 @@ const profileSyncHandlers = createProfileSyncHandlers({
  * @returns Ergebnis der bestehenden Operation.
  */
 export function update(options = {}) {
-    refreshBalanceWealthHistory(dom.wealthHistory);
     let phase = 'update_contract';
     try {
         const personStatus = readBalancePersonStatus();
@@ -252,8 +218,7 @@ export function update(options = {}) {
         // 1. Read Inputs & State
         // Liest alle Formular-Eingaben und den letzten gespeicherten Zustand
         phase = 'validation';
-        const draft = options.confirmedAnnualResult ? { calculation: buildBalanceEngineInputFromStorage({ storage: persistenceStorage }), source: null } : UIReader.captureStorageDraft(appState.pendingInputMetadata || {},
-            { includePreviewBase: request.mode === BALANCE_UPDATE_MODE.PREVIEW });
+        const draft = options.confirmedAnnualResult ? { calculation: buildBalanceEngineInputFromStorage({ storage: persistenceStorage }), source: null } : UIReader.captureStorageDraft(appState.pendingInputMetadata || {});
         let calculation = draft.calculation;
         const formSource = draft.source;
         const metadataSource = createBalanceFingerprint(appState.pendingInputMetadata || {});
@@ -299,7 +264,7 @@ export function update(options = {}) {
             persistentState: history.persistentState, profiles: history.profiles, profileId: summaryProfileId,
             profilverbundHandlers: calculationHandlers, engineApi: displayEngineApi, publish: !trialActive,
             planInputs: householdPlan.status === 'valid' ? householdPlan.entry.values : inputData };
-        const evaluation = options.confirmedAnnualResult || evaluateBalanceFileInputs({ ...evaluationOptions,
+        const evaluation = options.confirmedAnnualResult || evaluateBalanceInputs({ ...evaluationOptions,
             ...(request.mode === BALANCE_UPDATE_MODE.COMMIT_PERIOD ? {}
                 : { marketPreviewContext: { calculation, storage: persistenceStorage } }) });
         const { profilverbundRuns, modelResult } = evaluation;
@@ -340,6 +305,8 @@ export function update(options = {}) {
         const uiDataForRenderer = { ...buildBalanceRendererPayload(projected?.modelResult || modelResult,
             projected ? { ...projected.inputData, referenceYear: nextYearBudget.targetYear } : previewInputData),
             nextYearBudget, marketPreview: evaluation.marketPreview, careNeeds: projected ? projected.careNeeds : calculation.careNeeds, careHint: calculation.careHint,
+            // FR-84 Punkt 11, NK-2: Hilfe zur Pflege der heutigen Rechnung für „Was zu tun ist“ (ohne Beleg); entsteht mit Profil und Jahr neu.
+            careAid: calculation.inputData?.careAid || null,
             // Nur Budget und Empfehlung nutzen das Folgejahr; Bedarf und Diagnose bleiben beim Planjahr.
             ...(projected ? { currentYear: { ...buildBalanceRendererPayload(modelResult, previewInputData), careNeeds: calculation.careNeeds,
                 balanceAlarmActive: modelResult.diagnosis?.general?.alarmActive === true,
@@ -450,17 +417,6 @@ export function update(options = {}) {
         } catch (error) {
             console.error('Plananzeige konnte nicht gespeichert werden:', error);
             result.overviewPersistence = Promise.resolve(false);
-        }
-
-        // Auch noch nicht entprellte Formulareingaben binden die Verlaufsvorschau.
-        if (request.mode === BALANCE_UPDATE_MODE.PREVIEW) {
-            const previewInputs = UIReader.readInputSourceFingerprint();
-            result.validateWealthHistorySource = () => {
-                if (UIReader.readInputSourceFingerprint() !== previewInputs
-                    || buildBalanceEngineInputFromStorage({ scope: calculation.scope, storage: persistenceStorage }).sourceFingerprint !== draft.baseSourceFingerprint) {
-                    throw new Error('Die Vorschaueingaben wurden während der Verlaufserfassung verändert.');
-                }
-            };
         }
         return result;
 
@@ -582,7 +538,6 @@ export function renderPersistenceStartupWarning(status, target = dom.containers.
  */
 let tranchenStorageBound = false;
 
-let overviewTargetSelection = false;
 /**
  * @returns Ergebnis der bestehenden Operation.
  */
@@ -602,9 +557,6 @@ export async function init() {
         return createBlockedUpdateResult('profile_recovery');
     }
     if (window.__personMigrationDeferred) { showPersonDataStatus(readBalancePersonStatus()); return createBlockedUpdateResult('person_data_deferred'); }
-    if (await UIBinder.initializeWealthHistoryNavigation?.({ doc: document, win: window })) {
-        return createBlockedUpdateResult('wealth_history_navigation');
-    }
     const initialExpensesTarget = await UIBinder.initializeExpensesNavigation?.({ doc: document, win: window });
     if (initialExpensesTarget) {
         return createBlockedUpdateResult('expenses_navigation');
@@ -621,7 +573,6 @@ export async function init() {
         }
         return result;
     } });
-    const annualRetry = consumeAnnualRetry();
     const persistenceStatus = getPersistenceStatus();
     let engineHandshake;
     try {
@@ -641,12 +592,9 @@ export async function init() {
         if (el.id && !el.hasAttribute('data-annual-transient')) dom.inputs[el.id] = el;
     });
 
-    initializeBalanceWealthHistory(dom.wealthHistory);
-
     // 4. Initialize all modules with their dependencies
     // Dependency Injection Pattern: Jedes Modul erhält seine Abhängigkeiten
     initUIReader(dom);
-    initStorageManager(dom, appState, UIRenderer);
     initUIRenderer(dom, StorageManager);
     initUIBinder(dom, appState, update, debouncedUpdate);
 
@@ -657,7 +605,6 @@ export async function init() {
 
     // 6. Load and apply saved state
     // Lädt letzten Zustand aus localStorage und wendet ihn auf die Formular-Felder an
-    refreshBalanceWealthHistory(dom.wealthHistory);
     let persistentState;
     try { persistentState = StorageManager.loadState(); }
     catch (error) {
@@ -691,11 +638,7 @@ export async function init() {
     window.addEventListener('hashchange', revealCape);
     revealCape();
 
-    // 8. Initialize snapshots
-    // Prüft die Ordner-API und lädt gespeicherte Handles ohne Balance-Listenhosts.
-    StorageManager.initSnapshots();
-
-    // 9. Initial update
+    // 8. Initial update
     // Führt ersten Berechnungs- und Render-Zyklus durch
     const initialUpdateResult = update({ mode: BALANCE_UPDATE_MODE.PREVIEW });
     // Befüllung, Bindung und Erstvorschau sind bis hier synchron; eine spätere
@@ -708,7 +651,6 @@ export async function init() {
             profileSyncHandlers.syncProfileDerivedInputs();
             syncTranchenToInputs({ silent: true });
             profilverbundHandlers.refreshProfilverbundBalance();
-            refreshBalanceWealthHistory(dom.wealthHistory);
             update({ mode: BALANCE_UPDATE_MODE.PREVIEW });
         });
         window.addEventListener('storage', event => {
@@ -720,32 +662,16 @@ export async function init() {
     }
 
     profilverbundHandlers.initProfilverbundBalance();
-    if (initialUpdateResult?.ok && annualRetry) await UIBinder.resumeAnnualRetry(annualRetry);
-    if (initialUpdateResult?.ok && !annualRetry && parseOverviewTarget('balance', window.location)) {
+    if (initialUpdateResult?.ok && parseOverviewTarget('balance', window.location)) {
         await initialUpdateResult.overviewPersistence;
         const ready = await whenProfileDisplayReady(document);
-        overviewTargetSelection = true;
-        try {
-            if (parseOverviewTarget('balance', window.location)?.target === 'handlungsanweisung') {
-                if (ready && !window.__profileRecoveryBlocker && !PersistenceFacade.hasSyncWriteBlocks()) {
-                    document.getElementById('balanceTabOverview')?.click();
-                    document.getElementById('balanceActionArea')?.scrollIntoView({ block: 'center' });
-                }
-            } else await UIBinder.openOverviewTarget(window.location, { ready });
-        }
-        finally { overviewTargetSelection = false; }
+        if (parseOverviewTarget('balance', window.location)?.target === 'handlungsanweisung') {
+            if (ready && !window.__profileRecoveryBlocker && !PersistenceFacade.hasSyncWriteBlocks()) {
+                document.getElementById('balanceTabOverview')?.click();
+                document.getElementById('balanceActionArea')?.scrollIntoView({ block: 'center' });
+            }
+        } else await UIBinder.openOverviewTarget(window.location, { ready });
     }
-    // Erst nach Start und Summarywrite navigieren: eigene Startwrites dürfen
-    // den unveränderten Navigationsschutz nicht während der Übergabe auslösen.
-    if (window.location.hash === '#snapshot-management') {
-        await initialUpdateResult?.overviewPersistence;
-        await PersistenceFacade.flush();
-    }
-    const forwardLegacyBackup = () => {
-        if (window.location.hash === '#snapshot-management') openBalanceDataTarget('#wiederherstellung');
-    };
-    window.addEventListener('hashchange', forwardLegacyBackup);
-    forwardLegacyBackup();
     return initialUpdateResult;
 }
 

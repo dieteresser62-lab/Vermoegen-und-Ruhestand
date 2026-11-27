@@ -14,7 +14,9 @@ export function createLocalStorageAdapter(storageProvider = () => globalThis.loc
     const getStorage = () => scopeWebStorage(resolveStorage(storageProvider), options.area);
     // Fertigmarker von Spielbereich und weiterem Haushalt sind keine Fachrecords.
     const household = areaHousehold(options.area);
-    const isPrivateMetadata = key => (isPlayArea(options.area) && key === 'metadata.playAreaReady') || (household && !isPlayArea(options.area) && key === 'metadata.householdReady');
+    // SV-1: Ebenso die Markierung der einmaligen Archivleerung.
+    const isPrivateMetadata = key => (isPlayArea(options.area) && key === 'metadata.playAreaReady') || (household && !isPlayArea(options.area) && key === 'metadata.householdReady')
+        || key === 'metadata.rs_restore_points_reset_v1';
 
     return {
         name: 'localStorage',

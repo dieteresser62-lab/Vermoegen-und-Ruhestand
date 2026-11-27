@@ -90,6 +90,12 @@ const reserves = (year, confirmed) => {
     assertEqual(heldBelowCashTarget(cashRefillPeople(above.year, () => JSON.parse(storage.getItem('rs_profiles_v1')))).length, 0, 'Petra über ihrem Ziel: kein Hinweis');
     const base = await currentYear('grund', { [MARTIN]: 20000, [PETRA]: 0 });
     assertEqual(heldBelowCashTarget(cashRefillPeople(base.year, () => JSON.parse(storage.getItem('rs_profiles_v1')), null, base.confirmed)).length, 0, 'Vorgabemodus: kein Hinweis');
+    // NK-2 (Befund 2153): Hinweis nur, wenn Petra etwas zum Umschichten hat, und nie bei Hilfe zur Pflege für sie.
+    const people = cashRefillPeople(year, () => JSON.parse(storage.getItem('rs_profiles_v1')), null, confirmed);
+    assert(people.find(person => person.profileId === PETRA).investments > 0, 'Befund 2153: Petra hat im Musterhaushalt Wertpapiere');
+    const nothing = people.map(person => person.profileId === PETRA ? { ...person, investments: 0 } : person);
+    assertEqual(heldBelowCashTarget(nothing).length, 0, 'Befund 2153: ohne Depot, Geldmarkt und Gold kein Hinweis');
+    assertEqual(heldBelowCashTarget(people, [PETRA]).length, 0, 'Befund 2153: bei Hilfe zur Pflege für Petra kein Hinweis');
 }
 // P3 (Fable P3-6): Martins Umschichtung hängt an seinem Ziel, nicht am Haushaltsziel mit Petra. Martin 20.000 € (Ziel 14.400 €), Petra 0 €:
 // vorher 0 €, weil das Haushaltstagesgeld unter dem Haushaltsziel lag.

@@ -94,9 +94,37 @@ function createSequenceRng(sequence) {
 
     assertEqual(first.index, 3, 'data-end scenario starts at penultimate entry');
     assertEqual(second.index, 4, 'sampler can continue to the final data point');
-    assertEqual(third.restartReason, STATIONARY_BOOTSTRAP_RESTART_REASONS.DATA_END, 'final data point forces data_end restart');
-    assertEqual(third.index, 3, 'data_end restart selects a configured new block start without wrap-around');
-    assertEqual(sampler.lastRestartDraw, 0.8, 'data_end sample still consumes one restart draw');
+    // MS-1 (NG-9): zirkulär nach Politis & Romano statt Neustart am Datenende.
+    assertEqual(third.restartReason, null, 'final data point no longer forces a restart');
+    assertEqual(third.isRestart, false, 'wrap-around continues the current block');
+    assertEqual(third.index, 0, 'without an explicit pool the block wraps to the first data point');
+    assertEqual(third.yearsInCurrentBlock, 3, 'wrap-around counts as a continuation year');
+    assertEqual(sampler.lastRestartDraw, 0.8, 'wrap-around still consumes exactly one restart draw');
+}
+
+{
+    const random = createSequenceRng([0.7, 0.8, 0.8, 0.8]);
+    const sampler = createStationaryBootstrapSampler({
+        annualData: sampleData,
+        expectedBlockLength: 30,
+        startIndices: [3],
+        poolIndices: [4, 2, 1, 3, 2]
+    });
+    const indices = [0, 1, 2, 3].map(() => nextYearSample(sampler, random).index);
+    assertEqual(JSON.stringify(indices), JSON.stringify([3, 4, 1, 2]), 'wrap-around follows the sorted pool indices back to the window start');
+    assertEqual(sampler.restartCount, 1, 'wrap-around inside the pool is not a restart');
+}
+
+{
+    const sampler = createStationaryBootstrapSampler({
+        annualData: sampleData,
+        expectedBlockLength: 30,
+        startIndices: [2, 3],
+        poolIndices: [2, 3],
+        initialStartIndex: 4
+    });
+    assertEqual(nextYearSample(sampler, () => 0.9).index, 4, 'initial record outside the pool stays anchored');
+    assertEqual(nextYearSample(sampler, () => 0.9).index, 2, 'successor of a record outside the pool is the next pool index, cyclically');
 }
 
 {

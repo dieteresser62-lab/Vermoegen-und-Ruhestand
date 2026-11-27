@@ -1,96 +1,75 @@
 # Sicherung und Wiederherstellung
 
-Was eine Sicherung schützt und was beim Zurückholen verloren gehen kann. Für Nutzer und fachlich Interessierte. Codeprüfung: 02.11.2026.
+Was die Vollsicherung und die Wiederherstellungspunkte schützen. Für Nutzer und fachlich Interessierte. Codeprüfung: 26.11.2026.
 
 ## Auf einen Blick
 
-- Die Vollsicherung überträgt den gespeicherten fachlichen Stand des geöffneten Haushalts als Datei.
-- Mit mehreren Haushalten sicherst du jeden Haushalt einzeln. Die Tabelle „Haushalte“ zeigt die letzte Vollsicherung je Haushalt.
-- Ein Wiederherstellungspunkt liegt im selben lokalen Datenbereich wie dein Bestand und schützt nur seinen ausgewiesenen Umfang.
-- Ergebnisexporte und einzelne Personendateien ersetzen keine Vollsicherung.
+- Die Vollsicherung ist eine Datei mit dem gespeicherten fachlichen Stand des geöffneten Haushalts. Du erstellst sie selbst und spielst sie bei Bedarf wieder ein.
+- Wiederherstellungspunkte legt die App selbst an, immer für den ganzen Haushalt.
+- Zurückholen setzt immer den ganzen Haushalt auf den Stand des Punkts.
+- Mit mehreren Haushalten sicherst du jeden Haushalt einzeln. Ergebnisdateien ersetzen keine Vollsicherung.
 - Browser und EXE haben getrennte Speicher. Ein leerer Bildschirm bedeutet deshalb noch keinen Datenverlust.
 
 ## Was geschützt ist
 
 ### Vollsicherung
 
-Die Vollsicherung enthält alle gespeicherten Personen einschließlich Außenpersonen, deren Bestände und Einkünfte sowie Haushalt, Plan, Pflege- und Erbentscheidungen. Gespeicherte Ausgaben, Abschlussbelege, Vermögensverläufe, Tageskurse und Simulatoreinstellungen samt gespeicherten Kurzbelegen gehören dazu.
+Die Vollsicherung enthält alle Personen des Haushalts, deren Bestände und Einkünfte sowie Haushalt, Plan, Pflege- und Erbentscheidungen. Gespeicherte Ausgaben, Abschlussbelege, Vermögensverläufe, Tageskurse und Simulatoreinstellungen gehören dazu. Die Wiederherstellungspunkte und Layoutpräferenzen gehören nicht in die Datei.
 
-Das Wiederherstellungsarchiv und Layoutpräferenzen gehören nicht in diese Datei. Eine Vollsicherung am anderen Gerät stellt daher keine Liste früherer Wiederherstellungspunkte her. Die Klappenstellung des Kursverlaufs im Block zum verdeckten Bärenmarkt bleibt während der Anzeige bei Aktualisierungen erhalten; sie wird nicht gespeichert. Während des Spielbereichs sind Vollsicherung und Import gesperrt. Auf Daten & Sicherung sind beide Knöpfe deaktiviert; eine graue Zeile erklärt den Grund.
+Die Desktop-App fragt mit „Speichern unter“, wo die Datei hin soll, und nennt danach Ordner und Dateinamen. Bietet der Browser einen Speicherdialog an, wartet die App ebenso, bis die Datei geschrieben ist. Erst dann gilt die Sicherung als erstellt. Ein Abbruch im Dialog ändert nichts. Browser ohne Speicherdialog legen die Datei im Download-Ordner ab; dann heißt der Status „Sicherung angestoßen – bitte Ablage prüfen“. Im Spielbereich sind Vollsicherung und Einspielen gesperrt. Das Alter der letzten Vollsicherung zählt Kalendertage. Eine Sicherung von gestern Abend heißt am nächsten Morgen „gestern“.
 
 ### Wiederherstellungspunkt
 
-Die App legt Punkte etwa vor Monats- und Jahresabschlüssen oder Importen an. Sie helfen, eine Änderung im jeweiligen Umfang zurückzunehmen. Ein normaler Punkt setzt die zugeordnete Person und gemeinsame Fachdaten zurück; andere Personen bleiben erhalten. Tageskurse, Verlaufsbeginn, Funktionseinstellungen und Vollsicherungszeit bleiben dabei unverändert. Ist die zugeordnete Person gelöscht oder der Punkt beschädigt, kann dieser Rückweg gesperrt sein.
+Die App legt einen Punkt an
 
-Ein neuer Punkt vor einem Haushalts-Monatsabschluss stellt den gesamten erfassten Stand einschließlich aller Personen, Tagesgeldverläufe und Monatsbelege gemeinsam zurück. Auch spätere Änderungen anderer Personen können dadurch entfallen.
+- beim Monatsabschluss, bevor sie ihn speichert, mit oder ohne Tagesgeldbuchung,
+- beim Jahresabschluss, bevor sie ihn speichert,
+- bevor sie den Stand ersetzt: beim Einspielen einer Vollsicherung, beim Zurückholen eines Punkts, bei der Übernahme der Spielkopie und bei „Neu beginnen“.
 
-Punkte vor Personenlöschung und Haushaltsänderung sichern alle zugelassenen Fachdaten einschließlich aller Personen. Das gilt auch für vorhandene Punkte „Vor dem Löschen aller Tranchen“. Auch Vollimport, „Neu beginnen“ und die Übernahme einer Spielkopie können größere Bereiche ersetzen. Entscheidend ist der Umfang der Vorschau, einschließlich „entfällt“.
+Ein Punkt enthält den ganzen Haushalt: alle Personen mit ihren Belegen, Plan, Ausgaben, Vermögensverläufe und Simulatoreinstellungen. Punkte vor dem Ersetzen enthalten zusätzlich alles Ersetzte, etwa Tageskurse, Funktionseinstellungen und die Sicherungszeit; Zurückholen stellt genau das wieder her.
 
-Manuelle und monatliche Punkte sowie Punkte vor Vollimport, Balance-Import, Zurückholen und Spielbereich bleiben einschließlich 30 Tagen vollständig erhalten. Danach bleibt je Monat, Rückholpunktart und Datenumfang der letzte Stand; manuelle und monatliche Punkte teilen sich einen Monatsstand. Ein älterer Punkt darf nur weg, wenn ein jüngerer erhaltener Punkt denselben Umfang deckt. Punkte des ganzen Bestands brauchen dieselbe Wiederherstellungsregel; ein personenbezogener Punkt reicht als Deckung nicht aus (FR-70).
+Die App bewahrt auf (FR-70):
 
-Jahresabschlüsse, Plan- und Personenumstellungen, „Neu beginnen“, Übernahmen aus dem Spielbereich und unbekannte Anlässe zeigen „Bleibt immer erhalten“. Punkte vor Personenverwaltung einschließlich Haushaltsänderungen sowie vorhandene Punkte vor einer früheren Tranchengesamtlöschung bleiben beim Aufräumen ebenfalls erhalten. Sie sind einzeln löschbar, solange kein gespeicherter Vorgang sie benötigt und die Prüfung lesbar ist. Beschädigte oder nicht sicher vergleichbare Punkte bleiben.
-
-Jeder Punkt zeigt eine Grundzeile: Einzeln löschbare Personenpunkte nennen „Bleibt, bis du ihn selbst löschst“, Aufräumkandidaten „Fällt beim Aufräumen weg“. „Punkt löschen …“ erscheint nur bei jetzt löschbaren Punkten. Löschen und Aufräumen zeigen ihre Arbeit und das Ergebnis direkt an der Aktion; währenddessen sind die Punktaktionen gesperrt. Nach einer Einzelpunktlöschung bleibt die Bestätigung bis zum nächsten Seitenstart am Anlass sichtbar.
-
-Im laufenden Spielbereich sind Zurückholen und Aufräumen gesperrt. Ein Hinweis erklärt, dass die echten Daten und Sicherungspunkte unverändert bleiben. Beendete Spielbereichspunkte bleiben als Archiv ohne Rückholfunktion gespeichert. Die Spielkopie hat ihren eigenen Rückkehrweg. Bedienung: [Punkte zurückholen und aufräumen](../../Handbuch.html#sicherung-punkte).
-
-Bei „Neu beginnen“ mit Archivlöschung entfallen auch die internen Rückkehrpunkte; ein neuer Punkt vor dem Leeren wird dann nicht angelegt.
-
-### Export
-
-| Datei | Zweck und Grenze |
+| Art | Was bleibt |
 | --- | --- |
-| Ergebnisdatei als CSV oder JSON | Hält ausgewählte Rechenergebnisse fest; stellt keinen App-Bestand wieder her. |
-| Personendatei | Überträgt eine Person mit eigenen Daten und Depot; gemeinsame Haushaltsdaten und Belege fehlen. Beim Import entsteht eine neue Außenperson. |
-| Balance-Datei | Überträgt den Balance-Zustand des aktuellen Rechenkontexts; ersetzt weder Personenverwaltung noch Vollsicherung. |
+| Monatsabschluss | je Kalendermonat der letzte Punkt, für die letzten 12 Monate |
+| Jahresabschluss | alle Punkte |
+| Vor dem Einspielen, Zurückholen, Übernehmen der Spielkopie und Neu beginnen | die letzten 3 Punkte |
+
+Gekürzt wird nur innerhalb derselben Art und erst, wenn der neue Vorgang erfolgreich war. Der Punkt, den du gerade zurückholst, und ein Punkt, auf den ein offener Jahresabschluss verweist, bleiben immer. Jeder Punkt wird wie eine Vollsicherung geprüft. Einen beschädigten zeigt die Liste als „beschädigt“; er lässt sich nicht zurückholen und zählt bei der Kürzung mit. Punkte einzeln löschen oder aufräumen kannst du nicht.
+
+Bei Personenlöschung und Haushaltsänderung legt die App keinen Punkt an. Vor dem Löschen einer Person erinnert die Rückfrage: „Erstelle vorher eine Vollsicherung unter Daten & Sicherung.“
+
+Der Spielbereich legt keine Punkte an und zeigt keine; seine Abschlüsse sichern sich nur technisch innerhalb der Spielkopie. Bedienung: [Punkte zurückholen](../../Handbuch.html#sicherung-punkte).
+
+### Umstellung auf die einfachen Punkte
+
+Beim ersten Start dieser Version entfernt die App die früheren Punkte des Haushalts; Jahresabschluss-Punkte bleiben. Daten & Sicherung zeigt dann einmalig: „Die Wiederherstellungspunkte wurden vereinfacht. Frühere Punkte sind entfernt. Erstelle jetzt eine Vollsicherung.“ Der Hinweis bleibt, bis du eine Vollsicherung erstellt oder angestoßen hast oder ihn schließt; danach erscheint er nicht wieder. Im Spielbereich, bei offenem Jahresabschluss oder solange ein offener Vorgang auf einen früheren Punkt verweist, wartet die Leerung. Neue Punkte entfernt sie nie.
 
 ## Wiederherstellen und wechseln
 
 ### Ersetzung
 
-Ein Vollimport ersetzt die aktuell gespeicherten fachlichen Daten. Daten, die in der Datei fehlen, können dabei entfallen; zwei Haushalte werden nicht zusammengeführt. Das vorhandene Wiederherstellungsarchiv bleibt erhalten. Vor dem Ersetzen erzeugt die App einen internen Rückkehrpunkt und stößt bei vorhandenem Bestand zusätzlich eine Wiederherstellungsdatei an. Prüfe deren Ablage ebenso wie die deiner Vollsicherung.
+Einspielen ersetzt die gespeicherten fachlichen Daten durch die Datei. Daten, die in der Datei fehlen, entfallen; zwei Haushalte werden nicht zusammengeführt. Vorher legt die App einen Punkt an und speichert bei vorhandenem Bestand zusätzlich eine Wiederherstellungsdatei. Prüfe deren Ablage ebenso wie die deiner Vollsicherung. Brichst du in der Desktop-App den Dialog für diese Datei ab, spielt die App nichts ein.
 
-Vor dem Zurückholen eines Punkts entsteht ein weiterer Punkt des Ausgangsstands. Änderungen nach dem gewählten Sicherungszeitpunkt gehen im ersetzten Bereich verloren.
+Nach dem Einspielen nennt der Kopf von Daten & Sicherung, was eingespielt wurde. Bei einer Vollsicherung steht dort „Sicherung vom … eingespielt am …“. Eine Übergabe- oder Wiederherstellungsdatei zählt nicht als Vollsicherung. Dann heißt es „Datei vom … eingespielt am …“ und dazu „letzte Vollsicherung: …“ oder „noch keine Vollsicherung“. Karte, Haushaltsliste und Startseite zeigen nur echte Vollsicherungen und erinnern nach 30 Tagen. Die nächste eigene Vollsicherung zeigt wieder den Sicherungsstatus.
+
+Zurückholen zeigt Datum und Anlass. Der Dialog nennt die Monatsausgaben, erfassten Vermögensstände und den Haushaltsplan für alle Personen. Er sagt auch, dass seitdem Eingetragenes wie Verkäufe oder importierte Ausgaben verloren geht. Das gilt auch, wenn du den Jahresabschluss für eine Person mit einem Handkurs wiederholst. Vorher legt die App den Punkt „Vor dem Zurückholen“ an. So kannst du das Zurückholen rückgängig machen. Einspielen, Zurückholen, Übernahme und „Neu beginnen“ schreiben in einem Schritt. Scheitert etwas, bleibt der heutige Stand.
 
 ### Browser und EXE
 
-Im Browser hängt der Bestand an Browserprofil, Hostname und Port. `localhost` und `127.0.0.1` sind verschiedene Herkünfte. Die EXE speichert im App-Datenordner des Windows-Benutzers; ihr Ablageort bestimmt den Datenbereich nicht. Produktiv-App, Entwickler-App, Prüfkandidat und frühere RuhestandSuite können unterschiedliche Bestände zeigen.
+Im Browser hängt der Bestand an Browserprofil, Hostname und Port; `localhost` und `127.0.0.1` sind verschiedene Herkünfte. Die EXE speichert im App-Datenordner des Windows-Benutzers. Produktiv-App, Entwickler-App und Prüfkandidat können unterschiedliche Bestände zeigen.
 
-Für den Wechsel dient die Vollsicherung aus der bisherigen Laufzeit. Die [Betriebsanleitung](../guides/EINRICHTUNG_UND_BETRIEB.md#speicherorte) nennt die Datenbereiche und den angezeigten Ordner. Browserbestand und interne Punkte gehen beim Löschen der Website-Daten verloren; bei Verlust des EXE-Datenordners fehlen dort Bestand und Archiv.
-
-### Prüfung danach
-
-Vergleiche Personen, Haushaltsauswahl, Tagesgeld, Tranchen und Plan mit dem erwarteten Stand. Prüfe außerdem Abschlussbelege und Kurszeit. Eine erfolgreiche Wiederherstellung macht gespeicherte Kurse nicht aktuell.
-
-Beispiel mit Max und Erika, Prüfdatum 27.10.2026: Spielst du ihre Vollsicherung in einen leeren EXE-Datenbereich ein, folgen ihre gespeicherten Fachdaten und Tageskurse. Das Archiv der Browserherkunft folgt nicht. Ein normaler Wiederherstellungspunkt innerhalb derselben Herkunft lässt hingegen die dortigen Tageskurse erhalten.
+Für den Wechsel dient die Vollsicherung aus der bisherigen Laufzeit. Die [Betriebsanleitung](../guides/EINRICHTUNG_UND_BETRIEB.md#speicherorte) nennt die Datenbereiche. Browserbestand und Punkte gehen beim Löschen der Website-Daten verloren; bei Verlust des EXE-Datenordners fehlen dort Bestand und Punkte.
 
 ## Fehlerfall
 
 ### Leere Herkunft
 
-Prüfe zuerst Laufzeit, Adresse und Browserprofil. Lege einen scheinbar fehlenden Haushalt nicht sofort neu an und überschreibe keine vorhandene Sicherungsdatei mit einem leeren oder unklaren Stand.
+Prüfe zuerst Laufzeit, Adresse und Browserprofil. Lege einen scheinbar fehlenden Haushalt nicht sofort neu an und überschreibe keine Sicherungsdatei mit einem unklaren Stand.
 
 ### Wiederherstellung
 
-Widersprüchliche Personenkennungen und Dateien mit mehr als zwei Haushaltspersonen werden vor dem Vollimport abgewiesen. Ein eigener Altbestand mit mehr Mitgliedern bleibt sicherbar und über Archivpunkte zurückholbar; Rechnungen sind bis zur Haushaltskorrektur gesperrt. Eine ungültige Datei oder veränderte Importgrundlage kann den Import verhindern. Scheitert das Schreiben und bestätigt die App die Rücknahme, ist der bisherige Stand unverändert. Kann sie die Rücknahme nicht bestätigen, prüfe die Meldung und den angelegten Wiederherstellungspunkt. Nach bereits gespeichertem Restore mit fehlgeschlagenem Neuladen bleiben alte Formulare gesperrt; lade die Seite wie gemeldet neu.
+Dateien mit widersprüchlichen Personenkennungen oder mehr als zwei Haushaltspersonen weist die App vor dem Einspielen ab. Das gilt auch für ältere Dateien mit einer Person außerhalb des Haushalts; die Meldung rät, für sie einen eigenen Haushalt anzulegen. Bestätigt die App nach einem Fehler die Rücknahme, ist der bisherige Stand unverändert. Kann sie die Rücknahme nicht bestätigen, sperrt die Seite; lade sie neu und hole den Punkt davor zurück oder spiele deine letzte Vollsicherung ein. Nach einem Einspielen oder Zurückholen ohne Neuladen bleiben alte Formulare bis zum Neuladen gesperrt.
 
-Fehlt nach einem abgebrochenen EXE-Schreibvorgang die Hauptdatei, lädt die App eine lesbare Rettungsdatei. Sind nur unlesbare Rettungsdateien vorhanden, meldet sie einen Fehler und erhält die Dateien. Eine beschädigte EXE-Bestandsdatei wird separat aufbewahrt. Lösche den Datenordner nicht als ersten Reparaturversuch.
-
-### Mehrere Haushalte
-
-Jeder Haushalt hat eigene Daten, Sicherungen und Wiederherstellungspunkte. Eine Vollsicherung enthält nur den geöffneten Haushalt; ihr Dateiname nennt ihn, sobald es mehrere gibt. Für einen Rechnerwechsel sicherst du jeden Haushalt und spielst ihn am neuen Rechner über „Neuer Haushalt …“ ein. In der EXE liegen alle Haushalte im App-Datenordner, weitere unter `households\`. Eine Sicherung dieses Ordners erfasst alle Haushalte zugleich, solange die App geschlossen ist.
-
-Die Übergabedatei („Als Datei weitergeben …“) ist für die Weitergabe gedacht und enthält keine Wiederherstellungspunkte. Vollsicherung und Übergabedatei sind unverschlüsselt.
-
-### Sichere Dateiablage
-
-Bewahre Vollsicherungen außerhalb des App-Datenordners auf, für Geräteverlust auch auf einem getrennten Datenträger. Behalte mehrere datierte Stände.
-
-## Grenzen
-
-- Nur im geöffneten Fenster vorhandene Simulationsergebnisse sind durch die Vollsicherung nicht vollständig geschützt; bewahre benötigte Ergebnisexporte zusätzlich auf.
-- Die Meldung über angestoßene Dateiausgabe beweist nicht, dass du die Datei tatsächlich aufbewahrt hast.
-
-## Wo du es in der App siehst
-
-„Daten & Sicherung“ zeigt Vollsicherung, Wiederherstellungspunkte, Austausch und Speicherstatus. Die Klickwege stehen im [Handbuch](../../Handbuch.html#daten-sicherung). Technische Umfänge und Dateiformate: [Datenverträge](DATENVERTRAEGE.md#austausch).
+Fehlt nach einem abgebrochenen EXE-Schreibvorgang die Hauptdatei, lädt die App eine lesbare Rettungsdatei. Lösche den Datenordner nicht vorschnell.

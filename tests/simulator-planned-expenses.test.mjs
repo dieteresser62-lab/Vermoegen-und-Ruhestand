@@ -1,16 +1,11 @@
 import { EngineAPI } from '../engine/index.mjs';
 import { buildSimulatorInputsFromProfileData, combineSimulatorProfiles } from '../app/simulator/simulator-profile-inputs.js';
-import { initMcRunState, prepareHistoricalDataOnce, getDataVersion } from '../app/simulator/simulator-engine-helpers.js';
+import { initMcRunState, prepareHistoricalDataOnce } from '../app/simulator/simulator-engine-helpers.js';
 import { simulateOneYear } from '../app/simulator/simulator-engine-direct.js';
 import { portfolioTotal } from '../app/simulator/simulator-results.js';
 import { validateSimulatorInputs } from '../app/simulator/simulator-input-validation.js';
 import { plannedExpensesForYear } from '../app/profile/household-planned-expenses.js';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
-import { runSweepChunk } from '../app/simulator/sweep-runner.js';
-import { createStressReplayCaptureRequest, materializeStressReplayPathV1 } from '../app/simulator/stress-replay-path-materializer.js';
-import { createStressReplayFingerprint } from '../app/simulator/stress-replay-contract.js';
-import { runStressReplayPathV1 } from '../app/simulator/stress-replay-runner.js';
-import { createStressReplayVariantV1 } from '../app/simulator/stress-replay-variant.js';
 import { getProtocolColumns, PROTOCOL_COLUMNS, readProtocolValue } from '../app/simulator/protocol-columns.js';
 import { backtest } from './helpers/ek-1b-measurement.mjs';
 import { serializeHistoricalBacktestCsv } from '../app/simulator/historical-backtest-export.js';
@@ -124,30 +119,24 @@ for (const dynamicFlex of [false, true]) {
 {
     const tooLarge = { ...inputs, plannedExpenses: [once({ monat: '2026-01', betrag: 1000000 })], plannedExpensesReferenceYear: 2026 };
     const result = year(initMcRunState(tooLarge, 0), tooLarge);
-    assertEqual(result.kind, 'ruin', 'Ungedeckte geplante Ausgabe gilt als Ruin');
-    assert(result.reason.includes('Geplante Ausgaben'), 'Ruin nennt die ungedeckte zusätzliche Ausgabe');
-    close(result.logData.geplante_ausgaben, 1000000, 'Terminales Jahr protokolliert den fälligen Betrag');
+    // FR-84 Punkt 13: Deckt das Geldvermögen den Grundbedarf, entfällt die unbezahlbare einmalige Ausgabe statt den Lauf zu beenden.
+    assertEqual(result.kind, 'success', 'Ungedeckte geplante Ausgabe beendet den Lauf nicht');
+    close(result.logData.geplante_ausgaben + result.logData.geplante_ausgaben_gekuerzt, 1000000, 'Bezahlt und gekürzt ergeben den fälligen Betrag');
     const history = backtest(tooLarge, 2000, 2001);
-    close(history.rows[0].row.geplante_ausgaben, 1000000, 'Backtest behält den Betrag auch in der terminalen Ruinzeile');
+    close(history.rows[0].row.geplante_ausgaben + history.rows[0].row.geplante_ausgaben_gekuerzt, 1000000, 'Backtest protokolliert die gekürzte Ausgabe');
     const captured = await runMonteCarloChunk({ inputs: tooLarge, monteCarloParams: { anzahl: 1, maxDauer: 4, blockSize: 3, seed: 12345, methode: 'regime_markov', rngMode: 'per-run-seed' },
-        widowOptions: tooLarge.widowOptions, useCapeSampling: false, runRange: { start: 0, count: 1 }, logIndices: [0], stressReplayCapture: createStressReplayCaptureRequest([0]), engine: EngineAPI });
+        widowOptions: tooLarge.widowOptions, useCapeSampling: false, runRange: { start: 0, count: 1 }, logIndices: [0], engine: EngineAPI });
     const run = captured.runMeta[0];
-    assertEqual(captured.totals.failCount, 1, 'MC-Erfolgsquote zählt eine ungedeckte große Ausgabe als Ruin');
-    close(run.logDataRows[0].geplante_ausgaben, 1000000, 'Auch die terminale MC-Zeile enthält den fälligen Betrag');
-    assert(run.stressReplayCapture.years.length > run.logDataRows.length, 'MC hält nach Ausgabenruin den Schattenpfad für Replay fest');
+    assertEqual(captured.totals.failCount, 0, 'MC-Erfolgsquote zählt eine entfallene große Ausgabe nicht als Ruin');
+    close(run.logDataRows[0].geplante_ausgaben + run.logDataRows[0].geplante_ausgaben_gekuerzt, 1000000, 'Auch die MC-Zeile nennt die gekürzte Ausgabe');
 }
 {
-    const baseline = { ...inputs, startFloorBedarf: 500000, plannedExpenses: [once({ monat: '2027-05' })], plannedExpensesReferenceYear: 2026 };
+    const scenario = { ...inputs, startFloorBedarf: 12000, plannedExpenses: [once({ monat: '2027-05' })], plannedExpensesReferenceYear: 2026 };
     const params = { anzahl: 1, maxDauer: 4, blockSize: 3, seed: 12345, methode: 'regime_markov', rngMode: 'per-run-seed' };
-    const request = { inputs: baseline, monteCarloParams: params, widowOptions: baseline.widowOptions, useCapeSampling: false };
-    const capture = await runMonteCarloChunk({ ...request, runRange: { start: 0, count: 1 }, logIndices: [0], stressReplayCapture: createStressReplayCaptureRequest([0]), engine: EngineAPI });
-    const meta = capture.runMeta[0];
-    const path = materializeStressReplayPathV1({ capture: meta.stressReplayCapture, sourceLogRows: meta.logDataRows, sourceRequest: request,
-        dataFingerprint: createStressReplayFingerprint({ dataVersion: getDataVersion() }), engineFingerprint: createStressReplayFingerprint({ engineVersion: EngineAPI.version }), scenarioKey: 'ga-shadow', selectionMetric: 'nominal_terminal_wealth_eur' });
-    const variant = createStressReplayVariantV1({ id: 'kleiner-bedarf', label: 'Kleiner Bedarf', baselineInputs: baseline, patch: { strategy: { startFloorBedarf: 12000 } } });
-    const replay = runStressReplayPathV1({ path, baselineInputs: baseline, variant, engine: EngineAPI });
-    const second = replay.scenarioLog.records.find(row => row.jahr === 2);
-    assert(second?.geplante_ausgaben > 0, 'Replay bezahlt künftige Ausgaben auch in einem Jahr aus dem Schattenpfad nach ursprünglichem Ruin');
+    const chunk = await runMonteCarloChunk({ inputs: scenario, monteCarloParams: params, widowOptions: scenario.widowOptions, useCapeSampling: false,
+        runRange: { start: 0, count: 1 }, logIndices: [0], engine: EngineAPI });
+    const second = chunk.runMeta[0].logDataRows.find(row => row.jahr === 2);
+    assert(second?.geplante_ausgaben > 0, 'MC bezahlt künftige Ausgaben im Folgejahr');
 }
 for (const patch of [{ plannedExpenses: [fixed({ betragMonat: -1 })] }, { plannedExpenses: [once({ monat: '2026-13' })] },
     { plannedExpenses: [fixed({ anpassung: 'lohn' })] }, { plannedExpenses: [once()], plannedExpensesReferenceYear: null }, { plannedExpenses: {} }]) {
@@ -161,20 +150,15 @@ for (const patch of [{ plannedExpenses: [fixed({ betragMonat: -1 })] }, { planne
     close(historyRow.floor_brutto, 12000 + 5400, 'Backtest zählt die feste Ausgabe des Planjahrs zum Grundbedarf');
     const params = { anzahl: 2, maxDauer: 4, blockSize: 3, seed: 12345, methode: 'regime_markov', rngMode: 'per-run-seed', startYearMode: 'UNIFORM' };
     const request = { inputs: scenario, widowOptions: scenario.widowOptions, monteCarloParams: params, useCapeSampling: false };
-    const source = await runMonteCarloChunk({ ...request, runRange: { start: 0, count: 2 }, logIndices: [0, 1], stressReplayCapture: createStressReplayCaptureRequest([0]), engine: EngineAPI });
+    const source = await runMonteCarloChunk({ ...request, runRange: { start: 0, count: 2 }, logIndices: [0, 1], engine: EngineAPI });
     assertEqual(source.technicalInventory.technicalError, 0, 'Monte Carlo verarbeitet die Ausgaben ohne technische Fehler');
     const meta = source.runMeta.find(run => run.index === 0);
     close(meta.logDataRows[0].geplante_ausgaben, 35000, 'MC nutzt denselben Ausgabenbetrag');
     close(meta.logDataRows[0].floor_brutto, 12000 + 5400, 'MC zählt die feste Ausgabe zum Grundbedarf');
     const mcCsv = serializeScenarioLogCsvV2(projectScenarioLogV2(meta.logDataRows));
     assert(mcCsv.split('\r\n')[0].split(';').includes('geplante_ausgaben'), 'Vollständiger MC-CSV-Download enthält die zusätzliche Ausgabe');
-    const path = materializeStressReplayPathV1({ capture: meta.stressReplayCapture, sourceLogRows: meta.logDataRows, sourceRequest: request,
-        dataFingerprint: createStressReplayFingerprint({ dataVersion: getDataVersion() }), engineFingerprint: createStressReplayFingerprint({ engineVersion: EngineAPI.version }), scenarioKey: 'ga-1a', selectionMetric: 'nominal_terminal_wealth_eur' });
-    assertEqual(runStressReplayPathV1({ path, baselineInputs: scenario, sourceScenarioLog: meta.logDataRows, engine: EngineAPI }).reconciliation.matched, true, 'Schatten-/Replaypfad rechnet dieselben Ausgaben');
-    const sweep = runSweepChunk({ baseInputs: scenario, paramCombinations: [{ liquidityRunwayYears: 5 }], sweepConfig: { anzahlRuns: 2, maxDauer: 4, blockSize: 3, seed: 12345, methode: 'regime_markov', rngMode: 'per-run-seed' }, engine: EngineAPI });
-    assertEqual(sweep.results[0].metrics.comparison.runCount, 2, 'Sweep verarbeitet beide Ausgabenpfade');
-    const noExpenseSweep = runSweepChunk({ baseInputs: inputs, paramCombinations: [{ liquidityRunwayYears: 5 }], sweepConfig: { anzahlRuns: 2, maxDauer: 4, blockSize: 3, seed: 12345, methode: 'regime_markov', rngMode: 'per-run-seed' }, engine: EngineAPI });
-    assert(JSON.stringify(sweep.results[0].metrics) !== JSON.stringify(noExpenseSweep.results[0].metrics), 'Die Ausgaben verändern auch die tatsächlich berechneten Sweep-Ergebnisse');
+    const noExpense = await runMonteCarloChunk({ ...request, inputs, widowOptions: inputs.widowOptions, runRange: { start: 0, count: 2 }, engine: EngineAPI });
+    assert(JSON.stringify([...source.pathSummaries.finalValueNominalEur]) !== JSON.stringify([...noExpense.pathSummaries.finalValueNominalEur]), 'Die Ausgaben verändern auch die tatsächlich berechneten MC-Ergebnisse');
     const definition = PROTOCOL_COLUMNS.find(column => column.id === 'planned-expenses');
     assertEqual(definition.label, 'Geplante Ausgaben', 'Vollständiger Download enthält die benannte Protokollspalte');
     close(readProtocolValue(definition, meta.logDataRows[0], { source: 'mc' }), 35000, 'MC-Spalte liest den zusätzlichen Betrag');

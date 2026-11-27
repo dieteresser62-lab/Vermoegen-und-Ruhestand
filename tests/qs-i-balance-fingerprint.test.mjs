@@ -4,16 +4,15 @@ import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input
 import { PLANNED_EXPENSES_KEY } from '../app/profile/household-planned-expenses.js';
 import { CONFIG } from '../app/balance/balance-config.js';
 import { setAppTestDate, getAppTestDate } from '../app/shared/app-clock.js';
-import { overviewScope } from '../app/overview/overview-storage.js';
 import { projectHouseholdPlanComparison } from '../app/profile/household-plan-comparison.js';
 
 const old = getAppTestDate();
 try {
     setAppTestDate('2026-10-27');
-    for (const kind of ['Einzelprofil', 'ein ausgewähltes Fremdmitglied']) {
+    for (const kind of ['Einzelprofil']) {
         const fixture = balanceStorageFixture(kind), records = fixture.records;
         const registry = JSON.parse(records.rs_profiles_v1), activeId = records.rs_current_profile;
-        const scope = kind === 'Einzelprofil' ? fixture.scope : overviewScope('household', fixture.scope.ids);
+        const scope = fixture.scope;
         const state = JSON.parse(records[CONFIG.STORAGE.LS_KEY]);
         state.annualPeriodMetadata = { schemaVersion: 1, lastCommittedPeriod: 'calendar-year:2026', pendingCommit: null };
         records[CONFIG.STORAGE.LS_KEY] = JSON.stringify(state);

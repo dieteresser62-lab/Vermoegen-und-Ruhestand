@@ -1,5 +1,6 @@
 import { PersistenceFacade as persistence } from '../app/shared/persistence-facade.js';
 import { installProfileBfcacheRefresh } from '../app/profile/profile-navigation.js';
+import { stageBalancePlanPatch } from '../app/profile/household-plan.js';
 import { createNavigationGuard } from '../app/shared/navigation-guard.js';
 import { MemoryWebStorage } from './helpers/persistence-area-backends.mjs';
 
@@ -26,6 +27,9 @@ for (const outcome of ['stay', 'not-ready', 'flush-failed', 'reload-failed', 'qu
         let error;
         try { persistence.setItemSync('sim_mcSeed', 'veraltet'); } catch (cause) { error = cause; }
         assertEqual(error?.code, 'PERSISTENCE_RELOAD_REQUIRED', `HS-1d ${outcome}: altes Dokument schreibt nicht`);
+        let planError;
+        try { stageBalancePlanPatch(); } catch (cause) { planError = cause; }
+        assertEqual(planError?.message, error?.message, 'Der Plan nennt bei der Schreibsperre den Grund des Speichers');
         if (outcome === 'queued-write') {
             let flushError;
             try { await persistence.flush(); } catch (cause) { flushError = cause; }

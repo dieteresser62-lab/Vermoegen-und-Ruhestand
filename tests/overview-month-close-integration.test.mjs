@@ -88,8 +88,8 @@ async function fixture({ hold = null, fail = false, snapshotFail = false, readba
     P.resetPersistenceForTests(adapter);
     await P.init({ window: win, installLifecycleHooks: false, installTauriCloseHook: false });
     const scope = overviewScope('household', ['a', 'b']);
-    const registry = { version: 1, profiles: Object.fromEntries(['a', 'b', 'c'].map(id => [id,
-        { meta: { id, name: id, belongsToHousehold: id !== 'c' }, data: { profile_tagesgeld: '100' } }])) };
+    const registry = { version: 1, profiles: Object.fromEntries(['a', 'b'].map(id => [id,
+        { meta: { id, name: id, belongsToHousehold: true }, data: { profile_tagesgeld: '100' } }])) };
     const liveData = { profile_tagesgeld: '100' };
     if (divergentCash) {
         registry.profiles.a.data.profile_cash_history_v1 = JSON.stringify({ version: 1, baselineValue: 110, entries: [{ date: '2026-09-01', value: 100 }] });
@@ -328,12 +328,11 @@ try {
     } finally { f.release.resolve(); if (acceptJob) await bounded(acceptJob); await f.close(job); }
 }
 
-// A+B ändern gemeinsam; Außenprofil und fremde Rohwerte bleiben bytegleich.
+// A+B ändern gemeinsam; fremde Rohwerte bleiben bytegleich.
 for (const outcome of ['cancel', 'escape', 'cross', 'save']) {
     const f = await fixture(); let job;
     try {
         const before = JSON.stringify(Object.fromEntries(f.backend));
-        const outside = JSON.stringify(JSON.parse(f.backend.get('rs_profiles_v1')).profiles.c);
         job = f.click(1);
         const fields = f.fields();
         assertEqual(fields.map(field => field.dataset.tagesgeldPerson).join(','), 'a,b', 'Genau zwei richtig zugeordnete Haushaltsfelder');
@@ -360,7 +359,6 @@ for (const outcome of ['cancel', 'escape', 'cross', 'save']) {
         assertEqual(profiles.b.data.profile_tagesgeld, '80.25', 'Dauerhafter Registrywert B');
         assertEqual(JSON.parse(records.profile_cash_history_v1).entries.length, 1, 'Doppelklick hängt einen Cashbeleg an');
         assertEqual(JSON.parse(profiles.b.data.profile_cash_history_v1).entries.length, 1, 'Ein Cashbeleg für B');
-        assertEqual(JSON.stringify(profiles.c), outside, 'Außenprofil bytegleich');
         assertEqual(f.snapshots.size, 1, 'Ein Wiederherstellungspunkt');
         const scope = f.model.scope;
         const { storeMonthProvision } = await import('../app/overview/overview-storage.js');
@@ -378,10 +376,9 @@ for (const outcome of ['cancel', 'escape', 'cross', 'save']) {
 {
     const f = await fixture({ divergentCash: true }); let job;
     try {
-        const outside = JSON.stringify(JSON.parse(f.backend.get('rs_profiles_v1')).profiles.c);
         const liveHistoryRaw = storage.getItem('profile_cash_history_v1');
         const liveHistory = JSON.parse(liveHistoryRaw);
-        assertEqual(f.model.cashPeople.map(person => person.id).join(','), 'a,b', 'Produktmodell schließt Außenprofil C vor dem Monatsdialog aus');
+        assertEqual(f.model.cashPeople.map(person => person.id).join(','), 'a,b', 'Produktmodell projiziert genau die Haushaltspersonen A und B');
         assertEqual(f.model.cashPeople[0].cashRaw, '120.125', 'Produktmodell übernimmt abweichenden aktiven Livecashrohwert');
         assertEqual(f.model.cashPeople[0].historyRaw, liveHistoryRaw, 'Produktmodell übernimmt abweichende aktive Livehistorie bytegleich');
         job = f.click(0);
@@ -405,7 +402,6 @@ for (const outcome of ['cancel', 'escape', 'cross', 'save']) {
         assertEqual(committedHistory.entries.at(-1).value, 90.125, 'Neue Historie bestätigt den Dialogwert');
         assertEqual(profiles.b.data.profile_tagesgeld, '80.25', 'Produktpfad speichert zweiten Haushaltsstand dauerhaft');
         assert(['a', 'b'].every(id => readMonthProvision(profiles[id].data[OVERVIEW_MONTH_KEY], '2026-09', f.model.scope)), 'Produktpfad bestätigt dauerhaften Monatsabschluss für beide Personen');
-        assertEqual(JSON.stringify(profiles.c), outside, 'Produktpfad erhält Außenprofil bytegleich');
     } finally { await f.close(job); }
 }
 

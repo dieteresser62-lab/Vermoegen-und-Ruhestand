@@ -224,7 +224,7 @@ function prepareReturnHistory(history, quoteDays, today, firstHoldingDay, missin
  * @param {H.ModelOptions} options
  * @returns Depotkennzahlen für Gesamtbestand und Anlageformen. */
 export function evaluateHistoryReturns({ profiles, prices, events = [], startDate, today, profileId = null }) {
-    const selected = profiles.filter(profile => profileId ? profile.id === profileId : profile.belongsToHousehold !== false);
+    const selected = profileId ? profiles.filter(profile => profile.id === profileId) : profiles;
     const groups = [], allQuoteDays = new Set();
     const range = historyRange(startDate, today);
     // Cash wird nicht bewertet; seine Renten, Ausgaben und Qualität sind keine Depotflüsse.

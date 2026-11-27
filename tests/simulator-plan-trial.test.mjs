@@ -1,6 +1,6 @@
 import { describePlanTrialDifference } from '../app/simulator/simulator-plan-trial.js';
 import { initThreeBucketControls } from '../app/simulator/simulator-main-3bucket.js';
-import { readBoundHouseholdPlanField } from '../app/shared/household-plan-fields.js';
+import { readBoundHouseholdPlanField, writeBoundHouseholdPlanField } from '../app/shared/household-plan-fields.js';
 const formNumber = field => readBoundHouseholdPlanField(field) ?? Number(field.value);
 import { createPlanTrial, getSimulatorPlanTrial, renderSimulatorPlanTrial, updateSimulatorPlanTrial, planTrialContextFor, initSimulatorPlanTrial } from '../app/simulator/simulator-plan-trial.js';
 import { PLAN_DEFAULTS, HOUSEHOLD_PLAN_KEY, planScope, buildPlanRecord, readHouseholdPlan, patchHouseholdPlan, SIMULATOR_PLAN_FIELD_MAP, readSimulatorHouseholdPlan, readBalanceHouseholdPlan } from '../app/profile/household-plan.js';
@@ -8,9 +8,7 @@ import { initInputPersistence } from '../app/simulator/simulator-main-input-pers
 import { initDynamicFlexControls, refreshDynamicFlexControls } from '../app/simulator/simulator-main-dynamic-flex.js';
 import { getCommonInputs } from '../app/simulator/simulator-portfolio-inputs.js';
 import { PersistenceFacade, persistenceStorage } from '../app/shared/persistence-facade.js';
-import { createSelectionDocument, addField, simulatorSelectOptions, functionSource } from './designsystem-selection-dom.mjs';
-import { applyChampionToForm } from '../app/simulator/auto-optimize-apply.js';
-import { createAutoOptimizeParameterFingerprint, createAutoOptimizeRequestFingerprint } from '../app/simulator/auto-optimize-param-meta.js';
+import { createSelectionDocument, addField, simulatorSelectOptions } from './designsystem-selection-dom.mjs';
 
 const scope = planScope('household', ['a', 'b']), outside = planScope('single', ['x']);
 const values = { ...structuredClone(PLAN_DEFAULTS), dynamicFlex: true, goGoActive: true,
@@ -34,8 +32,6 @@ let backend = { [HOUSEHOLD_PLAN_KEY]: buildPlanRecord(null, [{ scope, values }, 
     household_simulator_needs_v1: 'Altdaten bleiben unverändert' };
 const original = { document: globalThis.document, window: globalThis.window };
 let failure = null, duringWrite = null;
-const confirmedPlanNotice = 'Nicht übernommen: Das Formular bleibt beim bestätigten Plan. Starte „Nur hier ausprobieren“ und übernimm den Champion danach erneut für diesen lokalen Versuch.';
-const lostPlanNotice = 'Nicht übernommen: Der gemeinsame Plan fehlt oder ist ungültig. Stelle den gemeinsamen Plan wieder her, bevor du den Champion erneut übernimmst.';
 
 // Auswahlidentität und Planverfügbarkeit sind unabhängige Zustandsgrenzen.
 for (const lossFirst of [false, true]) for (const initiallyActive of [false, true]) for (const targetStatus of ['missing', 'invalid', 'valid']) {
@@ -84,180 +80,6 @@ const makeDoc = () => {
     }
     doc.getElementById('p1StartAlter').value = '65'; return doc;
 };
-const champion = candidate => Object.defineProperties(candidate, {
-    __autoOptimizeParameterFingerprint: { value: createAutoOptimizeParameterFingerprint(candidate) },
-    __autoOptimizeRequestFingerprint: { value: createAutoOptimizeRequestFingerprint(candidate, { dynamicFlex: globalThis.document.getElementById('dynamicFlex').checked === true }) }
-});
-function createApplyUI({ candidate, apply, refresh = () => {}, success = () => {}, notice = () => {} }) {
-    return new Function('window', 'applyChampionToForm', 'updateStartPortfolioDisplay', 'appendAutoOptimizeApplySuccess', 'el', 'notifyPage', 'formatAutoOptimizeError', 'getSimulatorPlanTrial',
-        `${functionSource('app/simulator/auto_optimize_ui.js', 'applyChampionToConfig')}; return applyChampionToConfig;`)(
-        { aoChampionResult: { championCfg: candidate } }, ({ championCfg }) => apply(championCfg), refresh, success, () => null,
-        notice, error => error.message, getSimulatorPlanTrial);
-}
-
-// Eigenes Dokument und Backend: Go-Go aus erreicht die Nebenwirkungsprüfung
-// vor dem Fingerprintvergleich. Die Zustandsbindung bleibt produktiv.
-async function probeGoGoOffChampion() {
-    const fixtureValues = { ...structuredClone(values), goGoActive: false, horizonMethod: 'survival_quantile' };
-    let fixtureBackend = { ...backend, [HOUSEHOLD_PLAN_KEY]: buildPlanRecord(null, [{ scope, values: fixtureValues }]).raw };
-    const installBackend = async () => {
-        PersistenceFacade.resetPersistenceForTests({ name: 'Go-Go-aus-Championprobe', async init() {},
-            async loadAll() { return { ...fixtureBackend }; },
-            async saveBatch({ upserts, deletes }) {
-                deletes.forEach(key => delete fixtureBackend[key]); upserts.forEach(([key, value]) => fixtureBackend[key] = value);
-            } });
-        await PersistenceFacade.init({ installLifecycleHooks: false, installTauriCloseHook: false });
-    };
-    try {
-        await installBackend();
-        const doc = makeDoc(); globalThis.document = doc; globalThis.window = {};
-        initInputPersistence(); initDynamicFlexControls(); renderSimulatorPlanTrial(doc, { project: true });
-        const trial = getSimulatorPlanTrial(doc), candidate = champion({ goGoMultiplier: 1.3 });
-        const apply = championCfg => applyChampionToForm({ championCfg, doc });
-        await PersistenceFacade.flush();
-        const backendBytes = JSON.stringify(fixtureBackend), cacheBytes = JSON.stringify(PersistenceFacade.exportAllSync().records);
-        const unchanged = async message => {
-            await PersistenceFacade.flush();
-            assertEqual(JSON.stringify(fixtureBackend), backendBytes, message);
-            assertEqual(JSON.stringify(PersistenceFacade.exportAllSync().records), cacheBytes, `${message} (Cache)`);
-        };
-        const assertGoGo = (active, multiplier, message) => {
-            const inputs = getCommonInputs();
-            assertEqual(doc.getElementById('goGoActive').checked, active, `${message}: sichtbare Checkbox`);
-            assertEqual(inputs.goGoActive, active, `${message}: Laufeingabecheckbox`);
-            assertEqual(formNumber(doc.getElementById('goGoMultiplier')), multiplier, `${message}: sichtbarer Faktor`);
-            assertEqual(inputs.goGoMultiplier, multiplier, `${message}: Laufeingabefaktor`);
-            return inputs;
-        };
-        assert(trial.read().confirmed && !trial.read().active, 'Go-Go-aus-Fixture startet im bestätigten Planlesemodus ohne Versuch');
-        assertEqual(getCommonInputs().horizonMethod, 'survival_quantile', 'Go-Go-aus-Fixture behält den bestätigten Horizont');
-        let applyCode;
-        try { apply(candidate); } catch (error) { applyCode = error.code; }
-        assertEqual(applyCode, 'AUTO_OPTIMIZE_APPLY_SIDE_EFFECT_MISMATCH', 'Go-Go-aus-Champion reproduziert den echten Nebenwirkungsfehler vor dem Fingerprintvergleich');
-        assertGoGo(false, fixtureValues.goGoMultiplier, 'Direkte Ablehnung erhält den bestätigten Plan');
-        let successes = 0, refreshes = 0, notice = '';
-        const applyUI = createApplyUI({ candidate, apply, refresh: () => refreshes++, success: () => successes++, notice: message => notice = message });
-        applyUI();
-        assertEqual(notice, confirmedPlanNotice, 'Go-Go-aus-Ablehnung erhält den vollständigen Versuchshinweis im gültigen bestätigten Lesemodus');
-        assertEqual(successes, 0, 'Go-Go-aus-Ablehnung erzeugt keinen Erfolgsanhang');
-        assertEqual(refreshes, 0, 'Go-Go-aus-Ablehnung erzeugt keinen Erfolgsrefresh');
-        assertGoGo(false, fixtureValues.goGoMultiplier, 'UI-Ablehnung erhält den bestätigten Plan');
-        await unchanged('Go-Go-aus-Ablehnung erhält Plan-, sim_-, Bedarfs- und Profilbackendbytes nach Flush');
-        trial.start(); renderSimulatorPlanTrial(doc, { project: true });
-        applyUI();
-        const inputs = assertGoGo(true, 1.3, 'Derselbe Champion wirkt nach ausdrücklichem Versuchsstart');
-        assert(planTrialContextFor(inputs).deviationApplied, 'Go-Go-aus-Champion trägt im lokalen Versuch den echten Abweichungsnachweis');
-        assertEqual(successes, 1, 'Go-Go-aus-Champion meldet genau einen Erfolg nach erfolgreicher Rücklesung');
-        assertEqual(refreshes, 1, 'Go-Go-aus-Champion aktualisiert die Anzeige erst nach erfolgreicher Rücklesung');
-        await unchanged('Go-Go-aus-Champion erhält im lokalen Versuch sämtliche Backendrohbytes nach Flush');
-        const generalErrors = state => {
-            for (const code of ['AUTO_OPTIMIZE_APPLY_READBACK_FINGERPRINT_MISMATCH', 'AUTO_OPTIMIZE_APPLY_SIDE_EFFECT_MISMATCH']) {
-                let message = '', successes = 0, refreshes = 0;
-                createApplyUI({ candidate, apply: () => { throw Object.assign(new Error('synthetischer Anwendungsfehler'), { code }); },
-                    notice: value => message = value, success: () => successes++, refresh: () => refreshes++ })();
-                assertEqual(message, 'Nicht übernommen: synthetischer Anwendungsfehler', `${state}/${code}: allgemeine Fehlerdarstellung ohne Planlesebehauptung`);
-                assert(successes === 0 && refreshes === 0, `${state}/${code}: Fehler erzeugt weder Erfolgsanhang noch Refresh`);
-            }
-        };
-        generalErrors('Aktiver Versuch');
-        persistenceStorage.removeItem(HOUSEHOLD_PLAN_KEY); await PersistenceFacade.flush();
-        // Saubere Vorbestätigungsfixture mit eigenem Dokument und echten Bindern.
-        await installBackend();
-        const unconfirmedDoc = makeDoc(); globalThis.document = unconfirmedDoc;
-        initInputPersistence(); initDynamicFlexControls(); renderSimulatorPlanTrial(unconfirmedDoc, { project: true });
-        assert(!getSimulatorPlanTrial(unconfirmedDoc).read().confirmed, 'Vorbestätigungsfixture besitzt keine frühere Bestätigungsgrenze');
-        generalErrors('Vor Erstbestätigung');
-    } finally {
-        globalThis.document = original.document; globalThis.window = original.window;
-        PersistenceFacade.resetPersistenceForTests();
-    }
-}
-await probeGoGoOffChampion();
-
-// Jede Verlustart erhält ein eigenes Backend und Dokument. Alle Anwendungen
-// verwenden dieselben produktiven Binder; im Verlustpfad wird kein Fehler injiziert.
-async function probeLostPlanChampion({ goGoActive, invalid }) {
-    const label = `${invalid ? 'Ungültiger' : 'Fehlender'} Plan / Go-Go ${goGoActive ? 'an' : 'aus'}`;
-    const fixtureValues = { ...structuredClone(values), goGoActive };
-    const fixtureBackend = { ...backend, [HOUSEHOLD_PLAN_KEY]: buildPlanRecord(null, [{ scope, values: fixtureValues }]).raw };
-    try {
-        PersistenceFacade.resetPersistenceForTests({ name: label, async init() {},
-            async loadAll() { return { ...fixtureBackend }; },
-            async saveBatch({ upserts, deletes }) {
-                deletes.forEach(key => delete fixtureBackend[key]); upserts.forEach(([key, value]) => fixtureBackend[key] = value);
-            } });
-        await PersistenceFacade.init({ installLifecycleHooks: false, installTauriCloseHook: false });
-        const doc = makeDoc(); globalThis.document = doc; globalThis.window = {};
-        addField(doc, 'simPlanTrialStart');
-        initInputPersistence(); initDynamicFlexControls(); renderSimulatorPlanTrial(doc, { project: true });
-        const trial = getSimulatorPlanTrial(doc);
-        assert(trial.read().confirmed && trial.read().scope && !trial.read().active, `${label}: echtes Dokument startet bestätigt`);
-        assertEqual(getCommonInputs().goGoActive, goGoActive, `${label}: bestätigte Go-Go-Ausgangslage`);
-        assert(trial.start(), `${label}: ausdrücklicher Versuchsstart vor Planverlust`);
-        renderSimulatorPlanTrial(doc, { project: true });
-        const identical = champion({ goGoMultiplier: 1.3 }), different = champion({ goGoMultiplier: 1.4 });
-        let applies = 0, refreshes = 0, successes = 0;
-        const notices = [];
-        const apply = championCfg => { applies++; return applyChampionToForm({ championCfg, doc }); };
-        const ui = candidate => createApplyUI({ candidate, apply, refresh: () => refreshes++, success: () => successes++,
-            notice: message => notices.push(message) });
-        ui(identical)();
-        const appliedInputs = getCommonInputs();
-        assert(applies === 1 && refreshes === 1 && successes === 1 && notices.length === 0,
-            `${label}: identischer Prüfchampion wurde zuvor wirklich lokal angewendet`);
-        assertEqual(formNumber(doc.getElementById('goGoMultiplier')), 1.3, `${label}: lokaler Championfaktor im Formular`);
-        assert(doc.getElementById('goGoActive').checked && appliedInputs.goGoActive && appliedInputs.goGoMultiplier === 1.3
-            && planTrialContextFor(appliedInputs).deviationApplied, `${label}: echte Go-Go-Kopplung und Abweichungsnachweis`);
-        const invalidRaw = '{"version":1,"entries":"beschädigt"}';
-        if (invalid) persistenceStorage.setItem(HOUSEHOLD_PLAN_KEY, invalidRaw);
-        else persistenceStorage.removeItem(HOUSEHOLD_PLAN_KEY);
-        await PersistenceFacade.flush();
-        const loaded = readSimulatorHouseholdPlan();
-        assertEqual(loaded.status, invalid ? 'invalid' : 'missing', `${label}: Simulator liefert den produktiven Verluststatus`);
-        if (invalid) {
-            let balanceError = '';
-            try { readBalanceHouseholdPlan(); } catch (error) { balanceError = error.message; }
-            assertEqual(balanceError, loaded.error.message, `${label}: Balance wirft weiterhin den Validierungsfehler`);
-        }
-        const lostState = trial.read();
-        assert(lostState.confirmed && lostState.scope === null && !lostState.active, `${label}: synchronisierter Verlustzustand am bestätigten Dokument`);
-        renderSimulatorPlanTrial(doc, { project: true });
-        const backendBytes = JSON.stringify(fixtureBackend), cacheBytes = JSON.stringify(PersistenceFacade.exportAllSync().records);
-        const fieldState = () => Object.fromEntries([...Object.keys(SIMULATOR_PLAN_FIELD_MAP), 'dynamicFlexPreset', 'dynamicFlexShowAdvanced'].map(id => {
-            const field = doc.getElementById(id);
-            return [id, { value: field.value, checked: field.checked, disabled: field.disabled,
-                dataset: { ...field.dataset }, describedBy: field.getAttribute('aria-describedby'), validity: field.validationMessage }];
-        }));
-        const fields = JSON.stringify(fieldState());
-        assert([...Object.keys(SIMULATOR_PLAN_FIELD_MAP), 'dynamicFlexPreset'].every(id => doc.getElementById(id).disabled),
-            `${label}: sämtliche vorhandenen Planfelder und Preset sind gesperrt`);
-        for (const [kind, candidate] of [['identisch', identical], ['abweichend', different]]) {
-            const attempt = `${label} / ${kind}`;
-            applies = refreshes = successes = 0; notices.length = 0;
-            ui(candidate)();
-            assertEqual(notices.length, 1, `${attempt}: genau ein Hinweis`);
-            assertEqual(notices[0], lostPlanNotice, `${attempt}: vollständiger Wiederherstellungshinweis`);
-            assertEqual(applies, 0, `${attempt}: keine Formularanwendung vor Ablehnung`);
-            assertEqual(refreshes, 0, `${attempt}: kein Refresh`);
-            assertEqual(successes, 0, `${attempt}: kein Erfolgsanhang`);
-            assertEqual(JSON.stringify(fieldState()), fields, `${attempt}: alle Planwerte, Checkboxen, Preset und Sperren unverändert`);
-            assert(globalThis.document === doc && getSimulatorPlanTrial(doc) === trial, `${attempt}: derselbe Dokument- und Zustandsbesitzer`);
-            assertEqual(trial.start(), false, `${attempt}: Versuchsstart bleibt unmöglich`);
-            assert(doc.getElementById('simPlanTrialStart').disabled, `${attempt}: Startbutton bleibt gesperrt`);
-            let runError = '';
-            try { getCommonInputs(); } catch (error) { runError = error.message; }
-            assertEqual(runError, 'Haushalt & Plan ist nicht mehr verfügbar. Bitte neu laden.', `${attempt}: produktive Laufeingabe bleibt gesperrt`);
-            await PersistenceFacade.flush();
-            assertEqual(JSON.stringify(fixtureBackend), backendBytes, `${attempt}: sämtliche Backendrohbytes entsprechen der Verlustbaseline`);
-            assertEqual(JSON.stringify(PersistenceFacade.exportAllSync().records), cacheBytes, `${attempt}: sämtliche Cacherohbytes entsprechen der Verlustbaseline`);
-            assertEqual(persistenceStorage.getItem(HOUSEHOLD_PLAN_KEY), invalid ? invalidRaw : null, `${attempt}: keine automatische Planwiederherstellung`);
-        }
-    } finally {
-        globalThis.document = original.document; globalThis.window = original.window;
-        PersistenceFacade.resetPersistenceForTests();
-    }
-}
-for (const goGoActive of [true, false]) for (const invalid of [false, true]) await probeLostPlanChampion({ goGoActive, invalid });
 
 try {
     PersistenceFacade.resetPersistenceForTests({ name: 'Versuchsprobe', async init() {}, async loadAll() { return { ...backend }; },
@@ -277,7 +99,6 @@ try {
         assertEqual(JSON.stringify(backend), backendBytes, message);
         assertEqual(JSON.stringify(PersistenceFacade.exportAllSync().records), bytes, `${message} (Cache)`);
     };
-    const apply = championCfg => applyChampionToForm({ championCfg, doc });
     assert(doc.getElementById('startFlexBedarf').disabled, 'Planfelder sind zunächst lesend');
     const head = doc.getElementById('simPlanTrialStart'), headParent = head.parentNode;
     head.remove(); refreshDynamicFlexControls();
@@ -311,27 +132,6 @@ try {
     assert(doc.getElementById('goGoMultiplier').dataset.planTrialInactive === 'false'
         && doc.getElementById('survivalQuantile').dataset.planTrialInactive === 'false', 'Explizite Detailfreigabe erhält die fachliche Anwendbarkeit und Planlesesperre');
     await unchangedBackend('Lesemodusereignisse erhalten alle Backendrohbytes nach Flush');
-    const candidate = champion({ liquidityRunwayYears: 7, survivalQuantile: .93, goGoMultiplier: 1.3 });
-    let applyCode;
-    try { apply(candidate); } catch (error) { applyCode = error.code; }
-    assertEqual(applyCode, 'AUTO_OPTIMIZE_APPLY_READBACK_FINGERPRINT_MISMATCH', 'Echte Champion-Rücklesung weist abweichende Planwerte im Lesemodus ab');
-    apply(champion({ liquidityRunwayYears: values.liquidityRunwayYears }));
-    assertEqual(formNumber(doc.getElementById('liquidityRunwayYears')), values.liquidityRunwayYears, 'Identischer Champion darf unverändert erfolgreich sein');
-    let identicalSuccesses = 0, identicalRefreshes = 0;
-    createApplyUI({ candidate: champion({ liquidityRunwayYears: values.liquidityRunwayYears }), apply,
-        success: () => identicalSuccesses++, refresh: () => identicalRefreshes++ })();
-    assert(identicalSuccesses === 1 && identicalRefreshes === 1 && !trial.read().active,
-        'Identischer Champion bleibt auch im produktiven UI-Handler erfolgreich ohne Versuchsstart');
-    await unchangedBackend('Identischer erfolgreicher Champion erhält sämtliche Backendrohbytes nach Flush');
-    // Produktiver UI-Funktionskörper mit echter Registryanwendung; zusätzlich zum Browserknopf.
-    let successCount = 0, notice = '';
-    const applyUI = createApplyUI({ candidate, apply, success: () => successCount++, notice: message => notice = message });
-    applyUI();
-    const assertRejectedBrowserState = new Function('assert', `${functionSource('tests/browser-smoke.test.mjs', 'assertRejectedPlanChampionState')}; return assertRejectedPlanChampionState;`)(assert);
-    assertRejectedBrowserState({ successes: successCount });
-    assertEqual(successCount, 0, 'Produktiver UI-Handler hängt nach Ablehnung keinen Erfolg an');
-    assertEqual(notice, confirmedPlanNotice, 'Ablehnung erhält den vollständigen Versuchshinweis im gültigen bestätigten Lesemodus');
-    await unchangedBackend('Abgewiesene Champion-Anwendung erhält alle Backendrohbytes nach Flush');
     trial.start(); renderSimulatorPlanTrial(doc, { project: true });
     // Tatsächlich gebundenes Versuchsfeld mit nativer Auswahlmechanik.
     const boundFlex = doc.getElementById('startFlexBedarf');
@@ -361,24 +161,13 @@ try {
     boundFlex.dispatchEvent({ type: 'blur' }); doc.activeElement = null;
     trial.reset(); renderSimulatorPlanTrial(doc, { project: true });
     trial.start(); renderSimulatorPlanTrial(doc, { project: true });
-    goGo.checked = false; goGo.dispatchEvent({ type: 'change' });
-    applyUI();
-    const appliedInputs = getCommonInputs();
-    for (const [id, expected] of Object.entries(candidate)) {
-        assertEqual(formNumber(doc.getElementById(id)), expected, `${id}: derselbe Champion wirkt nach Versuchsstart im Formular`);
-        assertEqual(appliedInputs[id], expected, `${id}: derselbe Champion wirkt in der Laufeingabe`);
+    // Tatsächliche Feld- und Strategiewechselgrenzen: keine Skalenfehler/Defaults.
+    for (const [id, value] of [['survivalQuantile', .9], ['goGoMultiplier', 1.25]]) {
+        writeBoundHouseholdPlanField(doc.getElementById(id), value); doc.getElementById(id).dispatchEvent({ type: 'change' });
     }
-    assert(goGo.checked && appliedInputs.goGoActive, 'Registryanwendung koppelt Go-Go-Faktor und Checkbox');
-    assert(!doc.getElementById('goGoMultiplier').disabled && doc.getElementById('goGoMultiplier').dataset.planTrialInactive === 'false', 'Go-Go-Kopplung aktualisiert auch die fachliche Sperre im Versuch');
-    assert(planTrialContextFor(appliedInputs).deviationApplied, 'Champion-Versuch trägt echten Abweichungsnachweis');
-    assertEqual(successCount, 1, 'Produktiver UI-Handler meldet lokale Anwendung erst nach erfolgreicher Rücklesung');
-    await unchangedBackend('Lokale Champion-Anwendung erhält alle Backendrohbytes nach Flush');
-    // Tatsächliche Sweep- und Strategiewechselgrenzen: keine Skalenfehler/Defaults.
-    const { applyParametersToForm } = await import('../app/simulator/simulator-optimizer.js');
-    applyParametersToForm({ survivalQuantile: .9, goGoMultiplier: 1.25 });
-    assertEqual(doc.getElementById('survivalQuantile').value, '90', 'Sweep projiziert kanonischen Anteil als Prozentanzeige');
-    assertEqual(getCommonInputs().survivalQuantile, .9, 'Sweepanteil erreicht die Engine genau einmal skaliert');
-    assertEqual(getCommonInputs().goGoMultiplier, 1.25, 'Sweepfaktor bleibt ein Faktor');
+    assertEqual(doc.getElementById('survivalQuantile').value, '90', 'Gebundenes Feld projiziert kanonischen Anteil als Prozentanzeige');
+    assertEqual(getCommonInputs().survivalQuantile, .9, 'Anteil erreicht die Engine genau einmal skaliert');
+    assertEqual(getCommonInputs().goGoMultiplier, 1.25, 'Faktor bleibt ein Faktor');
     const strategy = doc.getElementById('entnahmeStrategie');
     initThreeBucketControls(); strategy.value = '3_bucket_jilge'; strategy.dispatchEvent({ type: 'change' });
     const factor = doc.getElementById('bondTargetFactor'); factor.value = '';
@@ -395,7 +184,7 @@ try {
     assertEqual(quantile.value, '90', 'Wiederprojektion erhält aktive Prozent-Eingabe');
     quantile.dispatchEvent({ type: 'blur' });
     assertEqual(getCommonInputs().survivalQuantile, beforeFocus, 'Fokus/Blur erhält tatsächlichen Engineanteil');
-    await unchangedBackend('Sweep, Strategiewechsel und reine Darstellung erhalten Backendrohbytes');
+    await unchangedBackend('Feldübernahme, Strategiewechsel und reine Darstellung erhalten Backendrohbytes');
     const minimum = doc.getElementById('minimumFlexAnnual'); minimum.value = '99999'; minimum.dispatchEvent({ type: 'input' });
     const reason = minimum.validationMessage;
     let runError;

@@ -11,7 +11,15 @@ import { bindInfoPopovers } from '../shared/designsystem-info-popover.js';
 
 const bindings = new WeakMap();
 const comparisonSelections = new WeakMap();
-const groups = [['wealth', 'Vermögen & Markt'], ['care', 'Pflege'], ['risk', 'Risiko'], ['sample', 'Stichprobe']];
+const groups = [['wealth', 'Vermögen & Markt'], ['care', 'Pflege'], ['death', 'Todesfall'], ['risk', 'Risiko'], ['sample', 'Stichprobe']];
+
+/** ER-2e (Befund 1810): Eine Person stirbt, und danach stehen mindestens zwei gerechnete Folgejahre im Protokoll. */
+function hasDeathWithFollowUp(scenario) {
+    const rows = scenario.logDataRows || [];
+    const dead = (row, person) => row?.[`Person${person}Alive`] === 0 || row?.[`Person${person}Alive`] === false;
+    return rows.some((row, index) => [1, 2].some(person => dead(row, person) && !dead(rows[index - 1], person))
+        && [1, 2].every(offset => rows[index + offset]?.jahr === row.jahr + offset && rows[index + offset].financiallyEvaluable !== false));
+}
 
 function scenarioLifeEvents(scenario, startYear, personDisplayContext) {
     const rows = scenario.logDataRows || [];
@@ -45,6 +53,15 @@ function renderPersonMarks(events) {
  * @returns Ergebnis der Operation.
  */
 export function scenarioGroupEntries(entries, group) {
+    if (group === 'death') {
+        const runs = new Set();
+        return entries.filter(({ id, scenario }) => {
+            const run = scenario.sourceIdentity?.absoluteRunIndex ?? id;
+            if (runs.has(run) || !hasDeathWithFollowUp(scenario)) return false;
+            runs.add(run);
+            return true;
+        });
+    }
     const items = entries.filter(entry => entry.group === group);
     if (group !== 'sample') return items;
     const value = entry => scenarioEndWealth(entry.scenario, 'nominal');
@@ -61,7 +78,7 @@ function scenarioValue(scenario, mode, { startYear, realByRun } = {}) {
     const value = scenarioDisplayWealth(scenario, mode, realByRun).total;
     const ruinYear = scenario.logDataRows?.find(row => row.recordType === 'terminal_ruin')?.jahr;
     return scenario.failed ? Number.isFinite(ruinYear)
-        ? `Ruin ${Number.isInteger(startYear) ? startYear + ruinYear - 1 : `Jahr ${ruinYear}`}` : 'Ruin'
+        ? `Vermögen aufgebraucht ${Number.isInteger(startYear) ? startYear + ruinYear - 1 : `Jahr ${ruinYear}`}` : 'Vermögen aufgebraucht'
         : value === null ? 'Messung fehlt' : formatChartEuro(value);
 }
 
@@ -77,15 +94,19 @@ export function renderScenarioList(entries, selectedId, mode, options = {}) {
     const items = scenarioGroupEntries(entries, group);
     const candidate = options.focusedId || selectedId;
     const focusedId = items.some(entry => entry.id === candidate) ? candidate : items[0]?.id;
-    if (!items.length) return `<p class="ds-note">${group === 'care' ? 'Keine beobachteten Pflegefälle.' : 'Keine Szenarien vorhanden.'}</p>`;
+    if (!items.length) return `<p class="ds-note">${group === 'care' ? 'Keine beobachteten Pflegefälle.'
+        : group === 'death' ? 'Kein Todesfall mit zwei Folgejahren im Protokoll.' : 'Keine Szenarien vorhanden.'}</p>`;
     return items.map(entry => {
         const wealth = scenarioValue(entry.scenario, mode, options);
         const displayWealth = scenarioDisplayWealth(entry.scenario, mode, options.realByRun);
         const endWealth = displayWealth.total;
-        const exactWealth = entry.scenario.failed || endWealth === null ? wealth : formatCurrency(endWealth);
+        // HP-6: Die Aufteilung steht nicht als eigene Zeile in der Liste (sonst passen bei 1366 px keine sechs Einträge),
+        // sondern im Maus-Hinweis, in der Ansage und in der Karte „Ausgewählt …“ darunter.
+        const exactWealth = (entry.scenario.failed || endWealth === null ? wealth : formatCurrency(endWealth))
+            + (displayWealth.hasHomes && endWealth !== null ? ` · davon Geldvermögen ${formatCurrency(displayWealth.money)} · Immobilien ${formatCurrency(displayWealth.total - displayWealth.money)}` : '');
         const label = scenarioLabel(entry.scenario);
         const events = scenarioLifeEvents(entry.scenario, options.startYear, options.personDisplayContext);
-        return `<button type="button" role="option" tabindex="${entry.id === focusedId ? 0 : -1}" class="scenario-list-item" data-scenario-group="${group}" data-scenario-id="${escape(entry.id)}" aria-selected="${entry.id === selectedId}" title="${escape(exactWealth)}" aria-label="${escape(`${label} · ${exactWealth}${events.length ? ` · ${events.join(' · ')}` : ''}`)}"><span class="scenario-swatch" style="--scenario-color:${entry.color}" aria-hidden="true"></span><span class="scenario-name">${escape(label)}<span title="${escape(rowWealthText(displayWealth.row, mode))}"> ⓘ</span></span><small class="scenario-value${entry.scenario.failed ? ' is-ruin' : ''}">${escape(wealth)}${displayWealth.hasHomes ? `<br><span class="scenario-money-detail">davon Geldvermögen ${escape(formatCurrency(displayWealth.money))} · Immobilien ${escape(formatCurrency(displayWealth.total - displayWealth.money))}</span>` : ''}</small>${events.length ? `<small class="scenario-details">${renderPersonMarks(events)}</small>` : ''}</button>`;
+        return `<button type="button" role="option" tabindex="${entry.id === focusedId ? 0 : -1}" class="scenario-list-item" data-scenario-group="${group}" data-scenario-id="${escape(entry.id)}" aria-selected="${entry.id === selectedId}" title="${escape(exactWealth)}" aria-label="${escape(`${label} · ${exactWealth}${events.length ? ` · ${events.join(' · ')}` : ''}`)}"><span class="scenario-swatch" style="--scenario-color:${entry.color}" aria-hidden="true"></span><span class="scenario-name">${escape(label)}<span title="${escape(rowWealthText(displayWealth.row, mode))}"> ⓘ</span></span><small class="scenario-value${entry.scenario.failed ? ' is-ruin' : ''}">${escape(wealth)}</small>${events.length ? `<small class="scenario-details">${renderPersonMarks(events)}</small>` : ''}</button>`;
     }).join('');
 }
 
@@ -158,13 +179,12 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
         drawComparisonChart();
     };
     const options = () => Array.from(list?.querySelectorAll?.('[role="option"]') || []);
-    const focusOption = (id, { preventScroll = true } = {}) => {
+    const focusOption = id => {
         focusedId = id;
         for (const option of options()) option.setAttribute('tabindex', option.getAttribute('data-scenario-id') === id ? '0' : '-1');
         const option = options().find(option => option.getAttribute('data-scenario-id') === id);
-        option?.focus({ preventScroll });
-        // Navigation hält die Seite fest; beim Replay-Rückweg darf der Browser sie scrollen.
-        // Die Zeile bleibt in beiden Fällen vollständig in der inneren Liste sichtbar.
+        option?.focus({ preventScroll: true });
+        // Navigation hält die Seite fest; die Zeile bleibt vollständig in der inneren Liste sichtbar.
         if (option?.getBoundingClientRect && list?.getBoundingClientRect) {
             const row = option.getBoundingClientRect(), area = list.getBoundingClientRect();
             if (row.top < area.top) list.scrollTop += row.top - area.top;
@@ -183,7 +203,7 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
             list.scrollTop = scrollTop;
         }
         if (groupHost) {
-            if (!groupHost.innerHTML) groupHost.innerHTML = groups.map(([key, title]) => `<button type="button" class="ds-button ds-button-secondary" data-scenario-group="${key}"><span>${title}</span> <span class="scenario-group-count">${entries.filter(entry => entry.group === key).length}</span></button>`).join('');
+            if (!groupHost.innerHTML) groupHost.innerHTML = groups.map(([key, title]) => `<button type="button" class="ds-button ds-button-secondary" data-scenario-group="${key}"><span>${title}</span> <span class="scenario-group-count">${scenarioGroupEntries(entries, key).length}</span></button>`).join('');
             for (const button of groupHost.querySelectorAll?.('[data-scenario-group]') || []) button.setAttribute('aria-pressed', String(button.getAttribute('data-scenario-group') === activeGroup));
         }
         const entry = entries.find(entry => entry.id === selectedId);
@@ -249,7 +269,10 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
         const entry = entries.find(entry => entry.id === id);
         selectedId = entry?.id || '';
         focusedId = selectedId;
-        if (entry) { activeGroup = entry.group; remembered.set(activeGroup, selectedId); }
+        if (entry) {
+            if (activeGroup !== 'death' || !activeItems().includes(entry)) activeGroup = entry.group;
+            remembered.set(activeGroup, selectedId);
+        }
         onSelect(selectedId, entry?.scenario || null);
         draw();
     };
@@ -340,7 +363,6 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
     }));
     const binding = {
         choose, switchGroup,
-        focusSelected: () => { if (disclosure) disclosure.open = true; showChart('selected'); focusOption(selectedId, { preventScroll: false }); },
         showChart,
         get activeGroup() { return activeGroup; },
         get focusedId() { return focusedId; },
@@ -364,14 +386,3 @@ export function disposeScenarioLogView(doc) {
     bindings.delete(doc);
 }
 
-/** Replay-Rückweg öffnet dieselbe Auswahl und erlaubt sichtbaren Fokus im Seitenviewport.
- *
- * @param doc - Dokument der Simulatorseite.
- * @returns {boolean}
- */
-export function focusSelectedScenario(doc) {
-    const binding = bindings.get(doc);
-    if (!binding?.selectedId) return false;
-    binding.focusSelected();
-    return true;
-}

@@ -65,7 +65,6 @@ import { prepareSaleFlowWrite, commitSaleFlowWrite } from '../app/tranches/house
 import { createPlanDetails } from '../app/shared/annual-todo-view.js';
 import { projectAnnualTodoPlan } from '../app/balance/annual-todo.js';
 import { formatHouseholdPlanValue, carrierModeText } from '../app/shared/household-plan-fields.js';
-import { BALANCE_IMPORT_INPUT_SCHEMA_V2 } from '../app/balance/balance-binder-imports.js';
 import { debitPersonalLiquidity } from '../app/simulator/simulator-personal-accounts.js';
 import { MockDocument } from './helpers/balance-page-fixture.mjs';
 
@@ -124,13 +123,11 @@ async function freshArea(data) {
     assertEqual(state('one_carries:muster_martin'), 'Martin teilweise 23069.25', 'Gegenprobe heutiger Modus: „teilweise, 23.069,25 € offen“ (so vorher)');
 }
 
-// Punkt 6 · Anzeige „Eine Person trägt · <Name>“ (Haushalt & Plan, Probelauf-Vergleich, Balance) und Balance-Import mit dem Feld.
+// Punkt 6 · Anzeige „Eine Person trägt · <Name>“ (Haushalt & Plan, Probelauf-Vergleich, Balance).
 {
     assertEqual(carrierModeText('one_carries:muster_martin', [{ id: MARTIN, name: 'Martin' }]), 'Eine Person trägt · Martin', 'Punkt 6: Name aus der Liste');
     assertEqual(formatHouseholdPlanValue('one_carries:muster_petra', 'householdWithdrawalMode'), 'Eine Person trägt · Petra', 'Punkt 6: Name aus dem Bestand (Probelauf-Vergleich)');
     assertEqual(formatHouseholdPlanValue('one_carries:unbekannt', 'householdWithdrawalMode'), 'Eine Person trägt', 'Punkt 6: ohne bekannte Person ohne Namen');
-    assertEqual(BALANCE_IMPORT_INPUT_SCHEMA_V2.householdWithdrawalMode?.type, 'withdrawalMode', 'Punkt 6: Balance-Export/-Import kennt die Verteilung als optionales Feld');
-    assertEqual(BALANCE_IMPORT_INPUT_SCHEMA_V2.householdWithdrawalMode?.required, false, 'Punkt 6: Feld optional, alte Exporte bleiben gültig');
 }
 
 // Punkt 3 (P1-03) · Rückfallverkauf ohne fertigen Plan: bei „Martin trägt“ zahlt Martin zuerst; zahlt Petra, steht das als Rückgriff da.

@@ -11,6 +11,7 @@ import {
 } from '../app/simulator/simulation-data-inventory.js';
 import {
     HISTORICAL_DATA,
+    HISTORICAL_DATENSTAND,
     MORTALITY_TABLE,
     PFLEGE_GRADE_LABELS,
     PFLEGE_GRADE_PROBABILITIES,
@@ -42,6 +43,9 @@ import { PFLEGE_COST_PRESETS } from '../app/simulator/simulator-ui-pflege.js';
 import { GERMAN_DEMOGRAPHY_CARE_SURVIVOR_CONTRACT } from '../app/simulator/german-demography-care-survivor-contract.js';
 
 console.log('--- Simulation Data Inventory Tests ---');
+
+// JD-1: Das letzte Qualitätssegment jeder Reihe endet am Datenende laut Datenstand.
+const DATA_END_YEAR = HISTORICAL_DATENSTAND.endYear;
 
 function clone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -90,8 +94,8 @@ for (const seriesId of historicalSeriesIds) {
     assertEqual(entry.qualitySegments[0].startYear, 1925, `${seriesId} quality should start in 1925`);
     assertEqual(
         entry.qualitySegments.at(-1).endYear,
-        2025,
-        `${seriesId} quality should end in 2025`
+        DATA_END_YEAR,
+        `${seriesId} quality should end at the data status end year`
     );
     assert(
         entry.qualitySegments !== SIMULATION_DATA_INVENTORY.historicalSeries.global_equity_research_index.qualitySegments
@@ -122,7 +126,7 @@ assertEqual(
         { startYear: 1968, endYear: 1968, evidenceClass: 'derived' },
         { startYear: 1969, endYear: 1998, evidenceClass: 'derived' },
         { startYear: 1999, endYear: 1999, evidenceClass: 'derived' },
-        { startYear: 2000, endYear: 2025, evidenceClass: 'derived' }
+        { startYear: 2000, endYear: DATA_END_YEAR, evidenceClass: 'derived' }
     ]),
     'Gold should expose the policy/FX, post-war, Frankfurt and EUR seams without gaps'
 );
@@ -134,7 +138,7 @@ assertEqual(
 assert(
     SIMULATION_DATA_INVENTORY.historicalSeries.global_equity_research_index.qualitySegments
         .some(segment => segment.startYear === 2021 && segment.evidenceClass === 'estimated'),
-    'Equity quality should expose the modelled 2021-2025 dividend segment'
+    'Equity quality should expose the modelled dividend segment from 2021'
 );
 assertEqual(
     SIMULATION_DATA_INVENTORY.historicalSeries.global_equity_research_index.qualitySegments[0].endYear,
@@ -165,7 +169,7 @@ assertEqual(
         { startYear: 1950, endYear: 1962, evidenceClass: 'official' },
         { startYear: 1963, endYear: 1991, evidenceClass: 'official' },
         { startYear: 1992, endYear: 2024, evidenceClass: 'official' },
-        { startYear: 2025, endYear: 2025, evidenceClass: 'official' }
+        { startYear: 2025, endYear: DATA_END_YEAR, evidenceClass: 'official' }
     ]),
     'German CPI should expose the source and territory seams without gaps'
 );
@@ -196,7 +200,7 @@ assertEqual(
         { startYear: 1997, endYear: 1998, evidenceClass: 'official' },
         { startYear: 1999, endYear: 2018, evidenceClass: 'official' },
         { startYear: 2019, endYear: 2019, evidenceClass: 'official' },
-        { startYear: 2020, endYear: 2025, evidenceClass: 'official' }
+        { startYear: 2020, endYear: DATA_END_YEAR, evidenceClass: 'official' }
     ]),
     'German cash should expose source and benchmark seams without gaps'
 );
@@ -217,7 +221,7 @@ assertJsonEqual(
         { startYear: 1956, endYear: 1990, evidenceClass: 'official' },
         { startYear: 1991, endYear: 2006, evidenceClass: 'official' },
         { startYear: 2007, endYear: 2021, evidenceClass: 'official' },
-        { startYear: 2022, endYear: 2025, evidenceClass: 'official' }
+        { startYear: 2022, endYear: DATA_END_YEAR, evidenceClass: 'official' }
     ],
     'German wage quality should expose source, territory, precision and method seams'
 );
@@ -237,7 +241,7 @@ assertJsonEqual(
         .map(({ startYear, endYear, evidenceClass }) => ({ startYear, endYear, evidenceClass })),
     [
         { startYear: 1925, endYear: 1935, evidenceClass: 'estimated' },
-        { startYear: 1936, endYear: 2025, evidenceClass: 'backtested' }
+        { startYear: 1936, endYear: DATA_END_YEAR, evidenceClass: 'backtested' }
     ],
     'CAPE quality should delimit the interpolation-affected vintage'
 );

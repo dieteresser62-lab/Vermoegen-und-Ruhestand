@@ -29,12 +29,45 @@ function assertHouseholdWithdrawal(value) {
         || Object.keys(value).some(key => !['mode', 'carrierId', 'carrierName', 'attacked'].includes(key))) throw new Error('Jahresbeleg: ungültiger Entnahmemodus.');
 }
 
+const PURCHASE_USE_KEYS = ['aktien', 'gold', 'bonds', 'geldmarkt'];
+/** Endgültige persönliche Verwendungen der Haushaltsrechnung (nach der Verrechnung gegenläufiger Aufträge, FR-63) für den Jahresbeleg,
+ * nur wenn der Plan kauft: `{[Person]: {[Verwendung]: Euro}}`. Die Kaufzeilen je Person entstehen daraus. Ältere Versionen übergehen das Feld.
+ * @param {any} action Haushaltsaktion des Belegs. @param {any} runs Personenrechnungen mit `profileId` und `ui.action`.
+ * @returns {Record<string, Record<string, number>>|null} */
+export function annualPersonalUses(action, runs) {
+    if (!Array.isArray(runs) || runs.length < 2 || !PURCHASE_USE_KEYS.some(key => finite(action?.verwendungen?.[key]) && action.verwendungen[key] > 0.005)) return null;
+    /** @type {Record<string, Record<string, number>>} */
+    const result = {};
+    for (const run of runs) {
+        const uses = run?.ui?.action?.verwendungen;
+        if (!text(run?.profileId) || !plain(uses)) continue;
+        result[run.profileId] = Object.fromEntries(Object.entries(uses).filter(([, value]) => finite(value) && value > 0));
+    }
+    return Object.keys(result).length ? result : null;
+}
+
+/** Ist `action.personalUses` stimmig? Nur Personen des Belegbereichs, je Verwendung ergibt die Summe über die Personen die
+ * Haushaltsverwendung (±1 €). Fehlt das Feld, ist das kein Widerspruch (Altbeleg).
+ * @param {any} action @param {string[]} ids Personen des Belegbereichs. @returns {boolean} */
+export function personalUsesConsistent(action, ids) {
+    const personal = action?.personalUses;
+    if (!plain(personal)) return false;
+    const rows = Object.entries(personal);
+    if (!rows.length || rows.some(([id, uses]) => !ids.includes(id) || !plain(uses) || Object.values(uses).some(value => !finite(value) || value < 0))) return false;
+    const keys = new Set([...Object.keys(action.verwendungen || {}), ...rows.flatMap(([, uses]) => Object.keys(uses))]);
+    return [...keys].every(key => {
+        const household = finite(action.verwendungen?.[key]) ? action.verwendungen[key] : 0;
+        return Math.abs(rows.reduce((sum, [, uses]) => sum + (finite(uses[key]) ? uses[key] : 0), 0) - household) <= 1;
+    });
+}
+
 /** Euro/Monat, Liquiditätsdeckung und Flex-Rate in Prozent wie im Balance-Ergebnis. */
 /**
  * @param {D.AnnualOutcome} outcome
+ * @param {string[]} [ids] Personen des Belegbereichs.
  * @returns {void}
  */
-function assertOutcome(outcome) {
+function assertOutcome(outcome, ids = []) {
     if (!plain(outcome) || !finite(outcome.monthlyWithdrawal) || outcome.monthlyWithdrawal < 0
         || !finite(outcome.monthlyBudget) || outcome.monthlyBudget < 0
         || !finite(outcome.liquidityBefore) || outcome.liquidityBefore < 0
@@ -59,11 +92,21 @@ function assertOutcome(outcome) {
     assertJson(outcome);
     // TRG-1c Punkte 5 und 8: optional Modus „Eine Person trägt“ mit tragender Person und Rückgriff zum Zeitpunkt des Beschlusses.
     if (Object.hasOwn(outcome, 'householdWithdrawal')) assertHouseholdWithdrawal(outcome.householdWithdrawal);
+    // FR-84 Punkt 11: optional die voraussichtliche Hilfe zur Pflege zum Zeitpunkt des Beschlusses.
+    const careAid = /** @type {any} */ (outcome).careAid;
+    // NK-2d: dazu optional ein Mangel beim Grundbedarf zu Hause (`floorGap`), auch ohne Hilfesumme.
+    const gap = Object.hasOwn(careAid || {}, 'floorGap');
+    if (Object.hasOwn(outcome, 'careAid') && (!plain(careAid) || !finite(careAid.total) || careAid.total < 0 || careAid.total <= 0 && !gap || !Array.isArray(careAid.persons)
+        || gap && (!finite(careAid.floorGap) || careAid.floorGap <= 0)
+        || careAid.persons.some((/** @type {any} */ row) => !plain(row) || !text(row.profileId) || !finite(row.amount) || row.amount < 0
+            || Object.hasOwn(row, 'name') && !text(row.name))
+        || Object.keys(careAid).some(key => !['total', 'persons', 'floorGap'].includes(key)))) throw new Error('Jahresbeleg: ungültige Hilfe zur Pflege.');
     for (const source of action.quellen || []) {
         if (!plain(source) || !text(source.kind) || !finite(source.brutto) || source.brutto < 0
             || !finite(source.netto) || source.netto < 0 || !finite(source.steuer) || source.steuer < 0) throw new Error('Jahresbeleg: ungültige Handlungsquelle.');
     }
     if (Object.values(action.verwendungen || {}).some(value => !finite(value) || value < 0)) throw new Error('Jahresbeleg: ungültige Verwendung.');
+    if (Object.hasOwn(action, 'personalUses') && !personalUsesConsistent(action, ids)) throw new Error('Jahresbeleg: Die persönlichen Verwendungen passen nicht zu den Personen oder zur Haushaltsverwendung.');
 }
 /**
  * @param {unknown} raw
@@ -83,7 +126,7 @@ export function assertAnnualPlanRecord(raw) {
             || !item.adjusted && item.adjustedFields.length || item.adjusted && !item.adjustedFields.length) throw new Error('Ungültiger Jahresbeleg oder Anpassungsnachweis.');
         assertPlanScope(item.scope);
         if (key !== annualPlanEntryKey(item.year, item.scope)) throw new Error('Jahresbeleg gehört nicht zum angegebenen Jahr/Bereich.');
-        assertOutcome(item.recommended); assertOutcome(item.adopted);
+        assertOutcome(item.recommended, item.scope.ids); assertOutcome(item.adopted, item.scope.ids);
         const snapshot = item.adopted.snapshot;
         if (!plain(snapshot) || !finite(snapshot.inflation) || !plain(snapshot.ageByPerson)
             || Object.keys(snapshot.ageByPerson).length !== item.scope.ids.length

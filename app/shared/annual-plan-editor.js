@@ -18,13 +18,13 @@ import { displayMonthlyDown, displayedWithdrawal } from './display-rounding.js';
  * @param {import("../../typcheck/shared-annual.js").PlanPreviewOptions} [options]
  * @returns Ergebnis der bestehenden Projektion.
  */
-export async function evaluateAnnualPlanPreview({ targetYear, marketData, yearHigh, adoptedPlanPatch, careValues, careToday, cash, storage = persistenceStorage,
+export async function evaluateAnnualPlanPreview({ targetYear, marketData, adoptedPlanPatch, careValues, careToday, cash, storage = persistenceStorage,
     engineLoader = annualEngineLoader, now = appNow, signal } = {}) {
     signal?.throwIfAborted();
     const engineApi = await engineLoader.load();
     signal?.throwIfAborted();
     if (marketData.manualPrice !== undefined) marketData = { ...marketData, etf: createManualAnnualQuote(marketData.manualPrice, `calendar-year:${targetYear}`) };
-    const date = now(), draft = computeAnnualPlanUpdate({ targetYear, marketData, yearHigh, storage, now: () => date });
+    const date = now(), draft = computeAnnualPlanUpdate({ targetYear, marketData, storage, now: () => date });
     const recommended = evaluateAnnualDraft(/** @type {import("../../typcheck/speicher-integration.js").AnnualDraft} */ (draft), { engineApi, careValues, careToday, cash, now: () => date });
     const adopted = adoptedPlanPatch === undefined ? recommended : evaluateAnnualDraft(/** @type {import("../../typcheck/speicher-integration.js").AnnualDraft} */ (draft), { engineApi, adoptedPlanPatch, careValues, careToday, cash, now: () => date });
     return { values: recommended.values, recommended: recommended.outcome, adopted: adopted.outcome, adjustedFields: adopted.adjustedFields };
@@ -86,7 +86,7 @@ export { HOUSEHOLD_PLAN_FIELDS as ANNUAL_PLAN_FIELDS } from './household-plan-fi
  * @param {import("../../typcheck/shared-annual.js").PlanEditorOptions} [options]
  * @returns Ergebnis der bestehenden Projektion.
  */
-export function createAnnualPlanEditor({ doc, listen, evaluate, getPreview, getAnnualExpenses, onState = () => {}, budgetNote = () => null } = {}) {
+export function createAnnualPlanEditor({ doc, listen, evaluate, getPreview, getAnnualExpenses, onState = () => {} } = {}) {
     const root = doc.createElement('section'); root.dataset.annualPlanEditor = ''; root.className = 'annual-plan-editor';
     const create = (tag, text = '', className = '') => { const node = doc.createElement(tag); node.textContent = text; node.className = className; return node; };
     const summary = create('dl', '', 'annual-plan-summary'); summary.dataset.annualPlanSummary = '';
@@ -181,11 +181,6 @@ export function createAnnualPlanEditor({ doc, listen, evaluate, getPreview, getA
             row.field.dataset.adjusted = String(!Object.is(state.values?.[path], baseValues?.[path]));
         }
     };
-    // WT-1b (Entwurf 5): Solange die Wahl zum Jahreshoch offen ist, hängen Budget und Entnahme an ihr („nach deiner Wahl“).
-    const renderPlanAmounts = (/** @type {any} */ adopted) => {
-        const note = budgetNote();
-        for (const key of ['monthlyBudget', 'monthlyWithdrawal']) summaryCells.get(key).value.textContent = note || (adopted ? planMoney(adopted, key) : '—');
-    };
     const draft = createAnnualPlanDraft({ evaluate, notify: state => {
         for (const [path, field] of fields) {
             field.disabled = !initialized;
@@ -202,7 +197,7 @@ export function createAnnualPlanEditor({ doc, listen, evaluate, getPreview, getA
         if (getPreview) {
             const preview = getPreview(), adopted = state.valid ? state.result.adopted : null;
             summaryCells.get('monthlyBudget').term.textContent = `Monatsbudget ${preview.planningYear}`;
-            renderPlanAmounts(adopted);
+            for (const key of ['monthlyBudget', 'monthlyWithdrawal']) summaryCells.get(key).value.textContent = adopted ? planMoney(adopted, key) : '—';
             const people = preview.people || [];
             const pension = people.length && people.every(person => !person.error && Number.isFinite(person.budgetPensionMonthly))
                 ? people.reduce((sum, person) => sum + person.budgetPensionMonthly, 0) : null;
@@ -300,7 +295,6 @@ export function createAnnualPlanEditor({ doc, listen, evaluate, getPreview, getA
     comparison.hidden = Boolean(getPreview);
     root.append(needReview, summary, comparison, changes, actions, panel);
     return { root, read: draft.read, accept: draft.accept, refreshExpenses,
-        refreshSummary() { if (getPreview) { const state = draft.read(); renderPlanAmounts(state.valid ? state.result.adopted : null); } },
         dispose() { draft.dispose(); dynamic.dispose(); for (const binding of bindings.values()) binding.dispose(); },
         setBase(values) {
             initialized = true;

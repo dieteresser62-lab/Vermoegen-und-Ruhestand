@@ -9,13 +9,15 @@ import { createNavigationOperationLifecycle } from '../shared/navigation-guard.j
 import { getPageNavigationGuard } from '../shared/navigation-guard-dialog.js';
 import { normalizeTranches, saveTranchesToStorage } from './tranchen-manager-state.js';
 import { createBatchQuoteFetcher, resolveTrancheQuote } from './tranchen-price-service.js';
-import { bindAutoPrices } from '../shared/auto-prices.js';
+import { bindAutoPrices, notePriceRound } from '../shared/auto-prices.js';
+import { formatQuoteExchangeTime } from '../shared/designsystem-number-format.js';
 
 export const STARTUP_PRICE_TIMEOUT_MS = 15000;
 const STARTUP_COMMIT_RESERVE_MS = 1000;
 export const STARTUP_PRICE_SESSION_KEY = 'rs_startup_prices_session_v1';
 const bindings = new WeakMap();
 const sessionRuns = new WeakMap();
+const manualRuns = new WeakMap();
 const affectedKeys = [PROFILE_TRANCHES_KEY, PROFILE_STORAGE_KEYS.registry, PROFILE_LIVE_BASE_KEY];
 
 export function captureStartupPriceSource() {
@@ -55,7 +57,7 @@ export async function commitStartupPriceResults(source, results, operation, { va
             for (const update of active.updates) {
                 if (records[update.index]?.trancheId !== update.trancheId) throw new Error('QUOTE_PATCH_INVALID');
                 records[update.index] = { ...records[update.index], currentPrice: update.quote.price,
-                    asOf: update.quote.asOf, ticker: update.quote.symbol };
+                    asOf: update.quote.asOf, ticker: update.quote.symbol, quoteExchange: update.quote.exchange || undefined };
             }
             saveTranchesToStorage(records);
             if (!saveCurrentProfileFromLocalStorage()) throw new Error('PROFILE_SAVE_FAILED');
@@ -100,15 +102,15 @@ function collectJobs(source) {
 /** DOM-frei: Deadline umfasst Suche, Wiederholung und Warteschlange.
  * Abbruch ignorierende Promises bleiben ausschließlich lesend und dürfen keine Ergebnisse mehr liefern.
 
- * @param {{source?: ReturnType<typeof captureStartupPriceSource>, operation?: import('../../typcheck/runtime-contracts.js').NavigationOperation, now?: () => number, schedule?: typeof setTimeout, unschedule?: typeof clearTimeout, valid?: () => boolean, commit?: typeof commitStartupPriceResults, progress?: (report: object) => void}} [options] */
+ * @param {{source?: ReturnType<typeof captureStartupPriceSource>, operation?: import('../../typcheck/runtime-contracts.js').NavigationOperation, now?: () => number, schedule?: typeof setTimeout, unschedule?: typeof clearTimeout, valid?: () => boolean, commit?: typeof commitStartupPriceResults, progress?: (report: object) => void, singleExchange?: boolean}} [options] */
 export async function runStartupPriceRefresh({ source = captureStartupPriceSource(), operation,
     now = Date.now, schedule = setTimeout, unschedule = clearTimeout, valid = /** @type {() => boolean} */ (() => true),
-    commit = commitStartupPriceResults, progress = /** @type {(report: object) => void} */ (() => {}) } = {}) {
+    commit = commitStartupPriceResults, progress = /** @type {(report: object) => void} */ (() => {}), singleExchange = false } = {}) {
     const { jobs, issues } = collectJobs(source);
     if (!jobs.length && !issues.length) return { status: 'empty', updated: 0, results: [] };
     const controller = new AbortController();
     const startedAt = now(), deadline = startedAt + STARTUP_PRICE_TIMEOUT_MS;
-    const fetcher = createBatchQuoteFetcher(controller.signal, { deduplicateSearchNames: true, deadline, now, schedule, unschedule });
+    const fetcher = createBatchQuoteFetcher(controller.signal, { deduplicateSearchNames: true, singleExchange, deadline, now, schedule, unschedule });
     let open = true, timedOut = false, cancelled = false, fallback = false, fallbackClosed = false, reserveTimer, wake;
     const boundary = new Promise(resolve => { wake = resolve; });
     const closeReaders = () => {
@@ -164,7 +166,7 @@ export async function runStartupPriceRefresh({ source = captureStartupPriceSourc
     try {
         if (operation.controller.signal.aborted) cancel();
         const read = async () => {
-            // Runde 1 ausschließlich gespeicherter Ticker. Erst nach ALLEN direkten Gruppen suchen.
+            // Runde 1 ohne Instrumentsuche. Erst nach allen direkten Gruppen suchen.
             await round(groups.filter(group => String(group.jobs[0].tranche.ticker || '').trim()), async group => {
                 const quote = await group.fetcher.quote(group.jobs[0].tranche.ticker);
                 group.fetcher.check();
@@ -214,12 +216,16 @@ export function sessionReport(report) {
     const { status, updated, retrievedAt, restored } = report;
     return { status, updated, retrievedAt, restored,
         results: (report.results || []).map(({ profileId, trancheId, profileName, trancheName, status, code, message, quote }) => ({
-            profileId, trancheId, profileName, trancheName, status, code, message, asOf: quote?.asOf
+            profileId, trancheId, profileName, trancheName, status, code, message, asOf: quote?.asOf,
+            ...(quote?.exchange ? { quoteExchange: quote.exchange } : {})
         })) };
 }
 
 /** Dialogabrufe warten auf den einmaligen Sitzungsabruf, ohne seinen Merker zurückzusetzen. */
 export function waitStartupPriceRefresh(doc) { return bindings.get(doc) || Promise.resolve(); }
+/** OP-3 Punkt 3: Klick auf die Kursanzeige im Kopf startet dieselbe Runde wie die Automatik; im Spielbereich und während eines Laufs nichts.
+ * @param {Document} doc @returns {Promise<void> | undefined} */
+export function requestStartupPriceRefresh(doc) { return getAppTestDate() === null ? manualRuns.get(doc)?.() : undefined; }
 export function publishStartupPriceReport(report, session = areaSessionStorage()) {
     if (!session) return;
     const saved = sessionReport(report);
@@ -362,6 +368,8 @@ export function renderStartupPriceStatus(host, report, { readSource = captureSta
             const duration = Number.isFinite(result.requestDurationMs) && result.requestDurationMs >= 0
                 ? `${Math.round(result.requestDurationMs)} ms` : 'unbekannt';
             row.textContent = `${displayName(result.profileName) || 'Unbenannte Person'} / ${displayName(result.trancheName) || 'Unbenannte Tranche'}: letzte Anfragedauer ${duration}`;
+            const quoteStand = formatQuoteExchangeTime(result.quoteExchange, result.asOf);
+            if (result.status === 'updated' && quoteStand) row.textContent += ` · ${quoteStand}`;
             details.appendChild(row);
         }
         host.appendChild(details);
@@ -465,6 +473,8 @@ export function bindStartupPrices({ doc = globalThis.document, win = globalThis.
         if (documentValid) bindAutoPrices({ doc, win, session, run: automatic, lastRun: () => readStartupPriceReport(session)?.retrievedAt,
             blocked: () => guard.isBusy() || guard.reasons().length > 0 });
     };
+    // OP-3 Punkt 3: Manuelle Runde über die Kursanzeige, nur wenn nichts anderes läuft; zählt wie eine automatische Runde.
+    manualRuns.set(doc, () => { if (guard.isBusy() || guard.reasons().length > 0) return undefined; const run = automatic(); if (run) notePriceRound({ win, session }); return run; });
     render({ status: 'waiting' });
     const task = (async () => {
         try {

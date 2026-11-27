@@ -1,3 +1,7 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import { readKL1Hash } from './helpers/kl-1-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
 import { readMD2References } from './helpers/md-2-expectations.mjs';
 import { readQSCReferences as readBeforeMD2References } from './helpers/qs-c-expectations.mjs';
 const readQSCReferences = value => readMD2References(readBeforeMD2References(value));
@@ -98,7 +102,7 @@ for (const date of ['', '2026-01-01', '2024-07-15']) {
     const before = JSON.stringify(input);
     const result = await runMonteCarloChunk({ ...options, inputs: input });
     if (result.totals.failCount || JSON.stringify(input) !== before) throw new Error('Ungültiger Referenzlauf');
-    assertEqual(createHash('sha256').update(JSON.stringify(projectLegacyFinancialBytes(result))).digest('hex'), readQSCReferences(readRNG1Hash(readNR1Hash(readFX1bHash('b44374e99a3baa2b07db0a8bedeb062727bcf7868f2149c7f579f312585b8b47')))), 'Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad gegen BK-2-Referenz mit korrigierter Kirchensteuer: ' + (date || 'fehlender Beginn'));
+    assertEqual(createHash('sha256').update(JSON.stringify(projectLegacyFinancialBytes(result))).digest('hex'), readKR1cReferences(readQSCReferences(readRNG1Hash(readNR1Hash(readFX1bHash('b44374e99a3baa2b07db0a8bedeb062727bcf7868f2149c7f579f312585b8b47'))))), 'Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad gegen BK-2-Referenz mit korrigierter Kirchensteuer: ' + (date || 'fehlender Beginn'));
     assertEqual(JSON.stringify(input), before, 'Vollständige Adaptereingaben unverändert');
 }
 const legacy = { ...base, startAlter: 67, geschlecht: 'm', startSPB: 0, kirchensteuerSatz: .09,
@@ -106,7 +110,9 @@ const legacy = { ...base, startAlter: 67, geschlecht: 'm', startSPB: 0, kirchens
     accumulationPhase: { enabled: true, sparrate: 500, sparrateIndexing: 'none' }, transitionYear: 2 };
 const result = await runMonteCarloChunk({ ...options, inputs: legacy });
 assertEqual(result.totals.failCount, 0, 'Alter Offsetrequest durchläuft Ansparen und Übergang ohne Fehler');
-assertEqual(createHash('sha256').update(JSON.stringify(projectLegacyFinancialBytes(result))).digest('hex'), readQSCReferences(readRNG1Hash(readNR1Hash(readFX1bHash('3396f2014f6f4a1f702233be2d7c0a5658ee5d8968fcbc1e8e3dff35d04d9876')))), 'Vollständiger alter Offset-/Ansparrequest gegen BK-2-Referenz mit korrigierter Kirchensteuer');
+const legacyReference = readKR1cReferences(readQSCReferences(readRNG1Hash(readNR1Hash(readFX1bHash('3396f2014f6f4a1f702233be2d7c0a5658ee5d8968fcbc1e8e3dff35d04d9876')))));
+assertEqual(createHash('sha256').update(JSON.stringify(projectLegacyFinancialBytes(result))).digest('hex'), readKL1Hash(legacyReference),
+    'Vollständiger alter Offset-/Ansparrequest gegen die Referenz mit Ansparjahres-Endliquidität');
 }
 
 {

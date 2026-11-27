@@ -70,8 +70,8 @@ for (let start = 0; start < params.anzahl; start += 50) {
         const terminalCareNeed = meta.totalCareAdditionalNeedRealEur - annualCareSum;
         // Der Runner erfasst den Bedarf auch vor einem gescheiterten Finanzjahr.
         // Eine Terminalzeile ist keine bezahlte Jahresrechnung.
-        if (Math.abs(terminalCareNeed) > 1e-5 && !(meta.failed && terminalCareNeed > 0
-            && meta.logDataRows.some(row => row.recordType === 'terminal_ruin'))) {
+        if (!Number.isFinite(terminalCareNeed) || (Math.abs(terminalCareNeed) > 1e-5 && !(meta.failed && terminalCareNeed > 0
+            && meta.logDataRows.some(row => row.recordType === 'terminal_ruin')))) {
             throw new Error(`Pflegebedarf nicht erklärbar: Pfad ${meta.index}, Differenz ${terminalCareNeed}`);
         }
         paths.push({ index: meta.index, realEnd: chunk.pathSummaries.finalValueRealEur[i], failed: meta.failed,

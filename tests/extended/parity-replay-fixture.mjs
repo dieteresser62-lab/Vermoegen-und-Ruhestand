@@ -2,7 +2,8 @@ import { createMusterHaushaltRecords } from '../../app/demo/muster-haushalt.js';
 import { buildBalanceEngineInputFromStorage } from '../../app/balance/balance-input-storage.js';
 import { buildSimulatorInputsFromProfileData, combineSimulatorProfiles } from '../../app/simulator/simulator-profile-inputs.js';
 import { runHistoricalBacktest } from '../../app/simulator/historical-backtest-runner.js';
-import { createHistoricalBacktestContractProvider, HISTORICAL_TEMPORAL_CONVENTION_ID } from '../../app/simulator/historical-backtest-contract.js';
+import { HISTORICAL_TEMPORAL_CONVENTION_ID } from '../../app/simulator/historical-backtest-contract.js';
+import { historischerProvider } from '../helpers/grundbestand-stichprobe.mjs';
 import { initializePortfolio } from '../../app/simulator/simulator-portfolio.js';
 import { computeAdjPctForYear } from '../../app/simulator/simulator-main-helpers.js';
 import { resolveDynamicFlexRunnerHorizon } from '../../app/simulator/dynamic-flex-runner-horizon.js';
@@ -27,7 +28,8 @@ delete inputs.survivorMinimumFlexPercent;
 // Historische Fixture: fehlende Pflegefaktoren wurden damals als 0 gelesen.
 // FR-41-Readerdefaults werden separat geprüft; hier bleiben die Eingaben explizit.
 for (const config of Object.values(inputs.pflegeGradeConfigs)) config.mortalityFactor = 0;
-export const provider = createHistoricalBacktestContractProvider();
+// JD-2a: Datenstand-Provider; nach tests/helpers/grundbestand-sicht-aktiv.mjs der des Grundbestands 1925–2025.
+export const provider = historischerProvider();
 export const period = { startYear: 2000, endYear: 2002 };
 export const source = {
     // Synthetic source identity for contract tests. Benchmark supplies an actual source-content hash.

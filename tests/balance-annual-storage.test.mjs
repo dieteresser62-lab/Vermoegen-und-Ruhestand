@@ -1,6 +1,5 @@
 import { balanceStorageFixture, STORAGE_FIXTURE_KINDS, installBalanceStorageForm } from './helpers/balance-storage-fixtures.mjs';
 import { WEALTH_CAPTURES_KEY, readWealthCaptures } from '../types/wealth-capture-contract.js';
-import { legacyAnnualOracle } from './helpers/balance-legacy-annual-oracle.mjs';
 import { computeAnnualPlanUpdate, annualRecordStorage } from '../app/balance/balance-annual-storage.js';
 import { prepareAnnualCommitRecords, commitAnnualPlanUpdate, evaluateAnnualDraft } from '../app/balance/balance-annual-storage-commit.js';
 import { EngineAPI } from '../engine/index.mjs';
@@ -41,6 +40,10 @@ try {
     const singleDraft = computeAnnualPlanUpdate({ targetYear: 2026, marketData, scope: single.scope,
         storage: annualRecordStorage(single.records) });
     const singleCommit = prepareAnnualCommitRecords(singleDraft, { engineApi: EngineAPI, now: clock });
+    const { scope: omittedScope, ...scopeLessDraft } = singleDraft;
+    const scopeLess = evaluateAnnualDraft(scopeLessDraft, { engineApi: EngineAPI, now: clock });
+    assertEqual(JSON.stringify(scopeLess.outcome), JSON.stringify(singleCommit.receipt.recommended),
+        'JA-1: Entwurf ohne scope rechnet aus dem bestätigten Planbereich');
     for (const outcome of [singleCommit.receipt.recommended, singleCommit.receipt.adopted]) {
         assert(outcome.action.quellen.length > 0, 'Einzelabschluss prüft tatsächliche Entnahmequellen');
         for (const source of outcome.action.quellen) {
@@ -73,14 +76,19 @@ try {
     const refreshedCape = computeAnnualPlanUpdate({ targetYear: 2026, marketData, scope, storage: manualStorage }).values.cape;
     assertEqual(JSON.stringify(refreshedCape), JSON.stringify({ value: 28.55, asOf: '2026-12-01', source: 'yale_ie_data_xls' }),
         'Jahresabschluss überschreibt manuellen CAPE samt Datum und Quelle');
+    // Jahresendregel ohne Tageskurse; mit den Spielkursen des Musters gilt FR-89 (ATH-1): das Tageshoch vom 12.08.2026.
+    const yearEndOnly = annualRecordStorage(Object.fromEntries(Object.entries(records).filter(([key]) => key !== 'rs_daily_prices_v1')));
     for (const delta of [-1, -0.1, 0, 0.1, 1]) {
         const ath = draft.before.readerInputData.ath;
         const price = ath + delta;
-        const projected = computeAnnualPlanUpdate({ targetYear: 2026, scope, storage, now: clock,
+        const projected = computeAnnualPlanUpdate({ targetYear: 2026, scope, storage: yearEndOnly, now: clock,
             marketData: { ...marketData, etf: { ...marketData.etf, price } } });
         const state = JSON.parse(projected.records[CONFIG.STORAGE.LS_KEY]);
         assertEqual(state.inputs.ath, Math.max(price, ath), 'ATH ändert sich nur bei echter Überschreitung');
         assertEqual(state.inputs.jahreSeitAth, delta >= 0 ? 0 : draft.before.readerInputData.jahreSeitAth + 1, 'ATH-Gleichstand setzt Jahre seit ATH bereits zurück');
+        const daily = JSON.parse(computeAnnualPlanUpdate({ targetYear: 2026, scope, storage, now: clock,
+            marketData: { ...marketData, etf: { ...marketData.etf, price } } }).records[CONFIG.STORAGE.LS_KEY]).annualMarketDataMeta.ath;
+        assertEqual(`${daily.value} · ${daily.lastHighAsOf}`, '145.890673 · 2026-08-12', 'ATH-1: Das Tageshoch der Spielkurse liegt über allen Jahresendkursen der Probe');
     }
 
     assertEqual(JSON.parse(draft.records[CONFIG.STORAGE.LS_KEY]).lastState.cumulativeInflationFactor,
@@ -214,7 +222,7 @@ try {
     }
 
     // Backend-/Cacheprobe über die echte Facade; jede Jahrestransaktion enthält Plan und Beleg.
-    for (const fault of ['none', 'with-receipt', 'write', 'readback', 'rollback', 'prepare', 'late-plan', 'late-profile', 'late-membership', 'late-raw', 'late-expenses']) {
+    for (const fault of ['none', 'with-receipt', 'write', 'readback', 'rollback', 'prepare', 'late-plan', 'late-profile', 'late-household', 'late-raw', 'late-expenses']) {
         const sample = fixture();
         if (fault === 'with-receipt') sample.records[ANNUAL_PLAN_RECORD_KEY] = buildAnnualPlanRecord(null, {
             targetYear: 2025, scope: sample.scope, committedAt: '2026-01-02T12:00:00Z', recommended: prepared.receipt.recommended }).raw;
@@ -242,9 +250,9 @@ try {
         const annualDraft = computeAnnualPlanUpdate({ targetYear: 2026, marketData, storage: live, now: clock });
         if (fault === 'late-plan') live.setItem(HOUSEHOLD_PLAN_KEY, sample.records[HOUSEHOLD_PLAN_KEY].replace('30000', '30001'));
         if (fault === 'late-profile') live.setItem('rs_current_profile', 'muster_b');
-        if (fault === 'late-membership') {
+        if (fault === 'late-household') {
             const registry = JSON.parse(live.getItem('rs_profiles_v1'));
-            registry.profiles.muster_b.meta.belongsToHousehold = false;
+            delete registry.profiles.muster_b;
             live.setItem('rs_profiles_v1', JSON.stringify(registry));
         }
         if (fault === 'late-raw') live.setItem('profile_tagesgeld', '42');
@@ -287,115 +295,6 @@ try {
         }
     }
 
-    // Das eingefrorene DOM-Orakel gilt für exakt darstellbare Bedarfe und Marktdaten.
-    // Bei 20 % Inflation sind alle drei Bedarfsvorschläge bereits volle Tausend.
-    // FR-14-Dezimalfälle werden oben und in der Mehrjahresprobe gesondert geprüft.
-    const legacyMarketData = { ...marketData, inflation: { ...marketData.inflation, rate: 20 },
-        etf: { ...marketData.etf, price: 160 }, cape: { ...marketData.cape, capeRatio: 28.5 } };
-    // Eine feste normale Fachuhr darf offizielle vorbereitete Providerwerte
-    // nicht nebenbei in den synthetischen Probelaufmodus versetzen.
-    setAppTestDate(null);
-    globalThis.Date = class extends saved.Date {
-        constructor(...args) { super(...(args.length ? args : ['2027-01-02T12:00:00Z'])); }
-        static now() { return new saved.Date('2027-01-02T12:00:00Z').getTime(); }
-        static [Symbol.hasInstance](value) { return value instanceof saved.Date; }
-    };
-    UIRenderer.toast = () => {}; UIRenderer.handleActionError = error => { throw error; };
-    for (const kind of STORAGE_FIXTURE_KINDS) for (const strategy of ['standard', '3_bucket_jilge']) for (const cape of [0, 25]) {
-        resetPersistenceRuntimeForTests();
-        const sample = fixture(kind, strategy, cape);
-        const isolated = annualRecordStorage(sample.records);
-        globalThis.localStorage = isolated; globalThis.window = { EngineAPI };
-        globalThis.document = { getElementById: () => null };
-        PersistenceFacade.resetPersistenceForTests(createLocalStorageAdapter(isolated));
-        await PersistenceFacade.init({ installLifecycleHooks: false });
-        const oldInputs = JSON.parse(sample.records[CONFIG.STORAGE.LS_KEY]).inputs;
-        const dom = installBalanceStorageForm(oldInputs, sample.values);
-        dom.inputs.aktuellesAlter ||= { value: '67' };
-        dom.controls.btnJahresUpdate = { innerHTML: '', disabled: false };
-        const callsOld = [], callsNew = [];
-        const recorder = calls => ({ ...EngineAPI, simulateSingleYear: (input, lastState) => {
-            calls.push(JSON.stringify({ input, lastState })); return EngineAPI.simulateSingleYear(input, lastState);
-        } });
-        const old = await legacyAnnualOracle({ dom, marketData: legacyMarketData, targetYear: 2026, engineApi: recorder(callsOld) });
-        const annualDraft = computeAnnualPlanUpdate({ targetYear: 2026, marketData: legacyMarketData, storage: annualRecordStorage(sample.records), now: appNow });
-        const result = evaluateAnnualDraft(annualDraft, { engineApi: recorder(callsNew), now: clock });
-        assertEqual(JSON.stringify(result.inputData), JSON.stringify(old.inputData), `${kind}/${strategy}/${cape}: vollständige Eingaben entsprechen DOM-Orakel`);
-        const legacyCall = JSON.parse(callsOld.at(-1));
-        // Das alte Formularorakel sieht am CAPE-Gate eine geänderte Dynamik.
-        // FR-12 erhält hier den bereits indexierten Faktor (fehlend → 1.2), weil
-        // sich die gespeicherte Planentscheidung dynamicFlex nicht geändert hat.
-        if (legacyCall.lastState && !Object.hasOwn(legacyCall.lastState, 'cumulativeInflationFactor')
-            && Object.hasOwn(result.calculation.engineLastState || {}, 'cumulativeInflationFactor')) {
-            assertEqual(JSON.stringify(legacyCall.lastState), '{"taxState":{"lossCarry":1234}}', 'Altpfad verwarf nur wegen CAPE-Gate den Faktor');
-            legacyCall.lastState = { cumulativeInflationFactor: 1.2, ...legacyCall.lastState };
-        }
-        assertEqual(callsNew[0], JSON.stringify(legacyCall), `${kind}/${strategy}/${cape}: Engineargument und FR-12-LastState entsprechen dem Jahresvertrag`);
-        assertEqual(JSON.stringify(result.modelResult), JSON.stringify(old.modelResult), `${kind}/${strategy}/${cape}: Jahresergebnis entspricht DOM-Orakel`);
-        const finalized = prepareAnnualCommitRecords(annualDraft, { engineApi: EngineAPI, now: appNow });
-        const finalRecords = { ...sample.records, ...finalized.records };
-        const normalizeLegacyEvidence = state => {
-            const evidence = state.balanceStateLifecycle?.planInputEvidence?.[sample.scope.key];
-            if (kind === 'aktive Außenperson' && evidence && !state.balanceStateLifecycle.lastCommittedPeriod) {
-                if (evidence.floorBedarf === 36000) return state;
-                assertEqual(evidence.floorBedarf, 30000, 'Altpfad ließ die automatische Haushaltsindexierung im Außenprofilbeleg aus');
-                for (const field of ['floorBedarf', 'flexBedarf', 'minimumFlexAnnual', 'flexBudgetAnnual', 'flexBudgetRecharge']) {
-                    evidence[field] = sample.values[field] * 1.2;
-                }
-            }
-            return state;
-        };
-        const oldState = normalizeLegacyEvidence(JSON.parse(old.records[CONFIG.STORAGE.LS_KEY]));
-        assertEqual(JSON.stringify(finalized.state.lastState), JSON.stringify(oldState.lastState), `${kind}/${strategy}/${cape}: endgültiger LastState entspricht DOM-Orakel`);
-        assertEqual(JSON.stringify(finalized.state.wealthHistory), JSON.stringify(oldState.wealthHistory), `${kind}/${strategy}/${cape}: tatsächlicher Jahresverlauf entspricht DOM-Orakel`);
-        assertEqual(JSON.stringify(finalized.state.annualPeriodMetadata), JSON.stringify(oldState.annualPeriodMetadata), `${kind}/${strategy}/${cape}: endgültige Jahresmarker entsprechen DOM-Orakel`);
-        assertEqual(finalized.records[HOUSEHOLD_PLAN_KEY], old.records[HOUSEHOLD_PLAN_KEY], `${kind}/${strategy}/${cape}: gemeinsame Planrohbytes entsprechen DOM-Orakel`);
-        assertEqual(finalized.records.balance_expenses_v1, old.records.balance_expenses_v1, `${kind}/${strategy}/${cape}: Ausgabenjahreswechsel entspricht DOM-Orakel`);
-        assertEqual(finalRecords.overview_balance_summary_v1, old.records.overview_balance_summary_v1, `${kind}/${strategy}/${cape}: endgültige Summaryrohbytes entsprechen DOM-Orakel`);
-        for (const key of Object.keys(oldState)) {
-            assertEqual(JSON.stringify(finalized.state[key]), JSON.stringify(oldState[key]), `${kind}/${strategy}/${cape}: vorhandenes Hauptstatefeld ${key} entspricht DOM-Orakel`);
-        }
-        const { balanceInputFields, ...commonState } = finalized.state;
-        assertEqual(JSON.stringify(commonState), JSON.stringify(oldState), `${kind}/${strategy}/${cape}: vollständige gemeinsame Hauptstatebytes entsprechen DOM-Orakel`);
-        assert(balanceInputFields && balanceInputFields.endeVJ.value === '160', `${kind}/${strategy}/${cape}: zusätzliche H3-Feldprojektion zeigt bestätigten Marktstand`);
-        const oldProfiles = JSON.parse(old.records.rs_profiles_v1).profiles;
-        const finalProfiles = JSON.parse(finalRecords.rs_profiles_v1).profiles;
-        for (const id of Object.keys(oldProfiles)) {
-            const oldProfile = normalizeLegacyEvidence(JSON.parse(oldProfiles[id].data[CONFIG.STORAGE.LS_KEY]));
-            const finalProfile = JSON.parse(finalProfiles[id].data[CONFIG.STORAGE.LS_KEY]);
-            for (const key of Object.keys(oldProfile)) {
-                assertEqual(JSON.stringify(finalProfile[key]), JSON.stringify(oldProfile[key]), `${kind}/${strategy}/${cape}/${id}: gespeichertes ${key} entspricht DOM-Orakel`);
-            }
-            assertEqual(finalProfiles[id].data.overview_balance_summary_v1, oldProfiles[id].data.overview_balance_summary_v1, `${kind}/${strategy}/${cape}/${id}: gemeinsame Summaryrohbytes entsprechen DOM-Orakel`);
-            const { balanceInputFields: extraFields, ...commonProfile } = finalProfile;
-            assertEqual(JSON.stringify(commonProfile), JSON.stringify(oldProfile), `${kind}/${strategy}/${cape}/${id}: vollständige gemeinsame Profilstatebytes entsprechen DOM-Orakel`);
-
-        }
-        // Nur die getrennt geprüften neuen H3-Projektions-/Belegfelder ausnehmen;
-        // alle bisherigen Fachrecords bleiben einschließlich Rohserialisierung gleich.
-        const commonRecords = { ...finalRecords, [CONFIG.STORAGE.LS_KEY]: JSON.stringify(commonState) };
-        const commonRegistry = JSON.parse(commonRecords.rs_profiles_v1);
-        for (const profile of Object.values(commonRegistry.profiles)) {
-            const { balanceInputFields: fields, ...state } = JSON.parse(profile.data[CONFIG.STORAGE.LS_KEY]);
-            profile.data[CONFIG.STORAGE.LS_KEY] = JSON.stringify(state);
-        }
-        commonRecords.rs_profiles_v1 = JSON.stringify(commonRegistry);
-        delete commonRecords[ANNUAL_PLAN_RECORD_KEY];
-        // Technische Ladebasis schützt den Absturzstart; keine Jahresrechenbytes.
-        delete commonRecords.rs_profile_live_base_v1;
-        const normalizedOldRecords = { ...old.records, [CONFIG.STORAGE.LS_KEY]: JSON.stringify(oldState) };
-        delete normalizedOldRecords.rs_profile_live_base_v1;
-        const normalizedRegistry = JSON.parse(normalizedOldRecords.rs_profiles_v1);
-        for (const profile of Object.values(normalizedRegistry.profiles)) {
-            profile.data[CONFIG.STORAGE.LS_KEY] = JSON.stringify(normalizeLegacyEvidence(JSON.parse(profile.data[CONFIG.STORAGE.LS_KEY])));
-        }
-        normalizedOldRecords.rs_profiles_v1 = JSON.stringify(normalizedRegistry);
-        const rawBytes = records => JSON.stringify(Object.entries(records).sort(([a], [b]) => a.localeCompare(b)));
-        assertEqual(rawBytes(commonRecords), rawBytes(normalizedOldRecords), `${kind}/${strategy}/${cape}: sämtliche gemeinsamen Fachrohbytes entsprechen DOM-Orakel`);
-
-
-
-    }
 } finally {
     for (const key of ['document', 'window', 'localStorage']) if (saved[key] === undefined) delete globalThis[key]; else globalThis[key] = saved[key];
     globalThis.Date = saved.Date;

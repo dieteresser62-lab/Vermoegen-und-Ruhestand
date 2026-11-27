@@ -4,6 +4,8 @@
 import { annualActionDoneThreshold } from '../balance/annual-action-progress.js';
 import { readReconciliationHistory, projectBuyCashStatuses } from './tranche-reconciliation.js';
 import { shownPrice } from './sale-flow-model.js';
+import { splitUsesByPersonalNet } from '../profile/profilverbund-action-attribution.js';
+import { personalUsesConsistent } from '../profile/annual-plan-record.js';
 
 /** Ergänzung 1 FR-79 Punkt 3: Kurspuffer und Gebührenannahme beim Kauf. */
 export const BUY_PRICE_BUFFER = 0.01;
@@ -51,35 +53,45 @@ export function restBuyQuestionAmount(line, debit) {
     return rest >= buyRestLimit(line.amount, line.price) ? rest : null;
 }
 
-/** Kaufzeilen des Belegs je Person und Anlageklasse. Zahlende aus den Liquiditätsquellen des Belegs (`sourceProfileId`); was Verkäufe
- * im selben Beleg bezahlen, kauft die verkaufende Person. Fehlt die Person (Altbeleg), zahlt die erste Person des Plans (Rückfall beim Lesen).
+/** Kaufzeilen des Belegs je Person und Anlageklasse. Trägt der Beleg stimmige persönliche Verwendungen der Haushaltsrechnung
+ * (`personalUses`, auch nach der Verrechnung gegenläufiger Aufträge; nur Personen des Plans, Summen = Haushaltsverwendung), entstehen die
+ * Zeilen daraus. Rückfall für ältere Belege ohne `personalUses` und für ein unstimmiges Feld: Aufteilung wie in der Haushaltsrechnung nach den persönlichen Nettoquellen (Verkäufe nach
+ * Steuer, Tagesgeld mit seinem Betrag), der Anteil am Auffüllen geht vorher ab; nach einer Verrechnung gegenläufiger Aufträge ist dieser
+ * Rückfall ungenau. Fehlt die Person einer Quelle (Altbeleg), zählt sie für die erste Person des Plans. Ohne Quellen zahlt die erste Person alles.
  * @param {any} action @param {string[]} ids */
 export function annualBuyLines(action, ids) {
-    const uses = /** @type {[string, number][]} */ (Object.entries(action?.verwendungen || {}).flatMap(([key, value]) => USE_CLASSES[key] && finite(value) && value > 0.5 ? [[USE_CLASSES[key], Number(value)]] : []));
-    const total = uses.reduce((sum, [, value]) => sum + value, 0);
-    if (!(total > 0.5)) return [];
-    const sources = Array.isArray(action?.quellen) ? action.quellen : [];
-    const payers = new Map();
-    const add = (/** @type {string} */ id, /** @type {number} */ amount) => payers.set(id, (payers.get(id) || 0) + amount);
-    const fallback = ids[0] ?? null;
-    let cash = 0;
-    for (const source of sources) if (source?.kind === 'liquiditaet' && source.brutto > 0) { add(source.sourceProfileId ?? fallback, source.brutto); cash += source.brutto; }
-    const rest = total - cash;
-    if (rest > 0.5) {
-        const sales = sources.filter(source => source?.kind !== 'liquiditaet' && source?.brutto > 0);
-        const sold = sales.reduce((sum, source) => sum + source.brutto, 0);
-        for (const source of sales) add(source.sourceProfileId ?? fallback, rest * source.brutto / sold);
-        if (!sales.length) add(fallback, rest);
+    const uses = /** @type {Record<string, number>} */ (Object.fromEntries(Object.entries(action?.verwendungen || {})
+        .map(([key, value]) => [key, finite(value) && value > 0 ? Number(value) : 0])));
+    const purchases = /** @type {[string, string][]} */ (Object.entries(uses).flatMap(([key, value]) => USE_CLASSES[key] && value > 0.5 ? [[key, USE_CLASSES[key]]] : []));
+    if (!(purchases.reduce((sum, [key]) => sum + uses[key], 0) > 0.5)) return [];
+    const personal = action?.personalUses;
+    if (personalUsesConsistent(action, ids)) {
+        return ids.flatMap(id => purchases.flatMap(([key, assetClass]) => {
+            const amount = cents(Number(personal[id]?.[key]) || 0);
+            return amount > 0.5 ? [{ key: `buy:${id}:${assetClass}`, profileId: id, assetClass, amount }] : [];
+        }));
     }
+    const sources = Array.isArray(action?.quellen) ? action.quellen : [];
+    const fallback = ids[0] ?? null;
+    const order = [...ids];
+    const net = new Map();
+    for (const source of sources) {
+        const id = source?.sourceProfileId ?? fallback;
+        const amount = finite(source?.netto) ? Number(source.netto)
+            : finite(source?.brutto) ? Number(source.brutto) - (finite(source?.steuer) ? Number(source.steuer) : 0) : 0;
+        if (!order.includes(id)) order.push(id);
+        net.set(id, (net.get(id) || 0) + amount);
+    }
+    let weights = order.map(id => Math.max(0, net.get(id) || 0));
+    if (!(weights.reduce((sum, value) => sum + value, 0) > 0.5)) weights = order.map(id => id === fallback ? 1 : 0);
+    const shares = splitUsesByPersonalNet(uses, weights);
     const lines = [];
-    for (const id of [...ids, ...[...payers.keys()].filter(id => !ids.includes(id))]) {
-        const paid = payers.get(id);
-        if (!(paid > 0.5)) continue;
-        for (const [assetClass, value] of uses) {
-            const amount = cents(paid * value / total);
+    order.forEach((id, index) => {
+        for (const [key, assetClass] of purchases) {
+            const amount = cents(shares[index][key]);
             if (amount > 0.5) lines.push({ key: `buy:${id}:${assetClass}`, profileId: id, assetClass, amount });
         }
-    }
+    });
     return lines;
 }
 

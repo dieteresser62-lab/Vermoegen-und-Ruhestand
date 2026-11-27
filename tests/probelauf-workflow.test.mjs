@@ -1,7 +1,7 @@
 import { installRealClock } from './helpers/fixed-real-clock.mjs';
 import { playFixture } from './helpers/probelauf-area-fixture.mjs';
 import { installAnnualLocks } from './helpers/balance-storage-fixtures.mjs';
-import { createAnnualModalHandlers } from '../app/balance/balance-annual-modal.js';
+import { createAnnualCloseDialog as createAnnualModalHandlers } from '../app/shared/annual-close-dialog.js';
 import { createDialogFixture } from './close-dialog.test.mjs?fixture';
 import { dialogElements } from '../app/shared/close-dialog.js';
 import { generateExampleExpensesCsv, resolveExampleExpensesBasis, EXAMPLE_SOURCE } from '../app/demo/beispielausgaben.js';
@@ -27,14 +27,12 @@ import { switchProfile, saveCurrentProfileFromLocalStorage } from '../app/profil
 import { commitTrancheReconciliation, commitCashPostingConfirmation, projectReconciliationCashStatuses } from '../app/tranches/tranche-reconciliation.js';
 import { runStartupPriceRefresh } from '../app/tranches/tranchen-startup-prices.js';
 import { runHistoryFetch } from '../app/tranches/tranchen-history-fetch.js';
-import { createAnnualHandlers } from '../app/balance/balance-binder-annual.js';
-import { createMarketdataHandlers } from '../app/balance/balance-annual-marketdata.js';
+import { createAnnualMarketDataReaders } from '../app/shared/annual-marketdata.js';
 import { commitAnnualPlanUpdate } from '../app/balance/balance-annual-storage-commit.js';
 import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input-storage.js';
-import { createSnapshotHandlers } from '../app/balance/balance-binder-snapshots.js';
+import { createAnnualCoordinator, createAnnualNavigationLifecycle } from '../app/shared/annual-coordinator.js';
 import { EngineAPI } from '../engine/index.mjs';
 import { validateBalanceInputs } from '../app/balance/balance-update-pipeline.js';
-import { createAnnualNavigationLifecycle } from '../app/balance/balance-annual-orchestrator.js';
 import { StorageManager } from '../app/balance/balance-storage.js';
 import { UIRenderer } from '../app/balance/balance-renderer.js';
 import { CONFIG } from '../app/balance/balance-config.js';
@@ -242,15 +240,7 @@ async function closeYear(profileId, targetYear, { failFinalWrite } = {}) {
     assertEqual(JSON.parse(storage.getItem('rs_profiles_v1')).profiles[profileId].meta.name,
         profileId === 'muster_a' ? 'Max' : 'Erika', 'Aktive Person nach Profilwechsel stammt aus der Profilquelle');
     const needsClose = state.annualPeriodMetadata.lastCommittedPeriod !== `calendar-year:${targetYear}`;
-    const dom = { inputs: Object.fromEntries(Object.entries(state.inputs).map(([key, value]) => [key, { value: String(value) }])),
-        expenses: { yearSelect: { value: String(targetYear) } }, outputs: { snapshotList: {} }, controls: { snapshotStatus: {} } };
-    dom.inputs.aktuellesAlter = { value: String(projectPerson(P.exportAllSync().records, targetYear).startAlter) };
-    dom.controls.btnJahresUpdate = { disabled: false, innerHTML: 'Jahresabschluss' };
-    dom.controls.btnJahresUpdateLog = { disabled: true };
-    const lifecycle = createAnnualNavigationLifecycle({ guard: null });
     let protocol;
-    const annual = createAnnualHandlers({ dom, appState: {}, debouncedUpdate() {}, navigationLifecycle: lifecycle,
-        getLastUpdateResults: () => protocol, setLastUpdateResults: results => { protocol = results; } });
     const calculate = () => {
         const { inputData, engineLastState } = buildBalanceEngineInputFromStorage({ storage, referenceYear: targetYear + 1 });
         validateBalanceInputs(inputData);
@@ -258,20 +248,22 @@ async function closeYear(profileId, targetYear, { failFinalWrite } = {}) {
         assert(modelResult.newState && modelResult.ui, 'Echte Engine liefert modellgültigen Candidate');
         return { ok: true, inputData, modelResult };
     };
-    const handlers = createSnapshotHandlers({ dom, appState: { snapshotHandle: null }, navigationLifecycle: lifecycle,
+    // Derselbe gemeinsame Jahreskoordinator wie in der Übersicht; die Balance hat keinen eigenen Abschlussweg mehr.
+    const handlers = { handleJahresabschluss: () => createAnnualCoordinator({ storage, persistence: P, archive: A, now: appNow,
+        navigationLifecycle: createAnnualNavigationLifecycle({ guard: null }),
         confirmAnnual: async ({ people }) => {
             assertEqual(people.map(person => `${person.id}:${person.name}`).join(','), 'muster_a:Max,muster_b:Erika',
                 'Produktive Jahresvorbereitung liefert genau die Musterhaushaltspersonen');
             assert(people.every(person => !person.error && Number.isFinite(person.value)), 'Jahrescash stammt aus gültigen Profilquellen');
             return { cash: { people, values: Object.fromEntries(people.map(person => [person.id, person.value])) } };
         },
-        validateLiveState: calculate, runAnnualUpdate: annual.prepareAnnualUpdate,
-        commitLiveState: async options => {
+        validateLiveState: calculate,
+        commit: async options => {
             failFinalWrite?.();
             return commitAnnualPlanUpdate({ ...options, engineApi: EngineAPI, now: appNow });
         },
         projectAnnualState: committed => { protocol = committed.results; }
-    });
+    }).close({}) };
     const committed = await handlers.handleJahresabschluss();
     if (failFinalWrite) {
         assertEqual(committed.status, 'incomplete_recovery', 'Fehlerschreiben hält Jahresabschluss im Recoverypfad');
@@ -619,12 +611,10 @@ try {
         assert(history.completed > 0 && requests.some(url => url.pathname === '/chart'), 'Stand heute lädt echten Kursverlauf');
         assert(Object.values(JSON.parse((await P.readPersistedRecords(key => key === 'rs_daily_prices_v1')).rs_daily_prices_v1).symbols)
             .some(curve => curve.closes.includes(111.25)), 'Verlaufswriter bestätigt Dienstkurs im Spielbereich'); unchanged('Kursverlauf');
-        const annual = createMarketdataHandlers({ dom: { inputs: { capeRatio: { value: '' } }, controls: {} }, appState: {},
-            debouncedUpdate() {}, navigationLifecycle: createAnnualNavigationLifecycle({ guard: null }) });
-        const cape = await annual.handleFetchCapeAuto({ nested: true }); await P.flush();
+        const annual = createAnnualMarketDataReaders();
+        const cape = await annual.prepareCape({ targetYear: new Date().getFullYear() - 1 });
         assertEqual(cape.capeFetchStatus, 'ok_primary', 'Stand heute verwendet echte CAPE-Quelle');
-        assertEqual(JSON.parse((await P.readPersistedRecords(key => key === CONFIG.STORAGE.LS_KEY))[CONFIG.STORAGE.LS_KEY]).capeMeta.capeRatio,
-            28.1, 'Jahresmarktdatenwriter bestätigt Dienstwert im Spielbereich'); unchanged('Jahresmarktdaten');
+        assertEqual(cape.capeRatio, 28.1, 'Der lesende Abruf nennt den Dienstwert; geschrieben wird nur beim Jahresabschluss'); unchanged('Jahresmarktdaten');
         const sold = await commitTrancheReconciliation({ profileId: 'muster_a', expectedTranchesRaw: storage.getItem('depot_tranchen'),
             action: { actionId: 'spiel_gold_verkauf', profileId: 'muster_a', trancheId: gold.trancheId, executedAt: today, sharesSold: 1, grossProceeds: 210, fees: 0 } });
         assertEqual(sold.status, 'applied', 'Verkauf bleibt im Spielbereich bedienbar'); unchanged('Verkauf');
@@ -636,7 +626,7 @@ try {
         const count = requests.length;
         await runStartupPriceRefresh({ operation: { controller: new AbortController(), check() {}, commit() {} } });
         await runHistoryFetch({ firstPlanningYear: new Date().getFullYear(), fetchImpl: globalThis.fetch });
-        assertEqual((await annual.prepareCape()).capeFetchStatus, 'ok_synthetic', 'Nach Datumssprung bleibt CAPE synthetisch');
+        assertEqual((await annual.prepareCape({ targetYear: new Date().getFullYear() - 1 })).capeFetchStatus, 'ok_synthetic', 'Nach Datumssprung bleibt CAPE synthetisch');
         assertEqual(requests.length, count, 'Nach Sprung und Rücksprung kein Kursnetz'); unchanged('Datumssprünge');
         await c.end(() => true); unchanged('Beenden'); await f.boot(); unchanged('Echter Neustart');
         assertEqual(storage.getItem('profile_gold_aktiv'), 'false', 'Echte Daten bleiben ohne Goldaktivierung');

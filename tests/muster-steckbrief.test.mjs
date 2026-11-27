@@ -28,6 +28,9 @@ for (const date of ['2026-10-23', '2031-06-15']) for (const { id } of MUSTER_HAU
         'Martin und Petra: Übungszeile zur Finanzierung der Erbschaftsteuer');
     const html = musterSteckbriefHtml(brief);
     assert(html.includes('Grundbedarf') && html.includes('Wunschbedarf') && html.includes('Gesamtbedarf'), `${id}: dreiteiliger Bedarf`);
+    if (['max-erika', 'jan-lena', 'helga-werner'].includes(id)) {
+        assert(html.includes('verheiratet, Erbanteile 100 % / 100 %'), `${id}: Steckbrief nennt Ehe und Erbanteile`);
+    }
     if (id === 'renate') assertEqual(n.gap, 19200, 'Renate: 19.200 € vor Erträgen und Steuern');
     if (id === 'sophie') assertEqual(n.surplus, 7200, 'Sophie: 7.200 € vor Autoausgabe, nach 3.600 € Ratenkredit im Grundbedarf (GA-2)');
     if (id === 'sophie') assert(brief.exercises.some(text => text.includes('Ratenkredit')), 'Sophie: Übungszeile zur festen geplanten Ausgabe');

@@ -21,7 +21,8 @@
             <a class="suite-brand" href="index.html" data-profile-handoff><span data-suite-icon="landmark" aria-hidden="true"></span><span>Vermögen &amp; Ruhestand</span></a>
             <div id="suiteContext" class="suite-context-row" aria-label="Seitenkontext"><span id="suiteProfileContext" class="suite-context" role="status" aria-live="polite" hidden></span><a id="overviewHousehold" class="overview-pill" hidden href="depot-tranchen-manager.html#personen" data-profile-handoff data-profile-handoff-export="false"><svg class="overview-pill-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7"/></svg><span id="overviewHouseholdLabel">Haushalt:</span> <b id="overviewHouseholdNames" class="overview-pill-names">wird geladen</b></a>
             <div class="overview-price-context">
-                <a id="overviewPrices" class="overview-pill" href="#kursdetails"><svg class="overview-pill-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 11a8 8 0 0 0-14.8-4M4 4v4h4M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4"/></svg><b id="overviewPricesValue">Kurszeit unbekannt</b></a>
+                <button type="button" id="overviewPrices" class="ds-button overview-pill overview-price-refresh" title="Kurse jetzt aktualisieren"><svg class="overview-pill-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 11a8 8 0 0 0-14.8-4M4 4v4h4M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4"/></svg><b id="overviewPricesValue">Kurszeit unbekannt</b></button>
+                <button type="button" id="overviewPriceDetailsBtn" class="ds-button ds-info-button" aria-label="Kursdetails anzeigen" aria-controls="kursdetails" aria-expanded="false">ⓘ</button>
                 <span class="ds-info" data-probelauf-price-info hidden><button type="button" class="ds-button ds-info-button" aria-label="Testkurse erklären" aria-describedby="overviewPriceTestInfo">ⓘ</button><span id="overviewPriceTestInfo" class="ds-info-pop" role="tooltip" data-probelauf-price-explanation></span></span>
                 <details id="kursdetails" class="overview-price-details ds-startup-prices">
                     <summary>Kursdetails schließen</summary>
@@ -30,7 +31,7 @@
             </div>
             <span id="overviewPlanningYear" class="overview-pill">Planungsjahr <b id="overviewPlanningYearValue">wird geladen</b></span>
             <a id="overviewBackup" class="overview-pill" href="Daten-Sicherung.html" data-profile-handoff><svg class="overview-pill-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg><span id="overviewBackupLabel"></span> <b id="overviewBackupValue">Noch keine Vollsicherung</b></a></div>
-            <button id="probelaufStart" type="button" class="suite-probelauf-start ds-button ds-button-secondary" aria-describedby="probelaufStatus" disabled>Spielbereich starten …</button>
+            <button id="probelaufStart" type="button" class="suite-probelauf-start ds-button ds-button-secondary" aria-describedby="probelaufStatus" disabled>Spielbereich starten …</button><button id="probelaufEnd" type="button" class="suite-probelauf-end ds-button ds-button-secondary" data-probelauf-action="end" hidden>Spielbereich beenden</button>
         </header>
         <div id="probelaufStatus" class="suite-probelauf-status" role="status" aria-live="polite" hidden></div>
         <div id="suiteNavigationStatus" class="suite-navigation-status" role="alert" hidden></div>
@@ -54,7 +55,6 @@
                         <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="day">+1 Tag</button>
                         <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="month">+1 Monat</button>
                         <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="date">Datum wählen …</button>
-                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="end">Spielbereich beenden</button>
                     </div>
                 </aside>
 

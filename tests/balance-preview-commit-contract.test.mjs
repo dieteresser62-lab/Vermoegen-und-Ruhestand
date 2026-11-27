@@ -394,7 +394,7 @@ console.log('Balance preview/commit contract tests passed');
 // Persistenzvertrag oben bleibt unverändert; nur der neue Anzeigeeintrag kommt hinzu.
 const { functionSource } = await import('./designsystem-selection-dom.mjs');
 const pipeline = await import('../app/balance/balance-update-pipeline.js');
-const { evaluateBalanceFileInputs } = await import('../app/balance/balance-file-service.js');
+const { evaluateBalanceInputs } = await import('../app/balance/balance-evaluation.js');
 const { buildBalanceOverviewSummary } = await import('../app/overview/overview-model.js');
 const { overviewScope } = await import('../app/overview/overview-storage.js');
 const noop = () => {};
@@ -402,16 +402,16 @@ const financial = { annualPeriodMetadata: { schemaVersion: 1, lastCommittedPerio
 const financialBytes = JSON.stringify(financial);
 let members = [], saved = [], fachwrites = 0, engineCalls = 0, inputReads = 0, blocked = false, broken = false;
 const engine = { simulateSingleYear() { engineCalls++; if (broken) throw new Error('synthetische Engineabweichung'); return { ui: { spending: { monatlicheEntnahme: 700 }, action: {}, market: {}, liquiditaet: {} }, newState: { candidate: true }, diagnosis: {} }; } };
-const deps = { projectNextYearBudget, document: { getElementById: () => null }, getBalancePlanTrial: () => ({ read: () => ({ active: false }), reset() {} }), renderBalanceInflationSource() {}, ...pipeline, evaluateBalanceFileInputs, buildBalanceOverviewSummary, overviewScope,
+const deps = { projectNextYearBudget, document: { getElementById: () => null }, getBalancePlanTrial: () => ({ read: () => ({ active: false }), reset() {} }), renderBalanceInflationSource() {}, ...pipeline, evaluateBalanceInputs, buildBalanceOverviewSummary, overviewScope,
     // Diese Altweg-Fixture bildet die ausdrückliche Entscheidung „Später“ ohne Plan ab.
     readBalanceHouseholdPlan: () => ({ status: 'missing', scope: null }),
     readBalancePersonStatus: () => ({ ready: true, status: 'complete' }), showPersonDataStatus: noop,
-    refreshBalanceWealthHistory: noop, refreshBalanceExpensesHistory: noop,
+    refreshBalanceExpensesHistory: noop,
     getCurrentProfileId: () => 'a', dom: { inputs: { fixedIncomeAnnual: { value: '12000' } } },
     appState: {}, window: { EngineAPI: engine }, console: { error: noop },
     assertActiveEngineHandshake: () => engine, profileSyncHandlers: { syncProfileDerivedInputs: noop },
     UIReader: { captureStorageDraft: () => { inputReads++; const calculation = deps.buildBalanceEngineInputFromStorage();
-        return { calculation, fields: {}, patch: {}, plan: calculation.householdPlan, source: deps.UIReader.readInputSourceFingerprint(), baseSourceFingerprint: calculation.sourceFingerprint }; },
+        return { calculation, fields: {}, patch: {}, plan: calculation.householdPlan, source: deps.UIReader.readInputSourceFingerprint() }; },
         readInputSourceFingerprint: () => JSON.stringify(deps.dom.inputs), renderMarketDataProvenance: noop },
     validateBalanceInputs: noop, loadProfilverbundProfiles: () => members,
     profilverbundHandlers: { updateProfilverbundGlobals: noop, refreshProfilverbundBalance: noop,
@@ -435,11 +435,6 @@ const mainUpdate = new Function('deps', `with (deps) { ${functionSource('app/bal
 const preview = mainUpdate({ mode: 'preview' });
 assertEqual(preview.ok, true, 'Echte Main-Vorschau bleibt erfolgreich');
 assertEqual(inputReads, 1, 'Main-Vorschau aggregiert Fachinputs genau einmal');
-preview.validateWealthHistorySource();
-deps.dom.inputs.fixedIncomeAnnual.value = '13000';
-assert(captureError(() => preview.validateWealthHistorySource()) instanceof Error,
-    'Main-Vorschau bindet Rohwertänderungen über die gesonderte Reader-Methode');
-assertEqual(inputReads, 1, 'Quellenvalidierung aggregiert keine weiteren Fachinputs');
 deps.dom.inputs.fixedIncomeAnnual.value = '12000';
 assertEqual(await preview.overviewPersistence, true, 'Main liefert den gesonderten Summary-Schreibabschluss');
 assertEqual(saved.length, 1, 'Erfolgreicher Einzelpreview schreibt genau einen Anzeigeeintrag');

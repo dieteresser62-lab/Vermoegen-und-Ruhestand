@@ -10,7 +10,6 @@ import { dynamicFlexPresetPatch } from '../app/shared/dynamic-flex-presets.js';
 import { stockTrancheId } from '../app/balance/annual-todo.js';
 import { MockDocument } from './helpers/balance-page-fixture.mjs';
 import { createAnnualPlanResult } from '../app/shared/annual-close-result.js';
-import { createAnnualMarketChoice } from '../app/shared/annual-market-choice.js';
 import { roundedHouseholdPlanComparison } from '../app/profile/household-plan-comparison.js';
 
 const DATE = '2026-10-23';
@@ -96,14 +95,15 @@ const read = (shown, id) => clean(shown.doc.getElementById(id).textContent);
     const maxErika = await renderCard(createMusterHaushaltRecords(DATE, 'max-erika'));
     assert(maxErika.reserveTarget.includes('Ziel: 60 Monate Entnahme = 165.000 €'), `Max und Erika: Reserveziel 162.000 € → 165.000 € (${maxErika.reserveTarget})`);
     assertEqual(read(maxErika, 'balancePersonalCashTargets'), 'Tagesgeldziel: Max 5.000 € · Erika 27.500 € · Summe 32.500 €', 'Max und Erika: Tagesgeldziele aufgerundet');
-    assert(maxErika.values.includes('Liquidität heute90.000 €') && maxErika.values.includes('nach Umsetzung179.500 €'),
-        `Max und Erika: heute genau (Kontostand), nach Umsetzung aus angezeigten Beträgen 90.000 + 89.500 = 179.500 € (RD-1b) (${maxErika.values})`);
+    assert(maxErika.values.includes('Liquidität heute90.000 €') && maxErika.values.includes('nach Umsetzung180.000 €'),
+        `Max und Erika: heute genau (Kontostand), nach Umsetzung aus angezeigten Beträgen 90.000 + 90.000 = 180.000 € (RD-1b, HP-3) (${maxErika.values})`);
     assertEqual(read(maxErika, 'balanceMonthlyBudget'), '5.000 €', 'Max und Erika ohne Dynamic Flex: Monatsbudget 5.100 € → 5.000 €');
     assertEqual(read(maxErika, 'balanceAnnualBudget'), '60.000 € im Jahr', 'Max und Erika ohne Dynamic Flex: Jahr 60.000 €');
     assertEqual(read(maxErika, 'balanceMonthlyIncome'), '3.100 €', 'Max und Erika: Einkünfte bleiben genau');
     // VN-1 Punkt 4: Die Zeilen stehen auf den Euro, nur die Handlungszeile ist gerundet („ca.“).
-    assert(maxErika.card.includes('Aktien verkaufenca. 89.500 €netto, Steuer ca. 1.000 € schon abgezogen') && maxErika.card.includes('Max') && maxErika.card.includes('9.363 €offen')
-        && maxErika.card.includes('79.950 €offen'), `Max und Erika: Handlungszeile ca. 89.500 €, Zeilen 9.363 + 79.950 € auf den Euro, Steuer 827 € → 1.000 € (${maxErika.card.slice(0, 260)})`);
+    // HP-3 (Ergänzung 6 FR-78): Die Handlungszeile rundet die Summe der Zeilen einmal, 89.313 € → ca. 90.000 €.
+    assert(maxErika.card.includes('Aktien verkaufenca. 90.000 €netto, Steuer ca. 1.000 € schon abgezogen') && maxErika.card.includes('Max') && maxErika.card.includes('9.363 €offen')
+        && maxErika.card.includes('79.950 €offen'), `Max und Erika: Handlungszeile ca. 90.000 €, Zeilen 9.363 + 79.950 € auf den Euro, Steuer 827 € → 1.000 € (${maxErika.card.slice(0, 260)})`);
 
     // Renate: Liquiditätsziel 96.000 € → 100.000 €; Planzeile 44.448 € → 45.000 €, im Details-Dialog 44.448 € mit Cent.
     const renate = await renderCard(createMusterHaushaltRecords(DATE, 'renate'));
@@ -130,7 +130,8 @@ const read = (shown, id) => clean(shown.doc.getElementById(id).textContent);
     for (const entry of Object.values(plan.entries)) Object.assign(entry.values, dynamicFlexPresetPatch('ausgewogen'));
     data[HOUSEHOLD_PLAN_KEY] = JSON.stringify(plan);
     const dynamic = await renderCard(data);
-    assertEqual(dynamic.next.rule.monthlyBudget, 6400, 'Dynamic Flex: gerechnet bleibt das Budget 2027 bei 6.400 €');
+    // FR-88 (vorschüssige VPW-Rate): gerechnet vorher 6.400 €.
+    assertEqual(dynamic.next.plan.monthlyBudget, 6300, 'Dynamic Flex: gerechnet bleibt das Budget 2027 bei 6.300 €');
     assertEqual(read(dynamic, 'balanceMonthlyBudget'), '6.250 €', 'Dynamic Flex: Anzeige 6.250 € im Monat');
     assertEqual(read(dynamic, 'balanceAnnualBudget'), '75.000 € im Jahr', 'Dynamic Flex: Jahr = 6.250 € × 12 = 75.000 €');
 
@@ -142,7 +143,7 @@ const read = (shown, id) => clean(shown.doc.getElementById(id).textContent);
     assertEqual(read(sophie, 'balanceMonthlyIncome'), '3.400 €', 'Sophie: Einkünfte genau');
 }
 
-// Jahresabschluss: Monatsbudget des Folgejahrs ab, Bedarf über den Monat × 12 auf, Wahl mit Budget ab und Verkauf auf.
+// Jahresabschluss: Monatsbudget des Folgejahrs ab, Bedarf über den Monat × 12 auf.
 {
     const doc = new MockDocument();
     const result = createAnnualPlanResult({ doc, model: { summary: { monthlyBudget: 7388.42 }, annual: {} },
@@ -150,11 +151,6 @@ const read = (shown, id) => clean(shown.doc.getElementById(id).textContent);
     const text = clean(result.textContent);
     assert(text.includes('Monatsbudget 20277.250 €') && !text.includes('7.388'), `Jahresabschluss: Monatsbudget 7.388,42 € → 7.250 € (${text.slice(0, 200)})`);
     assert(text.includes('65.000 € im Jahr'), `Jahresabschluss (GN-1): Bedarf als Summe der angezeigten Teile 32.500 + 32.500 = 65.000 € (${text.slice(0, 400)})`);
-    const main = { text: 'Aktien verkaufen', netAmount: 37640 };
-    const choice = clean(createAnnualMarketChoice(new MockDocument(), { yearEndDate: '2025-12-31', high: { high: { value: 165.79, asOf: '2026-08-12' } },
-        comparison: { rule: { monthlyBudget: 7388, mainAction: main }, high: { monthlyBudget: 6990, mainAction: main }, difference: { monthlyBudget: -398 } } }, null, () => {}).textContent);
-    assert(choice.includes('Monatsbudget 7.250 € · Aktien verkaufen 40.000 €') && choice.includes('Monatsbudget 6.750 €') && choice.includes('Hoch von 166 €'),
-        `Wahl: Budget ab, Verkauf auf, Kurs des Hochs unverändert (${choice})`);
 }
 
 // Übersicht: Anzeigefassung des Plan-Vergleichs; das Modell bleibt genau.

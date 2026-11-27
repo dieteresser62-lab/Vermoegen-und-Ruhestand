@@ -1,21 +1,21 @@
 import { playFixture } from './helpers/probelauf-area-fixture.mjs';
 import { PersistenceFacade as P } from '../app/shared/persistence-facade.js';
-import { SnapshotArchive as A, SNAPSHOT_KINDS } from '../app/shared/snapshot-archive.js';
+import { SnapshotArchive as A, SNAPSHOT_KINDS, IMPORT_POINT_LABELS, isVisibleRestorePoint } from '../app/shared/snapshot-archive.js';
 import { previewSnapshotRestore, executeSnapshotRestore, recordIdentity } from '../app/shared/snapshot-restore.js';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { createNavigationGuard } from '../app/shared/navigation-guard.js';
 import { CONFIG } from '../app/balance/balance-config.js';
 import { setAppTestDate } from '../app/shared/app-clock.js';
 import { isProfileScopedKey } from '../app/profile/profile-key-policy.js';
-import { snapshotTitle, snapshotBlockReason } from '../app/data/data-snapshot-presentation.js';
-import { buildSnapshotRetentionPlan } from '../app/shared/snapshot-retention.js';
+import { snapshotTitle } from '../app/data/data-restoration.js';
 import { areaSessionStorage, PLAY_STORAGE_PREFIX } from '../app/shared/persistence-area-storage.js';
 
 const withoutArchive = records => Object.fromEntries(Object.entries(records).filter(([key]) => key !== 'rs_snapshot_archive_v1'));
 const same = (a, b, message) => assertEqual(recordIdentity(a), recordIdentity(b), message);
 const selection = async c => ({ action: 'transfer', review: await c.readEndReview() });
 const edit = (key, mutate) => { const value = JSON.parse(P.getItemSync(key)); mutate(value); P.setItemSync(key, JSON.stringify(value)); };
-const records = () => ({ ...createMusterHaushaltRecords('2026-10-15'), ui_theme: 'original', rs_daily_prices_v1: '{"real":true}',
+// SV-1b: Gültige Tageskurse, weil der Punkt vor der Übernahme sie mit enthält und Zurückholen ihn wie ein Einspielen prüft.
+const records = () => ({ ...createMusterHaushaltRecords('2026-10-15'), ui_theme: 'original', rs_daily_prices_v1: '{"version":1,"symbols":{}}',
     'rs_startup_prices_session_v1': 'real-session', etfProxyUrl: 'real-proxy', sim_showExtra: 'false' });
 const change = async () => {
     P.setItemSync('profile_gold_aktiv', 'true');
@@ -23,7 +23,7 @@ const change = async () => {
     P.setItemSync('profile_tagesgeld', '20000');
     edit('depot_tranchen', lots => lots.push({ ...lots[0], trancheId: 'new-gold', type: 'gold', category: 'gold', name: 'Gold', shares: 5, purchasePrice: 100, purchaseDate: '2026-10-15', tqf: 0, taxExempt: true }));
     edit('household_plan_v1', plan => { Object.values(plan.entries)[0].values.flexBedarf = 32000; });
-    P.setItemSync('ui_theme', 'play'); P.setItemSync('rs_daily_prices_v1', '{"play":true}');
+    P.setItemSync('ui_theme', 'play'); P.setItemSync('rs_daily_prices_v1', '{"version":1,"symbols":{"PLAY":{"currency":null,"days":[],"closes":[],"queried":[],"failures":0,"lastError":null}}}');
     P.setItemSync('rs_startup_prices_session_v1', 'play-session'); P.setItemSync('etfProxyUrl', 'play-proxy'); P.setItemSync('sim_showExtra', 'true');
     await P.flush();
 };
@@ -90,7 +90,7 @@ for (const kind of ['tauri', 'indexeddb', 'localstorage']) {
         const expectedChanges = (await c.readEndReview()).changes.count;
         const result = await c.end(() => selection(c), { onTransferred(receipt) {
             shown++; assertEqual(receipt.changes.count, expectedChanges, `${kind}: Erfolg zählt die bestätigten Änderungen`);
-            assertEqual(receipt.snapshotLabel, 'Vor Übernahme aus dem Spielbereich', `${kind}: Rückkehrpunkt im Erfolg`);
+            assertEqual(receipt.snapshotLabel, 'Vor Übernahme der Spielkopie', `${kind}: Rückkehrpunkt im Erfolg`);
             assert(Number.isFinite(receipt.monthlyBudget), `${kind}: Erfolg nennt Monatsbudget`);
             assertEqual(c.state, null, `${kind}: Spielbereich vor Erfolg geschlossen`);
             assertEqual(restoredNavigations, 0, `${kind}: Erfolg vor Startseite`);
@@ -110,12 +110,14 @@ for (const kind of ['tauri', 'indexeddb', 'localstorage']) {
         const registryBefore = JSON.parse(before.rs_profiles_v1), registryAfter = JSON.parse(after.rs_profiles_v1);
         assertEqual(JSON.stringify(registryAfter.profiles.muster_b), JSON.stringify(registryBefore.profiles.muster_b), `${kind}: inaktive Person unverändert`);
         for (const key of ['profile_gold_aktiv', 'profile_gold_ziel_pct', 'profile_tagesgeld', 'depot_tranchen']) assertEqual(registryAfter.profiles.muster_a.data[key], after[key], `${kind}: Registry und Livewert ${key} konsistent`);
-        const point = (await A.listSnapshots()).find(point => point.kind === SNAPSHOT_KINDS.probelaufTransferBefore);
-        assert(point?.standardRestorable, `${kind}: Übernahmepunkt unter Daten & Sicherung zurückholbar`);
-        assertEqual(snapshotTitle(point), 'Vor Übernahme aus dem Spielbereich', `${kind}: Anlass in Daten & Sicherung benannt`);
-        assertEqual(snapshotBlockReason(point, { profileIds: [] }), null, `${kind}: Rückkehrpunkt bleibt bei geänderten Personen verfügbar`);
-        assertEqual(buildSnapshotRetentionPlan([point], { now: new Date('2030-01-01') }).remove.length, 0, `${kind}: Rückkehrpunkt bleibt dauerhaft erhalten`);
-        same((await A.readSnapshot(point.id)).records, before, `${kind}: Punkt enthält den bytegleichen gesamten Vorher-Stand`);
+        // SV-1: Die Übernahme legt einen Punkt der Art „vor dem Einspielen“ für den ganzen Haushalt an.
+        const point = (await A.listSnapshots()).find(point => point.kind === SNAPSHOT_KINDS.fullBackupImportRecovery && point.label === IMPORT_POINT_LABELS.playTransfer);
+        assert(point && isVisibleRestorePoint(point), `${kind}: Übernahmepunkt unter Daten & Sicherung sichtbar`);
+        assertEqual(snapshotTitle(point), 'Vor Übernahme der Spielkopie', `${kind}: Anlass in Daten & Sicherung benannt`);
+        // SV-1b: Der Punkt umfasst den ganzen ersetzten Hauptspeicher, auch technische und Altschlüssel.
+        const transferPoint = await A.readSnapshot(point.id);
+        same(transferPoint.records, before, `${kind}: Punkt enthält den ganzen ersetzten Hauptspeicher im Vorher-Stand`);
+        assertEqual(transferPoint.scope, 'all', `${kind}: Punkt trägt seinen Umfang`);
         const preview = await previewSnapshotRestore(point.id);
         const restored = await executeSnapshotRestore(preview, { reload() {} });
         assertEqual(restored.status, 'restored', `${kind}: normaler Zurückholen-Weg funktioniert`);
@@ -143,8 +145,8 @@ for (const kind of ['tauri', 'indexeddb', 'localstorage']) {
         P.setItemSync('profile_tagesgeld', '20000'); P.setItemSync('sim_startFlexBedarf', '32000'); await P.flush();
         await c.end(() => selection(c)); await f.boot();
         assertEqual(P.getItemSync('sim_startFlexBedarf'), '32000', `${kind}: profilfreier Altbestand übernimmt alten Fachschlüssel`);
-        const point = (await A.listSnapshots()).find(point => point.kind === SNAPSHOT_KINDS.probelaufTransferBefore);
-        assert(point.standardRestorable, `${kind}: profilfreier Rückkehrpunkt verfügbar`);
+        const point = (await A.listSnapshots()).find(point => point.kind === SNAPSHOT_KINDS.fullBackupImportRecovery && point.label === IMPORT_POINT_LABELS.playTransfer);
+        assert(point && isVisibleRestorePoint(point), `${kind}: profilfreier Rückkehrpunkt verfügbar`);
         await executeSnapshotRestore(await previewSnapshotRestore(point.id), { reload() {} });
         same(withoutArchive(await P.readPersistedRecords()), before, `${kind}: profilfreier Altbestand bytegleich zurückgeholt`);
     }

@@ -13,9 +13,18 @@ import { PROFILE_STORAGE_KEY, ACTIVE_PROFILE_KEY, CURRENT_PROFILE_KEY, ProfileRe
 import { assertProfileIdentityRecords, assertProfileDataLoadable } from './load-guards.js';
 import { getRegistryContextSnapshot, assertProfileContextReady } from './registry-context.js';
 
+/** SP-1b: JSON mit sortierten Objektschlüsseln, um Inhalte unabhängig von der Schlüsselreihenfolge zu vergleichen. @param {unknown} value */
+const canonicalJson = value => JSON.stringify(value, (_, item) => item && typeof item === 'object' && !Array.isArray(item)
+    ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : item);
+
+/** SP-1 (H-BOOTSTRAP-WRITE): Rückgabe eines Saves ohne Schreiben. Sie ist wahr, damit „false = nicht gespeichert“ für alle Aufrufer gilt. */
+export const PROFILE_SAVE_UNCHANGED = 'unchanged';
+
 /**
+ * Personenstand aus dem Livebestand in die Registry. Rückgabe: `true` = geschrieben, `'unchanged'` = Daten schon gespeichert,
+ * nichts geschrieben (kein neues `meta.updatedAt`), `false` = Person fehlt.
  * @param {{deletedKeys?: string[]}} [options]
- * @returns {boolean}
+ * @returns {boolean | typeof PROFILE_SAVE_UNCHANGED}
  */
 export function saveCurrentProfileFromLocalStorage({ deletedKeys = [] } = {}) {
     if (!Array.isArray(deletedKeys) || deletedKeys.some(key => typeof key !== 'string' || !isProfileScopedKey(key)
@@ -63,7 +72,7 @@ export function saveCurrentProfileFromLocalStorage({ deletedKeys = [] } = {}) {
     }
     // Abwesenheit ist beim gewöhnlichen Snapshot keine Löschanweisung.
     // Nur konkret benannte Löschziele setzen den Merge außer Kraft, auch bei leerem Capture.
-    if (!Object.keys(capturedData).length && !deletedKeys.length) return true;
+    if (!Object.keys(capturedData).length && !deletedKeys.length) return PROFILE_SAVE_UNCHANGED;
     const snapshotData = mergeProfileLiveData(registry.profiles[id].data, capturedData, deletedKeys);
     assertProfileDataLoadable(id, {
         ...registry.profiles[id],
@@ -72,6 +81,11 @@ export function saveCurrentProfileFromLocalStorage({ deletedKeys = [] } = {}) {
         registryRaw,
         scope: 'live-profile-field'
     });
+    // SP-1: Ohne echte Änderung kein Registrywrite; so schreibt auch ein Seitenstart nichts (Lesen schreibt nie).
+    if (!deletedKeys.length && dataIdentity(snapshotData) === dataIdentity(registry.profiles[id].data)) {
+        trackLiveBase(id, snapshotData);
+        return PROFILE_SAVE_UNCHANGED;
+    }
     if (!replaceProfileData(id, snapshotData, { captureProfileData })) {
         throw new ProfileRecoveryError({
             status: PROFILE_LOAD_STATUS.UNAVAILABLE,
@@ -101,6 +115,7 @@ export function loadProfileIntoLocalStorage(id) {
     let previousLiveData;
     let previousActiveId;
     let currentMainState;
+    let currentMainRaw;
     try {
         previousLiveData = /** @type {(storage?: D.RecordStorage) => D.StringRecords} */ (captureLiveProfileData)();
         previousActiveId = readStorageValue(
@@ -108,11 +123,12 @@ export function loadProfileIntoLocalStorage(id) {
             ACTIVE_PROFILE_KEY,
             'Die aktive Profil-ID ist technisch nicht lesbar.'
         );
-        currentMainState = parseBalanceState(readStorageValue(
+        currentMainRaw = readStorageValue(
             persistenceStorage,
             CONFIG.STORAGE.LS_KEY,
             'Der aktuelle Balance-State ist technisch nicht lesbar.'
-        ));
+        );
+        currentMainState = parseBalanceState(currentMainRaw);
     } catch (error) {
         if (error instanceof ProfileRecoveryError) throw error;
         throw new ProfileRecoveryError({
@@ -127,20 +143,37 @@ export function loadProfileIntoLocalStorage(id) {
             canReset: false
         }, error);
     }
+    // JW-1a (Neon P1-2): Ein beschädigter Live-Stand würde beim Wechsel die haushaltsweiten Jahresfelder still verlieren.
+    if (currentMainState === null && currentMainRaw !== null && currentMainRaw !== undefined && currentMainRaw !== '') {
+        throw new ProfileRecoveryError({
+            status: PROFILE_LOAD_STATUS.CORRUPT,
+            scope: 'profile-load',
+            storageKey: CONFIG.STORAGE.LS_KEY,
+            profileId: id,
+            raw: null,
+            registryRaw,
+            code: 'PROFILE_LOAD_LIVE_BALANCE_CORRUPT',
+            message: `Profil ${id} wird nicht geladen, weil der aktuelle Balance-Stand beschädigt ist. Hole unter „Daten & Sicherung“ einen früheren Stand zurück.`,
+            canReset: false
+        });
+    }
     const householdState = createHouseholdOwnedBalanceState(currentMainState || {});
     const sanitizedData = sanitizeProfileDataBalanceOwnership(profile.data);
     try {
-        /** @type {(data: D.StringRecords, storage?: D.RecordStorage) => boolean} */ (loadProfileDataIntoLocalStorage)(sanitizedData);
-        const loadedProfileState = parseBalanceState(persistenceStorage.getItem(CONFIG.STORAGE.LS_KEY));
-        if (loadedProfileState) {
-            persistenceStorage.setItem(CONFIG.STORAGE.LS_KEY, JSON.stringify({
-                ...createProfileOwnedBalanceState(loadedProfileState, { preservePersonInputs: profile.data.profile_person_schema_version !== '1' }),
-                ...householdState
-            }));
-        } else if (Object.keys(householdState).length > 0) {
-            persistenceStorage.setItem(CONFIG.STORAGE.LS_KEY, JSON.stringify(householdState));
-        }
-        persistenceStorage.setItem(ACTIVE_PROFILE_KEY, id);
+        // SP-1b: Der Balance-Stand wird vor dem Laden fertig zusammengesetzt (Personenanteil + Haushaltsanteil), damit jeder
+        // Live-Schlüssel höchstens einmal und nur bei abweichendem Wert geschrieben wird.
+        const liveData = { ...sanitizedData };
+        const storedState = sanitizedData[CONFIG.STORAGE.LS_KEY];
+        const loadedProfileState = parseBalanceState(storedState === null || storedState === undefined ? null : String(storedState));
+        const balanceState = loadedProfileState ? {
+            ...createProfileOwnedBalanceState(loadedProfileState, { preservePersonInputs: profile.data.profile_person_schema_version !== '1' }),
+            ...householdState
+        } : Object.keys(householdState).length > 0 ? householdState : null;
+        // Gleicher Inhalt in anderer Schlüsselreihenfolge ist keine Änderung; dann bleibt der heutige Livewert stehen.
+        if (balanceState) liveData[CONFIG.STORAGE.LS_KEY] = currentMainState && canonicalJson(currentMainState) === canonicalJson(balanceState)
+            ? previousLiveData[CONFIG.STORAGE.LS_KEY] : JSON.stringify(balanceState);
+        /** @type {(data: D.StringRecords, storage?: D.RecordStorage) => boolean} */ (loadProfileDataIntoLocalStorage)(liveData);
+        if (persistenceStorage.getItem(ACTIVE_PROFILE_KEY) !== id) persistenceStorage.setItem(ACTIVE_PROFILE_KEY, id);
         if (sanitizedData !== profile.data) {
             const persisted = replaceProfileData(id, sanitizedData, { captureProfileData });
             if (!persisted) {
@@ -219,7 +252,7 @@ export function patchInactiveProfileQuotes(patches, activeId, originalRegistry =
             }
             seen.add(key);
             records[update.index] = { ...record, currentPrice: update.quote.price,
-                asOf: update.quote.asOf, ticker: update.quote.symbol };
+                asOf: update.quote.asOf, ticker: update.quote.symbol, quoteExchange: update.quote.exchange || undefined };
         }
         profile.data[PROFILE_TRANCHES_KEY] = JSON.stringify(records);
     }

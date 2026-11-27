@@ -62,7 +62,7 @@ function assertCloseStepContents(markup, model) {
     assert(renderOverviewExampleActions({ members: [{ id: 'a' }, { id: 'b' }] }).includes('Person auswählen'), 'Einzelaktion mit Haushalt kündigt die vorhandene Personenwahl an');
 }
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-assertEqual((html.match(/class="overview-pill"/g) || []).length, 4, 'Vier Kopfpillen');
+assertEqual((html.match(/class="(?:ds-button )?overview-pill(?: overview-price-refresh)?"/g) || []).length, 4, 'Vier Kopfpillen');
 assert(!html.match(/app-card|profileAdvanced|profileNameInput|⚖|📊|📖/), 'Keine alten Kacheln oder Dummyverwaltung');
 assert(!html.includes('id="daten-sicherung"') && !html.includes('id="fullBackupBtn"') && !html.includes('id="fullBackupImportBtn"'), 'Keine entfernten Sicherungsanker auf der Startseite');
 assert(!html.match(/<details id="kursdetails"[^>]*\bopen\b/), 'Kursaufklappfeld initial geschlossen');
@@ -161,10 +161,14 @@ for (const options of [{}, { adjusted: true }, { preview: 'missing' },
 }
 
 win.location.hash = '#kursdetails'; events.hashchange();
-assertEqual(doc.getElementById('kursdetails').open, true, 'Kurspille öffnet die erhaltenen Kursdetails');
+assertEqual(doc.getElementById('kursdetails').open, true, 'Sprungziel öffnet die erhaltenen Kursdetails');
 doc.getElementById('kursdetails').open = false;
 doc.getElementById('overviewPrices').click();
-assertEqual(doc.getElementById('kursdetails').open, true, 'Kurspille öffnet auch bei unverändertem Hash');
+assertEqual(doc.getElementById('kursdetails').open, false, 'OP-3: Die Kurspille aktualisiert nur und öffnet die Kursdetails nicht');
+doc.getElementById('overviewPriceDetailsBtn').click();
+assertEqual(doc.getElementById('kursdetails').open, true, 'OP-3: Das ⓘ neben der Kurspille öffnet die Kursdetails');
+doc.getElementById('overviewPriceDetailsBtn').click();
+assertEqual(doc.getElementById('kursdetails').open, false, 'OP-3: Ein zweiter Klick auf das ⓘ schließt sie');
 doc.getElementById('overviewBackup').click();
 assertEqual(doc.getElementById('overviewTrial'), null, 'Sicherungspille benötigt keine Probelaufzeile');
 assert(html.includes('id="overviewBackup" class="overview-pill" href="Daten-Sicherung.html" data-profile-handoff'), 'Sicherungspille hat geschützten echten Seitenlink');
@@ -531,9 +535,10 @@ assert(css.includes('.overview-plan-button { align-self: flex-start; }'), 'Balan
 for (const [days, expected] of [
     [-1, 'heute'],
     [0, 'heute'],
-    [0.9, 'heute'],
-    [1, 'vor 1 Tag'],
-    [1.9, 'vor 1 Tag'],
+    // ST7-B (Befund 1047): Kalendertage in Europe/Berlin; der Bezugszeitpunkt liegt um Mitternacht.
+    [0.9, 'gestern'],
+    [1, 'gestern'],
+    [1.9, 'vor 2 Tagen'],
     [2, 'vor 2 Tagen'],
     [29, 'vor 29 Tagen'],
     [30, 'vor 30 Tagen'],
@@ -582,7 +587,8 @@ function moneyText(value) { return formatDisplayNumber(value, { unit: 'currency'
 const pillMarkup = html.match(/<header class="suite-header">([\s\S]*?)<\/header>/)[1];
 assertEqual((pillMarkup.match(/aria-hidden="true" focusable="false"/g) || []).length, 3, 'Haushalt, Abruf und Sicherung haben dekorative Symbole');
 assertEqual((pillMarkup.match(/<b /g) || []).length, 4, 'Vier hervorgehobene Pillenwerte');
-for (const href of ['depot-tranchen-manager.html#personen', '#kursdetails', 'Daten-Sicherung.html']) {
+assert(/<button type="button" id="overviewPrices"[^>]*title="Kurse jetzt aktualisieren"/.test(pillMarkup) && /<button type="button" id="overviewPriceDetailsBtn"[^>]*aria-controls="kursdetails"/.test(pillMarkup), 'OP-3: Kurspille ist ein Knopf ohne Sprung, das ⓘ öffnet die Kursdetails');
+for (const href of ['depot-tranchen-manager.html#personen', 'Daten-Sicherung.html']) {
     assert(pillMarkup.includes(`href="${href}"`), 'Kopfpille behält Ziel: ' + href);
 }
 assert(css.includes('.overview-card-link { color: var(--accent)') && css.includes('.overview-card-link:focus-visible'), 'Messinglinks mit sichtbarem Fokus');
@@ -1085,6 +1091,7 @@ assert(html.includes('id="overviewBackupReminder"') && html.includes('href="Date
     assert(doc.getElementById('overviewPlanComparison').innerHTML.includes('data-action-origin') && doc.getElementById('overviewPlanComparison').innerHTML.includes('Balance.html#handlungsanweisung'), 'Lesender Herkunftshinweis erhält den Balance-Link mit Profilhandoff');
     assertEqual(doc.getElementById('overviewPlanStatus').textContent, 'festgeschrieben', 'Nur gültiger Beleg setzt sichtbaren Status');
     assert(doc.getElementById('overviewPlanComparison').innerHTML.includes('bewusst angepasst'), 'Startseite zeigt bewusste Anpassung');
+    assert(doc.getElementById('overviewPlanComparison').innerHTML.includes('Bei „Nichts tun“ gilt der Stand ohne Kauf oder Verkauf.'), 'Liquiditätszeile erklärt die Deckung für einen Plan ohne Transaktion');
     raw = '{broken'; comparison = view(); renderOverview(doc, { ...focusBase, planComparison: comparison });
     assert(doc.getElementById('overviewPlanComparison').innerHTML.includes('role="alert"'), 'Startseitenrenderer benennt beschädigten Beleg');
     raw = null; comparison = view(); renderOverview(doc, { ...focusBase, planComparison: comparison });
@@ -1147,8 +1154,7 @@ assert(html.includes('id="overviewBackupReminder"') && html.includes('href="Date
         setAppTestDate('2026-01-01');
         const registry = { profiles: {
             a: { meta: { name: 'Person A' }, data: { profile_geburtsdatum: '1962-07-17', profile_rente_monatlich: '1000', profile_tagesgeld: '200' } },
-            b: { meta: { name: 'Person B' }, data: { profile_geburtsdatum: '1965-08-23', profile_rente_monatlich: '500' } },
-            c: { meta: { name: 'Altprofil', belongsToHousehold: false }, data: { profile_aktuelles_alter: '70' } }
+            b: { meta: { name: 'Person B' }, data: { profile_geburtsdatum: '1965-08-23', profile_rente_monatlich: '500' } }
         } };
         const liveData = { ...registry.profiles.a.data }, raw = JSON.stringify({ registry, liveData });
         const view = projectOverview({ registry, activeId: 'a', liveData, now: new Date(2026, 9, 9, 12) });
@@ -1156,10 +1162,9 @@ assert(html.includes('id="overviewBackupReminder"') && html.includes('href="Date
         renderOverview(doc, view);
         const people = doc.getElementById('overviewPeople').innerHTML;
         assert(people.includes('64 Jahre') && people.includes('61 Jahre'), 'Startseitenmitglieder zeigen heutige Alter 64/61');
-        registry.profiles.b.meta.belongsToHousehold = false; registry.profiles.c.meta.belongsToHousehold = true;
-        renderOverview(doc, projectOverview({ registry, activeId: 'a', liveData, now: new Date(2026, 9, 9, 12) }));
+        const legacy = { profiles: { a: structuredClone(registry.profiles.a), c: { meta: { name: 'Altprofil' }, data: { profile_aktuelles_alter: '70' } } } };
+        renderOverview(doc, projectOverview({ registry: legacy, activeId: 'a', liveData, now: new Date(2026, 9, 9, 12) }));
         assert(doc.getElementById('overviewPeople').innerHTML.includes('70 Jahre · Altalter, Geburtsdatum fehlt'), 'Startseite kennzeichnet festes Altalter');
-        delete registry.profiles.b.meta.belongsToHousehold; registry.profiles.c.meta.belongsToHousehold = false;
         assertEqual(view.members[0].values.alter, 63, 'Startseite erhält Januarplanung von A');
         assertEqual(view.members[1].values.alter, 60, 'Startseite erhält Januarplanung von B');
         assertEqual(view.household.assets, 200, 'Anzeigedatum verändert keine Vermögenssumme');

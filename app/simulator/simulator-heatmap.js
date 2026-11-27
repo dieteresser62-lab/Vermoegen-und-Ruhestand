@@ -2,16 +2,10 @@
 
 import { bindBalanceDisplaySize } from '../balance/balance-presentation-controls.js';
 
-import { formatDisplayFixed, formatDisplayScalar } from '../shared/designsystem-number-format.js';
-import { formatChartEuro } from './results-formatting.js';
-import { formatCurrency } from './simulator-formatting.js';
+import { formatDisplayFixed } from '../shared/designsystem-number-format.js';
 import { infoPopoverHtml } from '../shared/designsystem-info-popover.js';
 
 import { heatmapColor, readChartTokens, heatmapLabelColor, CHART_LABEL } from '../shared/designsystem-chart-colors.js';
-import {
-    SWEEP_METRICS_VERSION,
-    readSweepMetricValue
-} from './sweep-metrics-contract.js';
 
 /** Ein Resize-Anschluss pro Host; der Callback hält nur die letzte Anzeige.
  *
@@ -31,7 +25,7 @@ export function renderSizedSimulatorChart(host, render) {
  * @param {number} [baseHeight]
  * @returns Ergebnis der Operation.
  */
-export function simulatorChartDimensions(options = {}, baseWidth = 980, baseHeight = 420) {
+function simulatorChartDimensions(options = {}, baseWidth = 980, baseHeight = 420) {
     const available = options.containerWidth > 0 ? Math.floor(options.containerWidth) : null;
     const width = Math.max(Math.min(820, baseWidth), options.width ?? available ?? baseWidth);
     const height = options.height ?? Math.round(baseHeight * width / baseWidth);
@@ -42,7 +36,6 @@ const scrollHint = overflow => overflow ? '<p class="ds-scroll-hint">Grafik bei 
 const formatFixed = (value, digits = 1) => formatDisplayFixed(value, digits);
 const formatPercent = (value, digits = 1) => `${formatFixed(value, digits)}\u00a0%`;
 const formatPercentFromRatio = (value, digits = 1) => formatPercent(value * 100, digits);
-const formatMonths = (value, digits = 1) => `${formatFixed(value, digits)}\u00a0Mo`;
 
 const formatHeatmapCellLabel = (pct) => {
     if (pct <= 0) return '0';
@@ -78,7 +71,6 @@ export const HEATMAP_V4_STYLE = `
         font-weight: 600;
         pointer-events: none;
     }
-    .heatmap-v4-svg .sweep-cell-text { font-size: var(--text-base); }
     .heatmap-v4-svg .cell-dot { pointer-events: none; }
     .heatmap-v4-svg .critical-line { stroke: var(--bad); stroke-width: 1.5; stroke-dasharray: 4, 3; }
     .heatmap-v4-svg .critical-overlay { fill: var(--bad); fill-opacity: 0.12; pointer-events: none; }
@@ -339,7 +331,7 @@ export function renderHeatmapSVG(heatInput, bins, totalRuns, extraKPI = {}, opti
     return `
     <div id="heatmap-container" style="text-align:center;">
         <h4 class="chart-title">Verteilung der realisierten Entnahmequote in den ersten 10 Jahren</h4>
-        <p class="heatmap-subtitle ds-note">Anteil Läufe: realisierte Entnahmequote ≥ 4,5 % (gezählt je Quotenstufe) ${infoPopoverHtml('Erläuterung zur Berichtsreferenz', 'Die Überlagerung zeigt den Anteil mit realisierter Entnahmequote ≥ 4,5 %, gezählt je Quotenstufe. Die 4,5 % sind nur eine Berichtsreferenz und keine Alarm- oder Guardrail-Schwelle.')}</p>
+        <p class="heatmap-subtitle ds-note">Anteil Läufe: realisierte Entnahmequote ≥ 4,5 % (gezählt je Quotenstufe) ${infoPopoverHtml('Erläuterung zur Berichtsreferenz', 'Die Überlagerung zeigt den Anteil mit realisierter Entnahmequote ≥ 4,5 %, gezählt je Quotenstufe. Die 4,5 % sind nur eine Berichtsreferenz und keine Alarm- oder Leitplanken-Schwelle.')}</p>
         ${scrollHint(opts.overflow)}
         <div class="ds-chart-scroll" role="region" tabindex="0" aria-label="Heatmap horizontal scrollbar">
         <svg class="heatmap-v4-svg chart-native-svg" width="${opts.width}" height="${opts.height}" viewBox="0 0 ${opts.width} ${opts.height}">
@@ -360,231 +352,4 @@ export function renderHeatmapSVG(heatInput, bins, totalRuns, extraKPI = {}, opti
         </svg>
         ${footer}</div>
     </div>`;
-}
-
-/**
- * Rendert die Parameter-Sweep-Heatmap als SVG
- *
- * @param sweepResults
- * @param metricKey
- * @param xParam
- * @param yParam
- * @param xValues
- * @param yValues
- * @param {object} [options]
- * @returns {string} Ergebnis der Operation.
- */
-export function renderSweepHeatmapSVG(sweepResults, metricKey, xParam, yParam, xValues, yValues, options = {}) {
-    if (!sweepResults || sweepResults.length === 0) return '<p>Keine Sweep-Ergebnisse vorhanden.</p>';
-
-    try {
-
-        const opts = Object.assign({
-            showLegend: true
-        }, options, simulatorChartDimensions(options, 980, 500));
-
-        const paramLabels = {
-            liquidityRunwayYears: 'Liquiditäts-Runway',
-            goldRebalancingBand: 'Gold-Rebal Band',
-            maxSkimPct: 'Max Skim %',
-            maxBearRefillPct: 'Max Bear Refill %',
-            goldTargetPct: 'Gold Target %',
-            horizonYears: 'VPW Horizon',
-            survivalQuantile: 'VPW Quantile',
-            goGoMultiplier: 'VPW Go-Go Mult'
-        };
-
-        const metricLabels = {
-            successProbFloor: 'Success Prob Floor (%)',
-            p10EndWealth: 'P10 End Wealth (€)',
-            p25EndWealth: 'P25 End Wealth (€)',
-            medianEndWealth: 'Median End Wealth (€)',
-            p75EndWealth: 'P75 End Wealth (€)',
-            meanEndWealth: 'Mean End Wealth (€)',
-            maxEndWealth: 'Max End Wealth (€)',
-            worst5Drawdown: 'Worst 5% Drawdown (%)',
-            minRunwayObserved: 'Min Runway Observed (Monate)'
-        };
-
-        const heatmapData = new Map();
-        for (const result of sweepResults) {
-            const key = `${result.params[xParam]}_${result.params[yParam]}`;
-            const metricValue = readSweepMetricValue(result, metricKey);
-            if (metricValue === null) continue;
-            heatmapData.set(key, metricValue);
-        }
-
-        const allValues = Array.from(heatmapData.values());
-        if (allValues.length === 0) {
-            const hasLegacyShape = sweepResults.some(result => (
-                result?.metrics && result.metrics.schemaVersion !== SWEEP_METRICS_VERSION
-            ));
-            return hasLegacyShape
-                ? '<p>Die Sweep-Ergebnisse verwenden einen veralteten oder unversionierten Ergebnisvertrag. Bitte den Sweep neu ausführen.</p>'
-                : '<p>Keine gültigen Sweep-Ergebnisse für die aktuelle Auswahl vorhanden.</p>';
-        }
-        const minVal = Math.min(...allValues);
-        const maxVal = Math.max(...allValues);
-        const range = maxVal - minVal;
-
-        const chartTokens = opts.chartTokens || readChartTokens();
-        const getColor = (value) => {
-            if (range === 0) return viridis(0.5, chartTokens);
-            const t = (value - minVal) / range;
-            return viridis(t, chartTokens);
-        };
-
-        const formatValue = (value, metric) => {
-            const wealthMetrics = ['p10EndWealth', 'p25EndWealth', 'medianEndWealth', 'p75EndWealth', 'meanEndWealth', 'maxEndWealth'];
-            if (wealthMetrics.includes(metric)) {
-                return formatChartEuro(value);
-            } else if (metric === 'successProbFloor' || metric === 'worst5Drawdown') {
-                return formatPercent(value, 1);
-            } else {
-                return formatFixed(value, 1);
-            }
-        };
-
-        const legendTextWidth = Math.max(...[0, .25, .5, .75, 1].map(stop => formatValue(minVal + stop * range, metricKey).length)) * 8;
-        const margin = { top: 60, right: Math.max(120, legendTextWidth + 55), bottom: 60, left: 80 };
-        const chartWidth = opts.width - margin.left - margin.right;
-        const chartHeight = opts.height - margin.top - margin.bottom;
-        const cellWidth = chartWidth / xValues.length;
-        const cellHeight = chartHeight / yValues.length;
-
-        let cellsHtml = '';
-        for (let yi = 0; yi < yValues.length; yi++) {
-            for (let xi = 0; xi < xValues.length; xi++) {
-                const xVal = xValues[xi];
-                const yVal = yValues[yValues.length - 1 - yi];
-                const key = `${xVal}_${yVal}`;
-                const hasValue = heatmapData.has(key);
-                const value = hasValue ? heatmapData.get(key) : minVal;
-
-                const x = xi * cellWidth;
-                const y = yi * cellHeight;
-                const color = hasValue ? getColor(value) : 'var(--surface-sunken)';
-
-                const result = sweepResults.find(r => r.params[xParam] === xVal && r.params[yParam] === yVal);
-                const hasR2Warning = result && result.metrics && result.metrics.warningR2Varies;
-                const isInvalidCombo = result && result.metrics && result.metrics.invalidCombination === true;
-                const invalidReason = isInvalidCombo ? (result.metrics.invalidReason || 'ungültige Kombination') : '';
-                const comparison = result?.metrics?.comparison;
-                const drawdownQuantile = comparison?.drawdownQuantile;
-                const successProbability = comparison?.successProbability;
-                const successInterval = successProbability?.confidenceInterval95;
-                const successValue = readSweepMetricValue(result, 'successProbFloor');
-                const p10Value = readSweepMetricValue(result, 'p10EndWealth');
-                const drawdownValue = readSweepMetricValue(result, 'worst5Drawdown');
-                const runwayValue = readSweepMetricValue(result, 'minRunwayObserved');
-
-                const tooltipLines = result ? [
-                    `${paramLabels[xParam]}: ${formatDisplayScalar(xVal)}`,
-                    `${paramLabels[yParam]}: ${formatDisplayScalar(yVal)}`,
-                    '',
-                    isInvalidCombo ? `Ungültig: ${invalidReason}` : `Läufe: ${comparison?.runCount ?? 0}`,
-                    isInvalidCombo ? '' : `CRN: ${comparison?.commonRandomNumbers === true ? 'aktiv' : 'nicht belegt'}`,
-                    isInvalidCombo || successValue === null ? '' : `Success Prob: ${formatPercent(successValue, 1)}`,
-                    isInvalidCombo || !successInterval ? '' : `Wilson 95%-KI: ${formatPercent(successInterval.lowerPct, 1)} bis ${formatPercent(successInterval.upperPct, 1)}`,
-                    isInvalidCombo || p10Value === null ? '' : `P10 End Wealth: ${formatCurrency(p10Value)}`,
-                    !isInvalidCombo && hasValue && metricKey.endsWith('EndWealth') ? `${metricKey}: ${formatCurrency(value)}` : '',
-                    isInvalidCombo || drawdownValue === null ? '' : `Worst 5% DD: ${formatPercent(drawdownValue, 1)}`,
-                    isInvalidCombo || runwayValue === null ? '' : `Min Runway: ${formatMonths(runwayValue, 1)}`,
-                    isInvalidCombo || !drawdownQuantile?.quantileInTerminalRuinBlock
-                        ? ''
-                        : `Drawdown-P95 gesättigt: ${formatPercent(drawdownQuantile.terminalRuinSharePct, 1)} terminale Ruine`,
-                    isInvalidCombo ? '' : 'Quantilranking: experimenteller Punktschätzer',
-                    hasR2Warning ? '\n⚠ Rente 2 variierte im Sweep' : ''
-                ].filter(Boolean) : [`${paramLabels[xParam]}: ${formatDisplayScalar(xVal)}`, `${paramLabels[yParam]}: ${formatDisplayScalar(yVal)}`, 'Keine Daten'];
-
-                const tooltip = tooltipLines.join('&#10;');
-
-                // Füge gelben Rand hinzu bei R2-Warnung
-                const strokeColor = isInvalidCombo ? 'var(--bad)' : (hasR2Warning ? 'var(--warn)' : 'var(--surface)');
-                const strokeWidth = isInvalidCombo ? '3' : (hasR2Warning ? '3' : '1');
-                cellsHtml += `<rect x="${x}" y="${y}" width="${cellWidth}" height="${cellHeight}" fill="${color}" stroke="${strokeColor}" stroke-width="${strokeWidth}"><title>${tooltip}</title></rect>`;
-
-                if (cellWidth >= 40 && cellHeight >= 30) {
-                    const t = range === 0 ? .5 : (value - minVal) / range;
-                    const textColor = heatmapLabelColor(t, chartTokens, false, !hasValue);
-                    const yOffset = (hasR2Warning || isInvalidCombo) ? -5 : 0;
-                    cellsHtml += `<text x="${x + cellWidth / 2}" y="${y + cellHeight / 2 + yOffset}" text-anchor="middle" dominant-baseline="middle" fill="${textColor}" class="sweep-cell-text chart-tick-text" font-weight="600" pointer-events="none">${isInvalidCombo ? 'N/A' : !hasValue ? '—' : formatValue(value, metricKey)}</text>`;
-
-                    // Warn-Symbol bei R2-Varianz oder invaliden Kombis
-                    if (hasR2Warning || isInvalidCombo) {
-                        const warnTitle = isInvalidCombo ? 'Ungültige Parameterkombination' : 'Rente 2 variierte im Sweep';
-                        const warnGlyph = isInvalidCombo ? '⛔' : '⚠';
-                        cellsHtml += `<text x="${x + cellWidth / 2}" y="${y + cellHeight / 2 + 10}" text-anchor="middle" dominant-baseline="middle" fill="${textColor}" class="sweep-cell-text chart-tick-text" pointer-events="none" title="${warnTitle}">${warnGlyph}</text>`;
-                    }
-                }
-            }
-        }
-
-        const xAxisLabels = xValues.map((v, i) => `<text x="${i * cellWidth + cellWidth / 2}" y="${chartHeight + 20}" text-anchor="middle" class="tick-label chart-tick-text">${formatDisplayScalar(v)}</text>`).join('');
-        const yAxisLabels = yValues.map((v, i) => `<text x="-8" y="${(yValues.length - 1 - i) * cellHeight + cellHeight / 2}" text-anchor="end" dominant-baseline="middle" class="tick-label chart-tick-text">${formatDisplayScalar(v)}</text>`).join('');
-
-        let legend = '';
-        if (opts.showLegend) {
-            const legendHeight = chartHeight;
-            const legendWidth = 15;
-            const stops = [0, 0.25, 0.5, 0.75, 1];
-            const gradientStops = stops.map(s => `<stop offset="${s * 100}%" stop-color="${viridis(s, chartTokens)}" />`).join('');
-
-            const legendLabels = stops.map(s => {
-                const val = minVal + s * range;
-                return `<text x="${legendWidth + 8}" y="${legendHeight * (1 - s)}" dominant-baseline="middle" class="legend-text chart-tick-text">${formatValue(val, metricKey)}</text>`;
-            }).join('');
-
-            legend = `
-            <g class="legend" transform="translate(${chartWidth + 30}, 0)">
-                <defs><linearGradient id="sweepGradient" x1="0" y1="1" x2="0" y2="0">${gradientStops}</linearGradient></defs>
-                <rect x="0" y="0" width="${legendWidth}" height="${legendHeight}" fill="url(#sweepGradient)"></rect>
-                ${legendLabels}
-            </g>`;
-        }
-
-        const comparison = sweepResults.find(result => readSweepMetricValue(result, metricKey) !== null)
-            ?.metrics?.comparison;
-        const validMetricResults = sweepResults.filter(result => (
-            readSweepMetricValue(result, metricKey) !== null
-        ));
-        const saturatedDrawdownCount = metricKey === 'worst5Drawdown'
-            ? validMetricResults.filter(result => (
-                result.metrics?.comparison?.drawdownQuantile?.quantileInTerminalRuinBlock === true
-            )).length
-            : 0;
-        const saturationNotice = saturatedDrawdownCount > 0
-            ? `<p class="sweep-saturation-notice ds-note ds-note-warning" style="color:var(--bad); font-size: var(--balance-help);"><strong>Drawdown-P95 ist durch terminale Ruine gesättigt:</strong> ${saturatedDrawdownCount} von ${validMetricResults.length} Kombinationen liegen bei 100 %.${range === 0 ? ' Die Metrik unterscheidet die dargestellten Kombinationen nicht.' : ''}</p>`
-            : '';
-        const runCountText = comparison?.runCount === 1
-            ? '1 Lauf'
-            : `${comparison?.runCount ?? 0} Läufe`;
-        const comparisonNotice = comparison
-            ? `${runCountText} je Kombination · Common Random Numbers: ${comparison.commonRandomNumbers === true ? 'aktiv' : 'nicht belegt'} · Erfolgsquote mit Wilson-95%-KI. Quantilrankings sind experimentelle Punktschätzer ohne Quantil-Konfidenzintervall. Der Sweep-Drawdown enthält terminale Ruine und ist nicht direkt mit der unversionierten Monte-Carlo-Drawdownkennzahl vergleichbar.`
-            : 'Vergleichsdiagnostik nicht verfügbar.';
-
-        return `
-        ${HEATMAP_V4_STYLE}
-        <div style="text-align:center;">
-            <h4 class="chart-title">Parameter Sweep: ${metricLabels[metricKey] || metricKey}</h4>
-            ${saturationNotice}
-            <p class="sweep-comparison-notice ds-note ds-note-warning" style="color:var(--warn); font-size: var(--balance-help);">${comparisonNotice}</p>
-            ${scrollHint(opts.overflow)}
-        <div class="ds-chart-scroll" role="region" tabindex="0" aria-label="Heatmap horizontal scrollbar">
-        <svg class="heatmap-v4-svg chart-native-svg" width="${opts.width}" height="${opts.height}" viewBox="0 0 ${opts.width} ${opts.height}">
-                <g transform="translate(${margin.left}, ${margin.top})">
-                    <text x="${chartWidth / 2}" y="-35" text-anchor="middle" class="axis-label chart-axis-title">${paramLabels[xParam] || xParam}</text>
-                    <text transform="translate(-60, ${chartHeight / 2}) rotate(-90)" text-anchor="middle" class="axis-label chart-axis-title">${paramLabels[yParam] || yParam}</text>
-                    ${cellsHtml}
-                    ${xAxisLabels}
-                    ${yAxisLabels}
-                    ${legend}
-                </g>
-            </svg></div>
-        </div>`;
-
-    } catch (error) {
-        console.error('Fehler beim Rendern der Sweep-Heatmap:', error);
-        throw error;
-    }
 }

@@ -8,7 +8,7 @@ import { UIReader } from '../app/balance/balance-reader.js';
 import { StorageManager } from '../app/balance/balance-storage.js';
 import { createProfilverbundHandlers } from '../app/balance/balance-main-profilverbund.js';
 import { loadProfilverbundProfiles } from '../app/profile/profilverbund-balance.js';
-import { evaluateBalanceFileInputs } from '../app/balance/balance-file-service.js';
+import { evaluateBalanceInputs } from '../app/balance/balance-evaluation.js';
 import { projectBalancePlanHistory, prepareEngineLastState } from '../app/balance/balance-update-pipeline.js';
 import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input-storage.js';
 import { STORAGE_FIXTURE_KINDS, balanceStorageFixture, recordStorage, installBalanceStorageForm } from './helpers/balance-storage-fixtures.mjs';
@@ -18,7 +18,7 @@ const json = JSON.stringify;
 const fail = job => { try { job(); return false; } catch { return true; } };
 try {
     setAppTestDate('2026-10-09');
-    for (const kind of [...STORAGE_FIXTURE_KINDS, 'zweites geöffnetes Mitglied', 'ein ausgewähltes Fremdmitglied']) for (const strategy of ['standard', '3_bucket_jilge']) for (const cape of [0, 25]) {
+    for (const kind of [...STORAGE_FIXTURE_KINDS, 'zweites geöffnetes Mitglied']) for (const strategy of ['standard', '3_bucket_jilge']) for (const cape of [0, 25]) {
         const { records, values, scope } = balanceStorageFixture(kind, strategy, cape);
         const map = new Map(Object.entries(records));
         const backend = { getItem: k => map.get(k) ?? null, setItem: (k,v) => map.set(k,String(v)), removeItem: k => map.delete(k), key: i => [...map.keys()][i] ?? null, get length() { return map.size; } };
@@ -45,7 +45,7 @@ try {
             calls.push(structuredClone({ input, lastState })); return EngineAPI.simulateSingleYear(input, lastState);
         } };
         window.EngineAPI = engineApi;
-        const legacy = evaluateBalanceFileInputs({ inputData, persistentState: history.persistentState, profiles: history.profiles,
+        const legacy = evaluateBalanceInputs({ inputData, persistentState: history.persistentState, profiles: history.profiles,
             profileId: storage.getItem('rs_current_profile'), profilverbundHandlers: handlers, engineApi, planInputs: plan.entry.values });
         const oldCalls = json(calls); calls.length = 0;
         const snapshot = P.exportAllSync().records, bytes = json(snapshot);
@@ -54,7 +54,7 @@ try {
         const label = `${kind}/${strategy}/CAPE=${cape}`;
         assertEqual(json(built.readerInputData), json(reader), label + ': komplette Readerausgabe');
         assertEqual(json(built.inputData), json(inputData), label + ': komplette Haushaltseingaben');
-        const fresh = evaluateBalanceFileInputs({ inputData: built.inputData, persistentState: built.history.persistentState,
+        const fresh = evaluateBalanceInputs({ inputData: built.inputData, persistentState: built.history.persistentState,
             profiles: built.profiles, profileId: built.profileId, engineApi, planInputs: built.householdPlan.entry.values,
             profilverbundHandlers: { runProfilverbundProfileSimulations: (...args) => handlers.runProfilverbundProfileSimulations(...args,
                 { engineApi, withdrawalMode: built.householdPlan.entry.values.householdWithdrawalMode }) } });
@@ -82,16 +82,8 @@ try {
             assert(fail(() => buildBalanceEngineInputFromStorage({ scope, storage: recordStorage(records) })), 'Beschädigte beteiligte Tranchen werden abgewiesen');
             continue;
         }
-        const result = buildBalanceEngineInputFromStorage({ scope, storage: recordStorage(records) });
-        assertEqual(result.inputData.detailledTranches, null, trancheMode + ': bestehender Einzelprofil-Fallback ohne Override');
-        assert(result.inputData.depotwertAlt > 0, trancheMode + ': Altwertfallback bleibt erhalten');
+        buildBalanceEngineInputFromStorage({ scope, storage: recordStorage(records) });
         assertEqual(records[key], balanceStorageFixture('Einzelprofil').records[key], 'Tranchenlesen schreibt keine Eingaben');
-    }
-    {
-        const { records, scope } = balanceStorageFixture('aktive Außenperson');
-        records.depot_tranchen = '{defekt';
-        assert(buildBalanceEngineInputFromStorage({ scope, storage: recordStorage(records) }).inputData.detailledTranches.length > 0,
-            'Nicht beteiligte Außenpersontranchen ersetzen oder sperren den ausgewählten Haushalt nicht');
     }
     {
         const { records, scope } = balanceStorageFixture('Muster-Haushalt');

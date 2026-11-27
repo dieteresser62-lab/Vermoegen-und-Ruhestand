@@ -109,8 +109,10 @@ async function runCase(method, overrides = {}) {
         regime: 'SIDEWAYS'
     }));
     const config = buildYearSamplingConfig('UNIFORM', sampleData, { blockSize: 3 });
-    assert(config.blockStartIndices.includes(7), 'last complete fixed-block start is eligible');
-    assert(!config.blockStartIndices.includes(8), 'incomplete fixed-block start is rejected');
+    // MS-1 (NG-9): feste Blöcke laufen zirkulär, jedes Fensterjahr ist Blockstart.
+    assert(config.blockStartIndices.includes(7), 'former last complete fixed-block start stays eligible');
+    assert(config.blockStartIndices.includes(9), 'the last window year is a circular fixed-block start');
+    assertEqual(JSON.stringify(config.blockStartIndices), JSON.stringify(config.allowedIndices), 'every window year is a fixed-block start');
 }
 
 {
@@ -132,7 +134,11 @@ async function runCase(method, overrides = {}) {
     assertEqual(resolution.contract.startSource, 'cape', 'CAPE has explicit priority over recency');
     assert(resolution.contract.ignoredOptions.includes('startYearHalfLife'), 'ignored recency option is diagnosed');
     assertEqual(resolution.effectiveYearSamplingConfig.mode, 'UNIFORM', 'CAPE priority removes recency from subsequent year draws');
-    assert(resolution.initialStartSampler.indices.every(index => index <= annualData.length - 3), 'CAPE fixed-block candidates all fit a complete block');
+    const capeYears = getStartYearCandidates(20, annualData, 0.2, { fallbackToAll: false });
+    assertEqual(resolution.initialStartSampler.indices.length, capeYears.filter(year => year >= annualData[4].jahr).length,
+        'every CAPE year in the window is a fixed-block start because blocks wrap circularly');
+    assertEqual(JSON.stringify(resolution.effectiveYearSamplingConfig.blockStartIndices), JSON.stringify(resolution.effectiveYearSamplingConfig.allowedIndices),
+        'later fixed blocks start anywhere in the window, not only in CAPE years (NG-8)');
 }
 
 {
@@ -150,6 +156,16 @@ async function runCase(method, overrides = {}) {
 }
 
 {
+    // MS-1 (NG-9): ein Block länger als das Fenster läuft zirkulär weiter und wird nicht mehr abgelehnt.
+    const longBlock = resolveMonteCarloSamplingContractV1({
+        method: 'block',
+        inputs: buildInputs(),
+        annualData,
+        useCapeSampling: false,
+        startYearMode: 'UNIFORM',
+        blockSize: annualData.length
+    });
+    assertEqual(longBlock.initialStartSampler.indices.length, annualData.length - 4, 'a block longer than the window keeps every window year as start');
     let thrown = null;
     try {
         resolveMonteCarloSamplingContractV1({
@@ -157,13 +173,14 @@ async function runCase(method, overrides = {}) {
             inputs: buildInputs(),
             annualData,
             useCapeSampling: false,
-            startYearMode: 'UNIFORM',
-            blockSize: annualData.length
+            startYearMode: 'FILTER',
+            startYearFilter: 3000,
+            blockSize: 3
         });
     } catch (error) {
         thrown = error;
     }
-    assertEqual(thrown?.code, 'MC_SAMPLING_NO_BLOCK_START_CANDIDATES', 'empty full-block candidate set fails with a stable contract code');
+    assertEqual(thrown?.code, 'MC_SAMPLING_NO_BLOCK_START_CANDIDATES', 'an empty window still fails with the stable block contract code');
 }
 
 {
@@ -276,7 +293,9 @@ for (const method of ['block', 'stationary', 'regime_markov', 'regime_iid']) {
             inputs: buildInputs({ stressPreset: 'STAGFLATION_70s' }),
             annualData,
             useCapeSampling: false,
-            startYearMode: 'UNIFORM',
+            // SF-1: Ab 1975 bleibt aus dem Stagflationspool nur 2022.
+            startYearMode: 'FILTER',
+            startYearFilter: 1975,
             blockSize: 3,
             excludeEstimatedHistory: true
         });

@@ -50,6 +50,11 @@
     --value-md: 17px;
     --value-xl: 44px;
     --need-field-height: 60px;
+    /* KS-1: Höhe des festen Seitenkopfs und des Spielbereich-Streifens; suite-frame.js setzt die gemessenen Werte, ohne Script gelten diese.
+       --suite-inhalt-oben ist die Oberkante für klebende Inhalte und Sprungziele unter Kopf und Streifen. */
+    --suite-kopf-hoehe: 56px;
+    --suite-streifen-hoehe: 0px;
+    --suite-inhalt-oben: calc(var(--suite-kopf-hoehe) + var(--space-2) + var(--suite-streifen-hoehe));
     /* Balance: freigegebene Anzeigegrößen, keine globale Umstellung der Suite. */
     --balance-h1: 30px;
     --balance-h2: 22px;

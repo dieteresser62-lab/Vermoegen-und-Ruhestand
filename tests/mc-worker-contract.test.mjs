@@ -10,8 +10,6 @@ import {
     MONTE_CARLO_HOUSEHOLD_LIFE_CONTRACT_VERSION,
     runMonteCarloChunk
 } from '../app/simulator/monte-carlo-runner.js';
-import { runSweepChunk } from '../app/simulator/sweep-runner.js';
-import { SWEEP_REQUEST_VERSION } from '../app/simulator/monte-carlo-parameters.js';
 import { assertWealthFan } from '../app/simulator/wealth-fan-aggregation.js';
 import { summarizeMinimumFlexPaths } from '../app/simulator/minimum-flex-metrics.js';
 import {
@@ -36,7 +34,7 @@ function createWorkerHarness({ observe = false } = {}) {
         if (!url.endsWith('/simulator-utils.js') && !url.endsWith('/simulator-engine-wrapper.js')) return result;
         let source = String(result.source);
         if (url.endsWith('/simulator-utils.js')) source = source.replace('const generator = () => (', 'const generator = () => (globalThis.__p7WorkerCounts.rng++, ');
-        if (url.endsWith('/simulator-engine-wrapper.js')) source = source.replace('    const performanceMonitoring =', '    globalThis.__p7WorkerCounts.years++;\\n    const performanceMonitoring =');
+        if (url.endsWith('/simulator-engine-wrapper.js')) source = source.replace('    const engine = engineAPI ||', '    globalThis.__p7WorkerCounts.years++;\\n    const engine = engineAPI ||');
         return { ...result, source };
     }`;
     const harnessSource = `
@@ -52,13 +50,18 @@ function createWorkerHarness({ observe = false } = {}) {
                     const fan = message.wealthFan ? ['real', 'nominal', 'alive', 'ruined', 'missingReal', 'missingNominal']
                         .map(field => message.wealthFan[field].buffer) : [];
                     const bytes = values => values.reduce((sum, buffer) => sum + buffer.byteLength, 0);
+                    // NG-W (W1): Gesamtvermögensfächer bei Immobilien, sechs Fächerpuffer und sechs Summen.
+                    const homeFan = message.displayHomeValueFan;
+                    const home = homeFan ? [...['real', 'nominal', 'alive', 'ruined', 'missingReal', 'missingNominal'].map(field => homeFan.fan[field].buffer),
+                        ...['moneyReal', 'moneyNominal', 'homeReal', 'homeNominal', 'homeSelfReal', 'homeSelfNominal'].map(key => homeFan[key].buffer)] : [];
                     const p7TransferProbe = {
                         count: transferables.length, uniqueCount: new Set(transferables).size,
                         byteLength: bytes(transferables), coreCount: core.length, coreBytes: bytes(core),
-                        fanCount: fan.length, fanBytes: bytes(fan),
+                        fanCount: fan.length, fanBytes: bytes(fan), homeCount: home.length,
                         allCoreIncluded: core.every(buffer => transferables.includes(buffer)),
                         allFanIncluded: fan.every(buffer => transferables.includes(buffer)),
-                        unexpectedCount: transferables.filter(buffer => !core.includes(buffer) && !fan.includes(buffer)).length,
+                        allHomeIncluded: home.every(buffer => transferables.includes(buffer)),
+                        unexpectedCount: transferables.filter(buffer => !core.includes(buffer) && !fan.includes(buffer) && !home.includes(buffer)).length,
                         fanUniqueCount: new Set(fan).size,
                         disjoint: fan.every(buffer => !core.includes(buffer))
                     };
@@ -597,248 +600,6 @@ console.log('Test 8: invalid Monte-Carlo parameters fail closed in worker');
     }
 }
 
-// Test 9: the real worker consumes the same versioned SweepRequest as serial.
-console.log('Test 9: versioned Sweep request worker parity');
-{
-    const worker = createWorkerHarness();
-    try {
-        prepareHistoricalDataOnce();
-        const baseInputs = createInputs();
-        const paramCombinations = [{
-            liquidityRunwayYears: 3,
-            goldRebalancingBand: 25,
-            maxSkimPct: 10,
-            maxBearRefillPct: 5,
-            goldTargetPct: 0
-        }];
-        const sweepRequest = {
-            schemaVersion: SWEEP_REQUEST_VERSION,
-            monteCarloParameters: {
-                anzahl: 2,
-                maxDauer: 2,
-                blockSize: 1,
-                seed: 0,
-                methode: 'stationary',
-                rngMode: 'per-run-seed',
-                startYearMode: 'FILTER',
-                startYearFilter: 1970,
-                startYearHalfLife: 20,
-                excludeEstimatedHistory: true
-            },
-            useCapeSampling: false
-        };
-        const initialized = await postAndWait(worker, {
-            type: 'sweep-init',
-            jobId: 'sweep-init-v1',
-            baseInputs,
-            paramCombinations
-        });
-        assertEqual(initialized.message.type, 'ready', 'worker accepts Sweep cache initialization');
-
-        const valid = await postAndWait(worker, {
-            type: 'sweep',
-            jobId: 'sweep-v1',
-            sweepRequest,
-            comboRange: { start: 0, count: 1 }
-        });
-        assertEqual(valid.message.type, 'result', 'worker accepts versioned SweepRequestV1');
-        assertEqual(valid.message.sweepRequest.schemaVersion, SWEEP_REQUEST_VERSION, 'worker returns normalized Sweep request version');
-        assertEqual(valid.message.sweepRequest.monteCarloParameters.seed, 0, 'worker preserves explicit Sweep seed zero');
-        assertEqual(valid.message.results[0].provenance.appliedSamplingMethod, 'stationary', 'worker result exposes applied sampling method');
-        assertEqual(valid.message.results[0].provenance.samplingDiagnostics.contract.excludeEstimatedHistory, true, 'worker result exposes applied history exclusion');
-        const serial = runSweepChunk({
-            baseInputs,
-            paramCombinations,
-            comboRange: { start: 0, count: 1 },
-            sweepRequest,
-            engine: EngineAPI
-        });
-        assertEqual(
-            JSON.stringify(valid.message.results[0].provenance),
-            JSON.stringify(serial.results[0].provenance),
-            'worker and serial Sweep return identical request and sampling provenance'
-        );
-
-        let missingSerialError = null;
-        try {
-            runSweepChunk({
-                baseInputs,
-                paramCombinations,
-                comboRange: { start: 0, count: 1 },
-                engine: EngineAPI
-            });
-        } catch (error) {
-            missingSerialError = error;
-        }
-        const missing = await postAndWait(worker, {
-            type: 'sweep',
-            jobId: 'sweep-missing-request-v1',
-            comboRange: { start: 0, count: 1 }
-        });
-        assertEqual(missing.message.type, 'error', 'worker rejects a missing Sweep request');
-        assertEqual(
-            missing.message.code,
-            'SWEEP_REQUEST_OBJECT_REQUIRED',
-            'worker rejects missing Sweep requests before applying the 10,000-run MC default'
-        );
-        assertEqual(
-            missing.message.message,
-            missingSerialError?.message,
-            'worker and serial Sweep expose the same missing-request error'
-        );
-
-        const emptyRegimePoolRequest = {
-            ...sweepRequest,
-            monteCarloParameters: {
-                ...sweepRequest.monteCarloParameters,
-                methode: 'regime_markov',
-                startYearFilter: annualData.at(-1).jahr
-            }
-        };
-        let emptyPoolSerialError = null;
-        try {
-            runSweepChunk({
-                baseInputs,
-                paramCombinations,
-                comboRange: { start: 0, count: 1 },
-                sweepRequest: emptyRegimePoolRequest,
-                engine: EngineAPI
-            });
-        } catch (error) {
-            emptyPoolSerialError = error;
-        }
-        const emptyPool = await postAndWait(worker, {
-            type: 'sweep',
-            jobId: 'sweep-empty-regime-pool-v1',
-            sweepRequest: emptyRegimePoolRequest,
-            comboRange: { start: 0, count: 1 }
-        });
-        assertEqual(emptyPool.message.type, 'error', 'worker rejects an empty drawable regime pool');
-        assertEqual(
-            emptyPool.message.code,
-            'MC_SAMPLING_REGIME_POOL_EMPTY',
-            'worker exposes the stable empty-regime-pool code'
-        );
-        assertEqual(
-            emptyPool.message.message,
-            emptyPoolSerialError?.message,
-            'worker and serial Sweep expose the same empty-regime-pool error'
-        );
-
-        const invalidSweepRequest = {
-            ...sweepRequest,
-            monteCarloParameters: {
-                ...sweepRequest.monteCarloParameters,
-                methode: 'unknown_sampler'
-            }
-        };
-        let serialError = null;
-        try {
-            runSweepChunk({
-                baseInputs,
-                paramCombinations,
-                comboRange: { start: 0, count: 1 },
-                sweepRequest: invalidSweepRequest,
-                engine: EngineAPI
-            });
-        } catch (error) {
-            serialError = error;
-        }
-        const invalid = await postAndWait(worker, {
-            type: 'sweep',
-            jobId: 'sweep-invalid-v1',
-            sweepRequest: invalidSweepRequest,
-            comboRange: { start: 0, count: 1 }
-        });
-        assertEqual(invalid.message.type, 'error', 'worker rejects unsupported Sweep method');
-        assertEqual(invalid.message.code, serialError?.code, 'worker and serial Sweep expose the same structured error code');
-        assertEqual(invalid.message.message, serialError?.message, 'worker and serial Sweep expose the same error message');
-
-        const householdRiskInputs = {
-            ...baseInputs,
-            startAlter: 50,
-            partner: {
-                aktiv: true,
-                geschlecht: 'w',
-                startAlter: 80,
-                startInJahren: 0,
-                monatsrente: 5000,
-                brutto: 60000,
-                steuerquotePct: 0
-            },
-            widowOptions: {
-                mode: 'percent',
-                percent: 0.5,
-                marriageOffsetYears: 0,
-                minMarriageYears: 0
-            },
-            tailRiskEnabled: true,
-            tailRiskAnnualProbabilityPct: 5,
-            tailRiskReturnShockPct: -35,
-            tailRiskInflationShockPct: 6,
-            tailRiskDurationYears: 2,
-            tailRiskCooldownYears: 1
-        };
-        const householdRiskRequest = {
-            schemaVersion: SWEEP_REQUEST_VERSION,
-            monteCarloParameters: {
-                anzahl: 1,
-                maxDauer: 8,
-                blockSize: 3,
-                seed: 4,
-                methode: 'block',
-                rngMode: 'per-run-seed',
-                startYearMode: 'UNIFORM',
-                startYearHalfLife: 20,
-                excludeEstimatedHistory: false
-            },
-            useCapeSampling: false
-        };
-        const householdRiskInitialized = await postAndWait(worker, {
-            type: 'sweep-init',
-            jobId: 'sweep-init-household-risk-v1',
-            baseInputs: householdRiskInputs,
-            paramCombinations
-        });
-        assertEqual(
-            householdRiskInitialized.message.type,
-            'ready',
-            'worker accepts Sweep household/risk cache initialization'
-        );
-        const householdRiskWorker = await postAndWait(worker, {
-            type: 'sweep',
-            jobId: 'sweep-household-risk-v1',
-            sweepRequest: householdRiskRequest,
-            comboRange: { start: 0, count: 1 }
-        });
-        const householdRiskSerial = runSweepChunk({
-            baseInputs: householdRiskInputs,
-            paramCombinations,
-            comboRange: { start: 0, count: 1 },
-            sweepRequest: householdRiskRequest,
-            engine: EngineAPI
-        });
-        assertEqual(householdRiskWorker.message.type, 'result', 'worker executes Sweep household/risk request');
-        assertEqual(
-            JSON.stringify(householdRiskWorker.message.results[0].provenance.householdRiskDiagnostics),
-            JSON.stringify(householdRiskSerial.results[0].provenance.householdRiskDiagnostics),
-            'worker and serial Sweep return identical household/risk diagnostics'
-        );
-        assertEqual(
-            householdRiskWorker.message.results[0].provenance.householdRiskDiagnostics.household.p2DeathEvents,
-            1,
-            'worker/serial parity witness includes the deterministic P2 death'
-        );
-        assert(
-            householdRiskWorker.message.results[0].provenance.householdRiskDiagnostics.household.widowP1ActiveYears > 0,
-            'worker/serial parity witness includes the resulting P1 widow years'
-        );
-        console.log('✓ versioned Sweep request worker parity OK');
-    } finally {
-        await terminateWorker(worker);
-    }
-}
-
 console.log('--- MC Worker Entrypoint Contract Tests Completed ---');
 
 // Echte Nachrichten schalten die Beobachtung; der identische Harness misst nur
@@ -912,6 +673,29 @@ for (const inputs of [{ ...createInputs(), minimumFlexAnnual: 10000 }, { ...crea
         assertEqual(JSON.stringify(minimumBlock(responses[3])), JSON.stringify(minimumBlock(serial)),
             'Echter Worker und Direktpfad liefern dieselben Mindest-Flex-Werte, Beobachtungen und Fehlgründe');
     }
+}
+
+// NG-W (W1): Bei Immobilien überträgt der echte Worker auch den Gesamtvermögensfächer; er kommt bytegleich zum Direktpfad an.
+{
+    const inputs = { ...createInputs(), home: [{ id: 'haus', profileId: 'a', nutzung: 'selbst', wert: 300000, stand: '2026-01' }], homeReferenceYear: 2026 };
+    const params = { ...monteCarloParams, anzahl: 3, maxDauer: 5 };
+    const { scenarioKey, compiledScenario } = compileScenario(inputs, widowOptions, params.methode, false, inputs.stressPreset);
+    const worker = createWorkerHarness({ observe: true });
+    try {
+        await postAndWait(worker, { type: 'init', jobId: 'ngw-init', scenarioKey, compiledScenario, dataVersion: getDataVersion() });
+        const { message } = await postAndWait(worker, { type: 'job', jobId: 'ngw-job', scenarioKey, runRange: { start: 0, count: 3 },
+            monteCarloParams: params, useCapeSampling: false, logIndices: [], collectWealthFan: true });
+        assertEqual(message.type, 'result', 'NG-W: echter Worker liefert ein Ergebnis mit Immobilie');
+        const probe = message.p7TransferProbe;
+        assertEqual(probe.homeCount, 12, 'NG-W: Ergebnis mit Immobilie hat einen Gesamtvermögensfächer');
+        assert(probe.allHomeIncluded && probe.detached, 'NG-W: Worker überträgt den Gesamtvermögensfächer und löst ihn im Sender ab');
+        assertEqual(probe.unexpectedCount, 0, 'NG-W: keine weiteren Transferpuffer');
+        assertEqual(probe.uniqueCount, probe.count, 'NG-W: Transferliste ohne Duplikate');
+        const serial = await runMonteCarloChunk({ inputs, widowOptions, monteCarloParams: params, useCapeSampling: false,
+            runRange: { start: 0, count: 3 }, logIndices: [], collectWealthFan: true, engine: EngineAPI });
+        assertEqual(transportBytes(message.displayHomeValueFan), transportBytes(serial.displayHomeValueFan),
+            'NG-W: übertragener Gesamtvermögensfächer ist bytegleich zum Direktpfad');
+    } finally { await terminateWorker(worker); }
 }
 
 // FR-45: echte Worker-Nachrichten erhalten heutigen Grad, Mehrkosten und Pflegegeld.

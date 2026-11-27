@@ -1,12 +1,12 @@
 import { createManualAnnualValue } from '../app/shared/annual-marketdata.js';
-import { createBalanceCloseCoordinator } from '../app/balance/balance-close-coordinator.js';
-import { createAnnualModalHandlers } from '../app/balance/balance-annual-modal.js';
+import { createAnnualCloseSession as createBalanceCloseCoordinator } from '../app/shared/annual-close-session.js';
+import { createAnnualCloseDialog as createAnnualModalHandlers } from '../app/shared/annual-close-dialog.js';
 import { captureCashPeople } from '../app/profile/profile-cash-update.js';
 import { createDialogFixture, prepareCloseFixture, settleAnnualReading } from './close-dialog.test.mjs?fixture';
 import { dialogElements } from '../app/shared/close-dialog.js';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { bindOverviewMonthClose, projectOverviewFromRecords } from '../app/overview/overview-main.js';
-import { bindOverviewExampleExpenses, createOverviewExpensesWealthCapture } from '../app/overview/overview-example-expenses.js';
+import { bindOverviewExampleExpenses } from '../app/overview/overview-example-expenses.js';
 import { PersistenceFacade as P, persistenceStorage as storage } from '../app/shared/persistence-facade.js';
 import { setAppTestDate, getAppTestDate } from '../app/shared/app-clock.js';
 import { getPageNavigationGuard } from '../app/shared/navigation-guard-dialog.js';
@@ -37,8 +37,8 @@ export async function boundedImport(job) {
     try { return await Promise.race([job, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Dialogimport ohne Abschluss')), 4000); })]); }
     finally { clearTimeout(timer); }
 }
-/** Dauerhafter Backendadapter; Import, Vorschau, Erfassung und Monatsstore sind produktiv. */
-export async function overviewImportFixture({ quoteAge = 0, single = false, unselected = false, noLots = false, synthetic = false, probelauf = false, failWealth = null, referenceDate = '2026-10-08', onRefresh = () => {} } = {}) {
+/** Dauerhafter Backendadapter; Import, Vorschau und Monatsstore sind produktiv. VS-2: kein Vermögensstand nach dem Import. */
+export async function overviewImportFixture({ quoteAge = 0, single = false, noLots = false, synthetic = false, probelauf = false, referenceDate = '2026-10-08', onRefresh = () => {} } = {}) {
     const oldDate = getAppTestDate(), oldDoc = Object.getOwnPropertyDescriptor(globalThis, 'document'), oldWin = Object.getOwnPropertyDescriptor(globalThis, 'window');
     const f = createDialogFixture(), doc = f.doc, win = { document: doc, location: { href: 'http://localhost/index.html?probelauf=1' } };
     doc.defaultView = win; globalThis.document = doc; globalThis.window = win;
@@ -49,7 +49,6 @@ export async function overviewImportFixture({ quoteAge = 0, single = false, unse
         let lots = JSON.parse(profile.data.depot_tranchen);
         lots.forEach(lot => { lot.asOf = quoteAge === null ? null : time - quoteAge; });
         if (noLots || synthetic) lots = [];
-        if (single || unselected) profile.meta.belongsToHousehold = !unselected && profile.meta.id === 'muster_a';
         if (noLots) {
             const state = JSON.parse(profile.data[CONFIG.STORAGE.LS_KEY]);
             Object.assign(state.inputs, { depotwertAlt: 0, depotwertNeu: 0, geldmarktEtf: 0 }); profile.data[CONFIG.STORAGE.LS_KEY] = JSON.stringify(state);
@@ -57,20 +56,15 @@ export async function overviewImportFixture({ quoteAge = 0, single = false, unse
         if (synthetic) delete profile.data.depot_tranchen;
         else profile.data.depot_tranchen = JSON.stringify(lots);
     }
-    // Außenprofil als Sentinel unabhängig vom Rechenumfang.
-    registry.profiles.outside = { meta: { id: 'outside', name: 'Außen', belongsToHousehold: false }, data: { sentinel: 'unverändert' } };
+    // Einpersonenhaushalt: nur Muster A bleibt im Haushalt.
+    if (single) delete registry.profiles.muster_b;
     const records = { ...seeded, ...registry.profiles.muster_a.data, rs_profiles_v1: JSON.stringify(registry) };
     if (synthetic) delete records.depot_tranchen;
     const backend = new Map(Object.entries(records)), snapshots = new Map(), batches = [];
-    let failure = failWealth, hold = null, corruptRead = false;
-    const adapter = { name: 'Dialogimport-Backend', async open() {}, async loadAll() { const result = Object.fromEntries(backend); if (corruptRead) { corruptRead = false; delete result[CONFIG.STORAGE.LS_KEY]; } return result; },
+    const adapter = { name: 'Dialogimport-Backend', async open() {}, async loadAll() { return Object.fromEntries(backend); },
         async readAll() { return Object.fromEntries(backend); },
         async saveBatch({ upserts, deletes }) {
-            const wealth = upserts.some(([key, raw]) => key === CONFIG.STORAGE.LS_KEY && raw.includes('manual:2026-10-08'));
-            if (wealth && hold) { hold.entered.resolve(); await hold.release.promise; }
-            if (wealth && failure === 'write') { failure = null; throw new Error('Erfassungswrite fehlgeschlagen'); }
             deletes.forEach(key => backend.delete(key)); upserts.forEach(([key, value]) => backend.set(key, value)); batches.push(structuredClone(upserts));
-            if (wealth && failure === 'readback') { failure = null; corruptRead = true; }
         }, async listSnapshots() { return [...snapshots.values()]; }, async readSnapshot(id) { return structuredClone(snapshots.get(id)); },
         async writeSnapshot(snapshot) { snapshots.set(snapshot.id, structuredClone(snapshot)); }, async deleteSnapshot(id) { snapshots.delete(id); } };
     P.resetPersistenceForTests(adapter); await P.init({ window: win, installLifecycleHooks: false, installTauriCloseHook: false });
@@ -101,11 +95,9 @@ export async function overviewImportFixture({ quoteAge = 0, single = false, unse
         months.syncButtons(); imports.syncButtons(); onRefresh();
     };
     months = bindOverviewMonthClose({ doc, win, getModel: () => model, refresh, getImports: () => imports });
-    const capture = createOverviewExpensesWealthCapture({ doc, win, refresh, report: text => imports.reportWealth(text),
-        ...(failure === 'preview' ? { profiles: () => { throw new Error('Vorschauquelle nicht lesbar'); } } : {}) });
-    imports = bindOverviewExampleExpenses({ doc, win, controller, getModel: () => model, refresh, wealthCapture: capture }); refresh();
+    imports = bindOverviewExampleExpenses({ doc, win, controller, getModel: () => model, refresh }); refresh();
     let monthJob;
-    return { ...f, win, guard, backend, batches, snapshots, capture, imports, controller, storage, get model() { return model; }, refresh,
+    return { ...f, win, guard, backend, batches, snapshots, imports, controller, storage, get model() { return model; }, refresh,
         async open() { monthJob = doc.querySelector('[data-overview-month]').fire('click'); assert(doc.getElementById('overviewMonthConfirmation')?.open, 'Produktiver Binder öffnet geführten Dialog: ' + JSON.stringify(model.occasion)); },
         preview: () => doc.getElementById('expensesImportPreview'),
         async csv({ id = 'muster_a', text = async () => 'Kategorie;Betrag\nLebensmittel;-120,50\n', accept = true } = {}) {
@@ -129,10 +121,8 @@ export async function overviewImportFixture({ quoteAge = 0, single = false, unse
         async restart() {
             P.resetPersistenceForTests(adapter); await P.init({ window: win, installLifecycleHooks: false, installTauriCloseHook: false }); refresh();
         },
-        holdWealth() { hold = { entered: deferredImport(), release: deferredImport() }; return hold; },
-        get failure() { return failure; }, set failure(value) { failure = value; },
         async close() {
-            hold?.release.resolve(); imports.abort();
+            imports.abort();
             const dialog = doc.getElementById('overviewMonthConfirmation'); if (dialog?.open) await dialog.fire('cancel');
             if (doc.getElementById('navigationGuardDialog').open) await doc.getElementById('navigationGuardLeave').fire('click');
             await boundedImport(imports.wait()); if (monthJob) await boundedImport(monthJob);
@@ -164,7 +154,7 @@ for (const accept of [false, true]) {
             assertEqual(expenses.years[2026].months[9].profiles.muster_a.categories.Lebensmittel, -120.5, 'CSV bestätigt richtiges Personenziel und Abschlussmonat dauerhaft');
             assert(f.doc.getElementById('overviewExampleExpensesStatus').textContent.includes('Ausgaben importiert.'), 'CSV-Erfolg bleibt getrennt vom Folgekanal');
             const state = JSON.parse(f.backend.get(CONFIG.STORAGE.LS_KEY));
-            assertEqual(state.wealthHistory.entries.filter(entry => entry.asOf === '2026-10-08').length, 1, 'Produktiver CSV-Folgejob erzeugt genau einen Tagespunkt');
+            assertEqual(state.wealthHistory.entries.filter(entry => entry.asOf === '2026-10-08').length, 0, 'VS-2: CSV-Import erzeugt keinen Tagespunkt');
         }
         assert(f.doc.activeElement === f.doc.querySelector(accept ? '[data-close-dialog-activate="expenses"]' : '[data-overview-expenses-choose="muster_a"]'),
             accept ? 'Importabschluss fokussiert den sichtbaren Ausgabenschritt statt eines eingeklappten Dateifelds' : 'Vorschauabbruch fokussiert den sichtbaren CSV-Knopf');
@@ -177,7 +167,7 @@ for (const accept of [false, true]) {
             assertEqual(summary.querySelector('small').textContent, 'Import vorhanden', 'Vorhandener Import erhält eigenen sichtbaren Status');
             const imported = JSON.stringify(Object.fromEntries(f.backend));
             await f.csv({ accept: false });
-            assertEqual(JSON.stringify(Object.fromEntries(f.backend)), imported, 'Abgebrochenes Ersetzen bewahrt bestätigte Ausgaben und Vermögenspunkt');
+            assertEqual(JSON.stringify(Object.fromEntries(f.backend)), imported, 'Abgebrochenes Ersetzen bewahrt bestätigte Ausgaben');
             assert(f.doc.querySelector('[data-close-expenses-replace="muster_a"]').open, 'Refresh erhält den geöffneten Ersetzenbereich');
             assert(f.doc.activeElement === f.doc.querySelector('[data-overview-expenses-choose="muster_a"]'), 'Abbruch beim Ersetzen fokussiert die sichtbare CSV-Auswahl');
         }
@@ -196,7 +186,7 @@ for (const change of ['profile', 'scope', 'date']) {
         const preview = f.preview();
         assertEqual(f.backend.get('balance_expenses_v1'), before, 'Echte offene Vorschau hat noch keinen Fachwrite');
         if (change === 'profile') { storage.setItem('rs_current_profile', 'muster_b'); storage.setItem('rs_active_profile', 'muster_b'); }
-        if (change === 'scope') { const registry = JSON.parse(storage.getItem('rs_profiles_v1')); registry.profiles.muster_b.meta.belongsToHousehold = false; storage.setItem('rs_profiles_v1', JSON.stringify(registry)); }
+        if (change === 'scope') { const registry = JSON.parse(storage.getItem('rs_profiles_v1')); delete registry.profiles.muster_b; storage.setItem('rs_profiles_v1', JSON.stringify(registry)); }
         if (change === 'date') setAppTestDate('2026-10-09');
         if (change !== 'date') f.refresh();
         else f.imports.projectModel({ ...f.model, now: new Date(2026, 9, 9, 12) });
@@ -234,12 +224,12 @@ for (const change of ['profile', 'scope', 'date']) {
         await f.csv();
         const imported = Object.fromEntries(f.backend);
         await f.dismiss();
-        assertEqual(JSON.stringify(Object.fromEntries(f.backend)), JSON.stringify(imported), 'Verwerfen entfernt ausschließlich den Cashentwurf, nicht CSV oder Vermögenspunkt');
+        assertEqual(JSON.stringify(Object.fromEntries(f.backend)), JSON.stringify(imported), 'Verwerfen entfernt ausschließlich den Cashentwurf, nicht die CSV');
         assertEqual(f.backend.get('overview_month_provision_v1'), imported.overview_month_provision_v1, 'Verwerfen schreibt keinen Monatshaken');
         await f.restart(); await f.open();
         assertEqual(f.doc.querySelector('[data-tagesgeld-person]').value, '18.000', 'Wiederöffnung nach Backendneustart folgt bestätigter Cashquelle');
         assert(f.model.expenses.complete && f.model.expenses.spent === 120.5, 'CSV-Ausgaben bleiben nach Wiederöffnung und Backendneustart vollständig');
-        assertEqual(f.backend.get(CONFIG.STORAGE.LS_KEY), imported[CONFIG.STORAGE.LS_KEY], 'Bestätigter Vermögenspunkt bleibt nach Neustart bytegleich');
+        assertEqual(f.backend.get(CONFIG.STORAGE.LS_KEY), imported[CONFIG.STORAGE.LS_KEY], 'Bestätigter Balance-Zustand bleibt nach Neustart bytegleich');
     } finally { await f.close(); }
 }
 {
@@ -255,8 +245,8 @@ for (const change of ['profile', 'scope', 'date']) {
 }
 
 // Derselbe echte Import- und Folgejob während der schreibfreien Jahresvorbereitung.
-for (const failWealth of [null, 'preview']) {
-    const f = await overviewImportFixture({ referenceDate: '2027-01-02', failWealth });
+{
+    const f = await overviewImportFixture({ referenceDate: '2027-01-02' });
     let coordinator;
     try {
         assertEqual(f.model.occasion.annualState, 'open', 'Echte Haushaltsprojektion hat offenes Vorjahr');
@@ -276,8 +266,7 @@ for (const failWealth of [null, 'preview']) {
         assertEqual(cash.value, '19.000', 'Importrefresh erhält Jahresend-Cashentwurf');
         assert(root.open, 'Import und Folgejob lassen gemeinsamen Jahresdialog offen');
         assert(f.doc.getElementById('overviewExampleExpensesStatus').textContent.includes('Ausgaben importiert.'), 'CSV-Erfolg bleibt vom Folgefehler getrennt');
-        if (failWealth) assert(f.doc.getElementById('overviewExpensesWealthStatus').textContent.includes('Vermögensstand nicht bestätigt'), 'Echter Folgefehler in eigenem Kanal');
-        else assert(JSON.parse(f.backend.get(CONFIG.STORAGE.LS_KEY)).wealthHistory.entries.some(entry => entry.id === 'manual:2027-01-02'), 'Echter CSV-Folgejob bestätigt Vermögenspunkt ohne Eigenblockade');
+        assert(!JSON.parse(f.backend.get(CONFIG.STORAGE.LS_KEY)).wealthHistory.entries.some(entry => entry.id === 'manual:2027-01-02'), 'VS-2: CSV-Import während der Jahresvorbereitung erzeugt keinen Vermögenspunkt');
         assertEqual(f.snapshots.size, 0, 'Lesende Jahresvorbereitung und CSV-Folgepunkt erzeugen keinen Jahres-Snapshot');
         root.querySelector('[data-tagesgeld-person]').value = '18.000'; await cash.fire('input');
         await f.doc.getElementById('annualCloseBtn').fire('click');

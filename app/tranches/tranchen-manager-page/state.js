@@ -61,7 +61,7 @@ export const state = {
     navigationLifecycle: null,
     navigationRegistration: null,
     navigationControlSubscription: null,
-    cashBeforeLeaveSubscription: null,
+    profileBeforeLeaveSubscription: null,
     reconciliationBaseline: null,
     profileBaseline: null,
     loader: loadTranchesFromStorage

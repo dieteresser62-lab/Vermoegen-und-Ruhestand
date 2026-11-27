@@ -34,8 +34,10 @@ const married = structuredClone(inputs);
 married.partnership.status = 'married'; married.partnership.marriedInheritance = { muster_martin: 100 };
 married.partnership.testament.muster_martin = { home: 'residence', residenceTax: 'annual' };
 const marriedDeath = run(married).logData.inheritance;
-assertEqual(marriedDeath.residenceTax.rate, .15, 'Tarifstufe richtet sich auch bei Ehe nach dem Gesamterwerb mit Wohnrecht');
-assertClose(marriedDeath.tax, (marriedDeath.inherited - 500000) * .15, 1e-7, 'Erhöhter Gesamterwerbs-Satz gilt für den sofort steuerpflichtigen Geldanteil');
+// VB-1: Ohne Hinterbliebenenrente kommen 256.000 € Versorgungsfreibetrag dazu (vorher Satz 15 % und Steuer 14.625 €).
+assertEqual(marriedDeath.residenceTax.rate, .11, 'Tarifstufe richtet sich auch bei Ehe nach dem Gesamterwerb mit Wohnrecht');
+assertClose(marriedDeath.tax, Math.max(0, marriedDeath.inherited - 756000) * .11, 1e-7, 'Erhöhter Gesamterwerbs-Satz gilt für den sofort steuerpflichtigen Geldanteil');
+assertClose(marriedDeath.residenceTax.allowanceRemaining, 756000 - marriedDeath.inherited, 1e-7, 'VB-1: Freibetragsrest enthält den Versorgungsfreibetrag');
 
 const noMoney = structuredClone(inputs);
 noMoney.partnership.testament.muster_martin = { home: 'residence', residenceTax: 'annual', maximumPercent: 0 };

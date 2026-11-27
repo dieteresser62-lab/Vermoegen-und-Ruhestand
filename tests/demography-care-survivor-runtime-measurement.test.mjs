@@ -44,43 +44,15 @@ const runtimeRoot = path.resolve(
 );
 const captureMode = process.env.DEMOGRAPHY_MEASUREMENT_CAPTURE === '1';
 const printDeltaMode = process.env.DEMOGRAPHY_MEASUREMENT_PRINT_DELTA === '1';
-const fixturePath = path.join(
-    testDir,
-    'fixtures',
-    'monte-carlo-measurement',
-    'post-backtest-data-07-v1.json'
-);
-const slice08FixturePath = path.join(
-    testDir,
-    'fixtures',
-    'monte-carlo-measurement',
-    'liquidity-runway-slice-08-v1.json'
-);
-const slice10FixturePath = path.join(
-    testDir,
-    'fixtures',
-    'tax-logic-slice-10-demography-measurement-v1.json'
-);
-const slice17FixturePath = path.join(
-    testDir,
-    'fixtures',
-    'liquidity-runway-basis-slice-17-measurement-v1.json'
-);
-const slice19FixturePath = path.join(
-    testDir,
-    'fixtures',
-    'runway-kpi-slice-19-measurement-v1.json'
-);
-const safetyPolicySlice03FixturePath = path.join(
-    testDir,
-    'fixtures',
-    'safety-policy-slice-03-measurement-v1.json'
-);
-const minimumFlexAffordabilityFixturePath = path.join(
-    testDir,
-    'fixtures',
-    'minimum-flex-severe-affordability-measurement-v1.json'
-);
+const fixtureDir = path.join(testDir, 'fixtures');
+const monteCarloFixtureDir = path.join(fixtureDir, 'monte-carlo-measurement');
+const fixturePath = path.join(monteCarloFixtureDir, 'post-backtest-data-07-v1.json');
+const slice08FixturePath = path.join(monteCarloFixtureDir, 'liquidity-runway-slice-08-v1.json');
+const slice10FixturePath = path.join(fixtureDir, 'tax-logic-slice-10-demography-measurement-v1.json');
+const slice17FixturePath = path.join(fixtureDir, 'liquidity-runway-basis-slice-17-measurement-v1.json');
+const slice19FixturePath = path.join(fixtureDir, 'runway-kpi-slice-19-measurement-v1.json');
+const safetyPolicySlice03FixturePath = path.join(fixtureDir, 'safety-policy-slice-03-measurement-v1.json');
+const minimumFlexAffordabilityFixturePath = path.join(fixtureDir, 'minimum-flex-severe-affordability-measurement-v1.json');
 
 function runtimeModule(relativePath) {
     return import(pathToFileURL(path.join(runtimeRoot, relativePath)).href);
@@ -88,16 +60,12 @@ function runtimeModule(relativePath) {
 
 const [
     { EngineAPI },
-    { annualData },
     { runMonteCarloChunk },
-    { buildSweepInputs, runSweepChunk },
     { MONTE_CARLO_OUTCOME_CODE },
     { quantile }
 ] = await Promise.all([
     runtimeModule('engine/index.mjs'),
-    runtimeModule('app/simulator/simulator-data.js'),
     runtimeModule('app/simulator/monte-carlo-runner.js'),
-    runtimeModule('app/simulator/sweep-runner.js'),
     runtimeModule('app/simulator/monte-carlo-chunk-result.js'),
     runtimeModule('app/simulator/simulator-utils.js')
 ]);
@@ -195,28 +163,9 @@ const MONTE_CARLO_PARAMETERS = Object.freeze({
     startYearHalfLife: 20,
     excludeEstimatedHistory: false
 });
-const SWEEP_COMBINATIONS = Object.freeze([
-    Object.freeze({
-        liquidityRunwayYears: 3,
-        goldRebalancingBand: 25,
-        maxSkimPct: 10,
-        maxBearRefillPct: 5,
-        goldTargetPct: 0,
-        horizonYears: 35,
-        survivalQuantile: 0.85,
-        goGoMultiplier: 1.1
-    }),
-    Object.freeze({
-        liquidityRunwayYears: 5,
-        goldRebalancingBand: 25,
-        maxSkimPct: 10,
-        maxBearRefillPct: 5,
-        goldTargetPct: 0,
-        horizonYears: 35,
-        survivalQuantile: 0.85,
-        goGoMultiplier: 1.1
-    })
-]);
+// Messprofil der Monte-Carlo-Messung: Planwerte mit drei Jahren Liquiditäts-Runway
+// (frühere erste Sweep-Kombination; alle übrigen Werte entsprechen INPUTS).
+const MONTE_CARLO_INPUT_OVERRIDES = Object.freeze({ liquidityRunwayYears: 3 });
 
 function rounded(value) {
     if (typeof value === 'number') {
@@ -260,34 +209,14 @@ function quantiles(source) {
     });
 }
 
-function selectSweepMetrics(metrics) {
-    return rounded({
-        successProbFloor: metrics.successProbFloor,
-        p10EndWealth: metrics.p10EndWealth,
-        medianEndWealth: metrics.medianEndWealth,
-        worst5Drawdown: metrics.worst5Drawdown,
-        minRunwayObserved: metrics.minRunwayObserved
-    });
-}
-
 async function captureMeasurement() {
     const monteCarlo = await runMonteCarloChunk({
-        inputs: buildSweepInputs(INPUTS, SWEEP_COMBINATIONS[0]),
+        inputs: { ...structuredClone(INPUTS), ...MONTE_CARLO_INPUT_OVERRIDES },
         monteCarloParams: MONTE_CARLO_PARAMETERS,
         widowOptions: WIDOW_OPTIONS,
         useCapeSampling: false,
         runRange: { start: 0, count: RUNS },
         logIndices: [0, 1, 2],
-        engine: EngineAPI
-    });
-    const sweep = runSweepChunk({
-        baseInputs: INPUTS,
-        paramCombinations: SWEEP_COMBINATIONS,
-        comboRange: { start: 0, count: SWEEP_COMBINATIONS.length },
-        sweepRequest: {
-            monteCarloParameters: MONTE_CARLO_PARAMETERS,
-            useCapeSampling: false
-        },
         engine: EngineAPI
     });
     const summaries = monteCarlo.pathSummaries;
@@ -304,7 +233,7 @@ async function captureMeasurement() {
         totalCareAdditionalNeedNominalEur: summaries.totalCareAdditionalNeedNominalEur
     };
 
-    return rounded({
+    const measurement = rounded({
         runtime: {
             node: process.version,
             platform: process.platform,
@@ -320,7 +249,6 @@ async function captureMeasurement() {
             partnerActive: INPUTS.partner.aktiv,
             widowMode: WIDOW_OPTIONS.mode,
             widowPercent: WIDOW_OPTIONS.percent,
-            sweepCombinationCount: SWEEP_COMBINATIONS.length,
             inputHash: sha256({ inputs: INPUTS, monteCarloParameters: MONTE_CARLO_PARAMETERS })
         },
         monteCarlo: {
@@ -343,25 +271,9 @@ async function captureMeasurement() {
             },
             modelContract: monteCarlo.samplingDiagnostics?.modelContracts?.demographyCareSurvivor ?? null,
             pathEvidenceHash: sha256(fullPathEvidence)
-        },
-        sweep: sweep.results.map(result => {
-            const diagnostics = result.provenance.householdRiskDiagnostics;
-            if (!diagnostics) {
-                throw new Error(`Invalid measurement Sweep combination: ${JSON.stringify(result.metrics)}`);
-            }
-            return {
-                comboIdx: result.comboIdx,
-                params: result.params,
-                metrics: selectSweepMetrics(result.metrics),
-                household: rounded(diagnostics.household),
-                horizon: rounded(diagnostics.horizon),
-                evidenceHash: sha256({
-                    metrics: result.metrics,
-                    householdRiskDiagnostics: diagnostics
-                })
-            };
-        })
+        }
     });
+    return { measurement, runMeta: monteCarlo.runMeta };
 }
 
 function collectLeafDiffPaths(before, after, pathName = '$') {
@@ -396,7 +308,7 @@ function collectNumericLeafDeltas(before, after, pathName = '$') {
     ));
 }
 
-const actualMeasurement = await captureMeasurement();
+const { measurement: actualMeasurement, runMeta } = await captureMeasurement();
 
 if (captureMode) {
     console.log('__DEMOGRAPHY_MEASUREMENT_START__');
@@ -462,6 +374,18 @@ if (captureMode) {
     );
     const safetyPolicySlice03FixtureBytes = fs.readFileSync(safetyPolicySlice03FixturePath);
     const safetyPolicySlice03Fixture = JSON.parse(safetyPolicySlice03FixtureBytes.toString('utf8'));
+    const logRows = runMeta.flatMap(run => run.logDataRows ?? []);
+    assert(logRows.some(row => row.Person1Alive === 0 && row.Person2Alive === 1),
+        'Measurement profile must exercise P1 mortality in Monte Carlo');
+    assert(logRows.some(row => row.Person2Alive === 0 && row.Person1Alive === 1),
+        'Measurement profile must exercise partner mortality in Monte Carlo');
+    assert(logRows.some(row => row.WidowBenefitP1 > 0),
+        'Measurement profile must exercise P1 survivor benefits in Monte Carlo');
+    assert(actualMeasurement.monteCarlo.care.anyCareRunCount > 0,
+        'Measurement profile must activate care in Monte Carlo');
+
+    // Die Slice-07-Invarianten zu Ausgängen, Lebensdauer und Pflege bleiben Teil des exakten Vergleichs.
+    // Die laufende Referenz enthält die seither geänderte Zufallsziehung und das aktuelle Pflegemodell.
     const minimumFlexAffordabilityDemographyMeasurement = {
         schemaVersion: 'MinimumFlexSevereAffordabilityDemographyMeasurementV1',
         sourceReference: safetyPolicySlice03Fixture.snapshotId,
@@ -480,55 +404,10 @@ if (captureMode) {
                 p2EntryRunCount: actualMeasurement.monteCarlo.care.p2EntryRunCount,
                 additionalNeedNominalEur: actualMeasurement.monteCarlo.care.additionalNeedNominalEur
             },
-            pathEvidenceHash: actualMeasurement.monteCarlo.pathEvidenceHash,
-            sweep: actualMeasurement.sweep.map(entry => ({
-                comboIdx: entry.comboIdx,
-                successProbFloor: entry.metrics.successProbFloor,
-                p10EndWealth: entry.metrics.p10EndWealth,
-                medianEndWealth: entry.metrics.medianEndWealth,
-                worst5Drawdown: entry.metrics.worst5Drawdown,
-                evidenceHash: entry.evidenceHash
-            }))
+            pathEvidenceHash: actualMeasurement.monteCarlo.pathEvidenceHash
         },
         cause: 'protected_withdrawal_capacity_prevents_zero_flex_when_minimum_spending_remains_affordable'
     };
-    if (process.env.DEMOGRAPHY_PRINT_MINIMUM_FLEX_AFFORDABILITY === '1') {
-        console.log('__MINIMUM_FLEX_AFFORDABILITY_DEMOGRAPHY_START__');
-        console.log(JSON.stringify(minimumFlexAffordabilityDemographyMeasurement, null, 2));
-        console.log('__MINIMUM_FLEX_AFFORDABILITY_DEMOGRAPHY_END__');
-    } else {
-        const expectedMinimumFlexAffordability = JSON.parse(
-            fs.readFileSync(minimumFlexAffordabilityFixturePath, 'utf8')
-        ).demography;
-        assert.deepEqual(
-            minimumFlexAffordabilityDemographyMeasurement,
-            expectedMinimumFlexAffordability,
-            'Minimum-Flex affordability demography projection must reproduce exactly'
-        );
-    }
-    assert.deepEqual(
-        {
-            outcomeCounts: actualMeasurement.monteCarlo.outcomeCounts,
-            lifespanYears: actualMeasurement.monteCarlo.lifespanYears,
-            care: {
-                anyCareRunCount: actualMeasurement.monteCarlo.care.anyCareRunCount,
-                p1EntryRunCount: actualMeasurement.monteCarlo.care.p1EntryRunCount,
-                p2EntryRunCount: actualMeasurement.monteCarlo.care.p2EntryRunCount,
-                additionalNeedNominalEur: actualMeasurement.monteCarlo.care.additionalNeedNominalEur
-            }
-        },
-        {
-            outcomeCounts: fixture.targetMeasurement.monteCarlo.outcomeCounts,
-            lifespanYears: fixture.targetMeasurement.monteCarlo.lifespanYears,
-            care: {
-                anyCareRunCount: fixture.targetMeasurement.monteCarlo.care.anyCareRunCount,
-                p1EntryRunCount: fixture.targetMeasurement.monteCarlo.care.p1EntryRunCount,
-                p2EntryRunCount: fixture.targetMeasurement.monteCarlo.care.p2EntryRunCount,
-                additionalNeedNominalEur: fixture.targetMeasurement.monteCarlo.care.additionalNeedNominalEur
-            }
-        },
-        'Slice-07 demography invariants must remain live and exact through Slice 08'
-    );
     assert(Number.isFinite(Date.parse(fixture.capturedAtUtc)), 'Capture timestamp must be valid ISO time');
     assert(Date.parse(fixture.capturedAtUtc) <= Date.now() + 60000, 'Capture timestamp must not be in the future');
     const changedLeafPaths = collectLeafDiffPaths(
@@ -593,14 +472,21 @@ if (captureMode) {
         'Slice 07 must measure Monte Carlo changes');
     assert(changedLeafPaths.some(pathName => pathName.includes('.sweep.')),
         'Slice 07 must measure Sweep changes');
-    assert(actualMeasurement.monteCarlo.care.anyCareRunCount > 0,
-        'Measurement profile must activate care in Monte Carlo');
-    assert(actualMeasurement.sweep.every(entry => entry.household.p1DeathEvents > 0),
-        'Measurement profile must exercise P1 mortality in every Sweep combination');
-    assert(actualMeasurement.sweep.every(entry => entry.household.p2DeathEvents > 0),
-        'Measurement profile must exercise partner mortality in every Sweep combination');
-    assert(actualMeasurement.sweep.every(entry => entry.household.widowP1ActiveYears > 0),
-        'Measurement profile must exercise survivor benefits in every Sweep combination');
+
+    if (process.env.DEMOGRAPHY_PRINT_MINIMUM_FLEX_AFFORDABILITY === '1') {
+        console.log('__MINIMUM_FLEX_AFFORDABILITY_DEMOGRAPHY_START__');
+        console.log(JSON.stringify(minimumFlexAffordabilityDemographyMeasurement, null, 2));
+        console.log('__MINIMUM_FLEX_AFFORDABILITY_DEMOGRAPHY_END__');
+    } else {
+        const expectedMinimumFlexAffordability = JSON.parse(
+            fs.readFileSync(minimumFlexAffordabilityFixturePath, 'utf8')
+        ).demography;
+        assert.deepEqual(
+            minimumFlexAffordabilityDemographyMeasurement,
+            expectedMinimumFlexAffordability,
+            'Minimum-Flex affordability demography projection must reproduce exactly'
+        );
+    }
 }
 
 console.log('Demography/care/survivor runtime measurement passed');

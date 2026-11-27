@@ -8,7 +8,7 @@ export { validateSimulatorInputs, formatSimulatorValidationError } from '../simu
 export { getCommonInputs } from '../simulator-portfolio.js';
 export { personDataContextFor, readDocumentPersonInputs } from '../simulator-person-overrides.js';
 export { createProtocolPersonContext } from '../protocol-columns.js';
-export { normalizeWidowOptions } from '../simulator-sweep-utils.js';
+export { normalizeWidowOptions } from '../simulator-run-utils.js';
 export { annualData } from '../simulator-data.js';
 export { resolveMonteCarloSamplingContractV1 } from '../mc-year-sampling.js';
 export { beginSimulationSummary, completeSimulationSummary } from '../simulator-overview-summary.js';
@@ -22,3 +22,4 @@ export { EngineAPI } from '../../../engine/index.mjs';
 export { displayMonteCarloResults } from '../simulator-results.js';
 export { recordMonteCarloHintMeasurement, monteCarloHintComparableKey } from '../monte-carlo-run-hint.js';
 export { simulatorRunAssumptions } from '../simulator-run-assumptions.js';
+export { appNow } from '../../shared/app-clock.js';

@@ -49,7 +49,7 @@ export function createManagerPlannedExpenses({ doc, getProfileId, runOperation, 
     const pause = () => { if (timer !== null) unschedule(timer); timer = null; };
     const current = (key = scope?.key, id = origin, generation = epoch) => {
         if (disposed || generation !== epoch || id !== getProfileId()) return false;
-        try { return readBalanceHouseholdPlan({ storage, profileId: id }).scope?.key === key; } catch { return false; }
+        try { return readBalanceHouseholdPlan({ storage }).scope?.key === key; } catch { return false; }
     };
     function syncBlocked(external = fieldsBlocked()) {
         const hard = !scope || persistence.hasSyncWriteBlocks?.() || Boolean(globalThis.window?.__profileRecoveryBlocker);
@@ -145,7 +145,7 @@ export function createManagerPlannedExpenses({ doc, getProfileId, runOperation, 
         if (writing || dirty() || disposed) return;
         const before = { origin, key: scope?.key, baseline, items, error };
         pause(); epoch++; origin = getProfileId(); scope = null; error = ''; items = [];
-        try { const plan = readBalanceHouseholdPlan({ storage, profileId: origin }); if (plan.status === 'valid') { scope = plan.scope; items = readPlannedExpenses({ storage, scope }); } }
+        try { const plan = readBalanceHouseholdPlan({ storage }); if (plan.status === 'valid') { scope = plan.scope; items = readPlannedExpenses({ storage, scope }); } }
         catch (caught) { scope = null; error = caught.message; }
         baseline = JSON.stringify(items);
         // VN-4 (Breitensuche zu ABS1 P1): Unveränderte Zeilen bleiben stehen; ein Feld mit Fokus (Tab aus dem Plan) verschwindet nicht.

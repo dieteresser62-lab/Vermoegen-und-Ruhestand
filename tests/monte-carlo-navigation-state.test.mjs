@@ -144,31 +144,16 @@ try {
             simulationPeople: combined.simulationPeople.map(person => ({ ...person, tagesgeld: 10000 })) });
     } catch (error) { mismatch = error; }
     assertEqual(mismatch?.message, 'SIM_PERSONAL_CASH_TOTAL_MISMATCH', 'BR-1: alter DOM-/Personenwiderspruch wird weiterhin abgewiesen');
-    const fields = new Map(['sweepButton', 'sweepCancelButton', 'sweepStatus', 'sweep-progress-bar-container',
-        'sweep-progress-bar', 'sweepMetric', 'sweepAxisX', 'sweepAxisY', 'sweepHeatmap', 'sweepResults',
-        'findBestButton', 'sensitivityButton', 'paretoButton'].map(id => [id, { value: '', style: {}, innerHTML: '' }]));
-    const doc = { getElementById: id => fields.get(id) || null, addEventListener() {} };
+    const doc = { getElementById: () => null, addEventListener() {} };
     try {
         globalThis.document = doc; globalThis.window = { EngineAPI };
-        const { runParameterSweep } = await import('../app/simulator/simulator-sweep.js');
-        const { runSweepChunk } = await import('../app/simulator/sweep-runner.js');
         const errorsBefore = calls.errors.length;
-        await Promise.all([
-            runMonteCarlo({ ...dependencies, getInputs: () => calculationInputs }),
-            runParameterSweep({ prepareHistoricalData: prepareHistoricalDataOnce,
-                getInputs: () => calculationInputs, readParameters: dependencies.readParameters,
-                readRanges: () => ({ ranges: { liquidityRunwayYears: [3], goldRebalancingBand: [25],
-                    maxSkimPct: [0], maxBearRefillPct: [5], goldTargetPct: [0] } }),
-                runWorkers: async ({ baseInputs, paramCombinations, sweepRequest }) =>
-                    (await runSweepChunk({ baseInputs, paramCombinations,
-                        sweepConfig: { ...sweepRequest.monteCarloParameters, useCapeSampling: false }, engine: EngineAPI })).results,
-                renderResults: () => '' })
-        ]);
+        await runMonteCarlo({ ...dependencies, getInputs: () => calculationInputs });
         assertEqual(calls.errors.length, errorsBefore, 'BR-1: echter kleiner MC-Lauf scheitert nicht mehr an Personenkonten');
         const reasons = getPageNavigationGuard(doc).reasons();
-        assertEqual(reasons.length, 2, 'BR-1: beide echten kleinen Rechnungen haben einen Schutzgrund');
-        assert(reasons.every(reason => reason.phase === 'idle' && reason.result), 'BR-1: MC und Sweep veröffentlichen nach Handlerende ihre Ergebnisgründe');
-        assertEqual(JSON.stringify(records), before, 'BR-1: beide Rechnungen lassen gespeicherte Personenbytes unverändert');
+        assertEqual(reasons.length, 1, 'BR-1: die echte kleine MC-Rechnung hat einen Schutzgrund');
+        assert(reasons.every(reason => reason.phase === 'idle' && reason.result), 'BR-1: MC veröffentlicht nach Handlerende seinen Ergebnisgrund');
+        assertEqual(JSON.stringify(records), before, 'BR-1: die MC-Rechnung lässt gespeicherte Personenbytes unverändert');
     } finally {
         globalThis.document = savedDocument; globalThis.window = savedWindow;
     }

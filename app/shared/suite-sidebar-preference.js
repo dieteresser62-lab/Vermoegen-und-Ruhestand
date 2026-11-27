@@ -8,12 +8,12 @@ export const SUITE_SIDEBAR_BREAKPOINT_REM = 82;
  */
 export function createSuiteSidebarPreference(getStorage = () => globalThis.localStorage) {
     let collapsed = false;
-    try { collapsed = getStorage()?.getItem(SUITE_SIDEBAR_KEY) === 'true'; } catch {}
+    try { collapsed = getStorage()?.getItem(SUITE_SIDEBAR_KEY) === 'true'; } catch { /* Bei gesperrtem Storage bleibt die aufgeklappte Vorgabe. */ }
     return {
         get collapsed() { return collapsed; },
         choose(value) {
             collapsed = Boolean(value);
-            try { getStorage()?.setItem(SUITE_SIDEBAR_KEY, String(collapsed)); } catch {}
+            try { getStorage()?.setItem(SUITE_SIDEBAR_KEY, String(collapsed)); } catch { /* Bei gesperrtem Storage gilt die Auswahl nur für diese Sitzung. */ }
             return collapsed;
         }
     };

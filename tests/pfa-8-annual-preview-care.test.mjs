@@ -53,7 +53,7 @@ const ui = createAnnualCloseDialog({ document: doc, getModel: () => model, isCom
 const pending = ui.showAnnualPreparation({ targetYear: 2026, model, people, onReady: handle => { binding = handle; } });
 binding.updateMarketData({ values: marketData, errors: {} });
 await settle();
-await prepareCloseFixture(doc, { marketReading: null }); await settle();
+await prepareCloseFixture(doc); await settle();
 const ownField = doc.getElementById(`annualCare_own:${helga}`);
 assertEqual(ownField?.value, '214 €', 'Ausgang: eigener Wert Helga 200 € × 1,02 × 1,05 = 214 €/Monat');
 const floorOf = () => evaluations.at(-1);
@@ -67,13 +67,12 @@ assert(careKeys.every(key => /^(\d|home(Care|Board|Invest)|cost\d|maxFloor|ownEx
     `A1 Pflegewerte-Schritt bietet kein Feld für Grad, Form oder Heim (${careKeys.join(', ')})`);
 assert(initialSummary['Davon sonstige Einkünfte']?.includes('599'), `A1 Ausgang: Pflegegeld Helga 599 € in „Davon sonstige Einkünfte“ (${initialSummary['Davon sonstige Einkünfte']})`);
 
-// A2 (Signatur): Ein geänderter eigener Wert rechnet die Marktablesung neu und meldet das ehrlich als laufend.
+// A2: Ein geänderter eigener Wert rechnet den Plan neu. Allzeithoch und Marktlage hängen seit FR-89 nicht an Pflegewerten.
 await doc.querySelector('[data-annual-care-edit]').fire('click');
 ownField.value = '300'; await ownField.fire('input');
 const readingsBefore = pendingAtReading.length;
 await doc.querySelector('[data-annual-care-confirm]').fire('click');
-assert(pendingAtReading.length > readingsBefore, 'A2 Bestätigung rechnet die Marktablesung neu');
-assertEqual(pendingAtReading.at(-1), 'true', 'A2 geänderter eigener Wert: Ablesung gilt als laufend');
+assertEqual(pendingAtReading.length, readingsBefore, 'A2 Bestätigung rechnet die Marktlage nicht neu');
 await settleAnnualReading(doc); await settle();
 assert(evaluations.length > initialCount, 'A2 Bestätigung rechnet den Plan neu');
 assertEqual(JSON.stringify(floorOf().careToday), JSON.stringify({ [helga]: 300 }), 'A2 Plan rechnet mit 300 €/Monat');
@@ -84,7 +83,6 @@ assertEqual(changedSummary['Davon sonstige Einkünfte'], initialSummary['Davon s
 // A2 (Rücknahme): Zurück auf den Vorschlag rechnet neu; der Plan steht wieder auf dem Ausgangsstand.
 ownField.value = '214'; await ownField.fire('input');
 await doc.querySelector('[data-annual-care-confirm]').fire('click');
-assertEqual(pendingAtReading.at(-1), 'true', 'A2 Rücknahme ändert nur careToday: Ablesung gilt als laufend (alt: false)');
 await settleAnnualReading(doc); await settle();
 assertEqual(JSON.stringify(floorOf().careToday), JSON.stringify({ [helga]: 214 }), 'A2 Rücknahme rechnet mit 214 €/Monat');
 assertEqual(JSON.stringify(summary()), JSON.stringify(initialSummary), 'A2 Rücknahme: Zusammenfassung wieder wie am Anfang');

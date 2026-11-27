@@ -40,7 +40,7 @@ export function refreshThreeBucketControls() {
     const active = mode === STRATEGY_OPTIONS.THREE_BUCKET_JILGE;
     configGroup.style.display = active ? 'grid' : 'none';
     if (strategySelect.ownerDocument && strategySelect.parentNode) {
-        setFieldState(strategySelect, 'editable', active ? '' : '3-Bucket-Felder nicht anwendbar: Standardstrategie ist gewählt.');
+        setFieldState(strategySelect, 'editable', active ? '' : 'Felder für 3-Töpfe nicht anwendbar: Standardstrategie ist gewählt.');
     }
     if (active) {
         setDefaultIfEmpty('bondTargetFactor', DEFAULTS.bondTargetFactor);

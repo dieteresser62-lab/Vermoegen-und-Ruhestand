@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="902" viewBox="0 0 480 902" role="img" aria-labelledby="title desc" data-source-sha256="78a56a5bf4e4002aaede12db41e89f88a95ee69b7928d3b90a0e81946eba345a">
+<title id="title">Ein neues Datenjahr</title>
+<desc id="desc">Zuerst prüft ein Testmodus die Quellen, ohne etwas zu schreiben. Holen legt je Reihe eine Lieferung an. Offene Lieferungen füllt ein Agent oder der Nutzer. Prüfen schreibt einen Bericht. Übernehmen hängt das Jahr an alle Reihen an. Danach folgen Messung und Abnahme.</desc>
+<rect width="480" height="902" rx="12" fill="#f1f2ee"/>
+<text x="240" y="37" text-anchor="middle" font-family="sans-serif" font-size="22" fill="#1d2830"><tspan x="240" dy="0">Ein neues Datenjahr</tspan></text>
+<rect x="80" y="78" width="320" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="240.0" y="111.5" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Quellen prüfen</tspan><tspan x="240.0" dy="27">schreibt nichts</tspan></text>
+<rect x="80" y="198" width="320" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="240.0" y="231.5" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Holen</tspan><tspan x="240.0" dy="27">je Reihe eine Lieferung</tspan></text>
+<rect x="80" y="318" width="320" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="240.0" y="351.5" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Offene Lieferungen</tspan><tspan x="240.0" dy="27">von Hand füllen</tspan></text>
+<rect x="80" y="438" width="320" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="240.0" y="471.5" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Prüfen</tspan><tspan x="240.0" dy="27">Bericht mit Ampel</tspan></text>
+<rect x="80" y="558" width="320" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="240.0" y="591.5" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Übernehmen</tspan><tspan x="240.0" dy="27">Jahr an alle Reihen</tspan></text>
+<rect x="80" y="678" width="320" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="240.0" y="711.5" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Messen</tspan><tspan x="240.0" dy="27">Prüfkette, MC, Backtest</tspan></text>
+<rect x="80" y="798" width="320" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="240.0" y="831.5" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Abnahme</tspan><tspan x="240.0" dy="27">durch den Nutzer</tspan></text>
+<polyline points="240,158 240,198" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="240,198 244,188 236,188" fill="#7a5a1f"/>
+<polyline points="240,278 240,318" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="240,318 244,308 236,308" fill="#7a5a1f"/>
+<polyline points="240,398 240,438" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="240,438 244,428 236,428" fill="#7a5a1f"/>
+<polyline points="240,518 240,558" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="240,558 244,548 236,548" fill="#7a5a1f"/>
+<polyline points="240,638 240,678" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="240,678 244,668 236,668" fill="#7a5a1f"/>
+<polyline points="240,758 240,798" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="240,798 244,788 236,788" fill="#7a5a1f"/>
+</svg>

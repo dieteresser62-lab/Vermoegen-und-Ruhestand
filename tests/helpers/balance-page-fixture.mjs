@@ -94,7 +94,10 @@ export class MockElement {
         return Promise.all((this.listeners[type] || []).map(handler => handler(event)));
     }
 
-    querySelector(selector) { return new MockElement('dummy-child'); }
+    querySelector(selector) {
+        if (selector === '[data-period-chip]') return this.children.find(child => child.matches(selector)) ?? null;
+        return new MockElement('dummy-child');
+    }
     querySelectorAll(selector) { return []; }
 
     // Child manipulation
@@ -142,7 +145,7 @@ export class MockDocument {
         this.elements = {};
         this.listeners = {};
         this.htmlIds = new Set([...htmlContent.matchAll(/\bid=["']([^"']+)["']/g)].map(match => match[1]));
-        this.htmlIds.add('importFile'); // Synthetischer Legacyhandler-Test; Produktverweis führt zur Sicherungsseite.
+        this.htmlIds.add('syntheticFileInput'); // Synthetisches Dateifeld für den Formularschutz.
         this.htmlIds.add('snapshotList'); // Synthetischer Servicehost.
         this.htmlIds.add('balanceInputs'); // Bestehender Delegationshost des Doppels.
         this.htmlIds.add('p1StartAlter'); // Bestehendes synthetisches Feld für den Inputevent.

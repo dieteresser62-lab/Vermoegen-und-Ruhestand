@@ -6,40 +6,20 @@ import { assertCarePrices, parseCareValues, residentialComponents, residentialMo
 import { resolveCareDriftSchedule, careDriftRateForYear } from './care-cost-drift.js';
 
 export const CARE_PRICE_DEFAULTS = Object.freeze({ costs: CARE_COST_DEFAULTS, maximumFloor: 120000, ownExpensesMonthly: 500, driftPercent: CARE_DRIFT_DEFAULT_PERCENT });
-/** Gutachten PFA-4, Befund 2: eigener Preisblock einer Außenperson (gleiche Form wie `prices` im Pflegewerte-Record) an
- * ihrem eigenen Profil; nur eine bewusste Eingabe im Simulator schreibt ihn, Lesen nie. */
-export const OWN_CARE_PRICES_KEY = 'sim_pflegePreise';
 const GRADES = [1, 2, 3, 4, 5];
-const readKey = (source, key) => typeof source?.getItem === 'function' ? source.getItem(key) : source?.[key];
-
-/** Eigener Preisblock einer Außenperson aus ihrem Preisbesitzer; fehlend bleibt Altbestand, Unlesbares ist ein Fehler.
- *
- * @param {object|null|undefined} source Speicheradapter oder Profilrecord der Außenperson.
- * @returns {import('../../typcheck/datenvertraege.js').CarePrices|undefined} Markierter Block oder undefined.
- */
-function ownCarePrices(source) {
-    const raw = readKey(source, OWN_CARE_PRICES_KEY);
-    if (raw == null || String(raw).trim() === '') return undefined;
-    let parsed;
-    try { parsed = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { throw new Error('Die gespeicherten Pflegepreise sind ungültig.'); }
-    assertCarePrices(parsed);
-    return parsed;
-}
 /** Kaufmännisch auf ganze Euro, ohne Gleitkommarest (3.600 × 1,025 × 1,05 = 3.874,50 → 3.875). */
 export const wholeEuro = value => Math.floor(value + 0.5 + 1e-9);
 
 /** Preise des Haushalts: Record zuerst, sonst die alten `sim_`-Beträge über den Resolver (fehlend ≠ 0).
- * Außenpersonen (`shared: false`) lesen ihren eigenen Preisblock (`sim_pflegePreise`), sonst ihre eigene Staffel aus den
- * `sim_`-Schlüsseln. Der Kostenanstieg gilt als bewusste Eingabe, sobald er im Preisblock steht (`driftMarked`); sonst
+ * Der Kostenanstieg gilt als bewusste Eingabe, sobald er im Preisblock steht (`driftMarked`); sonst
  * liest ihn der Resolver (3,5 → 5).
  *
  * @param {{prices?: object}|null|undefined} careValues Gelesener Pflegewerte-Record.
  * @param {object|null|undefined} legacySource Speicheradapter oder Profilrecord mit `sim_pflege…`-Schlüsseln.
- * @param {{shared?: boolean}} [options]
  * @returns {{costs: Record<number, number>, maximumFloor: number, ownExpensesMonthly: number, driftPercent: number, driftUntilYear: number, driftAfterPercent: number, driftMarked: boolean, scheduleMarked: boolean, origin: string, priceYear: number|null, stored: boolean}} Wirksame Preise.
  */
-export function resolveCarePrices(careValues, legacySource, { shared = true } = {}) {
-    const stored = shared ? careValues?.prices : ownCarePrices(legacySource);
+export function resolveCarePrices(careValues, legacySource) {
+    const stored = careValues?.prices;
     const legacy = readCareCostSettings(legacySource);
     const driftMarked = Number.isFinite(stored?.driftPercent);
     // FR-73 Punkt 8 geändert [A7]: Verlauf erste Rate / Wechseljahr / zweite Rate, Altbestand nur beim Lesen umgedeutet.
@@ -96,10 +76,10 @@ export function projectCarePrices(prices, { inflationRate, driftPercent, priceYe
  * Pflegegeld unverändert. Rechnet stets aus der übergebenen Basis, nie aus einem schon fortgeschriebenen Stand.
  *
  * @param {object|string|null|undefined} raw Gespeicherter Record (Objekt oder JSON) oder null für die Vorgaben.
- * @param {{inflationRate: number, driftPercent: number, priceYear: number, legacySource?: object|null, shared?: boolean}} options
+ * @param {{inflationRate: number, driftPercent: number, priceYear: number, legacySource?: object|null}} options
  * @returns {object} Neuer Record ohne Bestätigung.
  */
-export function projectCareValuesForYear(raw, { inflationRate, driftPercent, priceYear, legacySource = null, shared = true }) {
+export function projectCareValuesForYear(raw, { inflationRate, driftPercent, priceYear, legacySource = null }) {
     const base = parseCareValues(raw);
     const factor = (1 + inflationRate / 100) * (1 + driftPercent / 100);
     const parts = residentialComponents(base.residential);
@@ -107,7 +87,7 @@ export function projectCareValuesForYear(raw, { inflationRate, driftPercent, pri
     const month = `${priceYear}-01`;
     return { ...base, confirmedForYear: null,
         residential: { ...base.residential, components, monthly: residentialMonthly(components), origin: 'fortgeschrieben', asOf: month, validFrom: month },
-        prices: projectCarePrices(resolveCarePrices(base, legacySource, { shared }), { inflationRate, driftPercent, priceYear }) };
+        prices: projectCarePrices(resolveCarePrices(base, legacySource), { inflationRate, driftPercent, priceYear }) };
 }
 
 /** Eigene Eingabe im Simulator: ein Preisfeld ändern, alles andere aus der wirksamen Basis übernehmen.
@@ -121,18 +101,6 @@ export function projectCareValuesForYear(raw, { inflationRate, driftPercent, pri
 export function careValuesWithPrices(raw, patch, { priceYear, legacySource = null }) {
     const base = parseCareValues(raw);
     return { ...base, prices: patchedCarePrices(resolveCarePrices(base, legacySource), patch, priceYear) };
-}
-
-/** Eigene Eingabe einer Außenperson im Simulator: ihr Preisblock aus dem eigenen Preisbesitzer, ein Feld geändert,
- * Herkunft „von Hand“ (Gutachten PFA-4, Befund 2). Zu schreiben unter {@link OWN_CARE_PRICES_KEY}.
- *
- * @param {object|null|undefined} legacySource Speicheradapter oder Profilrecord der Außenperson.
- * @param {Partial<{costs: Record<number, number>, maximumFloor: number, ownExpensesMonthly: number, driftPercent: number}>} patch Geänderte Werte.
- * @param {{priceYear: number}} options Preisstand.
- * @returns {import('../../typcheck/datenvertraege.js').CarePrices} Markierter Block.
- */
-export function ownCarePricesWithPatch(legacySource, patch, { priceYear }) {
-    return patchedCarePrices(resolveCarePrices(null, legacySource, { shared: false }), patch, priceYear);
 }
 
 function patchedCarePrices(current, patch, priceYear) {

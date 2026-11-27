@@ -7,10 +7,10 @@ import { PersistenceFacade, persistenceStorage } from '../shared/persistence-fac
 import { readLastFullBackup } from '../overview/overview-storage.js';
 
 /** Abschlusskontext ausschließlich aus Fachdatum und Quellen, nie aus den Anzeigefiltern. */
-/** @param {{doc: Document, win: Window & typeof globalThis, refresh: ()=>void, wealthCapture: ReturnType<typeof import("../overview/overview-example-expenses.js").createOverviewExpensesWealthCapture>, storage?: import("../../typcheck/datenvertraege.js").RecordStorage & {clear(): void}, pageImports?: {pending: boolean, syncButtons(): void, abort(): void, wait(): Promise<unknown>}, options?: import("../../typcheck/overview-ui.js").ExpensesCloseOptions}} options
+/** @param {{doc: Document, win: Window & typeof globalThis, refresh: ()=>void, storage?: import("../../typcheck/datenvertraege.js").RecordStorage & {clear(): void}, pageImports?: {pending: boolean, syncButtons(): void, abort(): void, wait(): Promise<unknown>}, options?: import("../../typcheck/overview-ui.js").ExpensesCloseOptions}} options
  * @returns Abschlusskontext und gemeinsame Import-, Monats- und Jahressteuerungen.
  */
-export function bindExpensesClose({ doc, win, refresh, wealthCapture, storage = persistenceStorage, pageImports = null, options = {} }) {
+export function bindExpensesClose({ doc, win, refresh, storage = persistenceStorage, pageImports = null, options = {} }) {
     let model = null, imports, dialogImports, months, annual;
     const read = () => {
         const liveData = Object.fromEntries(Array.from({ length: storage.length }, (_, i) => storage.key(i)).map(key => [key, storage.getItem(key)]));
@@ -24,8 +24,8 @@ export function bindExpensesClose({ doc, win, refresh, wealthCapture, storage = 
     };
     const changed = () => { read(); refresh(); };
     read();
-    dialogImports = bindOverviewExampleExpenses({ doc, win, getModel: () => model, refresh: changed, wealthCapture, ...options.imports });
-    // Ein Seitenbesitzer umfasst Zellimporte und Dialogimporte einschließlich Capture-Folgejobs.
+    dialogImports = bindOverviewExampleExpenses({ doc, win, getModel: () => model, refresh: changed, ...options.imports });
+    // Ein Seitenbesitzer umfasst Zellimporte und Dialogimporte.
     imports = {
         projectModel: next => dialogImports.projectModel(next),
         bindRoot: (...args) => dialogImports.bindRoot(...args),

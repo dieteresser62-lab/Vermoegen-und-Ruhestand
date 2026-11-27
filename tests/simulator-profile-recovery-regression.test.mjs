@@ -9,7 +9,7 @@ import { activateSimulatorTab, initTabSwitching, renderSimulatorProfileRecovery 
 import { runMonteCarlo } from '../app/simulator/simulator-monte-carlo.js';
 
 function addMainTabs(doc) {
-    const tabs = ['ergebnis', 'annahmen', 'backtesting', 'montecarlo', 'werkstatt'];
+    const tabs = ['ergebnis', 'annahmen', 'backtesting', 'montecarlo'];
     for (const tab of tabs) {
         const panel = doc.body.appendChild(doc.createElement('div')); panel.id = 'tab-' + tab;
         panel.className = 'tab-panel' + (tab === 'ergebnis' ? ' active' : '');
@@ -45,7 +45,7 @@ try {
             const listeners = new Map();
             doc.addEventListener = (type, fn) => { const list = listeners.get(type) || []; list.push(fn); listeners.set(type, list); };
             doc.removeEventListener = () => {}; doc.contains = () => false;
-            for (const id of ['suiteNavigationStatus', 'error-container', 'simProfileList', 'simProfileStatus', 'suiteHouseholdContext', 'mcButton', 'btButton', 'sweepButton', 'ao_run_btn']) addField(doc, id);
+            for (const id of ['suiteNavigationStatus', 'error-container', 'simProfileList', 'simProfileStatus', 'suiteHouseholdContext', 'mcButton', 'btButton']) addField(doc, id);
             if (kind === 'simulator') addMainTabs(doc);
             const win = { addEventListener() {}, removeEventListener() {} };
             globalThis.document = doc; globalThis.window = win;
@@ -64,13 +64,13 @@ try {
             const host = doc.getElementById(kind === 'balance' ? 'error-container' : 'simProfileStatus');
             assert(host.textContent.includes('Profil-Recovery erforderlich') && host.textContent.includes(expectedId), kind + ': sichtbare Recovery mit ID');
             if (kind === 'simulator') {
-                for (const id of ['mcButton', 'btButton', 'sweepButton', 'ao_run_btn']) assert(doc.getElementById(id).disabled, id + ': früher Start installiert Sperre');
+                for (const id of ['mcButton', 'btButton']) assert(doc.getElementById(id).disabled, id + ': früher Start installiert Sperre');
                 assertEqual(starts, 0, 'Kein schreibender Normalstart nach Recovery');
                 const buttons = doc.querySelectorAll('.tab-btn');
-                assertEqual(buttons.length, 5, 'Echter Startzustand hat fünf Hauptreiter');
+                assertEqual(buttons.length, 4, 'Echter Startzustand hat vier Hauptreiter');
                 for (const button of buttons) {
                     assert(button.disabled && button.getAttribute('aria-disabled') === 'true'
-                        && button.getAttribute('title') === 'Profil-Recovery erforderlich', 'Frühe Recovery sperrt alle fünf Hauptreiter sichtbar und assistiv');
+                        && button.getAttribute('title') === host.textContent, 'Frühe Recovery sperrt alle vier Hauptreiter mit sichtbarem Grund');
                 }
                 const visibleStatus = doc.getElementById('simProfileRecoveryStatus');
                 assert(visibleStatus && visibleStatus.parentNode === doc.getElementById('tab-ergebnis')
@@ -121,13 +121,15 @@ try {
         assertEqual(Boolean(window.__personDataBlocker), !completePerson, 'Fehlende Personendaten behalten ihren eigenen fachlichen Blocker');
         initTabSwitching(); buttons[1].dispatchEvent({ type: 'click' });
         assert(doc.getElementById('tab-annahmen').classList.contains('active'), 'Gesunder Kontrollstart erlaubt Reiterwechsel');
-        buttons[4].disabled = true; buttons[4].setAttribute('aria-disabled', 'true'); buttons[4].setAttribute('title', 'Vorherige Sperre');
+        // WS-1: Ohne Werkstatt trägt der letzte der vier Hauptreiter die vorherige Sperre.
+        const preLocked = buttons[3];
+        preLocked.disabled = true; preLocked.setAttribute('aria-disabled', 'true'); preLocked.setAttribute('title', 'Vorherige Sperre');
         renderSimulatorProfileRecovery('Profil-Recovery erforderlich: Kontrollfall');
         renderSimulatorProfileRecovery('Profil-Recovery erforderlich: Kontrollfall wiederholt');
         renderSimulatorProfileRecovery(null);
-        assert(buttons[4].disabled && buttons[4].getAttribute('aria-disabled') === 'true'
-            && buttons[4].getAttribute('title') === 'Vorherige Sperre', 'Recoveryfreigabe erhält vorherige Disabled-, ARIA- und Hinweiszustände');
-        assert(buttons.slice(0, 4).every(button => !button.disabled && button.getAttribute('aria-disabled') === null
+        assert(preLocked.disabled && preLocked.getAttribute('aria-disabled') === 'true'
+            && preLocked.getAttribute('title') === 'Vorherige Sperre', 'Recoveryfreigabe erhält vorherige Disabled-, ARIA- und Hinweiszustände');
+        assert(buttons.slice(0, 3).every(button => !button.disabled && button.getAttribute('aria-disabled') === null
             && button.getAttribute('title') === null), 'Recoveryfreigabe stellt ursprünglich bedienbare Reiter wieder her');
         assertEqual(doc.getElementById('simProfileRecoveryStatus'), null, 'Recoveryfreigabe entfernt dedizierten Statushost');
         assertEqual(activateSimulatorTab('ergebnis'), true, 'Nach Recoveryfreigabe ist programmatischer Wechsel wieder möglich');

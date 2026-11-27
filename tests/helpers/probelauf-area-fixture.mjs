@@ -27,7 +27,7 @@ export async function playFixture(kind = 'tauri', records = {}) {
         local: [...local.records].filter(([key]) => key !== AREA_CONTROL_KEY && !key.startsWith(PLAY_STORAGE_PREFIX)),
         session: [...session.records].filter(([key]) => !key.startsWith(PLAY_STORAGE_PREFIX)),
         backend: tauri ? [tauri.files.get('live'), tauri.files.get('snapshots')]
-            : indexedDB ? [indexedDB.bytes('ruhestand-suite'), indexedDB.bytes('snapshotDB')] : null
+            : indexedDB ? [indexedDB.bytes('ruhestand-suite')] : null
     });
     const boot = async (controllerOptions = {}) => {
         P.resetPersistenceRuntimeForTests(); await P.init(options);

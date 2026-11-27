@@ -3,7 +3,7 @@ import { appNow } from '../shared/app-clock.js';
 import { canonicalizeHistoricalContractValue } from './historical-backtest-contract.js';
 import { projectPerson, personReferenceYear } from '../profile/profile-person-data.js';
 import { buildSimulatorInputsFromProfileData, combineSimulatorProfiles } from './simulator-profile-inputs.js';
-import { persistenceStorage } from '../shared/persistence-facade.js';
+import { PersistenceFacade, persistenceStorage } from '../shared/persistence-facade.js';
 import { CONFIG } from '../balance/balance-config.js';
 import { setFieldState } from '../shared/field-state.js';
 import { renderPartnershipSummary } from './simulator-partnership-ui.js';
@@ -136,7 +136,7 @@ export function createPersonOverrides(entries, primaryId, referenceYear) {
                 }).map(key => ({ field: key, profileValue: numeric.has(key) ? Number(entry.data[key] ?? 0) : entry.data[key] ?? '', effectiveValue: data[key] }));
                 persons.push({ profileId: entry.profileId, role: index === 0 ? 'primary' : 'partner',
                     ageStatus: effective.ageStatus, profileAgeStatus: original.ageStatus, changes });
-                return { ...entry, data, inputs: buildSimulatorInputsFromProfileData(data, { referenceYear: year, profileId: entry.profileId }) };
+                return { ...entry, data, inputs: buildSimulatorInputsFromProfileData(data, { referenceYear: year }) };
             });
             const { combined, warnings } = combineSimulatorProfiles(effectiveEntries, ordered[0]?.profileId);
             const context = freezePersonDataContext({ schemaVersion: 1, referenceYear: year,
@@ -323,7 +323,12 @@ export function initializePersonOverrides(entries, primaryId, referenceYear, doc
     };
     doc.addEventListener?.('input', changed, true);
     doc.addEventListener?.('change', changed, true);
-    const refresh = () => render(state, doc);
+    // SV-1: Nur beim Zurückkehren auffrischen. Beim Verlassen und nach einem Bereichswechsel (Spielbereich beendet) liest die
+    // alte Seite den Speicher nicht mehr; der Beobachter bleibt angemeldet.
+    const refresh = () => {
+        if (doc.visibilityState === 'hidden' || PersistenceFacade.getPersistenceStatus?.().reloadRequired) return;
+        render(state, doc);
+    };
     doc.addEventListener?.('visibilitychange', refresh);
     state.dispose = () => { doc.removeEventListener?.('input', changed, true); doc.removeEventListener?.('change', changed, true); doc.removeEventListener?.('visibilitychange', refresh); };
     render(state, doc);

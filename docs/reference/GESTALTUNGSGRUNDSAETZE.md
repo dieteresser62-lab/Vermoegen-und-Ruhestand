@@ -19,9 +19,9 @@ Erweiterungen verwenden dieselben Muster wie die bestehende App. Tokens, Baustei
 | 4 | Jede Zahl nennt Bezug, Zeitraum, Einheit, Stand und Quelle. Null, fehlend und nicht anwendbar bleiben verschieden. |
 | 5 | Deutsch, Du-Form, kurze Sätze und dieselben Begriffe: Geldvermögen ohne Immobilien, Gesamtvermögen mit Immobilien; „Anleihen“. |
 | 6 | Tabellen: tabellarische Ziffern, Beträge rechtsbündig mit Tausenderpunkt und €. Spalten benennen und gruppieren; Herleitung im Zell-ⓘ. Neue Spalten nur mit Bedeutung für den Haushalt. |
-| 9 | Farben aus Tokens: Messing für Hinweise und Überschreitungen, Rot für Fehler, Ruin und Verlust. Keine Farbe ohne Bedeutung. |
+| 9 | Farben aus Tokens: Messing für Hinweise und Überschreitungen, Rot für Fehler, aufgebrauchtes Vermögen und Verlust. Keine Farbe ohne Bedeutung. |
 | 10 | Vermögensgrafiken zeigen Gesamtvermögen mit unterscheidbaren, gestapelten Teilen für Geldvermögen und Immobilien. Legende benennt genau die gezeichneten Elemente, Achse die Einheit. Lücken und Vereinfachungen im ⓘ erklären. Immobilien in Diagrammen als helle Tönung; Linien des Geldvermögens bleiben führend. |
-| 13 | Jede Vermögenshauptzahl heißt „Gesamtvermögen“; darunter „davon Geldvermögen … · Immobilien …“. Bestandsverteilungen enthalten selbst genutzte und vermietete Immobilien. Entwicklung, Rendite, Ruin, Deckung und Strategiequoten beziehen sich auf Geldvermögen und sagen das ausdrücklich. |
+| 13 | Jede Vermögenshauptzahl heißt „Gesamtvermögen“; darunter „davon Geldvermögen … · Immobilien …“. Bestandsverteilungen enthalten selbst genutzte und vermietete Immobilien. Entwicklung, Rendite, aufgebrauchtes Vermögen, Deckung und Strategiequoten beziehen sich auf Geldvermögen und sagen das ausdrücklich. |
 | 14 | Ein ⓘ erklärt einen Begriff in höchstens drei Sätzen (etwa 50 Wörter), ohne Speicher-, Migrations- oder Versionsdetails. Längeres steht im Handbuch; das ⓘ verlinkt mit „Mehr im Handbuch“. |
 
 ### Bedienung

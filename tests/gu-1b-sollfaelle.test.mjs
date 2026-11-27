@@ -10,7 +10,7 @@ import { annualRecordStorage, computeAnnualPlanUpdate } from '../app/balance/bal
 import { prepareAnnualCommitRecords } from '../app/balance/balance-annual-storage-commit.js';
 import { annualTestMarketData } from './helpers/balance-storage-fixtures.mjs';
 import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input-storage.js';
-import { evaluateBalanceFileInputs } from '../app/balance/balance-file-service.js';
+import { evaluateBalanceInputs } from '../app/balance/balance-evaluation.js';
 import { evaluateStoredAnnualHousehold } from '../app/balance/balance-main-profilverbund.js';
 import { createBalanceDisplayEngineApi, buildBalanceRendererPayload } from '../app/balance/balance-update-pipeline.js';
 import { projectNextYearBudget } from '../app/balance/balance-next-year-budget.js';
@@ -44,7 +44,7 @@ function withSales(records, sales) {
     const registry = JSON.parse(records.rs_profiles_v1), actions = [];
     for (const [index, sale] of sales.entries()) {
         const data = registry.profiles[sale.profileId].data, active = records.rs_current_profile === sale.profileId;
-        const cash = Number(data.profile_tagesgeld) + (sale.pending ? 0 : sale.net);
+        const cash = sale.cashAfter ?? Number(data.profile_tagesgeld) + (sale.pending ? 0 : sale.net);
         data.profile_tagesgeld = String(cash);
         const tranches = JSON.parse(data.depot_tranchen), lot = tranches.find(item => item.trancheId === sale.trancheId);
         const sold = sale.net / lot.currentPrice, before = lot.shares;
@@ -65,7 +65,7 @@ function evaluate(records, date) {
     setAppTestDate(date);
     const storage = annualRecordStorage(records), api = createBalanceDisplayEngineApi(EngineAPI);
     const calculation = buildBalanceEngineInputFromStorage({ storage }), plan = calculation.householdPlan;
-    const evaluation = evaluateBalanceFileInputs({ inputData: calculation.inputData, persistentState: calculation.history.persistentState,
+    const evaluation = evaluateBalanceInputs({ inputData: calculation.inputData, persistentState: calculation.history.persistentState,
         profiles: calculation.history.profiles, profileId: records.rs_current_profile, engineApi: api, publish: false,
         planInputs: plan.entry.values, marketPreviewContext: { calculation, storage },
         profilverbundHandlers: { runProfilverbundProfileSimulations: (input, profiles, state) => evaluateStoredAnnualHousehold(input, profiles, state,
@@ -116,7 +116,7 @@ const ERIKA = { profileId: 'muster_b', trancheId: 'muster_b_lot_2', net: 79950, 
     assertEqual(a1.progress.status, 'offen', 'A1: Nicht umgesetzt, Plan offen');
     assertEqual(a1.view.before.liquidity, 90000, 'A1: heute 90.000 €');
     assertClose(a1.view.after.liquidity, 179312.50, 0.01, 'A1: nach Umsetzung 179.312,50 €');
-    assert(a1.card.values.includes('nach Umsetzung179.500 €'), 'A1: Reservekarte zeigt nach Umsetzung 90.000 + angezeigter Plan 89.500 = 179.500 € (Ergänzung 2 FR-78)');
+    assert(a1.card.values.includes('nach Umsetzung180.000 €'), 'A1: Reservekarte zeigt nach Umsetzung 90.000 + angezeigter Plan 90.000 = 180.000 € (Ergänzung 2 FR-78; HP-3: Kopf rundet 89.313 € einmal)');
     assert(a1.diagnosis.includes('89.312 € netto'), 'A1: Diagnose nennt den ganzen Beleg, 89.312 € netto');
     // A4: Die persönlichen Tagesgeldziele kommen aus den Personeneinträgen des laufenden Jahres.
     assertEqual(a1.view.targets.map(row => `${row.name} ${row.target}`).join(' · '), 'Max 5000 · Erika 27400', 'A4: Tagesgeldziele Max 5.000 € und Erika 27.400 €');
@@ -131,6 +131,11 @@ const ERIKA = { profileId: 'muster_b', trancheId: 'muster_b_lot_2', net: 79950, 
     assert(!a2.diagnosis.includes('netto'), 'A2: Diagnose nennt keinen offenen Verkauf mehr');
     assertEqual(a2.card.targets, 'Tagesgeldziel: Max 5.000 € · Erika 27.500 € · Summe 32.500 €', 'A4: Tagesgeldziele auch nach der Umsetzung');
 
+    const settled = await maxErika([MAX, { ...ERIKA, cashAfter: 27450 }]);
+    assertEqual(settled.progress.status, 'erledigt', 'HP-5c: Beide Verkäufe sind vollständig eingetragen');
+    assertEqual(settled.card.targets, 'Tagesgeldziel: Max 5.000 € · Erika 27.400 € · Summe 32.400 €',
+        'HP-5c: Erikas Tagesgeld von 27.450 € deckt das genaue Ziel von 27.400 € auch nach vollständiger Umsetzung');
+
     // Max hat seine Zeile verkauft (9.362,50 € von 9.362,92 €, über der Grenze Plan − ½ Stufe = 8.862,92 €); offen bleibt Erikas Zeile.
     const a3 = await maxErika([MAX]);
     assertEqual(a3.progress.lines.map(line => line.status).join(' · '), 'erledigt · offen', 'A3: Max erledigt, Erika offen');
@@ -138,13 +143,16 @@ const ERIKA = { profileId: 'muster_b', trancheId: 'muster_b_lot_2', net: 79950, 
     assertClose(a3.view.before.liquidity, 99362.50, 0.01, 'A3: heute 99.362,50 €');
     assertClose(a3.progress.restNet, 79950, 0.5, 'A3: offener Rest 79.950 €');
     assertClose(a3.view.after.liquidity, 179312.50, 0.5, 'A3: nach Umsetzung 179.312,50 € (Beleg-Cent von Max fällt unter die Erledigt-Grenze)');
-    // VK-3d P4: Teilweise erledigt zählt der offene Rest auf den Euro wie in der Karte (vorher aufgerundet 80.000 € → 179.363 €).
-    assert(a3.card.values.includes('nach Umsetzung179.312 €'), 'A3: Reservekarte zeigt heute 99.362,50 € + offener Rest 79.950 € = 179.312 €');
+    // Bei einem teilweise umgesetzten Verkauf zählen der angezeigte heutige Stand und der offene Rest auf volle Euro.
+    assert(a3.card.values.includes('nach Umsetzung179.313 €'), 'A3: Reservekarte zeigt heute 99.363 € + offener Rest 79.950 € = 179.313 €');
     assert(a3.diagnosis.includes('79.950 € netto'), 'A3: Diagnose nennt den offenen Rest 79.950 € netto');
 
-    // Planversuch: Die Karte rechnet wie vor GU-1 mit der Neuberechnung (89.185,46 € netto zu heutigen Kursen).
-    const trial = await maxErika([], { trial: true });
-    assert(trial.card.values.includes('nach Umsetzung180.500 €'), 'A: Im Planversuch rechnet die Karte mit der Neuberechnung (179.185 €, angezeigt 180.500 €), nicht mit dem Beleg (179.500 €)');
+    // Planversuch nach einem Teilverkauf: Der offene Rest des Belegs und die Neuberechnung sind auch gerundet verschieden.
+    const trial = await maxErika([MAX], { trial: true });
+    // ATH-1b (FR-89, Ergänzung 3): Der Kurs liegt höchstens 5 % unter dem Tageshoch der Spielkurse vom 12.08.2026 und gilt als
+    // Höchststand; die Neuberechnung verkauft wieder 80.000 € (nach ATH-1 ohne Grundrauschen 25.000 €).
+    assertEqual(trial.card.values, 'Liquidität heute99.363 €→nach Umsetzung179.363 €',
+        'A: Im Planversuch zeigt die Reservekarte 99.363 € heute plus 80.000 € neu berechneten Verkauf');
 }
 
 // FR-77 Punkt 2 an der reinen Funktion: Person und Anlageklasse, Beschlusstag, Planjahr, Erledigt-Grenze, Gutschrift offen.

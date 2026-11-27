@@ -3,10 +3,12 @@ import { PLAN_DEFAULTS } from '../app/profile/household-plan.js';
 import { householdPlanSummary, resetHouseholdPlanParameterDetails, projectHouseholdPlanParameters } from '../app/shared/household-plan-presentation.js';
 import { createDialogFixture } from './close-dialog.test.mjs?fixture';
 
-const summaryValues = { ...structuredClone(PLAN_DEFAULTS), flexBudgetAnnual: 7283, liquidityRunwayYears: 5,
+const summaryValues = { ...structuredClone(PLAN_DEFAULTS), flexBudgetAnnual: 6137, liquidityRunwayYears: 5,
     dynamicFlex: false, cape: { value: 32 } };
-assertEqual(householdPlanSummary(summaryValues), 'Flex-Budget 7.283 €/Jahr · Reserven 5,0 Jahre · Strategie Standard · Dynamik Aus · CAPE 32,0',
+assertEqual(householdPlanSummary(summaryValues), 'Flex-Budget 6.137 €/Jahr · Reserven 5,0 Jahre · Strategie Standard · Dynamik Aus · CAPE 32,0',
     'Gemeinsame Kopfzusammenfassung enthält die tatsächlichen Werte');
+assert(householdPlanSummary({ ...summaryValues, flexBudgetAnnual: 0, flexBedarf: 30000 }).startsWith('Flex-Budget aus ·'),
+    'Der Plankopf kennzeichnet ein ausgeschaltetes Flex-Budget auch bei Wunsch-Flex');
 assertEqual(householdPlanSummary(null), 'Planbereich noch nicht bestätigt', 'Unbestätigter Plan erfindet keine Zusammenfassungswerte');
 const detailFields = { dynamicFlexPreset: { value: 'custom' }, dynamicFlexShowAdvanced: { checked: true } };
 const beforeSummaryReset = JSON.stringify(summaryValues);

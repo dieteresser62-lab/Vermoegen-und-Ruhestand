@@ -13,10 +13,3 @@ export function clearReconciliationPreview({ navigationOperation } = {}) {
     state.navigationRegistration?.notify();
     return true;
 }
-
-// Ungenutzt seit VK-1 (FR-79: der alte Verkaufsdialog entfällt); die Exporte bleiben erhalten (Exportprüfung) und tun nichts.
-/** @returns {null} */ export const readOptionalNumber = () => null;
-/** @returns {null} */ export const readReconciliationActionFromDom = () => null;
-/** @returns {false} */ export const createReconciliationPreview = () => false;
-/** @returns {Promise<false>} */ export const executeReconciliation = async () => false;
-/** @returns {Promise<false>} */ export const confirmReconciliation = async () => false;

@@ -1,5 +1,15 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { fz1References } from './helpers/fz-1-expectations.mjs';
+import { readDM1References } from './helpers/dm-1-expectations.mjs';
+import { readJA1References } from './helpers/ja-1-expectations.mjs';
+import { readHP4References } from './helpers/hp-4-expectations.mjs';
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import { readVB1References } from './helpers/vb-1-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
+import { readNK1References } from './helpers/nk-1-expectations.mjs';
 import { readLE1References as readBeforeGN2References } from './helpers/le-1-expectations.mjs';
 import { readGN2References } from './helpers/gn-2-expectations.mjs';
+const readFZ1Reference = fz1References(import.meta.url);
 const readLE1References = value => readGN2References(readBeforeGN2References(value));
 // GU-1 (Gutachten 11.11.2026, FR-74, FR-76, S5–S7): von Hand hergeleitete Sollfälle als dauerhafte Node-Tests.
 // Nur synthetische Daten: Beispielhaushalte und erfundene Personenwerte.
@@ -100,8 +110,8 @@ for (const id of Object.keys(BASE)) {
         return { mc, historical };
     };
     const zero = await run({ ...current, equityCostPct: 0, rentAdjMode: 'wage', renteIndexierungsart: 'wage' });
-    assertEqual(hash(withPreviousRunEvidence(zero.mc)), readFI1References(readLE1References(BASE[id].mc)), `S2: ${id} Monte Carlo mit k = 0 bytegleich zu b1ef8ff6 (Laufbeleg der Sterbetafel wie vor LE-1b)`);
-    assertEqual(hash(zero.historical), readLE1References(BASE[id].backtest), `S2: ${id} Backtest mit k = 0 bytegleich zu b1ef8ff6`);
+    assertEqual(hash(withPreviousRunEvidence(zero.mc)), readFZ1Reference(readDM1References(readJA1References(readHP4References(readKR1cReferences(readVB1References(readNK1References(readFI1References(readLE1References(BASE[id].mc))))))))), `S2: ${id} Monte Carlo mit k = 0 nach Referenz b1ef8ff6 mit belegtem Ehestatus (Laufbeleg der Sterbetafel wie vor LE-1b)`);
+    assertEqual(hash(zero.historical), readFZ1Reference(readDM1References(readKR1cReferences(readVB1References(readLE1References(BASE[id].backtest))))), `S2: ${id} Backtest mit k = 0 nach Referenz b1ef8ff6 mit belegtem Ehestatus`);
     if (id === 'renate') {
         const withCost = await run({ ...current, rentAdjMode: 'wage', renteIndexierungsart: 'wage' });
         const row = withCost.historical.rows.find(item => item.jahr === 2000);
@@ -119,7 +129,7 @@ P.resetPersistenceForTests(); setAppTestDate(null);
     const { annualRecordStorage } = await import('../app/balance/balance-annual-storage.js');
     const { projectNextYearBudget } = await import('../app/balance/balance-next-year-budget.js');
     const { buildBalanceEngineInputFromStorage } = await import('../app/balance/balance-input-storage.js');
-    const { evaluateBalanceFileInputs } = await import('../app/balance/balance-file-service.js');
+    const { evaluateBalanceInputs } = await import('../app/balance/balance-evaluation.js');
     const { evaluateStoredAnnualHousehold } = await import('../app/balance/balance-main-profilverbund.js');
     const { createBalanceDisplayEngineApi, buildBalanceRendererPayload } = await import('../app/balance/balance-update-pipeline.js');
     const { projectBalanceFlexTrace } = await import('../app/balance/balance-flex-trace.js');
@@ -135,14 +145,14 @@ P.resetPersistenceForTests(); setAppTestDate(null);
     await freshArea({ ...records });
     const storage = annualRecordStorage(records), api = createBalanceDisplayEngineApi(EngineAPI), now = () => new Date(`${date}T12:00:00`);
     const calculation = buildBalanceEngineInputFromStorage({ storage }), plan = calculation.householdPlan;
-    const evaluation = evaluateBalanceFileInputs({ inputData: calculation.inputData, persistentState: calculation.history.persistentState,
+    const evaluation = evaluateBalanceInputs({ inputData: calculation.inputData, persistentState: calculation.history.persistentState,
         profiles: calculation.history.profiles, profileId: records.rs_current_profile, engineApi: api, publish: false,
         planInputs: plan.entry.values, marketPreviewContext: { calculation, storage },
         profilverbundHandlers: { runProfilverbundProfileSimulations: (input, profiles, state) => evaluateStoredAnnualHousehold(input, profiles, state,
             { engineApi: api, publish: false, withdrawalMode: plan.entry.values.householdWithdrawalMode }) } });
     const next = projectNextYearBudget({ storage, engineApi: api, now });
     const projected = next.displayEvaluation;
-    const rounding = next.rule.components.find(item => item.kind === 'rounding');
+    const rounding = next.plan.components.find(item => item.kind === 'rounding');
     assertEqual(rounding.amount, 0, 'S3 (GN-1): Genau gespeicherte Planwerte, keine Rundung der Planwerte mehr');
     const projectedUi = { ...projected.modelResult.ui, input: projected.inputData };
     // GU-1b: Die Regel hängt an der Ursache im Engine-Trace, nicht mehr am Rundungsposten der Projektion.
@@ -177,7 +187,7 @@ P.resetPersistenceForTests(); setAppTestDate(null);
         UIRenderer.render({ ...buildBalanceRendererPayload(projected.modelResult, { ...projected.inputData, referenceYear: next.targetYear }), nextYearBudget: next,
             currentYear: current, profileActionResults: entriesOf(projected.profilverbundRuns) });
         const text = id => doc.getElementById(id).textContent.replaceAll(' ', ' ');
-        assert(text('balanceReserveValues').includes('nach Umsetzung179.500 €'), 'S4: Reservekarte zeigt nach Umsetzung 90.000 + 89.500 = 179.500 € (Ergänzung 2 FR-78)');
+        assert(text('balanceReserveValues').includes('nach Umsetzung180.000 €'), 'S4: Reservekarte zeigt nach Umsetzung 90.000 + 90.000 = 180.000 € (Ergänzung 2 FR-78; HP-3: Zufluss wie der Kopf der Karte)');
         assertEqual(text('balanceBudgetCut'), 'Dein Haushalts-Flex ist voll finanziert.', 'S3: Keine Warnung „zu … % finanziert“ aus der Rundung');
     } finally { Object.assign(globalThis, saved); }
     P.resetPersistenceForTests(); setAppTestDate(null);

@@ -1,12 +1,12 @@
 # Strategien und Reserven
 
-Welche Aufgabe Standard, Drei Töpfe, Gold und Rücklagen erfüllen. Für Nutzer und fachlich Interessierte. Codeprüfung: 27.10.2026.
+Welche Aufgabe Standard, Drei Töpfe, Gold, Liquiditätsreserve und Pflegereserve erfüllen. Für Nutzer und fachlich Interessierte. Codeprüfung: 27.10.2026.
 
 ## Auf einen Blick
 
 - Die Strategie ordnet die Finanzierung der Entnahme; das [Jahresbudget](JAHRESBUDGET.md) bestimmt den Bedarf und die Flex-Rate.
 - Gold ist ein optionaler Baustein, keine dritte Entnahmestrategie.
-- Liquiditätsreserve und Pflege-Rücklage sind verschieden: Nur freie Mittel finanzieren das normale Budget.
+- Liquiditätsreserve und Pflegereserve sind verschieden: Nur freie Mittel finanzieren das normale Budget.
 - Keine Einstellung verspricht höhere Rendite oder sichere Deckung.
 
 ## Auswahl
@@ -27,7 +27,7 @@ Die Einstellungen bestimmen Zielgröße, Renditeauslöser und Auffüllschwelle. 
 
 Aktive Gold-Allokation ergänzt Standard oder Drei Töpfe. Zielquote, unterer Verkaufsrahmen und Rebalancingband haben verschiedene Aufgaben: Die Zielquote bestimmt den gewünschten Bestand, das Band löst reguläre Anpassungen aus, der untere Rahmen begrenzt Verkäufe. Notfälle können diesen Schutz lockern. Eine Goldposition ohne aktive Allokation erzeugt einen Hinweis; erst deine Wahl aktiviert die Einstellung.
 
-Die Quoten beziehen sich auf die operative Geldvermögensbasis, ohne Immobilien und gesperrte Pflege-Rücklage. Gold verändert auch die gewichtete Renditeannahme für Dynamic Flex. Steuerfreiheit ist eine ausdrückliche Eingabe; die App prüft sie nicht aus der Haltedauer. Ausführlich: [Verkaufsquellen](HANDLUNGSANWEISUNG.md#verkaufsreihenfolge) und [Steuermodell](STEUERN.md#gewinn-und-teilfreistellung).
+Die Quoten beziehen sich auf die operative Geldvermögensbasis, ohne Immobilien und gesperrte Pflegereserve. Gold verändert auch die gewichtete Renditeannahme für Dynamic Flex. Steuerfreiheit ist eine ausdrückliche Eingabe; die App prüft sie nicht aus der Haltedauer. Ausführlich: [Verkaufsquellen](HANDLUNGSANWEISUNG.md#verkaufsreihenfolge) und [Steuermodell](STEUERN.md#gewinn-und-teilfreistellung).
 
 ## Reserven
 
@@ -39,9 +39,9 @@ Eine längere Reserve bindet mehr Geld außerhalb von Aktien und Gold. Sie kann 
 
 ### Pflege
 
-Die „Pflege-Rücklage“ ist zweckgebunden und wird vom aktiven Geldvermögen getrennt. Ihr Betrag bleibt Bestandteil des Geldvermögens und damit des Gesamtvermögens, steht aber nicht für die gewöhnliche Entnahme bereit. Die Rücklage ist kein zweites Liquiditätsziel und wird nicht automatisch aus freien Mitteln aufgefüllt.
+Die „Pflegereserve“ ist zweckgebunden und wird vom aktiven Geldvermögen getrennt. Ihr Betrag bleibt Bestandteil des Geldvermögens und damit des Gesamtvermögens, steht aber nicht für die gewöhnliche Entnahme bereit. Die Pflegereserve ist kein zweites Liquiditätsziel und wird nicht automatisch aus freien Mitteln aufgefüllt.
 
-Bei mehreren Personen summiert die App aktivierte Beträge; die erste aktivierte Rücklage liefert Auslöser und Einstellungen. Unterschiedliche Einstellungen erzeugen eine Warnung. [Pflege](PFLEGE.md#reserve-und-flex) erklärt Freigabe, Deckungsumfang und Folgen im Modell.
+Bei mehreren Personen summiert die App aktivierte Beträge; die erste aktivierte Pflegereserve liefert Auslöser und Einstellungen. Unterschiedliche Einstellungen erzeugen eine Warnung. [Pflege](PFLEGE.md#pflegereserve-und-flex) erklärt Freigabe, Deckungsumfang und Folgen im Modell.
 
 ## Folgen und Grenzen
 
@@ -49,7 +49,7 @@ Bei mehreren Personen summiert die App aktivierte Beträge; die erste aktivierte
 
 Max und Erika werden in den [erzeugten Beispielen](JAHRESBUDGET.md#max-und-erika-im-jahresvergleich) mit synthetischen Beständen vom 17.10.2026 gerechnet. Im Bärenjahr 2002 senken Alarm und Rundung die Entnahme; die [Handlungsanweisung](HANDLUNGSANWEISUNG.md#max-und-erika-im-bärenjahr) wartet bei ausreichender Liquidität. Eine gekürzte Auszahlung erzwingt also keinen Verkauf.
 
-Für einen Strategievergleich müssen Anfangsbestände, Zeitraum, Bedarf und Ereignisse gleich sein. Eine Variante nur mit einem anders verteilten Portfolio beantwortet eine andere Frage als ein Wechsel der Handelsregel. Die zusätzlichen synthetischen Fälle mit Gold sowie Helga und Werner mit Anleihen und Pflege-Rücklage stehen als [technische Beispiele](TECHNICAL.md#vollständige-handelsbeispiele) bereit.
+Für einen Strategievergleich müssen Anfangsbestände, Zeitraum, Bedarf und Ereignisse gleich sein. Eine Variante nur mit einem anders verteilten Portfolio beantwortet eine andere Frage als ein Wechsel der Handelsregel. Die zusätzlichen synthetischen Fälle mit Gold sowie Helga und Werner mit Anleihen und Pflegereserve stehen als [technische Beispiele](TECHNICAL.md#vollständige-handelsbeispiele) bereit.
 
 ### Kein Wirksamkeitsversprechen
 

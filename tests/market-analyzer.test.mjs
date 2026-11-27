@@ -49,25 +49,28 @@ function getBaseMarketInput() {
     assertClose(resBear.regimeSignalSeverities.drawdownSeverity, 1, 1e-12, 'MarketAnalyzer exposes drawdown severity without changing regime');
     assertEqual(resBear.regimeSmoothingFactors.drawdownSeverity.source, 'abstandVomAthProzent', 'MarketAnalyzer exposes drawdown smoothing source');
 
-    // Case 3: Recovery (10% down, but >10% Perf)
-    const inputRec = getBaseMarketInput();
-    inputRec.endeVJ = 90; // Down 10%
-    inputRec.ath = 100;
-    inputRec.endeVJ_1 = 78; // Was 78 -> 90 = +15%
-    inputRec.jahreSeitAth = 2; // > 6 months
-
-    const resRec = MarketAnalyzer.analyzeMarket(inputRec);
-    // Recovery braucht abstand >10% + Momentum >10% + >6 Monate seit ATH.
-    // Code: abstand > 10 && perf > 10 && months > 6.
-    // 10 > 10 is False. Recovery needs > 10% drawdown?
-    // Let's make drawdown 11% (EndeVJ = 89).
-    inputRec.endeVJ = 89;
-    // Perf: 78 -> 89 = +14%
-
-    const resRec2 = MarketAnalyzer.analyzeMarket(inputRec);
-    assert(resRec2.sKey === 'recovery', `Expect recovery, got ${resRec2.sKey}`);
-
     console.log('✅ Scenario Detection Logic Passed');
+}
+
+const marketPhaseCases = [
+    [7, 15, 12, 'corr_young', 'Hoch im laufenden Jahr, seitdem gefallen'],
+    [11.94, 15, 12, 'corr_young', 'Hoch im laufenden Jahr, seitdem gefallen'],
+    [11.95, 15, 12, 'recovery', 'Starkes Momentum nach Korrektur'],
+    [14, 15, 12, 'recovery', 'Starkes Momentum nach Korrektur'],
+    [4, 12, 12, 'corr_young', 'Kürzliche, leichte Korrektur'],
+    [8, 25, 12, 'bear_deep', 'ATH-Abstand > 20% (25.0%)'],
+    [9, 18, 16, 'recovery_in_bear', 'Starkes Momentum nach Korrektur'],
+    [9, 18, 12, 'recovery_in_bear', 'Starkes Momentum nach Korrektur', 60],
+    [0, 15, 12, 'recovery', 'Starkes Momentum nach Korrektur']
+];
+for (const [months, drawdown, performance, phase, reason, earlierLow] of marketPhaseCases) {
+    const endeVJ = 100 - drawdown;
+    const endeVJ_1 = endeVJ / (1 + performance / 100);
+    const result = MarketAnalyzer.analyzeMarket({ ...getBaseMarketInput(), endeVJ, endeVJ_1,
+        endeVJ_2: earlierLow ?? endeVJ_1, endeVJ_3: endeVJ_1, jahreSeitAth: months / 12 });
+    const context = `FR-90: Hochalter ${months} Monate, Abstand ${drawdown} %, Jahresplus ${performance} %`;
+    assertEqual(result.sKey, phase, context);
+    assertEqual(result.reasons[0], reason, `${context}, Begründung`);
 }
 
 // --- TEST 2: Missing and Partial Market Data Contract ---

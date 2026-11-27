@@ -1,6 +1,6 @@
 // @ts-check
 /** @import {RunRequestV1,SimulatorInputs,MonteCarloParameters,SamplingDiagnostics,ExecutionContract,Fingerprint,Portable} from '../../../typcheck/rechenkern' */
-import { MONTE_CARLO_RUN_REQUEST_VERSION, MONTE_CARLO_SCENARIO_VERSION, MONTE_CARLO_SNAPSHOT_POLICY_VERSION, MONTE_CARLO_FINGERPRINT_ALGORITHM, MONTE_CARLO_SNAPSHOT_POLICY, MONTE_CARLO_LEGACY_READ_ALIASES } from './schema.js';
+import { MONTE_CARLO_RUN_REQUEST_VERSION, MONTE_CARLO_SCENARIO_VERSION, MONTE_CARLO_SNAPSHOT_POLICY_VERSION, MONTE_CARLO_FINGERPRINT_ALGORITHM, MONTE_CARLO_SNAPSHOT_POLICY } from './schema.js';
 import { contractError, requireObject, requireInteger, requireString } from './validation-primitives.js';
 import { deepFreezeMonteCarloContract, normalizeMonteCarloJsonValue, fingerprintMonteCarloValue, cloneContractValue } from './portable-json.js';
 import { annualData, STRESS_PRESETS } from '../simulator-data.js';
@@ -226,28 +226,4 @@ export function extractMonteCarloReplayArgsV1(request) {
         useCapeSampling: request.sampling.capeSamplingRequested,
         execution: cloneContractValue(request.execution, '$.replay.execution')
     });
-}
-
-/** @param {unknown} root
- * @param {string} path
- * @returns {unknown} */
-function valueAtPath(root, path) {
-    return path.split('.').reduce((value, key) => value == null ? undefined : /** @type {Record<string,unknown>} */ (value)[key], root);
-}
-
-/** @param {unknown} document
- * @param {((event:{event:string;alias:string;replacement:string;removalTarget:string})=>void)|null} onTelemetry */
-export function collectMonteCarloLegacyAliasTelemetryV1(document, onTelemetry = null) {
-    const aliases = MONTE_CARLO_LEGACY_READ_ALIASES.filter(alias => valueAtPath(document, alias.path) !== undefined);
-    for (const alias of aliases) {
-        if (typeof onTelemetry === 'function') {
-            onTelemetry({
-                event: 'monte_carlo_deprecated_alias_read',
-                alias: alias.path,
-                replacement: alias.replacement,
-                removalTarget: alias.removalTarget
-            });
-        }
-    }
-    return Object.freeze(aliases.map(alias => alias.path));
 }

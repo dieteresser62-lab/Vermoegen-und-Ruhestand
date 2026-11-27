@@ -1,16 +1,6 @@
 
 import { areaHousehold, isPlayArea } from './household-registry.js';
-import { CONFIG } from '../balance/balance-config.js';
-import { isAllowedSnapshotCaptureKey, isLegacySnapshotKey } from './persistence-key-policy.js';
 
-const SNAPSHOT_SCHEMA_VERSION = 1;
-const SNAPSHOT_TYPE = 'persistence-records-v1';
-const SNAPSHOT_KIND_MANUAL = 'manual';
-const PROFILE_STORAGE_KEYS = Object.freeze({
-    registry: 'rs_profiles_v1',
-    current: 'rs_current_profile',
-    active: 'rs_active_profile'
-});
 const DEFAULT_STATE = Object.freeze({
     schemaVersion: 1,
     records: {},
@@ -29,6 +19,18 @@ function getInvoke(options = {}) {
         throw new Error('Tauri invoke API ist nicht verfuegbar.');
     }
     return invoke;
+}
+
+/** @param {(command: string, args: object) => Promise<unknown>} invoke @param {object} args */
+export async function saveTauriState(invoke, args) {
+    const saveId = globalThis.crypto.randomUUID();
+    const report = async active => {
+        try { await invoke('report_app_save', { saveId, active }); }
+        catch { /* Die Meldung steuert nur die Schließfrist. */ }
+    };
+    await report(true);
+    try { await invoke('save_app_state', { ...args, saveId }); }
+    finally { await report(false); }
 }
 
 function normalizeState(raw) {
@@ -91,87 +93,6 @@ function toSnapshotIndexEntry(snapshot) {
     return indexEntry;
 }
 
-function parseJsonObject(raw, fallback = null) {
-    if (!raw) return fallback;
-    try {
-        const parsed = JSON.parse(String(raw));
-        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : fallback;
-    } catch {
-        return fallback;
-    }
-}
-
-function parseLegacySnapshot(raw) {
-    const parsed = parseJsonObject(raw, null);
-    if (parsed?.snapshotType !== 'full-localstorage' || !parsed.localStorage || typeof parsed.localStorage !== 'object') {
-        return null;
-    }
-    return parsed;
-}
-
-function getProfileNameFromLegacyRecords(records, activeProfileId) {
-    const registry = parseJsonObject(records[PROFILE_STORAGE_KEYS.registry], null);
-    return String(registry?.profiles?.[activeProfileId]?.meta?.name || '');
-}
-
-function resolveLegacyActiveProfileId(records) {
-    const explicit = String(records[PROFILE_STORAGE_KEYS.current] || records[PROFILE_STORAGE_KEYS.active] || '');
-    if (explicit) return explicit;
-    if (!records[PROFILE_STORAGE_KEYS.registry]) return 'default';
-    return '';
-}
-
-function asIsoDate(value) {
-    const date = value ? new Date(value) : new Date();
-    if (!Number.isFinite(date.getTime())) return new Date().toISOString();
-    return date.toISOString();
-}
-
-function buildCanonicalSnapshotFromLegacy(key, legacySnapshot) {
-    const sourceRecords = legacySnapshot.localStorage || {};
-    const records = Object.create(null);
-    Object.entries(sourceRecords).forEach(([recordKey, value]) => {
-        const normalizedKey = String(recordKey || '');
-        if (!isAllowedSnapshotCaptureKey(normalizedKey)) return;
-        if (value === null || value === undefined) return;
-        records[normalizedKey] = String(value);
-    });
-    const activeProfileId = resolveLegacyActiveProfileId(sourceRecords);
-    const label = legacySnapshot.label || String(key || '').replace(CONFIG.STORAGE.SNAPSHOT_PREFIX, '');
-    return {
-        schemaVersion: SNAPSHOT_SCHEMA_VERSION,
-        id: String(key || '').replace(CONFIG.STORAGE.SNAPSHOT_PREFIX, 'snapshot_legacy_') || undefined,
-        snapshotType: SNAPSHOT_TYPE,
-        label,
-        kind: SNAPSHOT_KIND_MANUAL,
-        createdAt: asIsoDate(legacySnapshot.timestamp || legacySnapshot.createdAt),
-        activeProfileId,
-        activeProfileName: activeProfileId ? getProfileNameFromLegacyRecords(sourceRecords, activeProfileId) : '',
-        recordCount: Object.keys(records).length,
-        records,
-        restoreScope: {
-            profileRegistryMode: 'preserve-by-default',
-            profileLiveDataMode: 'restore-only-if-active-profile-still-exists'
-        }
-    };
-}
-
-function getCanonicalLegacySnapshotId(id) {
-    const normalized = String(id || '');
-    return isLegacySnapshotKey(normalized)
-        ? normalized.replace(CONFIG.STORAGE.SNAPSHOT_PREFIX, 'snapshot_legacy_')
-        : normalized;
-}
-
-function createLegacyMigrationReport() {
-    return {
-        migratedCount: 0,
-        skippedCount: 0,
-        notStandardRestorableCount: 0,
-        errors: []
-    };
-}
-
 export function createTauriJsonFileAdapter(options = {}) {
     // Weitere Haushalte: Rust bildet den Ordner households/<Kennung>/ selbst, die Oberfläche liefert keinen Pfad.
     const household = areaHousehold(options.area);
@@ -180,7 +101,7 @@ export function createTauriJsonFileAdapter(options = {}) {
     // HV-4: Jeder native Write nennt die Verzeichnis-Generation dieses Dokuments; Rust weist veraltete ab.
     const generation = () => { const value = options.expectedGeneration?.(); return Number.isSafeInteger(value) ? { expectedGeneration: value } : {}; };
     const saveState = async args => {
-        try { await invoke('save_app_state', { ...args, ...generation() }); }
+        try { await saveTauriState(invoke, { ...args, ...generation() }); }
         catch (error) {
             if (!String(error?.message || error).startsWith('HOUSEHOLD_CONTEXT_CHANGED')) throw error;
             throw Object.assign(new Error('Der Haushalt wurde inzwischen gewechselt. Bitte neu laden; Eingaben werden bis dahin nicht gespeichert.'), { code: 'PERSISTENCE_RELOAD_REQUIRED', cause: error });
@@ -195,6 +116,14 @@ export function createTauriJsonFileAdapter(options = {}) {
     let snapshotArchive = { ...DEFAULT_SNAPSHOT_ARCHIVE, snapshots: [] };
     let opened = false;
     let snapshotsOpened = false;
+    let writeChain = Promise.resolve();
+
+    /** @template T @param {() => Promise<T>} write */
+    function queueWrite(write) {
+        const result = writeChain.then(write);
+        writeChain = result.then(() => {}, () => {});
+        return result;
+    }
 
     async function persist() {
         await saveState({ ...liveTarget, content: serializeState(state) });
@@ -215,7 +144,9 @@ export function createTauriJsonFileAdapter(options = {}) {
 
     async function ensureSnapshotsOpen() {
         if (snapshotsOpened) return;
-        snapshotArchive = await loadSnapshotArchive();
+        const archive = await loadSnapshotArchive();
+        if (snapshotsOpened) return;
+        snapshotArchive = archive;
         snapshotsOpened = true;
     }
 
@@ -225,6 +156,17 @@ export function createTauriJsonFileAdapter(options = {}) {
             ...scope,
             content: serializeSnapshotArchive(snapshotArchive)
         });
+    }
+
+    async function replaceSnapshots(snapshots) {
+        const previousArchive = snapshotArchive;
+        snapshotArchive = { ...snapshotArchive, snapshots };
+        try {
+            await persistSnapshots();
+        } catch (error) {
+            snapshotArchive = previousArchive;
+            throw error;
+        }
     }
 
     return {
@@ -263,9 +205,7 @@ export function createTauriJsonFileAdapter(options = {}) {
         },
         async readPersistedSnapshot(id) {
             if (!invoke) invoke = getInvoke(options);
-            const read = async () => (await loadSnapshotArchive()).snapshots.find(entry => entry.id === getCanonicalLegacySnapshotId(id));
-            let point = await read();
-            if (!point) { await this.migrateLegacySnapshotsIfNeeded(); point = await read(); }
+            const point = (await loadSnapshotArchive()).snapshots.find(entry => entry.id === String(id || ''));
             if (!point) throw new Error(`Snapshot ${id} wurde nicht gefunden.`);
             return point;
         },
@@ -273,118 +213,77 @@ export function createTauriJsonFileAdapter(options = {}) {
             if (!invoke) invoke = getInvoke(options);
             return (await loadSnapshotArchive()).snapshots;
         },
-        async saveBatch(batch) {
-            if (!opened) await this.open();
-            batch.deletes.forEach(key => {
-                delete state.records[String(key)];
+        saveBatch(batch) {
+            return queueWrite(async () => {
+                if (!opened) await this.open();
+                const records = state.records;
+                const previousRecords = { ...records };
+                try {
+                    batch.deletes.forEach(key => { delete records[String(key)]; });
+                    batch.upserts.forEach(([key, value]) => {
+                        if (value === null || value === undefined) return;
+                        records[String(key)] = String(value);
+                    });
+                    await persist();
+                } catch (error) {
+                    Object.keys(records).forEach(key => { delete records[key]; });
+                    Object.assign(records, previousRecords);
+                    throw error;
+                }
             });
-            batch.upserts.forEach(([key, value]) => {
-                if (value === null || value === undefined) return;
-                state.records[String(key)] = String(value);
-            });
-            await persist();
         },
         async readMetadata(key) {
             return state.metadata[String(key)] ?? null;
         },
-        async writeMetadata(key, value) {
-            state.metadata[String(key)] = value;
-            await persist();
+        writeMetadata(key, value) {
+            return queueWrite(async () => {
+                const metadata = state.metadata;
+                const name = String(key);
+                const previousValue = metadata[name];
+                const hadValue = Object.hasOwn(metadata, name);
+                metadata[name] = value;
+                try {
+                    await persist();
+                } catch (error) {
+                    if (hadValue) metadata[name] = previousValue;
+                    else delete metadata[name];
+                    throw error;
+                }
+            });
         },
         async listSnapshots() {
-            await this.migrateLegacySnapshotsIfNeeded();
             await ensureSnapshotsOpen();
             return snapshotArchive.snapshots.map(toSnapshotIndexEntry);
         },
         async readSnapshot(id) {
             await ensureSnapshotsOpen();
             const snapshotId = String(id || '');
-            let snapshot = snapshotArchive.snapshots.find(entry => String(entry?.id || '') === getCanonicalLegacySnapshotId(snapshotId));
-            if (!snapshot) {
-                await this.migrateLegacySnapshotsIfNeeded();
-                snapshot = snapshotArchive.snapshots.find(entry => String(entry?.id || '') === getCanonicalLegacySnapshotId(snapshotId));
-            }
+            const snapshot = snapshotArchive.snapshots.find(entry => String(entry?.id || '') === snapshotId);
             if (!snapshot) {
                 throw new Error(`Snapshot ${snapshotId} wurde nicht gefunden.`);
             }
             return snapshot;
         },
-        async writeSnapshot(snapshot) {
-            await ensureSnapshotsOpen();
-            const snapshotId = String(snapshot?.id || '');
-            if (!snapshotId) {
-                throw new Error('Snapshot-ID fehlt.');
-            }
-            const snapshots = snapshotArchive.snapshots.filter(entry => String(entry?.id || '') !== snapshotId);
-            snapshots.push(snapshot);
-            snapshotArchive = { ...snapshotArchive, snapshots };
-            await persistSnapshots();
-            return true;
-        },
-        // DS-2: mehrere Punkte mit einem Schreiben der Punktedatei (Spielbereich-Start mit Kopie).
-        async writeSnapshots(points) {
-            await ensureSnapshotsOpen();
-            const ids = new Set(points.map(point => String(point?.id || '')));
-            if (ids.has('') || ids.size !== points.length) throw new Error('Snapshot-ID fehlt oder ist doppelt.');
-            snapshotArchive = { ...snapshotArchive, snapshots: [...snapshotArchive.snapshots.filter(entry => !ids.has(String(entry?.id || ''))), ...points] };
-            await persistSnapshots();
-            return true;
-        },
-        async deleteSnapshot(id) {
-            await ensureSnapshotsOpen();
-            const snapshotId = String(id || '');
-            const snapshots = snapshotArchive.snapshots.filter(entry => String(entry?.id || '') !== snapshotId);
-            if (snapshots.length === snapshotArchive.snapshots.length) return false;
-            snapshotArchive = { ...snapshotArchive, snapshots };
-            await persistSnapshots();
-            return true;
-        },
-        async migrateLegacySnapshotsIfNeeded() {
-            if (!opened) await this.open();
-            await ensureSnapshotsOpen();
-            const report = createLegacyMigrationReport();
-            if (options.skipLegacySnapshotMigration) return report;
-            const legacyKeys = Object.keys(state.records || {}).filter(isLegacySnapshotKey);
-            const nextSnapshots = [...snapshotArchive.snapshots];
-            const migratedLegacyKeys = [];
-
-            legacyKeys.forEach(legacyKey => {
-                try {
-                    const legacySnapshot = parseLegacySnapshot(state.records[legacyKey]);
-                    if (!legacySnapshot) {
-                        report.skippedCount += 1;
-                        return;
-                    }
-                    const canonical = buildCanonicalSnapshotFromLegacy(legacyKey, legacySnapshot);
-                    const exists = nextSnapshots.some(entry => String(entry?.id || '') === canonical.id);
-                    if (exists) {
-                        report.skippedCount += 1;
-                    } else {
-                        nextSnapshots.push(canonical);
-                        migratedLegacyKeys.push(legacyKey);
-                        report.migratedCount += 1;
-                    }
-                    if (!canonical.activeProfileId) report.notStandardRestorableCount += 1;
-                } catch (err) {
-                    report.errors.push({ key: legacyKey, message: err?.message || String(err) });
-                }
+        writeSnapshot(snapshot) {
+            return queueWrite(async () => {
+                await ensureSnapshotsOpen();
+                const snapshotId = String(snapshot?.id || '');
+                if (!snapshotId) throw new Error('Snapshot-ID fehlt.');
+                const snapshots = snapshotArchive.snapshots.filter(entry => String(entry?.id || '') !== snapshotId);
+                snapshots.push(snapshot);
+                await replaceSnapshots(snapshots);
+                return true;
             });
-
-            if (migratedLegacyKeys.length > 0) {
-                const previousArchive = snapshotArchive;
-                snapshotArchive = { ...snapshotArchive, snapshots: nextSnapshots };
-                try {
-                    await persistSnapshots();
-                } catch (err) {
-                    snapshotArchive = previousArchive;
-                    throw err;
-                }
-                migratedLegacyKeys.forEach(legacyKey => {
-                    delete state.records[legacyKey];
-                });
-                await persist();
-            }
-            return report;
+        },
+        deleteSnapshot(id) {
+            return queueWrite(async () => {
+                await ensureSnapshotsOpen();
+                const snapshotId = String(id || '');
+                const snapshots = snapshotArchive.snapshots.filter(entry => String(entry?.id || '') !== snapshotId);
+                if (snapshots.length === snapshotArchive.snapshots.length) return false;
+                await replaceSnapshots(snapshots);
+                return true;
+            });
         },
         async quarantine() {
             if (!invoke) invoke = getInvoke(options);

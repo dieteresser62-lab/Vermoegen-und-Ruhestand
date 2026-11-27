@@ -28,7 +28,8 @@ import { projectSaleFlowState } from '../app/tranches/sale-flow-model.js';
     assertEqual(sums.plan - sums.done, sums.open, 'Punkt 4: Plan − verkauft = offen');
     const fresh = createTodoPlan(new MockDocument(), /** @type {any} */ ({ ...plan, status: 'offen', soldNet: 0, rows: rows.map(row => ({ ...row, soldNet: 0, restNet: row.planNet, status: 'offen' })) }))
         .textContent.replace(/\s+/g, ' ');
-    assert(fresh.includes('ca. 89.500 €'), `Punkt 4: nur die Handlungszeile gerundet mit „ca.“ (${fresh.slice(0, 200)})`);
+    // HP-3 (Ergänzung 6 FR-78): 89.312,16 € einmal aufgerundet (vorher Summe der je Zeile gerundeten 9.500 + 80.000 €).
+    assert(fresh.includes('ca. 90.000 €'), `Punkt 4: nur die Handlungszeile gerundet mit „ca.“ (${fresh.slice(0, 200)})`);
 }
 
 // Punkt 15 (Ergänzung 1 FR-81) · Martin und Petra unverheiratet, Martin 0 €, Petra 5.000 € Tagesgeld, ohne Aktien, Backtest ab 2000 (wie RK-3 P1):
@@ -44,7 +45,8 @@ import { projectSaleFlowState } from '../app/tranches/sale-flow-model.js';
     inputs.detailledTranches = [];
     inputs.startVermoegen = 5000;
     const entry = backtest(inputs).rows[0];
-    assertClose(entry.row.personalPayout.flexCut.reduce((sum, row) => sum + row.amount, 0), 9400, 0.01, 'Punkt 15: Kürzung unverändert 9.400 €');
+    // KR-1c (NG-5): Petras Tagesgeld bekommt 206 € Zins vor der Entscheidung (vorher 9.400 €).
+    assertClose(entry.row.personalPayout.flexCut.reduce((sum, row) => sum + row.amount, 0), 9194, 0.01, 'Punkt 15: Kürzung unverändert 9.194 €');
     const hint = 'Mit „Eine Person trägt“ legt die App die Einkünfte beider zusammen.';
     const text = protocolActionExplanation(entry, { source: 'backtest', inputs });
     assert(text.includes('Flex-Anteil von') && text.includes(hint), `Punkt 15: Hinweis bei gedeckten Einkünften (${text})`);

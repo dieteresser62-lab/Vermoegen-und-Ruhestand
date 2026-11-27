@@ -3,6 +3,9 @@
 Die festgeschriebene Arbeitsmappe des Herausgebers liefert die Eingaben für
 `UsShillerCapeDecisionChainV1`.
 
+Ein neues Datenjahr kommt nur als Jahreslieferung unter `jahre/<Jahr>/` dazu; Ablauf und Regeln stehen unter
+[Jahresdaten pflegen](../../../docs/reference/JAHRESDATEN.md).
+
 ## Quelle und Reihenidentität
 
 | Datei | Reihe / Verwendung | SHA-256 |

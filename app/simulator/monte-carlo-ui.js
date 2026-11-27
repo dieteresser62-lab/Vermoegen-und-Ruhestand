@@ -11,7 +11,9 @@ import { showSimulatorInputError } from './simulator-input-feedback.js';
 import { activateSimulatorTab } from './simulator-main-tabs.js';
 import { buildMonteCarloRunHint, renderMonteCarloRunHint, getMonteCarloHintMeasurement, monteCarloHintComparableKey } from './monte-carlo-run-hint.js';
 import { setFieldState } from '../shared/field-state.js';
+import { saveTextFile, SAVE_CANCELLED_TEXT } from '../shared/save-file.js';
 import { effectiveMonteCarloDurationValue, syncMonteCarloDurationDefault } from './monte-carlo-duration.js';
+import { documentMonteCarloDefaultRuns } from './monte-carlo-run-default.js';
 import {
     MONTE_CARLO_PARAMETER_LIMITS,
     estimateMonteCarloResourcesV1,
@@ -20,14 +22,14 @@ import {
 } from './monte-carlo-parameters.js';
 import {
     activateMonteCarloResultView,
-    completeMonteCarloCockpitRun,
+    completeMonteCarloCockpitRun, revealMonteCarloResult,
     syncMonteCarloCockpitStartState
 } from './mc-result-cockpit.js';
 
-function focusElement(element) {
+function focusElement(element, preventScroll = false) {
     if (typeof element?.focus !== 'function') return false;
     try {
-        element.focus({ preventScroll: false });
+        element.focus({ preventScroll });
     } catch {
         element.focus();
     }
@@ -160,9 +162,10 @@ export function updateMonteCarloResourceEstimate(parameters, { documentRef = glo
 }
 
 /**
+ * SD-1: Desktop-App mit Dialog „Speichern unter“, Browser als Download (startet noch im Aufruf).
  * @param download - Kontext für download.
  * @param [options] - Optionen des Aufrufers.
- * @returns Ergebnis der Operation.
+ * @returns Promise mit `{saved, path}`; `saved: false` nach Abbruch im Dialog.
  */
 export function triggerMonteCarloDownload(download, {
     documentRef = globalThis.document,
@@ -173,24 +176,8 @@ export function triggerMonteCarloDownload(download, {
         || typeof download.filename !== 'string' || !download.filename.endsWith('.json')) {
         throw new TypeError('Monte-Carlo-Download ist unvollstaendig.');
     }
-    if (!documentRef?.createElement || typeof urlApi?.createObjectURL !== 'function'
-        || typeof BlobCtor !== 'function') {
-        throw new Error('Der Browserdownload ist in dieser Umgebung nicht verfuegbar.');
-    }
-    const blob = new BlobCtor([download.content], { type: download.mimeType || 'application/json' });
-    const url = urlApi.createObjectURL(blob);
-    const anchor = documentRef.createElement('a');
-    anchor.href = url;
-    anchor.download = download.filename;
-    try {
-        documentRef.body?.appendChild?.(anchor);
-        anchor.click();
-    } finally {
-        if (typeof anchor.remove === 'function') anchor.remove();
-        else documentRef.body?.removeChild?.(anchor);
-        urlApi.revokeObjectURL?.(url);
-    }
-    return download.filename;
+    return saveTextFile({ filename: download.filename, content: download.content, mime: download.mimeType || 'application/json',
+        filterName: 'Monte-Carlo-Export', extensions: ['json'], doc: documentRef, urlApi, BlobCtor });
 }
 
 /**
@@ -313,7 +300,8 @@ export function createMonteCarloUI() {
                 cancelButton.style.display = 'none';
                 cancelButton.textContent = 'Monte-Carlo-Lauf abbrechen';
             }
-            focusElement(terminalFocusTarget);
+            // OP-1 (Punkt 3): Das Ergebnis scrollt mit Reiterzeilen in den Blick; der Fokus folgt ohne eigenes Scrollen.
+            focusElement(terminalFocusTarget, terminalFocusTarget === resultRegion && revealMonteCarloResult(resultRegion, { documentRef }));
             terminalFocusTarget = null;
         },
         showCancelled() {
@@ -506,14 +494,19 @@ export function createMonteCarloUI() {
             if (!exportButton || !exportActions) return false;
             publishedDuringRun = running;
             exportButton.disabled = false;
-            exportButton.onclick = () => {
+            // SD-1: Gesperrt, solange „Speichern unter“ offen ist; ein neuer Lauf behält die Sperre von clearRunExport.
+            const saveExport = async () => {
+                exportButton.disabled = true;
                 try {
-                    const filename = triggerMonteCarloDownload(download);
-                    if (exportStatus) exportStatus.textContent = `Export gespeichert: ${filename}`;
+                    const result = await triggerMonteCarloDownload(download);
+                    if (exportStatus) exportStatus.textContent = result.saved ? `Export gespeichert: ${result.path || download.filename}` : SAVE_CANCELLED_TEXT;
                 } catch (error) {
                     this.showError(error);
+                } finally {
+                    if (exportButton.onclick === saveExport) exportButton.disabled = false;
                 }
             };
+            exportButton.onclick = saveExport;
             exportActions.hidden = false;
             exportActions.style.display = 'flex';
             if (exportStatus) {
@@ -587,30 +580,22 @@ function readOptionalIntegerInput(elementId, description, { min = -Infinity, max
 
  *
  * @param [inputs] - Eingaben des Laufes.
- * @param [options] - Optionen des Aufrufers.
  */
-export function readMonteCarloParameters(inputs = null, { runsElementId = 'mcAnzahl' } = {}) {
+export function readMonteCarloParameters(inputs = null) {
     const methodeSelect = requireElement('mcMethode', 'Monte-Carlo Methode');
-    const runsDescription = runsElementId === 'mcAnzahl'
-        ? 'Anzahl der Simulationen'
-        : 'Sweep-Simulationen je Kombination';
-    const anzahlElement = requireElement(runsElementId, runsDescription);
+    const anzahlElement = requireElement('mcAnzahl', 'Anzahl der Simulationen');
     const durationElement = requireElement('mcDauer', 'Simulationsdauer in Jahren');
     // FR-75: Leeres Feld = automatisch bis Alter 110 der jüngsten Person (Vorgabe in der Normalisierung).
     if (inputs) syncMonteCarloDurationDefault(document, inputs);
     const blockSizeElement = requireElement('mcBlockSize', 'Blocklaenge');
-    const seedElement = requireElement('mcSeed', 'Zufalls-Seed');
+    const seedElement = requireElement('mcSeed', 'Zufallsstartwert');
     const rngModeElement = document.getElementById('rngMode');
     const startYearModeElement = document.getElementById('mcStartYearMode');
     const excludeEstimatedHistoryElement = document.getElementById('mcExcludeEstimatedHistory');
 
     return normalizeMonteCarloParametersV1({
-        anzahl: runsElementId === 'mcAnzahl'
-            ? anzahlElement.value
-            : readIntegerInput(runsElementId, runsDescription, {
-                min: MONTE_CARLO_PARAMETER_LIMITS.runs.minimum,
-                max: MONTE_CARLO_PARAMETER_LIMITS.runs.hardMaximum
-            }),
+        // MC-3: Ein geleertes Feld rechnet mit der Vorgabe der Seite (Beispielhaushalt 2.000, sonst wie bisher 10.000).
+        anzahl: anzahlElement.value === '' ? documentMonteCarloDefaultRuns(document) : anzahlElement.value,
         maxDauer: durationElement.value,
         blockSize: blockSizeElement.value,
         seed: seedElement.value,
@@ -624,9 +609,10 @@ export function readMonteCarloParameters(inputs = null, { runsElementId = 'mcAnz
 }
 
 /**
+ * @param {{defaultRuns?: number}} [options] Vorgabe der Laufzahl; sonst aus dem Spielbereich der Seite (MC-3).
  * @returns {void}
  */
-export function initMonteCarloResourceControls() {
+export function initMonteCarloResourceControls({ defaultRuns } = {}) {
     const runsElement = document.getElementById('mcAnzahl');
     const durationElement = document.getElementById('mcDauer');
     const estimateElement = document.getElementById('mcResourceEstimate');
@@ -638,6 +624,9 @@ export function initMonteCarloResourceControls() {
     const hintContent = doc.getElementById('mcRunHintContent');
     const hintStart = doc.getElementById('mcRunHintStart');
     const hintReset = doc.getElementById('mcRunHintReset');
+    // MC-3: Zurück-Knopf, Vergleichsintervall und Beschriftung folgen derselben Vorgabe (Beispielhaushalt 2.000, sonst 10.000).
+    const runsDefault = () => defaultRuns ?? documentMonteCarloDefaultRuns(doc);
+    if (hintReset) hintReset.textContent = `Auf ${formatInteger(runsDefault())} Läufe zurück`;
 
     const readCurrentInputs = () => { try { return getCommonInputs(); } catch { return null; } };
     let previousSignature = `${String(runsElement.value ?? '')}:${String(durationElement.value ?? '')}`;
@@ -658,14 +647,14 @@ export function initMonteCarloResourceControls() {
                     doc.getElementById('useCapeSampling')?.checked === true);
             } catch { /* Ohne vergleichbare Eingaben bleibt die Schätzung unbekannt. */ }
         }
-        const model = buildMonteCarloRunHint({ runs: runsElement.value, years,
+        const model = buildMonteCarloRunHint({ runs: runsElement.value, years, defaultRuns: runsDefault(),
             measurement, comparableKey, successRatio: comparableKey === measurement?.comparableKey ? measurement?.successRatio : null });
         if (hint) { hint.hidden = !model.visible; hint.dataset.severity = model.severe ? 'severe' : 'normal'; }
         if (hintContent) hintContent.innerHTML = renderMonteCarloRunHint(model);
         if (hintStart && model.visible) hintStart.textContent = model.severe ? 'Trotzdem rechnen' : `Mit ${formatInteger(model.runs)} Läufen rechnen`;
         try {
             updateMonteCarloResourceEstimate({
-                anzahl: runsElement.value,
+                anzahl: runsElement.value === '' ? runsDefault() : runsElement.value,
                 maxDauer: years
             });
         } catch {
@@ -693,7 +682,7 @@ export function initMonteCarloResourceControls() {
     });
     hintReset?.addEventListener('click', () => {
         if (hintReset.disabled || doc.getElementById('mcButton')?.disabled) return;
-        runsElement.value = '10000';
+        runsElement.value = String(runsDefault());
         runsElement.dispatchEvent(new Event('input', { bubbles: true }));
     });
     // Änderungen der übrigen Annahmen invalidieren die Vergleichbarkeit lesend.

@@ -1,8 +1,18 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { fz1References } from './helpers/fz-1-expectations.mjs';
+import { readJA1References } from './helpers/ja-1-expectations.mjs';
+import { readHP4References } from './helpers/hp-4-expectations.mjs';
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import { readVB1References } from './helpers/vb-1-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
+import { readNK1References } from './helpers/nk-1-expectations.mjs';
 import { readLE1References } from './helpers/le-1-expectations.mjs';
 import { withPreviousRunEvidence } from './helpers/le-1b-expectations.mjs';
+import { hashWithoutExemptHome } from './helpers/family-home-log-hash.mjs';
 import { readGU1References } from './helpers/gu-1-expectations.mjs';
 import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
 import { readPFA2References } from './helpers/pfa-2-expectations.mjs';
+const readFZ1Reference = fz1References(import.meta.url);
 const readHE4References = value => readPFA1References(beforePFA1References(value));
 // FR-72 Teil 3 (HE-3): „Amtlicher Durchschnitt“ zieht in Monte Carlo die Pflegeform.
 // Jede Person erhält einmal U aus dem eigenen Strom `CARE_FORM`; bei Grad g gilt Heim, wenn U kleiner als
@@ -16,19 +26,15 @@ import { readHE4References as beforePFA1References } from './helpers/he-4-expect
 import { EngineAPI } from '../engine/index.mjs';
 import { inputs as fixtureInputs, runFixture } from './extended/parity-replay-fixture.mjs';
 import { initMcRunState, simulateOneYear, makeDefaultCareMeta, calcCareCost } from '../app/simulator/simulator-engine-wrapper.js';
-import { getDataVersion } from '../app/simulator/simulator-engine-helpers.js';
-import { priceMonteCarloCareForYear, createMonteCarloLifeState, createMonteCarloPostRuinLifeState,
+import { priceMonteCarloCareForYear, createMonteCarloLifeState,
     updateMonteCarloLifeEventsForYear } from '../app/simulator/mc-life-events.js';
-import { normalizeWidowOptions } from '../app/simulator/simulator-sweep-utils.js';
+import { normalizeWidowOptions } from '../app/simulator/simulator-run-utils.js';
 import { allLivingInExternalCare, homeRentForYear, sellHomesForExternalCare } from '../app/simulator/simulator-home-sale.js';
 import { careFormForPerson, isInResidentialCare } from '../app/shared/care-benefits.js';
 import { officialCareCosts } from '../app/shared/household-care-values.js';
 import { livesInResidentialCare } from '../app/simulator/simulator-residential-care.js';
 import { rng } from '../app/simulator/simulator-utils.js';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
-import { createStressReplayCaptureRequest, materializeStressReplayPathV1 } from '../app/simulator/stress-replay-path-materializer.js';
-import { createStressReplayFingerprint } from '../app/simulator/stress-replay-contract.js';
-import { runStressReplayPathV1 } from '../app/simulator/stress-replay-runner.js';
 import { runDecisionComparison } from '../app/simulator/decision-comparison.js';
 import { measurementInputs, parameters } from './helpers/ek-1b-measurement.mjs';
 
@@ -235,7 +241,7 @@ function runYear(inputs, { p1, p2 = null, yearIndex, p1Alive = true, p2Alive = i
     assert(officialPath.residentialRows > 0, `Amtlich: gezogene Heimjahre im Lauf (${officialPath.residentialRows} Jahre)`);
 }
 
-// Replay, Fortsetzung nach Ruin und Wiederholung übernehmen die gespeicherte Zahl ohne neue Ziehung.
+// Wiederholter Preisaufruf und gespeicherter Zustand übernehmen die gezogene Zahl ohne neue Ziehung.
 {
     const p1 = careMeta(4, .30), p2 = makeDefaultCareMeta(true, 'w'), state = initMcRunState(couple);
     for (const yearIndex of [0, 1]) {
@@ -243,44 +249,10 @@ function runYear(inputs, { p1, p2 = null, yearIndex, p1Alive = true, p2Alive = i
         priceMonteCarloCareForYear(couple, p1, p2, state, yearIndex, true, true, true);
     }
     assertEqual(p1.heimJahr, 2, 'Wiederholter Preisaufruf zählt nicht weiter und zieht nicht neu');
-    const replayed = JSON.parse(JSON.stringify({ p1, p2 }));
-    const replay = simulateOneYear(state, couple, year, 1, replayed.p1, 0, { p1Alive: true, p2Alive: true, care: replayed }, 1, EngineAPI);
-    assertEqual(replay.logData.floor_brutto, 69612, 'Replay aus der JSON-Kopie: Heimjahr 2 aus dem gespeicherten Zustand');
-    assertEqual(replayed.p1.heimZufall, .30, 'Replay-Kopie trägt die Zufallszahl');
-    const options = normalizeWidowOptions(couple.widowOptions);
-    const shadow = createMonteCarloPostRuinLifeState(couple, rng(99), { widowOptions: options, careMetaP1: p1, careMetaP2: p2 });
-    const fresh = createMonteCarloLifeState(couple, rng(99), options);
-    assertEqual(shadow.careMetaP1.heimZufall, .30, 'Fortsetzung nach Ruin übernimmt U der Person');
-    assert(fresh.careMetaP1.heimZufall !== .30, 'Der Schattenstrom hätte eine andere Zahl gezogen');
-    assertEqual(shadow.careMetaP1.heimJahr, 2, 'Fortsetzung nach Ruin übernimmt das Heimjahr');
-}
-
-// Stress-Replay eines echten Laufs mit gezogenem Heim: gleiche Jahreswerte aus den gespeicherten Pflegedaten.
-{
-    const inputs = { ...structuredClone(fixtureInputs), pflegefallLogikAktivieren: true, pflegeModellTyp: 'chronisch', pflegeKostenStaffelPreset: 'amtlich' };
-    for (const grade of [1, 2, 3, 4, 5]) inputs.pflegeGradeConfigs[grade].zusatz = official[grade];
-    const monteCarloParams = { anzahl: 40, maxDauer: 25, methode: 'block', blockSize: 1, seed: 777, rngMode: 'per-run-seed' };
-    const args = { inputs, widowOptions: inputs.widowOptions, monteCarloParams, useCapeSampling: false, engine: EngineAPI };
-    const all = await runMonteCarloChunk({ ...args, logIndices: Array.from({ length: 40 }, (_, i) => i) });
-    const heimRow = row => row.CareP1_Form === 'residential' || row.CareP2_Form === 'residential';
-    const selected = all.runMeta.find(meta => meta.logDataRows.length === monteCarloParams.maxDauer && meta.logDataRows.some(heimRow));
-    assert(Boolean(selected), 'Replay: ein Lauf erreicht das Heim und den Horizont');
-    const source = await runMonteCarloChunk({ ...args, logIndices: [selected.index], stressReplayCapture: createStressReplayCaptureRequest([selected.index]) });
-    const meta = source.runMeta.find(entry => entry.index === selected.index);
-    const draws = meta.stressReplayCapture.years.flatMap(entry => entry.householdEvents.flatMap(event => [event.careMetaP1?.heimZufall, event.careMetaP2?.heimZufall]))
-        .filter(value => value !== undefined);
-    assert(draws.length > 0 && draws.every(value => typeof value === 'number'), 'Replay-Aufzeichnung speichert U im Personenzustand');
-    const path = materializeStressReplayPathV1({ capture: meta.stressReplayCapture, sourceLogRows: meta.logDataRows,
-        sourceRequest: { schemaVersion: 'StressReplayE2ESourceRequestV1', inputs, widowOptions: inputs.widowOptions, monteCarloParams, useCapeSampling: false },
-        dataFingerprint: createStressReplayFingerprint({ dataVersion: getDataVersion() }),
-        engineFingerprint: createStressReplayFingerprint({ engineVersion: EngineAPI.version || 'EngineAPI' }),
-        scenarioKey: 'he-3-amtlich', selectionMetric: 'nominal_terminal_wealth_eur' });
-    const replay = runStressReplayPathV1({ path, baselineInputs: inputs, sourceScenarioLog: meta.logDataRows, engine: EngineAPI });
-    assertEqual(replay.reconciliation.matched, true, 'Stress-Replay stimmt mit dem Monte-Carlo-Lauf überein');
-    const fields = row => [row.floor_brutto, row.CareP1_Form, row.CareP1_HeimJahr, row.CareP2_Form, row.CareP2_HeimJahr, row.pflege_heimkosten];
-    assert(replay.scenarioLog.records.filter(heimRow).length > 0, 'Stress-Replay: Heimjahre vorhanden');
-    assertEqual(JSON.stringify(replay.scenarioLog.records.filter(heimRow).map(fields)), JSON.stringify(meta.logDataRows.filter(heimRow).map(fields)),
-        'Stress-Replay: Heimjahre und Beträge wie im Lauf');
+    const copied = JSON.parse(JSON.stringify({ p1, p2 }));
+    const fromCopy = simulateOneYear(state, couple, year, 1, copied.p1, 0, { p1Alive: true, p2Alive: true, care: copied }, 1, EngineAPI);
+    assertEqual(fromCopy.logData.floor_brutto, 69612, 'Jahr aus der JSON-Kopie: Heimjahr 2 aus dem gespeicherten Zustand');
+    assertEqual(copied.p1.heimZufall, .30, 'JSON-Kopie trägt die Zufallszahl');
 }
 
 // Entscheidungsvergleich: Die Variante spielt die aufgezeichneten Ziehungen ab, auch U aus CARE_FORM.
@@ -305,13 +277,13 @@ function runYear(inputs, { p1, p2 = null, yearIndex, p1Alive = true, p2Alive = i
     const chunk = await runMonteCarloChunk({ inputs: withCare, monteCarloParams: { anzahl: 12, maxDauer: 30, methode: 'block', blockSize: 1, seed: 31 },
         logIndices: new Set(Array.from({ length: 12 }, (_, i) => i)), widowOptions: withCare.widowOptions, useCapeSampling: false, engine: EngineAPI });
     // HE-4: Die Pflegekennzahl ist netto; mit abgeschalteter Netto-Kennzahl wieder der Hash von 8dc432d6.
-    assertEqual(hash(withPreviousRunEvidence(chunk)), readFI1References(readLE1References(readGU1References(readHE4References('d5ecdf599d9cb8fe91f6789bb9d7d64443e96f59609743df238037629b302688')))), 'Ohne Amtlich: vollständiges Monte-Carlo-Ergebnis wie vor HE-3, Pflegekennzahl netto (Laufbeleg wie vor LE-1b)');
+    assertEqual(hashWithoutExemptHome(withPreviousRunEvidence(chunk)), readFZ1Reference(readJA1References(readHP4References(readKR1cReferences(readVB1References(readNK1References(readFI1References(readLE1References(readGU1References(readHE4References('d5ecdf599d9cb8fe91f6789bb9d7d64443e96f59609743df238037629b302688')))))))))), 'Ohne Amtlich: Monte-Carlo-Ergebnis im früheren Protokollformat wie vor HE-3, Pflegekennzahl netto (Laufbeleg wie vor LE-1b)');
     const backtestInputs = { ...withCare, pflegeKostenStaffelPreset: 'amtlich', careToday: { grade: 4, form: 'residential', progression: 'usual' },
         partner: { ...withCare.partner, careToday: { grade: 4, progression: 'usual' } } };
     for (const grade of [1, 2, 3, 4, 5]) backtestInputs.pflegeGradeConfigs[grade].zusatz = official[grade];
     assertEqual(hash(runFixture({ input: backtestInputs, selectedPeriod: { startYear: 2000, endYear: 2011 } })),
-        readLE1References(// FR-73 Paket 2: beide heute Grad 4 im Heim, der Backtest verkauft das Haus im ersten Jahr wie Monte Carlo.
-        readGU1References(readPFA2References(readPFA1References('7ff82ffb654eb2363b5f9315114d1adec70f1502d924afcaf1029224253b542e')))), 'Backtest mit Amtlich: Bytes wie vor HE-3');
+        readFZ1Reference(readKR1cReferences(readLE1References(// FR-73 Paket 2: beide heute Grad 4 im Heim, der Backtest verkauft das Haus im ersten Jahr wie Monte Carlo.
+        readGU1References(readPFA2References(readPFA1References('7ff82ffb654eb2363b5f9315114d1adec70f1502d924afcaf1029224253b542e')))))), 'Backtest mit Amtlich: Bytes wie vor HE-3');
 }
 
 // Neue Hilfen: Heimanteile ungerundet, eigener Strom CARE_FORM (P1 zieht zuerst), Staffel außerhalb von Monte Carlo.

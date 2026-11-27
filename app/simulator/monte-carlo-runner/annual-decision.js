@@ -1,6 +1,5 @@
 // @ts-check
 
-import { createReplayAnnualRecord } from './replay-records.js';
 import { recordMonteCarloCareNeedYear } from '../mc-run-metrics.js';
 import { resolveSimulatorCumulativeInflationFactor, resolveMonteCarloCape, simulateOneYear } from '../simulator-engine-wrapper.js';
 import { computeRentAdjRate } from '../simulator-portfolio.js';
@@ -12,17 +11,6 @@ import { normalizeTechnicalPathError } from './batch.js';
 export function decideAnnualYear(context) {
 
     if (context.runEndedBecauseAllDied) {
-        if (context.replayCapture) {
-            context.replayCapture.years.push(createReplayAnnualRecord({
-                yearIndex: context.simulationsJahr,
-                yearData: context.yearData,
-                recordType: 'terminal_death',
-                stressEvents: context.replayStressEvents,
-                tailRiskOverlay: context.tailRiskOverlay,
-                householdEvent: context.replayHouseholdEvent
-            }));
-            context.replayCapture.sourcePrefixLength = context.replayCapture.years.length;
-        }
         return true;
     }
 

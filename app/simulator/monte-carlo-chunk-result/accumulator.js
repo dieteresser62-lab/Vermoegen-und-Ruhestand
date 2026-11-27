@@ -34,6 +34,8 @@ export function createMonteCarloChunkAccumulatorV1(totalRuns, {
         samplingDiagnostics: null,
         wealthFan: null,
         wealthFanMissing: false,
+        careAid: /** @type {{runIndices: number[], firstYears: number[], sumsNominal: number[]}|null} */ (null),
+        droppedExpense: /** @type {{runIndices: number[], firstYears: number[], sumsNominal: number[]}|null} */ (null),
         contributions: new Map()
     };
 }
@@ -78,6 +80,12 @@ export function mergeMonteCarloChunkResultV1(accumulator, result, {
         }
     }
 
+    for (const key of /** @type {const} */ (['careAid', 'droppedExpense'])) if (result[key]) {
+        const target = accumulator[key] ||= { runIndices: [], firstYears: [], sumsNominal: [] };
+        target.runIndices.push(...result[key].runIndices);
+        target.firstYears.push(...result[key].firstYears);
+        target.sumsNominal.push(...result[key].sumsNominal);
+    }
     // Höchstens eine Gesamtmatrix. contributions behalten keine Fächermatrizen.
     if (result.displayHomeValueFan) accumulator.displayHomeValueFan = mergeHomeWealthFan(accumulator.displayHomeValueFan, result.displayHomeValueFan);
     if (result.wealthFan && !accumulator.wealthFanMissing) {

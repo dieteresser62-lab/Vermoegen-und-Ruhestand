@@ -1,13 +1,21 @@
 /** @import * as AnalysisTypes from '../../typcheck/simulator-analysis.js' */
 /** @import * as CoreTypes from '../../typcheck/rechenkern.js' */
 import { createWealthFan, createWealthFanPath, recordWealthFanYear, commitWealthFanPath, mergeWealthFan,
-    classifyWealthFanValue, WEALTH_FAN_CLASS_COUNT, buildWealthFanModel } from './wealth-fan-aggregation.js';
+    classifyWealthFanValue, WEALTH_FAN_CLASS_COUNT, buildWealthFanModel, wealthFanTransferables } from './wealth-fan-aggregation.js';
+
+const SUM_KEYS = ['moneyReal', 'moneyNominal', 'homeReal', 'homeNominal', 'homeSelfReal', 'homeSelfNominal'];
 
 // Zusätzliche Anzeigeaggregation. Der bestehende Geldfächer bleibt bytegleich.
 /** @param {number} horizon @returns Vermögensfächer mit getrennten Geld- und Immobilienanteilen. */
 export function createHomeWealthFan(horizon) {
     const fan = createWealthFan(horizon);
-    return { fan, ...Object.fromEntries(['moneyReal', 'moneyNominal', 'homeReal', 'homeNominal', 'homeSelfReal', 'homeSelfNominal'].map(key => [key, new Float64Array(fan.real.length)])) };
+    return { fan, ...Object.fromEntries(SUM_KEYS.map(key => [key, new Float64Array(fan.real.length)])) };
+}
+
+/** NG-W (W1): Der Worker überträgt auch den Gesamtvermögensfächer, statt ihn zu kopieren.
+ * @param {CoreTypes.HomeWealthFan | null | undefined} source @returns {ArrayBufferLike[]} Klassen-, Zähler- und Summenpuffer. */
+export function homeWealthFanTransferables(source) {
+    return source?.fan ? [...wealthFanTransferables(source.fan), ...SUM_KEYS.filter(key => source[key]?.buffer).map(key => source[key].buffer)] : [];
 }
 
 /**
@@ -62,11 +70,50 @@ export function mergeHomeWealthFan(target, source) {
     if (!source) return target;
     target ||= createHomeWealthFan(source.fan.horizonYears);
     mergeWealthFan(target.fan, source.fan);
-    for (const key of ['moneyReal', 'moneyNominal', 'homeReal', 'homeNominal', 'homeSelfReal', 'homeSelfNominal']) {
+    for (const key of SUM_KEYS) {
         const values = source[key] || source[key.replace('homeSelf', 'home')];
         for (let i = 0; i < target[key].length; i++) target[key][i] += values[i];
     }
     return target;
+}
+
+/** @param {ArrayLike<number>} counts @param {number} offset @param {number} rank @returns {number} Klasse am Rang einer Jahreszeile, -1 ohne Klasse. */
+function classAtRank(counts, offset, rank) {
+    let seen = 0;
+    for (let bin = 0; bin < WEALTH_FAN_CLASS_COUNT; bin++) {
+        seen += counts[offset + bin];
+        if (seen > rank) return bin;
+    }
+    return -1;
+}
+
+/** HP-4: Kopie für das gemerkte Monte-Carlo-Ergebnis. Die Geld- und Immobiliensummen bleiben nur in den Klassen, die homeWealthFanModel
+ * liest: an den Quantilrängen und je ein Beleg für selbst genutzte und vermietete Immobilien. Die Anzeige bleibt gleich, der Eintrag klein.
+ * @param {CoreTypes.HomeWealthFan} source @returns {CoreTypes.HomeWealthFan} */
+export function compactHomeWealthFan(source) {
+    if (!source?.fan) return source;
+    const compact = { ...source };
+    for (const mode of ['real', 'nominal']) {
+        const suffix = mode === 'real' ? 'Real' : 'Nominal', keep = new Set();
+        for (const row of buildWealthFanModel(source.fan, mode).years) {
+            const offset = row.year * WEALTH_FAN_CLASS_COUNT, count = row.alive - row.missing;
+            for (const percent of Object.keys(row.quantiles)) {
+                const rank = (count - 1) * Number(percent) / 100;
+                for (const bin of [classAtRank(source.fan[mode], offset, Math.floor(rank)), classAtRank(source.fan[mode], offset, Math.ceil(rank))]) {
+                    if (bin >= 0) keep.add(offset + bin);
+                }
+            }
+        }
+        const homes = source[`home${suffix}`], self = source[`homeSelf${suffix}`] || homes;
+        for (const index of [self.findIndex(value => value > 0), homes.findIndex((value, i) => value - self[i] > .001)]) if (index >= 0) keep.add(index);
+        for (const key of [`money${suffix}`, `home${suffix}`, `homeSelf${suffix}`]) {
+            if (!source[key]) continue;
+            const values = new Float64Array(source[key].length);
+            for (const index of keep) values[index] = source[key][index];
+            compact[key] = values;
+        }
+    }
+    return compact;
 }
 
 /** Zusammensetzung derselben Gesamtvermögensklasse, keine Summe unabhängiger Perzentile.
@@ -81,18 +128,12 @@ export function homeWealthFanModel(source, mode = 'real', moneyFan = null) {
         for (const [percent, quantile] of Object.entries(row.quantiles)) {
             const rank = (count - 1) * Number(percent) / 100;
             const atRank = (rank, part = 'money') => {
-                let seen = 0;
-                for (let bin = 0; bin < WEALTH_FAN_CLASS_COUNT; bin++) {
-                    const n = counts[offset + bin];
-                    seen += n;
-                    if (seen > rank) {
-                        const money = source[mode === 'real' ? 'moneyReal' : 'moneyNominal'][offset + bin];
-                        const home = source[mode === 'real' ? 'homeReal' : 'homeNominal'][offset + bin];
-                        const self = source[mode === 'real' ? 'homeSelfReal' : 'homeSelfNominal']?.[offset + bin] ?? home;
-                        return money + home > 0 ? (part === 'self' ? self : money) / (money + home) : 0;
-                    }
-                }
-                return null;
+                const bin = classAtRank(counts, offset, rank);
+                if (bin < 0) return null;
+                const money = source[mode === 'real' ? 'moneyReal' : 'moneyNominal'][offset + bin];
+                const home = source[mode === 'real' ? 'homeReal' : 'homeNominal'][offset + bin];
+                const self = source[mode === 'real' ? 'homeSelfReal' : 'homeSelfNominal']?.[offset + bin] ?? home;
+                return money + home > 0 ? (part === 'self' ? self : money) / (money + home) : 0;
             };
             const low = atRank(Math.floor(rank)), high = atRank(Math.ceil(rank));
             quantile.money = low === null || high === null || quantile.value === null ? null

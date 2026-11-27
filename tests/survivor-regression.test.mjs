@@ -4,7 +4,7 @@ import { initMcRunState, simulateOneYear } from '../app/simulator/simulator-engi
 import { calculateHouseholdPensionForYear, survivorIncomeOffset, CURRENT_PENSION_VALUE } from '../app/simulator/simulator-household-pension.js';
 import { survivorFloorPercent, finishSurvivorYear } from '../app/simulator/simulator-survivor.js';
 import { createMonteCarloLifeState, updateMonteCarloLifeEventsForYear } from '../app/simulator/mc-life-events.js';
-import { normalizeWidowOptions } from '../app/simulator/simulator-sweep-utils.js';
+import { normalizeWidowOptions } from '../app/simulator/simulator-run-utils.js';
 import { rng } from '../app/simulator/simulator-utils.js';
 import { readWidowOptions } from '../app/simulator/simulator-input-pension.js';
 import { buildSimulatorInputsFromProfileData } from '../app/simulator/simulator-profile-inputs.js';

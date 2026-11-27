@@ -62,6 +62,7 @@ function candidateFromTranche(tranche, profile, index, profileRank = undefined) 
         name: tranche?.name || null,
         isin: tranche?.isin || null,
         purchaseDate: tranche?.purchaseDate || null,
+        simulationPurchaseOrder: tranche?.simulationPurchaseOrder,
         purchaseStamp,
         tqf,
         taxExempt,

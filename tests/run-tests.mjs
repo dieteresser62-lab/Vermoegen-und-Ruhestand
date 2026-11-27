@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { spawn, ChildProcess } from 'node:child_process';
 import os from 'node:os';
 import { performance } from 'node:perf_hooks';
+import { getTestProfile } from './helpers/test-profil.mjs';
+import { gitFreieUmgebung } from './helpers/git-isoliert.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,14 +46,14 @@ export const QUICK_TESTS_DEPRECATED_MESSAGE =
 
 export const TEST_EXECUTION_POLICY = Object.freeze({
     'td-1b-corrections.test.mjs': Object.freeze({ mode: 'isolated', reason: 'Eigener Persistenzadapter für Korrekturverlauf, Sicherung und Spielbereich.' }),
-    'ff-1b-expenses.test.mjs': Object.freeze({ mode: 'isolated', reason: 'Eigener Persistenzadapter für Personendateien und FF-1b-Gegenproben.' }),
+    'ff-1b-expenses.test.mjs': Object.freeze({ mode: 'isolated', reason: 'Eigene Dialog- und DOM-Doppel für die FF-1b-Gegenproben.' }),
     'ff-1-expenses.test.mjs': Object.freeze({ mode: 'isolated', reason: 'Eigener Persistenzadapter für CSV, Sicherung und Personenaustausch mit Bedarfaufteilung.' }),
     'ph-1b-followup.test.mjs': Object.freeze({ mode: 'isolated', reason: 'Eigener Persistenzadapter für PH-1b-Gegenproben und Altbestand.' }),
     'ph-1-recovery.test.mjs': Object.freeze({ mode: 'isolated', reason: 'Eigener Persistenzadapter für Haushalts- und Löschrückkehrpunkte.' }),
     'ph-1-household.test.mjs': Object.freeze({ mode: 'isolated', reason: 'Eigene synthetische Haushalte für FR-65 und schreibfreie Importablehnung.' }),
     'md-2-scenarios.test.mjs': Object.freeze({ mode: 'isolated', reason: 'Eigener synthetischer MC-Kontext für Renditeauswahl und Stationary mit Immobilie.' }),
     'zg-1-equalization.test.mjs': Object.freeze({ mode: 'isolated', reason: 'Synthetische Zugewinn-, Wohnrecht- und Importproben für ZG-1.' }),
-    'qs-h-regressions.test.mjs': Object.freeze({ mode: 'isolated', reason: 'Eigene synthetische Simulator-, Replay- und Persistenzgegenproben für QS-H.' }),
+    'qs-h-regressions.test.mjs': Object.freeze({ mode: 'isolated', reason: 'Eigene synthetische Simulator-, Monte-Carlo- und Persistenzgegenproben für QS-H.' }),
     'qs-g-regressions.test.mjs': Object.freeze({ mode: 'isolated', reason: 'Eigene synthetische Persistenz- und Dialoggegenproben für QS-G.' }),
     'qs-f-regressions.test.mjs': Object.freeze({ mode: 'isolated', reason: 'Eigener synthetischer Abschlussdienst und Mehrjahres-Gegenproben für QS-F.' }),
     'qs-c-withdrawal.test.mjs': Object.freeze({ mode: 'isolated', reason: 'Synthetischer Simulator-DOM und Entnahme-/Steuer-Gegenproben für QS-C.' }),
@@ -68,6 +70,14 @@ export const TEST_EXECUTION_POLICY = Object.freeze({
         reason: 'Eigener Simulator-DOM, Persistenzadapter und echte Worker-Threads für VS-1.'
     }),
     'decision-comparison.test.mjs': Object.freeze({
+        mode: 'isolated',
+        reason: 'Synthetischer Simulator-Seitenweg mit eigenem DOM und Persistenzadapter.'
+    }),
+    'decision-comparison-zielsuche.test.mjs': Object.freeze({
+        mode: 'isolated',
+        reason: 'Synthetischer Simulator-Seitenweg mit eigenem DOM und Persistenzadapter.'
+    }),
+    'decision-comparison-abwaerts.test.mjs': Object.freeze({
         mode: 'isolated',
         reason: 'Synthetischer Simulator-Seitenweg mit eigenem DOM und Persistenzadapter.'
     }),
@@ -89,18 +99,7 @@ export const TEST_EXECUTION_POLICY = Object.freeze({
     }),
     'simulator-backtest-characterization.test.mjs': Object.freeze({
         mode: 'isolated',
-        referenceRuntime: Object.freeze({
-            platform: 'win32',
-            nodeVersion: 'v25.2.1',
-            architecture: 'x64'
-        }),
-        command: 'node tests/run-single.mjs tests/simulator-backtest-characterization.test.mjs',
-        reason: 'Byte-exact historical evidence is pinned to its recorded Windows x64 and Node v25.2.1 runtime.'
-    }),
-    'auto-optimize-worker-contract.test.mjs': Object.freeze({
-        mode: 'isolated',
-        instrumentAssertions: true,
-        reason: 'Uses legacy local assertion helpers and worker/browser globals.'
+        reason: 'Validierung und Ablauf auf allen Plattformen; bytegenaue Belege prüft die Datei nur unter win32/Node v25.2.1/x64.'
     }),
     'expenses-page.test.mjs': Object.freeze({
         mode: 'isolated',
@@ -129,7 +128,7 @@ export const TEST_EXECUTION_POLICY = Object.freeze({
     }),
     'simulator-page-dialogs.test.mjs': Object.freeze({
         mode: 'isolated',
-        reason: 'Installs simulator DOM, navigation guard and window globals for the page dialog fixtures; shared state would leak into simulator-sweep.test.mjs.'
+        reason: 'Installs simulator DOM, navigation guard and window globals for the page dialog fixture; shared state would leak into other simulator tests.'
     }),
     'health-bucket.test.mjs': Object.freeze({
         mode: 'isolated',
@@ -153,7 +152,7 @@ export const TEST_EXECUTION_POLICY = Object.freeze({
     }),
     'simulator-overview-summary-integration.test.mjs': Object.freeze({
         mode: 'isolated',
-        reason: 'Initialisiert den dokumentlokalen Replay-Singleton mit eigenen DOM-, Speicher- und Runnerabhängigkeiten.'
+        reason: 'Echter MC-Anzeigeweg mit eigenem Dokument sowie eigenen Speicher- und Runnerabhängigkeiten.'
     }),
     'simulator-ui-orchestration.test.mjs': Object.freeze({
         mode: 'isolated',
@@ -173,19 +172,59 @@ export const TEST_EXECUTION_POLICY = Object.freeze({
         instrumentAssertions: true,
         reason: 'Uses node:assert plus legacy numeric assertion helpers.'
     }),
+    'backtest-data-validation-slice-14.test.mjs': Object.freeze({
+        mode: 'isolated',
+        importAdapter: 'grundbestand',
+        reason: 'JD-2a: Der bytegenau festgeschriebene Beleg vergleicht den validierten Stand 1925–2025; der Import-Adapter setzt dafür die Grundbestandssicht.'
+    }),
+    'backtest-data-validation-slice-15.test.mjs': Object.freeze({
+        mode: 'isolated',
+        importAdapter: 'grundbestand',
+        reason: 'JD-2a: Der bytegenau festgeschriebene Beleg vergleicht den validierten Stand 1925–2025; der Import-Adapter setzt dafür die Grundbestandssicht.'
+    }),
+    'tranchen-history-returns.test.mjs': Object.freeze({
+        mode: 'serial',
+        reason: 'Zeitmessung unter 200 ms; läuft allein nach dem Pool, damit Last sie nicht kippt.'
+    }),
     'browser-smoke.test.mjs': Object.freeze({
         mode: 'separate-gate',
         command: 'npm run test:browser',
         reason: 'Requires Playwright and its managed local HTTP server.'
+    }),
+    'gn-2-renate-mc.test.mjs': Object.freeze({
+        mode: 'separate-gate',
+        heavyProfile: true,
+        command: 'npm run test:schwer',
+        reason: 'Der Sollfall GN-2 rechnet 10.000 Monte-Carlo-Läufe und gehört deshalb in die Prüfkette, nicht in den Alltagslauf.'
+    }),
+    'jahresdaten-rueckwaertsprobe.test.mjs': Object.freeze({
+        mode: 'separate-gate',
+        heavyProfile: true,
+        command: 'npm run test:schwer',
+        reason: 'JD-2a: Die Rückwärtsprobe 2025 übernimmt ein Datenjahr in einer Wegwerfkopie; sie gehört in die Prüfkette.'
+    }),
+    'jahresdaten-gegenprobe.test.mjs': Object.freeze({
+        mode: 'separate-gate',
+        heavyProfile: true,
+        command: 'npm run test:schwer',
+        reason: 'JD-2a: Die Gegenprobe übernimmt ein erfundenes Folgejahr und fährt alle jahresabhängigen Tests in der Kopie (mehrere Minuten).'
     })
 });
+
+/** Nicht versionierte Dauern des letzten vollständigen Laufs je Profil; nur für die Reihenfolge, nie für das Ergebnis. */
+export const DURATION_FILE = path.join(__dirname, '..', '.testlauf', 'dauern.json');
 
 export function getTestExecutionPolicy(file, {
     platform = process.platform,
     nodeVersion = process.version,
-    architecture = process.arch
+    architecture = process.arch,
+    profile = getTestProfile()
 } = {}) {
     const configured = TEST_EXECUTION_POLICY[file];
+    // Im Profil „schwer“ wechselt nur ein ausdrücklich markiertes Tor in den gemeinsamen Pool.
+    if (configured?.mode === 'separate-gate' && configured.heavyProfile && profile === 'schwer') {
+        return { mode: 'isolated', reason: configured.reason };
+    }
     if (configured?.mode === 'separate-gate') return configured;
     const platformMatches = !configured?.platforms || configured.platforms.includes(platform);
     const referenceRuntime = configured?.referenceRuntime;
@@ -198,7 +237,8 @@ export function getTestExecutionPolicy(file, {
         return {
             mode: 'separate-gate',
             command: configured.command,
-            reason: configured.reason
+            reason: configured.reason,
+            referenceRuntimeMismatch: !referenceRuntimeMatches
         };
     }
     // Serial resource gates must remain serial even with the legacy isolation flag.
@@ -333,6 +373,43 @@ function printFileResult(file, policy, result, durationSeconds = 0) {
     );
 }
 
+/** Liest die Dauern für ein Profil; Werte des anderen Profils füllen Lücken. Fehlt die Datei oder ist sie unlesbar: null.
+ * @param {'schnell'|'schwer'} profile @param {string} [file] @returns {Record<string, number>|null} */
+export function readFileDurations(profile, file = DURATION_FILE) {
+    let data;
+    try { data = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
+    if (!data || typeof data !== 'object') return null;
+    const valid = map => Object.fromEntries(Object.entries(map && typeof map === 'object' ? map : {})
+        .filter(([, seconds]) => typeof seconds === 'number' && Number.isFinite(seconds) && seconds >= 0));
+    const other = profile === 'schwer' ? 'schnell' : 'schwer';
+    const durations = { ...valid(data[other]), ...valid(data[profile]) };
+    return Object.keys(durations).length ? durations : null;
+}
+
+/** Lange Dateien zuerst; Dateien ohne Messwert vorn, Gleichstand alphabetisch. Ohne Dauern bleibt die übergebene Reihenfolge.
+ * @param {string[]} files @param {Record<string, number>|null} durations */
+export function orderByDuration(files, durations) {
+    if (!durations) return [...files];
+    const known = file => Object.hasOwn(durations, file);
+    return [...files].sort((a, b) => (known(a) === known(b) ? 0 : known(a) ? 1 : -1)
+        || (known(a) ? durations[b] - durations[a] : 0) || a.localeCompare(b, 'en'));
+}
+
+function writeFileDurations(profile, fileResults, file = DURATION_FILE) {
+    try {
+        let data = {};
+        try { data = JSON.parse(fs.readFileSync(file, 'utf8')) || {}; } catch { data = {}; }
+        if (typeof data !== 'object' || Array.isArray(data)) data = {};
+        data[profile] = Object.fromEntries(fileResults.map(result => [result.file, Number(result.durationSeconds.toFixed(2))])
+            .sort(([a], [b]) => a.localeCompare(b, 'en')));
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(`${file}.${process.pid}`, JSON.stringify(data, null, 1) + '\n');
+        fs.renameSync(`${file}.${process.pid}`, file);
+    } catch (error) {
+        console.warn(`⚠️  Testdauern nicht gespeichert: ${error.message}`);
+    }
+}
+
 export function getWorkerCount(value = process.env.TEST_WORKERS) {
     if (value === undefined) return Math.max(1, os.cpus().length - 4);
     if (!/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(Number(value))) {
@@ -341,7 +418,7 @@ export function getWorkerCount(value = process.env.TEST_WORKERS) {
     return Number(value);
 }
 
-function runIsolatedFile({ testDir, file, policy, verbose }) {
+function runIsolatedFile({ testDir, file, policy, verbose, profile }) {
     return new Promise(resolve => {
         const started = performance.now();
         const output = [];
@@ -349,7 +426,7 @@ function runIsolatedFile({ testDir, file, policy, verbose }) {
         let summary, spawnError;
         const child = spawn(process.execPath, [path.join(__dirname, 'run-single.mjs'), path.join(testDir, file)], {
             cwd: path.resolve(__dirname, '..'),
-            env: process.env,
+            env: gitFreieUmgebung(process.env, { TEST_PROFIL: profile }),
             stdio: ['ignore', 'pipe', 'pipe', 'ipc']
         });
         child.stdout.on('data', chunk => output.push(chunk));
@@ -398,14 +475,14 @@ function runIsolatedFile({ testDir, file, policy, verbose }) {
     });
 }
 
-async function runFiles({ testDir, files, workers, verbose, executionPolicy = getTestExecutionPolicy }) {
+async function runFiles({ testDir, files, workers, verbose, profile, durations = null, executionPolicy = getTestExecutionPolicy }) {
     const totals = {
         totalAssertions: 0, passedAssertions: 0, failedAssertions: 0, failedFiles: 0, separateGates: 0,
         fileResults: []
     };
     const parallel = [], serial = [];
     for (const file of files) {
-        const policy = executionPolicy(file);
+        const policy = executionPolicy(file, { profile });
         if (policy.mode === 'separate-gate') {
             if (verbose) {
                 console.log(`\n⏭️  ${file} is covered by separate gate: ${policy.command}`);
@@ -414,9 +491,12 @@ async function runFiles({ testDir, files, workers, verbose, executionPolicy = ge
             printFileResult(file, policy, { totalAssertions: 0, passedAssertions: 0, failedAssertions: 0, failedFiles: 0 });
             totals.separateGates++;
         } else {
-            (policy.mode === 'serial' ? serial : parallel).push({ testDir, file, policy, verbose });
+            (policy.mode === 'serial' ? serial : parallel).push({ testDir, file, policy, verbose, profile });
         }
     }
+    // Reihenfolge beeinflusst nur die Dauer: jede Datei läuft in einem eigenen Prozess.
+    const order = new Map(orderByDuration(parallel.map(task => task.file), durations).map((file, index) => [file, index]));
+    parallel.sort((a, b) => order.get(a.file) - order.get(b.file));
     const run = async task => {
         const result = await runIsolatedFile(task);
         for (const key of ['totalAssertions', 'passedAssertions', 'failedAssertions', 'failedFiles']) totals[key] += result[key];
@@ -459,9 +539,13 @@ export async function runTests({
     testDir = process.env.TESTS_DIR ? path.resolve(process.env.TESTS_DIR) : __dirname,
     quickOnly = process.env.QUICK_TESTS === '1',
     workers = getWorkerCount(),
+    profile = getTestProfile(),
     executionPolicy = getTestExecutionPolicy
 } = {}) {
     workers = getWorkerCount(String(workers));
+    profile = getTestProfile(profile);
+    // Die Dauerdatei gehört nur zur echten Suite, nie zu einem anderen TESTS_DIR.
+    const realSuite = path.resolve(testDir) === __dirname && !quickOnly;
     const started = performance.now();
     console.log('🚀 Starting Test Runner...');
 
@@ -472,8 +556,11 @@ export async function runTests({
     const files = getTestFiles(testDir, { quickOnly });
     console.log(`Found ${files.length} test files.`);
     console.log(`Isolation: enabled (one Node.js process per test file). Workers: ${workers}`);
-    const results = await runFiles({ testDir, files, workers, executionPolicy, verbose: process.env.TEST_VERBOSE === '1' });
+    const durations = realSuite ? readFileDurations(profile) : null;
+    console.log(`Profil: ${profile}. Reihenfolge: ${durations ? 'längste zuletzt gemessene Dateien zuerst' : 'alphabetisch'}`);
+    const results = await runFiles({ testDir, files, workers, profile, durations, executionPolicy, verbose: process.env.TEST_VERBOSE === '1' });
     const durationSeconds = (performance.now() - started) / 1000;
+    if (realSuite) writeFileDurations(profile, results.fileResults);
     await new Promise(resolve => setImmediate(resolve));
     const openHandles = formatOpenHandles();
     const failedTotal = printSummary(results, openHandles);
@@ -502,10 +589,9 @@ export async function flushTestOutput() {
     await Promise.all([process.stdout, process.stderr].map(stream => new Promise(resolve => stream.write('', resolve))));
 }
 
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === __filename;
-
-if (isMain) {
-    runTests()
+/** Einstieg für `npm test` und `npm run test:schwer`: Rückgabewert 1 bei jedem Fehler, auch bei unbekanntem Profil. */
+export function runMain() {
+    return runTests()
         .then(async result => {
             await flushTestOutput();
             process.exit(result.failedTotal > 0 ? 1 : 0);
@@ -516,3 +602,7 @@ if (isMain) {
             process.exit(1);
         });
 }
+
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === __filename;
+
+if (isMain) runMain();

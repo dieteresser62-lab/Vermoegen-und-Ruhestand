@@ -30,15 +30,17 @@ function monthlyDisplay(value) {
     return integer.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (fraction === undefined ? '' : ',' + fraction.padEnd(2, '0'));
 }
 
+const latestDate = person => [person.lastDate, person.confirmedDate].filter(Boolean).sort().at(-1);
+
 /** Gemeinsam verwendete, schreibfreie und text-sichere Personenfelder.
  *
  * @param options Optionen des Aufrufers.
  * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
 export function createTagesgeldFields({ doc = document, people, title = 'Tagesgeld-Stand jetzt',
-    explanation = 'Nach der Überweisung des Monatsbetrags. Fließt in den Vermögensverlauf ein.', prefix = 'tagesgeld', monthly = false, closePresentation = false, requireConfirmation = false, asOfLabel = '', proposals = {} }) {
+    explanation = 'Nach der Überweisung des Monatsbetrags. Fließt in den Vermögensverlauf ein.', prefix = 'tagesgeld', monthly = false, closePresentation = false, requireConfirmation = false, asOfLabel = '', proposals = {}, confirmFrom = null }) {
     const monthlyClose = monthly && closePresentation;
-    if (monthlyClose) return createCloseCashFields({ doc, people, title, explanation, prefix, asOfLabel, proposals });
+    if (monthlyClose) return createCloseCashFields({ doc, people, title, explanation, prefix, asOfLabel, proposals, confirmFrom });
     const root = doc.createElement('section'); root.className = 'tagesgeld-fields' + (closePresentation ? ' tagesgeld-close-fields' : '');
     const heading = doc.createElement('h3'); heading.textContent = title;
     const hint = doc.createElement('p'); hint.textContent = explanation;
@@ -133,8 +135,10 @@ export function createTagesgeldFields({ doc = document, people, title = 'Tagesge
     return api;
 }
 
-/** Direkt überschreibbarer Abschlussentwurf; allein der Abschlussbesitzer speichert. */
-function createCloseCashFields({ doc, people, title, explanation, prefix, asOfLabel, proposals }) {
+/** Direkt überschreibbarer Abschlussentwurf; allein der Abschlussbesitzer speichert.
+ * confirmFrom (JJJJ-MM-TT, nur Jahresabschluss, NG-13): Ein Stand vor diesem Tag oder ohne Datum gilt erst,
+ * wenn die Person ihn ändert oder mit „Stand bestätigen“ bestätigt. */
+function createCloseCashFields({ doc, people, title, explanation, prefix, asOfLabel, proposals, confirmFrom = null }) {
     const node = (tag, text, className = '') => {
         const element = doc.createElement(tag); element.className = className;
         if (text !== undefined) element.textContent = text;
@@ -163,7 +167,17 @@ function createCloseCashFields({ doc, people, title, explanation, prefix, asOfLa
         const amount = node('div', undefined, 'tagesgeld-person-amount');
         amount.append(input, node('span', '€', 'tagesgeld-unit'));
         row.append(name, amount, error); root.append(row);
-        return { person, row, input, status, error, proposalHint, proposal, overridden: false };
+        const date = latestDate(person);
+        const confirmation = confirmFrom && !(date && date >= confirmFrom) ? node('div', undefined, 'tagesgeld-confirm') : null;
+        if (confirmation) {
+            const reason = node('p', `${date ? `Stand vom ${cashDateDisplay(date)}` : 'Stand ohne Datum'} – bitte den Stand zum ${cashDateDisplay(confirmFrom).slice(0, 6)} eintragen oder bestätigen`, 'ds-field-reason');
+            reason.id = `${input.id}-confirm`; reason.dataset.fieldState = 'warning'; reason.dataset.tagesgeldConfirmHint = person.id;
+            const button = node('button', 'Stand bestätigen', 'ds-button ds-button-secondary');
+            button.type = 'button'; button.dataset.tagesgeldConfirmPerson = person.id;
+            input.setAttribute('aria-describedby', `${status.id} ${proposalHint.id} ${reason.id} ${error.id}`);
+            confirmation.append(reason, button); row.append(confirmation);
+        }
+        return { person, row, input, status, error, proposalHint, proposal, overridden: false, confirmation, confirmed: !confirmation };
     });
     const parse = field => {
         if (field.person.error) throw new Error(field.person.error);
@@ -172,11 +186,17 @@ function createCloseCashFields({ doc, people, title, explanation, prefix, asOfLa
     const valid = field => { try { parse(field); return true; } catch { return false; } };
     const isPlayValue = field => !field.overridden && available(field.proposal) && valid(field) && parse(field) === field.proposal.value;
     const sync = field => {
-        const date = [field.person.lastDate, field.person.confirmedDate].filter(Boolean).sort().at(-1);
+        const date = latestDate(field.person);
         const changed = valid(field) && parse(field) !== field.person.value && !isPlayValue(field);
+        const stand = date ? `Stand vom ${cashDateDisplay(date)}` : 'noch kein datierter Stand';
+        // HP-3: Nach „Stand bestätigen“ zeigt die Person „bestätigt“, wie „geändert“ nach dem Ändern.
         field.status.textContent = changed ? `geändert · vorher ${field.person.value === null ? '—' : monthlyDisplay(field.person.value) + '\u00a0€'}`
-            : date ? `Stand vom ${cashDateDisplay(date)}` : 'noch kein datierter Stand';
-        field.row.dataset.state = valid(field) ? 'done' : 'open';
+            : field.confirmation && field.confirmed ? `bestätigt${date ? ` · ${stand}` : ''}` : stand;
+        field.row.dataset.state = valid(field) && field.confirmed ? 'done' : 'open';
+        if (field.confirmation) {
+            field.confirmation.hidden = field.confirmed;
+            if (field.confirmed) delete field.input.dataset.fieldState; else field.input.dataset.fieldState = 'warning';
+        }
         Array.from(field.proposalHint.children || []).forEach(child => child.remove());
         field.proposalHint.hidden = !field.proposal || field.overridden && available(field.proposal);
         field.proposalHint.textContent = !field.proposal ? '' : available(field.proposal)
@@ -198,6 +218,8 @@ function createCloseCashFields({ doc, people, title, explanation, prefix, asOfLa
                     const value = available(field.proposal) ? field.proposal.value : field.person.value;
                     const text = value === null ? '' : monthlyDisplay(value);
                     changed ||= field.input.value !== text;
+                    // Ein neuer Vorschlag ist nicht bestätigt; die Person bestätigt ihn erneut.
+                    if (field.confirmation && field.input.value !== text) field.confirmed = false;
                     field.input.value = text;
                     validate(field);
                 }
@@ -205,13 +227,21 @@ function createCloseCashFields({ doc, people, title, explanation, prefix, asOfLa
             }
             return changed;
         },
-        get openPeople() { return fields.filter(field => !valid(field)).map(field => field.person.name); },
-        get ready() { return fields.length > 0 && fields.every(valid); },
-        bind(listen, onChange = () => {}) {
+        get openPeople() { return fields.filter(field => !valid(field) || !field.confirmed).map(field => field.person.name); },
+        get unconfirmedPeople() { return fields.filter(field => !field.confirmed).map(field => field.person.name); },
+        get ready() { return fields.length > 0 && fields.every(field => valid(field) && field.confirmed); },
+        // onConfirm: „Stand bestätigen“ ändert keinen Wert; der Besitzer muss nichts neu rechnen.
+        bind(listen, onChange = () => {}, onConfirm = onChange) {
             for (const field of fields) {
                 listen(field.input, 'input', () => {
                     if (!isPlayValue(field)) field.overridden = true;
-                    validate(field); sync(field); onChange();
+                    // Eintragen gilt als Bestätigung des Stands zum 31.12.
+                    if (validate(field)) field.confirmed = true;
+                    sync(field); onChange();
+                });
+                if (field.confirmation) listen(field.confirmation.querySelector('[data-tagesgeld-confirm-person]'), 'click', () => {
+                    if (validate(field)) field.confirmed = true;
+                    sync(field); onConfirm();
                 });
                 listen(field.input, 'change', () => {
                     if (validate(field)) field.input.value = monthlyDisplay(parse(field));

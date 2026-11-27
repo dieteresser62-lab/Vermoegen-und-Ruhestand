@@ -10,7 +10,8 @@ import {
 import {
     DATASET_META,
     HISTORICAL_DATA,
-    HISTORICAL_DATA_MANIFEST
+    HISTORICAL_DATA_MANIFEST,
+    HISTORICAL_DATENSTAND
 } from '../app/simulator/simulator-data.js';
 import {
     SIMULATION_DATA_INVENTORY,
@@ -18,6 +19,13 @@ import {
 } from '../app/simulator/simulation-data-inventory.js';
 
 console.log('--- Historical Data Manifest Tests ---');
+
+// JD-1: Endjahr, Jahresanzahl und Revision kommen aus dem Datenstand und werden gegen die eingebetteten Jahre geprüft.
+const embeddedYears = Object.keys(HISTORICAL_DATA).map(Number).sort((left, right) => left - right);
+const DATA_START_YEAR = HISTORICAL_DATENSTAND.startYear;
+const DATA_END_YEAR = HISTORICAL_DATENSTAND.endYear;
+assertEqual(embeddedYears[0], DATA_START_YEAR, 'Data status start year should match the first embedded year');
+assertEqual(embeddedYears.at(-1), DATA_END_YEAR, 'Data status end year should match the last embedded year');
 
 function clone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -49,9 +57,13 @@ console.log('Test 1: manifest contains all required reproducibility fields');
 validateHistoricalDataManifest(HISTORICAL_DATA_MANIFEST);
 assertEqual(HISTORICAL_DATA_MANIFEST.schemaVersion, 'HistoricalDataManifestV1', 'Manifest schema should be versioned');
 assertEqual(HISTORICAL_DATA_MANIFEST.datasetId, 'ruhestandsapp-historical-data-v1', 'Manifest ID should be stable');
-assertEqual(HISTORICAL_DATA_MANIFEST.revision, '2026-08-01.4', 'Manifest revision should be explicit');
+assertEqual(HISTORICAL_DATA_MANIFEST.revision, HISTORICAL_DATENSTAND.revision, 'Manifest revision should be explicit');
+// JD-2a: Der Grundbestand trägt die datierte Revision; jede Übernahme setzt <Endjahr>-<lfd>.
+assert(/^\d{4}-\d{2}-\d{2}\.\d+$/.test(HISTORICAL_DATA_MANIFEST.revision)
+    || new RegExp(`^${HISTORICAL_DATENSTAND.endYear}-[1-9]\\d*$`).test(HISTORICAL_DATA_MANIFEST.revision),
+'Manifest revision should use the dated revision format or <end year>-<sequence> after a data takeover');
 assertEqual(HISTORICAL_DATA_MANIFEST.period.startYear, 1925, 'Manifest start year should match embedded history');
-assertEqual(HISTORICAL_DATA_MANIFEST.period.endYear, 2025, 'Manifest end year should match embedded history');
+assertEqual(HISTORICAL_DATA_MANIFEST.period.endYear, DATA_END_YEAR, 'Manifest end year should match embedded history');
 assertEqual(HISTORICAL_DATA_MANIFEST.lookback.backtestYears, 4, 'Backtest lookback should be explicit');
 assert(Object.isFrozen(HISTORICAL_DATA_MANIFEST), 'Manifest root should be immutable');
 assert(Object.isFrozen(HISTORICAL_DATA_MANIFEST.series.global_equity_research_index), 'Manifest series should be deeply immutable');
@@ -67,7 +79,7 @@ for (const seriesId of requiredSeries) {
     assert(series.region && typeof series.region.status === 'string', `${seriesId} should have region/status`);
     assertEqual(series.frequency.value, 'annual', `${seriesId} should be annual`);
     assertEqual(series.period.startYear, 1925, `${seriesId} should declare period start`);
-    assertEqual(series.period.endYear, 2025, `${seriesId} should declare period end`);
+    assertEqual(series.period.endYear, DATA_END_YEAR, `${seriesId} should declare period end`);
     assert(series.source && typeof series.source.status === 'string', `${seriesId} should declare source/status`);
     assert(series.license && typeof series.license.status === 'string', `${seriesId} should declare license/status`);
     assert(series.transformation && typeof series.transformation.status === 'string', `${seriesId} should declare transformation/status`);
@@ -158,13 +170,18 @@ console.log('Test 3: canonical browser-compatible SHA-256 matches Node SHA-256')
     assertEqual(computeHistoricalDatasetHash(HISTORICAL_DATA), nodeHash, 'Browser-compatible hash should match Node crypto');
     assertEqual(HISTORICAL_DATA_MANIFEST.contentHash.value, nodeHash, 'Manifest hash should match canonical data');
     assertEqual(HISTORICAL_DATA_MANIFEST.contentHash.value.length, 64, 'Manifest hash should contain 64 hex characters');
+    // Klasse 1 (JD-1): Der Hash nur über 1925–2025 bleibt gültig, wenn spätere Jahre angehängt werden.
+    const through2025 = Object.fromEntries(Object.entries(HISTORICAL_DATA).filter(([year]) => Number(year) <= 2025));
+    assertEqual(Object.keys(through2025).length, 101, '1925-2025 contain 101 records');
+    assertEqual(computeHistoricalDatasetHash(through2025), 'c79350c5abf2dee2feeaae65c88ed5e58487f878cb598fdffc132fbf48d01e79',
+        'Data 1925-2025 stay unchanged (backward check)');
 }
 console.log('✓ canonical SHA-256 OK');
 
 console.log('Test 4: manifested dataset is contiguous, valid and exposed through immutable lookup');
 {
     const years = Object.keys(HISTORICAL_DATA).map(Number).sort((left, right) => left - right);
-    assertEqual(years.length, 101, '1925-2025 dataset should contain 101 records');
+    assertEqual(years.length, DATA_END_YEAR - DATA_START_YEAR + 1, `${DATA_START_YEAR}-${DATA_END_YEAR} dataset should contain one record per year`);
     for (let index = 1; index < years.length; index++) {
         assertEqual(years[index], years[index - 1] + 1, `Dataset should be contiguous at index ${index}`);
     }
@@ -172,7 +189,7 @@ console.log('Test 4: manifested dataset is contiguous, valid and exposed through
     const provider = createHistoricalBacktestContractProvider();
     assertEqual(provider.contentHash, hashBefore, 'Provider should expose the validated content hash');
     assertEqual(provider.bounds.startYear, 1929, 'Bounds should derive from dataset start plus four-year lookback');
-    assertEqual(provider.bounds.endYear, 2025, 'Bounds should derive from dataset end');
+    assertEqual(provider.bounds.endYear, DATA_END_YEAR, 'Bounds should derive from dataset end');
     assertEqual(provider.getRecord(2000).dataset.contentHash, hashBefore, 'Records should carry dataset provenance');
     assertEqual(computeHistoricalDatasetHash(HISTORICAL_DATA), hashBefore, 'Provider must not mutate HISTORICAL_DATA');
 }

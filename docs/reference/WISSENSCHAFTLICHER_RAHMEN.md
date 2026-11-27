@@ -35,7 +35,7 @@ Seit FR-75 rechnet die App mit der Kohortensterbetafel des Statistischen Bundesa
 
 ### Bootstrap und Regime
 
-Ein historischer Backtest zeigt eine zeitlich geordnete Modellrechnung. Resampling erzeugt neue Pfade durch erneutes Ziehen beobachteter Jahre. Efron begründet den Bootstrap; Künsch sowie Politis und Romano behandeln abhängige Beobachtungen mit Blöcken. Die Methodenwahl bestätigt weder die passende Blocklänge noch Stationarität der Markthistorie. Die App zieht vollständige Jahresrecords, damit Beziehungen innerhalb eines Jahres erhalten bleiben. [Samplingdossier](FORSCHUNGSABGLEICH_EVIDENZREGISTER.md#map-08).
+Ein historischer Backtest zeigt eine zeitlich geordnete Modellrechnung. Resampling erzeugt neue Pfade durch erneutes Ziehen beobachteter Jahre. Efron begründet den Bootstrap; Künsch sowie Politis und Romano behandeln abhängige Beobachtungen mit Blöcken. Die Methodenwahl bestätigt weder die passende Blocklänge noch Stationarität der Markthistorie. Die App zieht vollständige Jahresrecords, damit Beziehungen innerhalb eines Jahres erhalten bleiben. Vorgabe ist der Stationary Bootstrap mit mittlerer Blocklänge 5; Blöcke laufen wie bei Politis und Romano am Ende des gewählten Zeitraums zirkulär zum Anfang weiter, damit jedes Jahr dieselbe Randwahrscheinlichkeit hat. [Samplingdossier](FORSCHUNGSABGLEICH_EVIDENZREGISTER.md#map-08).
 
 Die Jahresbasis 1925–2025 enthält rekonstruierte Forschungsreihen. Sie ist kein durchgehend investierbarer Anbieterindex. Ein Filter für geschätzte frühe Jahre beseitigt nicht alle Datenbrüche. Neue unbekannte Krisentypen entstehen durch Resampling allein nicht. Internationale Forschung macht zudem auf Überlebens- und Datenverfügbarkeitsverzerrungen aufmerksam. [Datenvertrag](DATA_SOURCES.md#gemeinsame-konvention).
 
@@ -49,15 +49,15 @@ Forschung zu schweren Renditeschwänzen begründet das Prüfen extremer Szenarie
 
 ### Optimierung
 
-Backtests, Replay und Parametersuche helfen, Unterschiede unter gleichen Annahmen zu untersuchen. Werden viele Varianten an derselben Historie ausgewählt, können scheinbar gute Treffer durch Zufall entstehen. Lo und MacKinlay, White sowie Cawley und Talbot begründen diese Prüfpflicht. Eine chronologische Rechnung verhindert keine nachträgliche Regelwahl mit Kenntnis der Geschichte. [Backtest](FORSCHUNGSABGLEICH_EVIDENZREGISTER.md#map-12).
+Backtest, Vergleich und Zielwertsuche helfen, Unterschiede unter gleichen Annahmen zu untersuchen. Werden viele Varianten an derselben Historie ausgewählt, können scheinbar gute Treffer durch Zufall entstehen. Lo und MacKinlay, White sowie Cawley und Talbot begründen diese Prüfpflicht. Eine chronologische Rechnung verhindert keine nachträgliche Regelwahl mit Kenntnis der Geschichte. [Backtest](FORSCHUNGSABGLEICH_EVIDENZREGISTER.md#map-12).
 
-Auto-Optimize bewertet führende Kandidaten mit getrennten Seeds. Da dieses Set auch zur Championwahl dient und aus demselben Generator stammt, ist es kein unabhängiger Markt-Holdout. Der Champion ist der beste gefundene zulässige Kandidat im untersuchten Suchraum. Wiederholte Suchen und manuelle Anpassungen gehören zum Versuchsuniversum. [Suchdossier](FORSCHUNGSABGLEICH_EVIDENZREGISTER.md#map-13).
+Die Zielwertsuche prüft ihren Fund mit einer Endprobe aus derselben Modellwelt. Diese Endprobe ist kein unabhängiger Markt-Holdout. Wiederholte Suchen und manuelle Anpassungen gehören zum Versuchsuniversum. [Suchverfahren](SIMULATION_LESEN.md#zielwertsuche).
 
 ## Übertragbarkeit
 
 ### Deutscher Haushalt
 
-Amtliche Rentenreihen liefern Populations- und Finanzierungskontext. Die persönliche Simulation braucht eingegebene Beträge und Termine; sie berechnet keinen Rentenbescheid. Steuern, Produktkosten und Anleihen sind vereinfacht. Die Aktienreihe ist eine Bruttorendite; der Simulator zieht pauschal 0,5 % laufende ETF-Kosten ab, ein Mittelwert aus Index- und Fondsdaten, keine Prognose. Die Lohnreihe als Rentenproxy enthält die Wirtschaftswunderjahre und steigt seit 1992 real kaum; „wie Inflation“ ist deshalb die vorsichtigere Vorgabe. Gesamtvermögen enthält Immobilien; Entnahmefähigkeit, Renditen und Ruin sind auf das Geldvermögen zu beziehen. [Rentenbezug](FORSCHUNGSABGLEICH_EVIDENZREGISTER.md#map-15), [Modellüberblick](FACHKONZEPT.md), [Steuern](STEUERN.md).
+Amtliche Rentenreihen liefern Populations- und Finanzierungskontext. Die persönliche Simulation braucht eingegebene Beträge und Termine; sie berechnet keinen Rentenbescheid. Steuern, Produktkosten und Anleihen sind vereinfacht. Die Aktienreihe ist eine Bruttorendite; der Simulator zieht pauschal 0,5 % laufende ETF-Kosten ab, ein Mittelwert aus Index- und Fondsdaten, keine Prognose. Die Lohnreihe als Rentenproxy enthält die Wirtschaftswunderjahre und steigt seit 1992 real kaum; „wie Inflation“ ist deshalb die vorsichtigere Vorgabe. Gesamtvermögen enthält Immobilien; Entnahmefähigkeit, Renditen und aufgebrauchtes Vermögen sind auf das Geldvermögen zu beziehen. [Rentenbezug](FORSCHUNGSABGLEICH_EVIDENZREGISTER.md#map-15), [Modellüberblick](FACHKONZEPT.md), [Steuern](STEUERN.md).
 
 Liquiditätstöpfe können Entscheidungen strukturieren. Estradas Bucket-Gegenbefund verlangt aber, Verhaltenseffekt und Anlageaufteilung getrennt zu prüfen. Auch Gold ist laut Baur/Lucey und Erb/Harvey kein zeitlos verlässlicher Krisen- oder Inflationsschutz. Ob die jeweiligen Appregeln helfen, braucht Vergleiche bei gleichen Gesamtbeständen, Kosten und Zahlungsströmen. [Liquidität](FORSCHUNGSABGLEICH_EVIDENZREGISTER.md#map-06), [Gold](FORSCHUNGSABGLEICH_EVIDENZREGISTER.md#map-07).
 
@@ -80,4 +80,4 @@ Eine Wirkungsbehauptung braucht vorab festgelegte Hypothese, Baseline, Daten-/Ko
 <a id="reihenfolge-der-auswertung"></a>
 <a id="vermögensbasis-und-verteilungen"></a>
 
-Im Simulator und unter „Monte Carlo“ stehen Deckung, Mindest-Flex, Vermögensverteilungen und Jahresprotokolle. „Werkstatt“ zeigt Vergleichs- und Suchergebnisse. Ihre Nenner und Grenzen erklärt [Simulationsergebnisse lesen](SIMULATION_LESEN.md); kurze Begriffe stehen im [Handbuch](../../Handbuch.html#begriffe). Quellenrollen, Risiken und Prüffristen bleiben im [Register](FORSCHUNGSABGLEICH_EVIDENZREGISTER.md#aktualitaetsvertrag).
+Im Simulator und unter „Monte Carlo“ stehen Deckung, Mindest-Flex, Vermögensverteilungen und Jahresprotokolle. „Vergleich“ unter „Monte Carlo“ zeigt Vergleichs- und Suchergebnisse. Ihre Nenner und Grenzen erklärt [Simulationsergebnisse lesen](SIMULATION_LESEN.md); kurze Begriffe stehen im [Handbuch](../../Handbuch.html#begriffe). Quellenrollen, Risiken und Prüffristen bleiben im [Register](FORSCHUNGSABGLEICH_EVIDENZREGISTER.md#aktualitaetsvertrag).

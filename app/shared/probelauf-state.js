@@ -1,11 +1,10 @@
 import { areaSessionStorage } from './persistence-area-storage.js';
 import { withAnnualWriteAccess } from './annual-operation-lock.js';
 import { rebuildSyntheticPriceRecords, validateMusterTestDate } from '../demo/muster-haushalt-prices.js';
-import { CONFIG } from '../balance/balance-config.js';
 import { appNow, localCalendarDate, parseCalendarDate, setAppTestDate, validateAppTestDate } from './app-clock.js';
 import { PersistenceFacade } from './persistence-facade.js';
 import { SnapshotArchive, SNAPSHOT_KINDS } from './snapshot-archive.js';
-import { PROBELAUF_STATE_KEY, STRESS_REPLAY_ACTIVE_STORAGE_KEY, isProbelaufRecordKey } from './persistence-key-policy.js';
+import { PROBELAUF_STATE_KEY, isProbelaufRecordKey } from './persistence-key-policy.js';
 import { resolveProbelaufRuntime } from './probelauf-runtime.js';
 import { probelaufDomainChecksum, projectProbelaufDomain } from './probelauf-records.js';
 import { calculateProbelaufEndReview, probelaufMonteCarloRuns, probelaufEndNeedsComparison } from './probelauf-comparison.js';
@@ -85,10 +84,7 @@ export function createProbelaufController({ persistence = PersistenceFacade, arc
         },
         mutation(options) {
             if (options.probelaufOwner === owner) return;
-            const replayWrite = !busy && !blocked && state && typeof options.allowKey === 'function'
-                && options.allowKey(STRESS_REPLAY_ACTIVE_STORAGE_KEY) && !options.allowKey('rs_profiles_v1')
-                && !options.allowKey(CONFIG.STORAGE.LS_KEY) && !options.allowKey(PROBELAUF_STATE_KEY);
-            if (busy || blocked || state && !options.probelaufDomainWrite && !replayWrite) throw new Error('Import/Wiederherstellung im Spielbereich gesperrt.');
+            if (busy || blocked || state && !options.probelaufDomainWrite) throw new Error('Import/Wiederherstellung im Spielbereich gesperrt.');
         },
         snapshot(id, options) {
             if (options.probelaufOwner === owner) return;
@@ -225,11 +221,12 @@ export function createProbelaufController({ persistence = PersistenceFacade, arc
                 // Musterkurse sind nur Startwerte. Der echte Verlauf wird frisch
                 // abgerufen und darf keine synthetischen Abfrageintervalle erben.
                 if (testDate === null && selection.source === 'demo') delete records.rs_daily_prices_v1;
-                const snapshots = selection.source === 'copy' ? await persistence.readRealSnapshots() : [];
                 // Der Steuerrecord liegt nur in der Spielkopie. Echt bleibt auch
                 // bei Abbruch oder fehlgeschlagenem Readback vollständig unberührt.
-                await persistence.activatePlayArea({ source: selection.source, snapshots,
-                    records: { ...records, [PROBELAUF_STATE_KEY]: JSON.stringify(next) } }, ownOptions(operation));
+                // SV-1: Wiederherstellungspunkte kommen nicht mit, auch nicht das Archiv des Browserspeichers.
+                const { rs_snapshot_archive_v1: _archive, ...playRecords } = records;
+                await persistence.activatePlayArea({ source: selection.source,
+                    records: { ...playRecords, [PROBELAUF_STATE_KEY]: JSON.stringify(next) } }, ownOptions(operation));
                 state = next;
                 expectedRaw = JSON.stringify(next);
                 win?.__rsProbelaufChannel?.postMessage?.('changed');
@@ -309,7 +306,8 @@ export function createProbelaufController({ persistence = PersistenceFacade, arc
                         win?.document?.addEventListener?.('change', change, true);
                         return () => { win?.document?.removeEventListener?.('input', change, true); win?.document?.removeEventListener?.('change', change, true); };
                     }, completionMessage: RELOAD_MESSAGE });
-                if (result.status === 'failed' && result.error && state && (!adoption || result.error.code === 'rollback_failed')) {
+                // SV-1: Ein Verwerfen, das vor dem Bereichswechsel scheitert, sperrt nicht bis zum Neuladen.
+                if (result.status === 'failed' && result.error && state && !result.error.areaUnchanged && (!adoption || result.error.code === 'rollback_failed')) {
                     blocked = true; recoveryError = result.error; lock(); notify(controller, result.error);
                 }
                 if (adopted) await finishReload();
@@ -323,7 +321,7 @@ export function createProbelaufController({ persistence = PersistenceFacade, arc
         } catch (error) {
             notify(controller, error);
             if (completed) return { status: 'reload_required', error };
-            if (state && (!adoption || error.code === 'rollback_failed')) { blocked = true; recoveryError = error; lock(); }
+            if (state && !error.areaUnchanged && (!adoption || error.code === 'rollback_failed')) { blocked = true; recoveryError = error; lock(); }
             throw error;
         } finally {
             busy = false;

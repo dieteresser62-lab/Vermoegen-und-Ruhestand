@@ -22,7 +22,7 @@ assertEqual(selectHistoryDayIndex(points, NaN), -1, 'Ungültige Geometrie hat ke
 const rendered = renderWealthHistorySvg(history, { width: 280, height: 440 });
 const drawnX = [...rendered.matchAll(/<path class="history-total"[^>]* d="([^"]+)"/g)].flatMap(m => m[1].slice(1).split('L').map(p => Number(p.split(',')[0])));
 const omittedX = 84 + 42.5 / 800 * 168;
-assert(!drawnX.some(x => Math.abs(x - omittedX) < .005), 'Abweichend aufgeteilter Tag 42 wird tatsächlich nicht gezeichnet');
+assert(drawnX.every(Number.isFinite) && !drawnX.some(x => Math.abs(x - omittedX) < .005), 'Abweichend aufgeteilter Tag 42 wird tatsächlich nicht gezeichnet');
 
 class Node {
     constructor(name, doc) { this.name = name; this.ownerDocument = doc; this.children = []; this.attributes = {}; this.listeners = new Map(); this.text = ''; this.style = {}; }

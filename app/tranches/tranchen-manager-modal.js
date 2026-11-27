@@ -1,6 +1,6 @@
 import { bindDialogBackdrop } from '../shared/dialog-backdrop.js';
 import { readDecimalInput, readMoneyText, displayDecimalInput, canonicalDecimalInput, isMoneyInput } from './tranchen-manager-decimal-input.js';
-import { purchaseStockState } from './tranche-detail-model.js';
+import { purchaseStockState, stockFromValidPurchaseDate, GRANDFATHERED_STOCK_CUTOFF_YEAR } from './tranche-detail-model.js';
 import { appNow, localCalendarDate } from '../shared/app-clock.js';
 
 import { getPageNavigationGuard, isNavigationGuardDialogOpen } from '../shared/navigation-guard-dialog.js';
@@ -365,7 +365,7 @@ function syncTrancheTaxControls(doc) {
 function restoreTrancheQuote(doc, tranche) {
     const quoted = hasQuote(tranche), group = byId(doc, 'trancheManualPriceGroup');
     if (group) group.hidden = quoted;
-    renderQuoteCheck(doc, quoted ? { status: 'stored', symbol: tranche.ticker, price: tranche.currentPrice, asOf: tranche.asOf }
+    renderQuoteCheck(doc, quoted ? { status: 'stored', symbol: tranche.ticker, price: tranche.currentPrice, asOf: tranche.asOf, quoteExchange: tranche.quoteExchange }
         : { status: String(tranche?.ticker || '').trim() ? 'failed' : 'none', symbol: tranche?.ticker || '', price: tranche?.currentPrice });
 }
 
@@ -765,7 +765,7 @@ export function bindTrancheModalLifecycle(doc = document) {
     byId(doc, 'purchaseDate')?.addEventListener?.('change', () => { syncTranchePurchaseStock(doc); refreshDetailTax(doc); });
     byId(doc, 'trancheStockAdoptBtn')?.addEventListener?.('click', () => {
         const date = byId(doc, 'purchaseDate')?.value;
-        if (date) { byId(doc, 'type').value = date < '2009-01-01' ? 'aktien_alt' : 'aktien_neu'; syncTranchePurchaseStock(doc); notifyManagerModalState(doc); refreshDetailTax(doc); }
+        if (date) { byId(doc, 'type').value = stockFromValidPurchaseDate(date); syncTranchePurchaseStock(doc); notifyManagerModalState(doc); refreshDetailTax(doc); }
     });
     byId(doc, 'trancheStockCheckBtn')?.addEventListener?.('click', () => {
         byId(doc, 'trancheDetailsFields').hidden = false;
@@ -792,6 +792,7 @@ export function readTrancheFromForm(existingId = null, doc = document, options =
     const derived = calculateTrancheDerivedValues({
         ...(options.existingTranche || detailTranches.get(doc) || {}),
         asOf: undefined,
+        quoteExchange: undefined,
         schemaVersion: 2,
         trancheId: existingId || createUniqueTrancheId(options.existingIds, options.idFactory),
         name: byId(doc, 'name').value,
@@ -816,6 +817,7 @@ export function readTrancheFromForm(existingId = null, doc = document, options =
         if (canonicalPrevious.asOf !== undefined
             && quoteFields.every(field => normalized[field] === canonicalPrevious[field])) {
             normalized.asOf = canonicalPrevious.asOf;
+            if (canonicalPrevious.quoteExchange) normalized.quoteExchange = canonicalPrevious.quoteExchange;
         }
     }
     return normalized;
@@ -882,7 +884,7 @@ export function syncTranchePurchaseStock(doc = document) {
     const value = byId(doc, 'trancheStockReadOnly'), reason = byId(doc, 'trancheStockReason');
     if (value) value.textContent = field.value === 'aktien_alt' ? 'Altbestand' : 'Neubestand';
     if (reason) reason.textContent = stock.mismatch ? 'Der gespeicherte Bestand passt nicht zum Kaufdatum. Bis zur Übernahme bleibt er erhalten.'
-        : stock.dated ? `Ergibt sich aus dem Kaufdatum: gekauft ${stock.expected === 'aktien_alt' ? 'vor 2009' : 'nach 2008'}.` : 'Ohne Kaufdatum wählst du den Bestand selbst.';
+        : stock.dated ? `Ergibt sich aus dem Kaufdatum: gekauft ${stock.expected === 'aktien_alt' ? `vor ${GRANDFATHERED_STOCK_CUTOFF_YEAR}` : `nach ${GRANDFATHERED_STOCK_CUTOFF_YEAR - 1}`}.` : 'Ohne Kaufdatum wählst du den Bestand selbst.';
 }
 
 /** Nach bestätigter Korrektur nur die betroffenen Formularwerte bestätigen; andere Angaben bleiben Entwurf.

@@ -1,9 +1,10 @@
 import fs from 'node:fs';
 import { PersistenceFacade } from '../app/shared/persistence-facade.js';
 import { getPageNavigationGuard } from '../app/shared/navigation-guard-dialog.js';
-import { createAnnualNavigationLifecycle } from '../app/balance/balance-annual-orchestrator.js';
+import { createAnnualNavigationLifecycle } from '../app/shared/annual-coordinator.js';
 import { initializeProfilePage } from '../app/profile/profile-navigation.js';
 import { ensureProfileRegistry } from '../app/profile/profile-storage.js';
+import { createTauriJsonFileAdapter } from '../app/shared/persistence-adapter-tauri.js';
 
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
 const tick = async () => { for (let i = 0; i < 30; i++) await Promise.resolve(); };
@@ -133,6 +134,25 @@ async function fixture({ handbook = false, delayedInstall = false, holdAck, hold
 }
 try {
     console.error = () => {}; // Nur erwartete, synthetische Fehler dieses Einzeltests.
+    {
+        const gate = deferred(), calls = [];
+        const adapter = createTauriJsonFileAdapter({ skipLegacySnapshotMigration: true, async invoke(command, args) {
+            if (command === 'load_app_state') return '';
+            calls.push([command, args]);
+            if (command === 'save_app_state') { await gate.promise; throw new Error('Synthetischer Schreibfehler'); }
+        } });
+        await adapter.open();
+        const pending = adapter.saveBatch({ upserts: [['sim_mcSeed', '1']], deletes: [] });
+        const failure = pending.catch(error => error.message);
+        await tick();
+        assertEqual(calls.map(([command]) => command).join(','), 'report_app_save,save_app_state', 'Speicherbeginn wird vor dem ausstehenden Schreibbefehl gemeldet');
+        assertEqual(calls[0][1].active, true, 'Der Speichervorgang ist aktiv');
+        assertEqual(calls[1][1].saveId, calls[0][1].saveId, 'Rust kann denselben Speichervorgang beim Schreibende freigeben');
+        gate.resolve();
+        assertEqual(await failure, 'Synthetischer Schreibfehler', 'Schreibfehler bleibt erhalten');
+        assertEqual(calls[2][1].active, false, 'Auch ein fehlgeschlagener Schreibvorgang meldet das Ende');
+        assertEqual(calls[2][1].saveId, calls[0][1].saveId, 'Beginn und Ende melden denselben Speichervorgang');
+    }
     // H-1: Derselbe Backtest beendet während der offenen Rückfrage seine Vorbereitung.
     for (const intent of ['close', 'navigate']) {
         const f = await fixture(), loader = deferred(), frame = deferred(), decision = deferred();
@@ -487,9 +507,11 @@ try {
     const rust = fs.readFileSync(new URL('../src-tauri/src/lib.rs', import.meta.url), 'utf8');
     const commands = rust.match(/tauri::generate_handler!\[([\s\S]*?)\]/)[1].split(',').map(name => name.trim()).filter(Boolean);
     // HV-2: delete_household_state löscht nur einen weiteren Haushalt (Kennung geprüft, nie die Wurzel).
-    assertEqual(commands.join(','), 'load_app_state,save_app_state,quarantine_app_state,delete_play_state,delete_household_state,read_household_state,get_app_data_directory,open_app_data_directory,confirm_app_close', 'Commandinventar enthält exakt die Persistenz-, Haushalts-, Ordner- und Close-Kommandos');
+    // NG-1: delete_live_state entfernt nur die Hauptdatei samt .tmp des gewählten Haushalts (Rücknahme einer Übernahme).
+    // SD-1: save_file_with_dialog schreibt nur in den Pfad, den der Nutzer im Dialog „Speichern unter“ gewählt hat.
+    assertEqual(commands.join(','), 'load_app_state,save_app_state,quarantine_app_state,delete_play_state,delete_live_state,delete_household_state,read_household_state,get_app_data_directory,open_app_data_directory,confirm_app_close,report_app_save,save_file_with_dialog', 'Commandinventar enthält exakt die Persistenz-, Haushalts-, Ordner-, Close- und Speichern-unter-Kommandos');
     assert(rust.includes('protocol: Mutex<CloseProtocol>'), 'Native Phase und Freigabe stehen unter einem gemeinsamen Lock');
-    for (const name of ['close_unclaimed_timeout_is_once_and_not_early', 'close_hold_and_timeout_both_lock_orders',
+    for (const name of ['close_unclaimed_timeout_is_once_and_not_early', 'close_unclaimed_saving_waits_for_all_saves_up_to_ten_seconds', 'close_hold_and_timeout_both_lock_orders',
         'close_hold_timeout_race_has_exactly_one_winner', 'close_reject_and_old_responses_cannot_release_next_attempt',
         'close_page_load_recovers_held_attempt_without_renderer_reply', 'close_page_load_keeps_already_reserved_close_permission',
         'close_failure_discards_only_its_own_permission']) {

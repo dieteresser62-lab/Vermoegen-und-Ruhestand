@@ -31,10 +31,8 @@ export function loadProfilverbundProfiles({ storage = persistenceStorage, status
     if (status.status === 'corrupt') throw status.error;
     if (status.status === 'demo') return [];
     if (!status.ready) throw new Error(status.message);
-    if (status.singleProfile) return [];
     const registry = loadProfileRegistry(storage).value;
-    const selected = Object.entries(registry.profiles).filter(([, p]) => p.meta?.belongsToHousehold !== false)
-        .map(([id, p]) => ({ ...p.meta, id }));
+    const selected = Object.entries(registry.profiles).map(([id, p]) => ({ ...p.meta, id }));
     const referenceYear = status.referenceYear;
     return selected.map(meta => {
         const data = status.entries.find(entry => entry.profileId === meta.id).data;

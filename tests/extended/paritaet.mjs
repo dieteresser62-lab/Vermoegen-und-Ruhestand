@@ -21,13 +21,28 @@ if (selected >= 0) {
     console.log(`${value.id}: reproduziert (${replay.case.summary.status}); keine fachliche Freigabe.`);
 } else if (process.argv.includes('--pruefungen')) {
     const started = performance.now();
-    testParityReplayCollector();
-    testParityBalanceReplay();
-    const probes = [...testParityComparison(), ...testParityD23()];
-    const { testParityScenarios } = await import('./parity-scenarios-checks.mjs');
-    testParityScenarios();
+    const failures = [];
+    async function check(name, run) {
+        try {
+            return await run();
+        } catch (error) {
+            failures.push(`${name}: ${error.message}`);
+        }
+    }
+    await check('Paritätscollector', testParityReplayCollector);
+    await check('Balance-Replay', testParityBalanceReplay);
+    const comparison = await check('Paritätsvergleich', testParityComparison);
+    const d23 = await check('D23', () => testParityD23(check));
+    await check('Szenarien', async () => {
+        const { testParityScenarios } = await import('./parity-scenarios-checks.mjs');
+        await testParityScenarios(check);
+    });
     const output = process.argv.indexOf('--ausgabe');
-    if (output >= 0) {
+    if (failures.length) {
+        console.error(`${failures.length} fehlgeschlagene Prüfungen:\n${failures.map(failure => `- ${failure}`).join('\n')}`);
+        process.exitCode = 1;
+    } else if (output >= 0) {
+        const probes = [...comparison, ...d23];
         const run = { cases: [], scenarios: [], failed: false, durationMs: performance.now() - started };
         const { destination } = writeParityRun(run, probes, process.argv[output + 1]);
         console.log(`${probes.length} reproduzierte Gegenproben: ${destination}`);

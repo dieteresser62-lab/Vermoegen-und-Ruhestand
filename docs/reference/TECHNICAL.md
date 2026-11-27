@@ -1,6 +1,6 @@
 # Technische Architektur
 
-Referenz zu Laufzeiten, Modulbesitz und Ausführungsgrenzen. Stand: 05.11.2026. [Records](DATENVERTRAEGE.md), [Quellen](DATA_SOURCES.md), [Fachthemen](FACHKONZEPT.md), [Engine-API](../../engine/README.md), [Prüfwege](../../tests/README.md).
+Referenz zu Laufzeiten, Modulbesitz und Ausführungsgrenzen. Stand: 19.11.2026. [Records](DATENVERTRAEGE.md), [Quellen](DATA_SOURCES.md), [Fachthemen](FACHKONZEPT.md), [Engine-API](../../engine/README.md), [Prüfwege](../../tests/README.md).
 
 **Lizenz:** MIT; [Datenbedingungen](../../README.md#lizenz).
 
@@ -42,7 +42,6 @@ Diese Ordner trennen Speicher-, Rechen- und Oberflächenmodule nach Zuständigke
 | `profile/profilverbund-action-attribution/` | persönliche Aktionszuordnung, Beträge, Liquidität und Steuer |
 | `tranches/tranchen-manager-page/` | Seitenzustand, Darstellung, Eingaben, Speicherung und Kurse für Personen & Vermögen |
 | `tranches/tranche-reconciliation/` | tatsächliche Verkäufe und Cashbuchungen mit Vorschau, Bestätigung und Verlauf |
-| `balance/balance-binder-imports/` | Import-/Exportzugänge, Eingabeprüfung, Migration, Dateiformate und Markt-CSV |
 | `simulator/simulator-engine-direct/` | Jahresphasen von Vorbereitung über Markt, Aktionen und Steuer bis zum Protokoll |
 | `simulator/monte-carlo-runner/` | Monte-Carlo-Lauf, Jahresphasen, Pfadzustand und Pfadabschluss |
 | `simulator/monte-carlo-chunk-result/` | Chunkverträge, Ergebnisprüfung und Zusammenführung |
@@ -53,13 +52,10 @@ Diese Ordner trennen Speicher-, Rechen- und Oberflächenmodule nach Zuständigke
 | `simulator/simulator-monte-carlo/` | Laufzustand, serieller Ablauf, Worker und Ausführung |
 | `simulator/historical-backtest-contract/` | Datenvertrag, Zeiträume, Beobachtungen und Jahresrecords |
 | `simulator/historical-backtest-runner/` | historische Jahresdaten, Portfoliofortschreibung und Ergebnisse |
-| `simulator/sweep-runner/` | Parameterreihen mit Eingaben, Einzelpfaden, Diagnosen und Ausführung |
-| `simulator/stress-replay-contract/` | Stresspfadvertrag, Varianten, Vergleich und Arbeitsstand |
 | `simulator/simulation-data-inventory/` | Inventar der Markt-, Wirtschafts-, Haushalts- und Regeldaten |
 | `simulator/german-gross-wage-growth-chain/` | erzeugte Lohnreihe mit Beobachtungen und Jahreswachstum |
 | `simulator/simulator-profile-inputs/` | Profil-, Haushalts-, Pflege- und Trancheneingaben |
 | `profile/profilverbund-balance/` | Profilzugriff, Haushaltsaggregation, Steuer und Auszahlungsverteilung |
-| `simulator/stress-replay-ui/` | Stresspfadcontroller, Darstellung, Varianten und Dateiaktionen |
 | `balance/balance-renderer-action/` | Handlungsanzeige, Details, Cashaufteilung und Transaktionsprojektion |
 | `balance/balance-expenses/` | gemeinsamer Ausgabenzustand, Recovery, Darstellung und Monatsaktionen |
 
@@ -88,9 +84,8 @@ Script-Tags binden Einstiege; Rahmen und Profilbereitschaft gehen Fachaktionen v
 | Modul unter `app/` | Aufgabe und Grenze |
 |---|---|
 | `balance/balance-input-storage.js`, `balance-plan-context.js`, `balance-reader.js` | `buildBalanceEngineInputFromStorage` liest bestätigte Quellen; Bereich und Bezugsjahr gemeinsam mit dem Fingerabdruck auflösen; Formular-/Versuchspatch bleibt lokal |
-| `balance/balance-update-pipeline.js`, `balance-file-service.js` | validieren, rechnen, veröffentlichen; `preview`, `persist_inputs`, `commit_period` haben getrennte Schreibrechte |
+| `balance/balance-update-pipeline.js`, `balance-evaluation.js` | validieren, rechnen, veröffentlichen; `evaluateBalanceInputs` ist der gemeinsame Rechenzugang von Maske und Tagesreserve; `preview`, `persist_inputs`, `commit_period` haben getrennte Schreibrechte |
 | `balance/balance-market-preview.js`, `balance-market-preview-runtime.js` | reine Jahresend-Ableitung und Marktprojektion; lesender Adapter rechnet Basis, heutige Regel und Hochreferenz getrennt; Kurse müssen nach dem Bezugsjahresende liegen; unklarer Jahresstand oder Vorschaufehler liefert die Basis und „ohne Kurs“; Übersicht samt Budget und Profilaktionen sowie Eingabenspeicherung behalten die Basis, Jahrescommit umgeht den Tageskurspfad |
-| `balance/balance-binder-imports.js` | benannte Re-Exporte der bisherigen Import-/Exportzugänge; Implementierung im gleichnamigen Unterordner |
 | `profile/profilverbund-balance.js` | benannte Re-Exporte für Profilzugriff, Haushaltsaggregation und persönliche Auszahlungsverteilung; Implementierung im gleichnamigen Unterordner |
 | `profile/profilverbund-action-attribution.js` | benannte Exporte für finale Aktionszuordnung; Implementierung im gleichnamigen Unterordner |
 | `balance/balance-action-postprocessor.js`, `balance-renderer-action.js` | finale Aktion anzeigen; Renderer als benannter Re-Export aus dem gleichnamigen Unterordner; interne Transfers getrennt von Verkaufs- und Zugangssummen halten |
@@ -98,48 +93,32 @@ Script-Tags binden Einstiege; Rahmen und Profilbereitschaft gehen Fachaktionen v
 | `profile/profile-person-data.js`, `overview/overview-cash-proposal.js` | `projectPersonMonthIncome`: Monatsquelle für Tagesgeldziel/Spielwert; `createCashProposals` liest keinen Entnahmeplan |
 | `balance/balance-play-execution.js` | `resolveTargetTagesgeld`, `liquidityInflowRouting`, `priceMoneyMarketTransfers`: gemeinsame Ziel-/Routing-/Steuerprojektion für Anzeige und Spielbuchung |
 | `balance/balance-flex-trace.js`, `balance-action-origin.js` | Diagnose und Beschlussherkunft lesend projizieren |
-| `balance/balance-annual-orchestrator.js`, `balance-annual-storage-commit.js` | Jahresauftrag, `evaluateAnnualDraft`, `prepareAnnualCommitRecords` und atomarer Jahresbatch |
+| `balance/balance-annual-storage-commit.js` | Jahresauftrag, `evaluateAnnualDraft`, `prepareAnnualCommitRecords` und atomarer Jahresbatch |
 | `shared/annual-plan-editor.js`, `annual-care-editor.js`, `care-prices.js` | private Entwürfe; Plan und Pflegewerte erst beim Jahresbatch bestätigen; Pflegepreise einmal aus der eingefrorenen Basis fortschreiben, auch für die Vorschau ohne Dialog |
-| `shared/tagesgeld-fields.js`, `overview/overview-month-confirmation.js`, `shared/annual-close-dialog.js` | lokale Cashfelder und Vorschau-Neuberechnung |
+| `shared/tagesgeld-fields.js`, `overview/overview-month-confirmation.js`, `shared/annual-close-dialog.js` | lokale Cashfelder und Vorschau-Neuberechnung; im Jahresabschluss verlangt `confirmFrom` je Person „Stand bestätigen“ oder eine Eingabe, wenn der Stand vor dem 31.12. liegt oder kein Datum hat |
+| `shared/annual-cape-check.js` | CAPE-Bezugswert und Abstand für den Hinweis im Schritt Marktdaten ([Regel](DATA_SOURCES.md#cape-abschluss)) |
 | `overview/overview-storage.js` | Monatscash und Beleg gemeinsam speichern |
 | `balance/balance-expenses-import.js`, `balance-expenses-storage.js` | geprüfte CSV und Monats-/Personenzuordnung schreiben |
 
-`shared/close-dialog.js` besitzt den mittigen Abschlussrahmen mit fester Reiterleiste und Fußleiste. Die Reiter tragen `data-close-dialog-activate` und beim aktuellen Schritt `aria-current="step"`; `data-close-dialog-step` bleibt am zugehörigen Inhalt. Nur dieser Inhalt ist sichtbar und scrollt. Der aktuelle Weiterknopf liegt im Fuß; `nextDisabled` sperrt ihn bei offener Jahresmarktwahl. Besuchsmenge, `onNext` und Schreibbesitz bleiben erhalten. Der Jahresadapter ordnet Pflegewerte vor Marktdaten. Bei verdecktem Bärenmarkt (`isHiddenBearMarket`) hängt er Block und Wahl in den Schritt „Plan“; Marktdaten zeigen nur fehlende Kurse (`hiddenBearCheckUnreliable`). Die offene Wahl steht schon vor dem ersten Besuch am Reiter „Plan“. Ergebnisse verwenden zwei Spalten ohne Reiter; `probelauf-end-dialog.js` verwendet denselben Rahmen mit einspaltigem Inhalt. `updateSteps(steps, { patch: true })` tauscht den Inhalt des aktiven Schritts nicht aus, sondern gleicht ihn über `shared/dom-patch.js` an: Feld mit Fokus, Ziel von Tab und Mausklick bleiben dieselben Elemente. Verkauf und Kauf nutzen das für jede Eingabe im aktiven Schritt.
+`shared/close-dialog.js` besitzt den mittigen Abschlussrahmen mit fester Reiterleiste und Fußleiste. Die Reiter tragen `data-close-dialog-activate` und beim aktuellen Schritt `aria-current="step"`; `data-close-dialog-step` bleibt am zugehörigen Inhalt. Nur dieser Inhalt ist sichtbar und scrollt. Der aktuelle Weiterknopf liegt im Fuß; `nextDisabled` sperrt ihn, solange ein Schritt es verlangt. Besuchsmenge, `onNext` und Schreibbesitz bleiben erhalten. Der Jahresadapter ordnet Pflegewerte vor Marktdaten. Der Schritt „Marktdaten“ zeigt Allzeithoch, Abstand, Marktlage und Kursschwelle als reine Anzeige (`createAnnualMarketReadings`); eine Marktwahl gibt es seit FR-89 nicht. Ergebnisse verwenden zwei Spalten ohne Reiter; `probelauf-end-dialog.js` verwendet denselben Rahmen mit einspaltigem Inhalt. Die Spielquote steht dort nur bei aktuellen Eingaben. `probelauf-comparison.js` prüft dafür die gespeicherte Quellprüfsumme wie die Übersicht. `updateSteps(steps, { patch: true })` tauscht den Inhalt des aktiven Schritts nicht aus, sondern gleicht ihn über `shared/dom-patch.js` an: Feld mit Fokus, Ziel von Tab und Mausklick bleiben dieselben Elemente. Verkauf und Kauf nutzen das für jede Eingabe im aktiven Schritt.
 
-`deriveYearEndMarketInputs` verschiebt für Vorschau und Jahresabschluss dieselben sechs Markteingaben. `prepareMarketPreview` wählt ausschließlich gespeicherte EUR-Schlusskurse von VWCE.DE bis zum Fachdatum, bei offenem Vorjahresabschluss höchstens bis Ende des Abschlussjahrs. Auch das Kursalter wird dann gegen dieses Jahresende gemessen. Das Bezugsjahresende folgt derselben Anlassprojektion wie die Balance. Der Kursrecord stammt aus dem aktiven Speicherbereich; im Spielbereich enthält er Spielkurse. Es gibt keinen Abruf und keinen neuen Speicherschlüssel.
+`deriveYearEndMarketInputs` verschiebt für Vorschau und Jahresabschluss dieselben sechs Markteingaben (Jahresendregel). `deriveMarketHigh` (FR-89) ist die gemeinsame reine Funktion für Vorschau, Abschlussdialog und `computeAnnualPlanUpdate`: Hoch ist der höchste Wert aus gespeichertem Hoch, Stichtagskurs und allen gespeicherten EUR-Tagesschlüsseln von VWCE.DE bis zum Stichtag, bei Gleichstand der jüngste Tag. Ein gespeichertes Hoch ohne belegtes Datum gilt als `<Jahr − jahreSeitAth>-12-31` (`storedMarketHigh`). Beim Stichtagskurs ist das Alter 0, beim gespeicherten Hoch ohne belegtes Datum gilt die Jahresendregel +1. Ein Tagesschluss und ein gespeichertes Hoch mit Datum zählen die Tagesdifferenz bis `ageUntil` geteilt durch 365,2425 (Vorschau: Kursdatum, Abschluss: 31.12.). `high.origin` ist `stored`, `quote` oder `daily_close`. ATH-1b: `corrections` (`highCorrectionsOf` aus `balance-ath-corrections.js`) lässt markierte Tage und Schlüsse vor dem letzten Split aus; `marketHighWarnings` meldet Ausreißer- und Einbruchsverdacht, ohne etwas zu verwerfen. `balance-ath-corrections-view.js` zeigt unter „Marktdaten-Korrektur“ „nicht verwenden“, „Wieder verwenden“, Split und die Warnung beim Senken; die Aktionen schreiben `athCorrections` über `StorageManager` und speichern danach wie die Eingabefelder. `collectHistoryQueue` nimmt `REFERENCE_HISTORY_SYMBOL` (VWCE.DE) ab Historienstart immer auf. `prepareMarketPreview` wählt ausschließlich gespeicherte EUR-Schlusskurse von VWCE.DE bis zum Fachdatum, bei offenem Vorjahresabschluss höchstens bis Ende des Abschlussjahrs. Ein `quoteOverride` (Jahresendkurs im Abschlussdialog) gilt auch ohne Tagesreihe. Lücken prüft es ab `historyStart` (`readHistoryStartDate`), sonst ab dem ersten Schluss. `withAthNoiseBand` (`balance-ath-noise.js`, Grenze `CONFIG.MARKET.ATH_NOISE_BAND_PCT` in `balance-config.js`) übersetzt am Ende von `prepareBalanceEngineAssets` die Engine-Eingabe: Liegt `endeVJ` höchstens 5 % unter `ath` und liegt `jahreSeitAth` über 0 und unter 11,95 Monaten, erhält die Engine `ath = endeVJ` und `jahreSeitAth = 0`. Das ist der gemeinsame Weg von laufendem Jahr, Vorschau, Folgejahresprojektion, Haushaltsläufen und `buildBalanceEngineInputFromStorage`; der Marktschritt des Abschlussdialogs wendet dieselbe Funktion auf seine ersetzten Marktwerte an. `planSplit` lehnt mit `closingYear` (aus `yearEndDate` der Vorschau) einen Split nach dem offenen Abschlussjahr ab; ohne `yearEndDate` lehnt `bindAthCorrections` den Split ab. Bei aktivem Planversuch (`registeredPlanTrial`) schreibt keine der drei Korrekturaktionen. Den schreibenden ETF-Handler `executeNachrueckenMitETF` gibt es nicht mehr. Auch das Kursalter wird dann gegen dieses Jahresende gemessen. Das Bezugsjahresende folgt derselben Anlassprojektion wie die Balance. Der Kursrecord stammt aus dem aktiven Speicherbereich; im Spielbereich enthält er Spielkurse. Es gibt keinen Abruf und keinen neuen Speicherschlüssel.
 
-`projectMarketPreview` liefert gespeicherte Jahresmarktdaten, Regel- und Hochreferenzlesart mit Herkunft, Marktlage, Monatsbudget, Nettohauptaktion und strenger Bärengrenze. Die Hochreferenz ist das Maximum aus Regelhoch und höchstem gespeicherten VWCE.DE-Schluss seit dem Bezugsjahresende bis zum Vergleichskurs. `stored_ath` bezeichnet die Jahresmarktdaten, `stored_close` einen gespeicherten Schluss. `coverage.first/last` nennen den ersten und letzten gespeicherten Tag bis zum Kurs. Bei Gleichstand zählt das spätere Datum. Nur bei einem echt höheren gespeicherten Schluss ergibt das belegte Datum Tagesdifferenz / 365,2425 als `jahreSeitAth`. Bei gleichem Hochwert bleibt immer das Regelalter, auch bei `stored_ath` mit Datum. Die Engine erhält denselben Ausgangszustand für jede Rechnung. Ohne Kurs läuft nur die Basisrechnung.
+`projectMarketPreview` liefert aus genau einer Engine-Rechnung die Markteingaben `inputs`, das Hoch `high` mit Datum und Herkunft, Abstand, Alter, Marktlage und `deepBear` (Kursschwelle 80 % des Hochs, Restabstand des Index, `cutActive` bei einer Marktlage aus `FLEX_BUDGET.ACTIVE_REGIMES`). `stored` behält die gespeicherten Jahresmarktdaten für die Strategiekacheln. Ohne Kurs läuft nur die Basisrechnung. Fehlende Kurse, ein Schluss nicht nach dem Bezugsjahresende, mehr als zehn Kalendertage Kursalter, unabgefragte Werktage laut `queried`, unklarer Jahresstand oder Vorschaufehler setzen `unreliableReason`. `highCheckUnreliable` meldet „nicht belastbar“ nur, wenn die Engine noch nicht kürzt; ein fehlender Kurs könnte das Hoch dann nur anheben. Abgefragte Feiertage und Wochenenden benötigen keinen Schlusskurs.
 
-`comparison` hält pro Variante Grundbedarf, freigegebenen Flex, Jahres- und Monatsbudget aus der vorhandenen Budgetprojektion sowie Hauptaktion, Steuer und Reserve nach Aktion vor Auszahlung. Die Reserve folgt den fertigen Liquiditätsflüssen der Engine. Das Vergleichsjahresbudget entspricht dem gerundeten Monatsbudget mal zwölf. Liegt das Hochvariantenbudget unter dem Grundbedarf, meldet `changedParts` auch `floor`. `compareMarketBudgets` vergleicht Beträge auf ganze Euro: `same`, `budget_same_action_differs`, `budget_lower` oder `budget_higher`. Die gemeinsame Funktion `classifyMarketPreview` bestimmt intern ruhig (unter 5 % und `same`), Hinweis (ab 5 % und `same`), Warnung (verschiedene Folgen) oder nicht belastbar; angezeigt wird davon seit FR-77 nichts mehr. Sichtbar entscheidet `isHiddenBearMarket`: Die Hochlesart liegt in einer Marktlage aus `FLEX_BUDGET.ACTIVE_REGIMES`, die Regellesart nicht. Die Regelschwelle verwendet das gespeicherte Hoch vor der Fortschreibung; Restabstände beziehen sich auf den Stichtagskurs. `balance-market-history.js` zeichnet die gespeicherte Kurslinie als Inline-SVG mit Tokenfarben. Differenzen nennen Jahres-/Monatsbudget und geänderte Anteile (`floor`/`flex`). Fehlende Kurse, ein Schluss nicht nach dem Bezugsjahresende, mehr als zehn Kalendertage Kursalter, unabgefragte Werktage laut `queried`, unklarer Jahresstand oder Vorschaufehler ergeben `not_reliable` mit Grund. Abgefragte Feiertage und Wochenenden benötigen keinen Schlusskurs.
+`balance-next-year-budget.js` bietet `projectNextYearBudget({storage, engineApi, now, annualInflation})` für die Balance-Anzeige. `balance-main.js` verwendet dessen `displayEvaluation` für Budgetkarte und Vorschauzeile. `payload.input` enthält dann Folgejahreswerte mit `referenceYear` des Zieljahrs; `payload.currentYear` enthält Eingaben, Ergebnis und Profilaktionen des laufenden Planjahrs für Bedarfskarten, Strategie, Reserven und Diagnose. Die Diagnose erhält auch ihre Aktionszusammenfassung aus dem laufenden Jahr. Eingabefelder, Speicherung und Übersicht verwenden weiter den laufenden Plan beziehungsweise die Jahresbasis. Der Aktionsrenderer erhält die Profilaktionen explizit aus demselben Entwurf. `captureAnnualRecords` und `annualRecordStorage` isolieren die Quellen. Die Anlassprojektion bestimmt das nächste Abschlussjahr. Meldet sie einen offenen Jahresabschluss, verlinkt `balance-renderer-summary.js` aus Handlungs- und Budgetkarte per Profilübergabe zur Abschlusskarte auf der Übersicht. `computeAnnualPlanUpdate` schreibt Bedarf, Alter, Einkünfte und Budgetgedächtnis fort. `evaluateAnnualDraft` rechnet einmal; für die Vorschau setzt `withPreviewHigh` nur `ath` und `jahreSeitAth` der Marktprojektion ein, weil die Vorschau das Alter eines Tageshochs bis zum Kursdatum zählt. Das Ergebnis heißt `plan`. Fehler liefern gekapselt `not_reliable` mit Grund; die bisherige Vorschau bleibt unabhängig.
 
-`balance-next-year-budget.js` bietet `projectNextYearBudget({storage, engineApi, now, annualInflation})` für die Balance-Anzeige. `balance-main.js` verwendet dessen `displayEvaluation` für Budgetkarte, Jahreshochvergleich und Vorschauzeile. `payload.input` enthält dann Folgejahreswerte mit `referenceYear` des Zieljahrs; `payload.currentYear` enthält Eingaben, Ergebnis und Profilaktionen des laufenden Planjahrs für Bedarfskarten, Strategie, Reserven und Diagnose. Die Diagnose erhält auch ihre Aktionszusammenfassung aus dem laufenden Jahr. Eingabefelder, Speicherung und Übersicht verwenden weiter den laufenden Plan beziehungsweise die Jahresbasis. Der Aktionsrenderer erhält die Profilaktionen explizit aus demselben Entwurf. `captureAnnualRecords` und `annualRecordStorage` isolieren die Quellen. Die Anlassprojektion bestimmt das nächste Abschlussjahr; `computeAnnualPlanUpdate` schreibt Bedarf, Alter, Einkünfte und Budgetgedächtnis fort. `evaluateAnnualDraft` rechnet zweimal aus derselben Basis, die Hochvariante ändert nur `ath` und `jahreSeitAth`. Kurswahl und Vergleichszustände folgen der Marktprojektion. Fehler liefern gekapselt `not_reliable` mit Grund; die bisherige Vorschau bleibt unabhängig.
+Die Inflation folgt `resolvePlanOverviewRates` mit dem gespeicherten Simulator-Jahreswert oder dessen Reihenmittel. Vor einem offenen Abschluss hat ein passender vorbereiteter oder gespeicherter Jahreswert Vorrang. Es gibt keinen Abruf. CAPE und Vermögensbewertungen stammen aus dem aktuellen Speicherbereich. Für die strengen Abschlussvalidatoren erhalten Kurs und CAPE ausschließlich im privaten Entwurf einen angenommenen Jahresendstichtag; das Ergebnis nennt die tatsächlichen Quelldaten. Restentnahmen werden mangels eindeutiger Zahlungsabgrenzung nicht abgezogen. `plan` liefert Zieljahr, Bedarf, Budget, Hauptaktion, Steuer, Annahmen, Markteingaben mit Hoch und die drei größten Änderungsbeträge. `components` unterscheidet ungerundete Inflation, Planrundung, laufende Einkünfte, geplante Zahlungsflüsse und Leitplanke/Budgetgedächtnis. Diese Beträge sind keine additive Budgetzerlegung. Planposten nennen die offene Ausgabenreserve und angekündigte Einmaleinkünfte getrennt. Letztere mindern wie im Jahresabschluss die Reserve nicht. Die Bezugsbasis ist der laufende Jahresbeleg, ersatzweise die gespeicherte Jahresrechnung ohne Fortschreibung. Der Inflationsbetrag verwendet den heutigen Planbedarf als Ausgangsbasis und endet vor der Planrundung; bewusste Planänderungen bleiben davon getrennt. Laufende Belegeinkünfte folgen Budget minus Entnahme plus Sparanteil. Folgejahrseinkünfte stammen aus derselben Personenprojektion wie im Abschluss. [Node-Nachweis](../../tests/fj-1-next-year-budget.test.mjs) und `node scripts/measure-fj1.mjs` prüfen Parität, Schreibfreiheit und Laufzeit mit synthetischen Haushalten.
 
-Die Inflation folgt `resolvePlanOverviewRates` mit dem gespeicherten Simulator-Jahreswert oder dessen Reihenmittel. Vor einem offenen Abschluss hat ein passender vorbereiteter oder gespeicherter Jahreswert Vorrang. Es gibt keinen Abruf. CAPE und Vermögensbewertungen stammen aus dem aktuellen Speicherbereich. Für die strengen Abschlussvalidatoren erhalten Kurs und CAPE ausschließlich im privaten Entwurf einen angenommenen Jahresendstichtag; das Ergebnis nennt die tatsächlichen Quelldaten. Restentnahmen werden mangels eindeutiger Zahlungsabgrenzung nicht abgezogen. Die Varianten liefern Zieljahr, Bedarf, Budget, Hauptaktion, Steuer, Annahmen und die drei größten Änderungsbeträge. `components` unterscheidet ungerundete Inflation, Planrundung, laufende Einkünfte, geplante Zahlungsflüsse und Leitplanke/Budgetgedächtnis. Eine Marktwirkung stammt ausschließlich aus dem Budgetunterschied der Varianten. Diese Beträge sind keine additive Budgetzerlegung. Planposten nennen die offene Ausgabenreserve und angekündigte Einmaleinkünfte getrennt. Letztere mindern wie im Jahresabschluss die Reserve nicht. Die Bezugsbasis ist der laufende Jahresbeleg, ersatzweise die gespeicherte Jahresrechnung ohne Fortschreibung. Der Inflationsbetrag verwendet den heutigen Planbedarf als Ausgangsbasis und endet vor der Planrundung; bewusste Planänderungen bleiben davon getrennt. Laufende Belegeinkünfte folgen Budget minus Entnahme plus Sparanteil. Folgejahrseinkünfte stammen aus derselben Personenprojektion wie im Abschluss. [Node-Nachweis](../../tests/fj-1-next-year-budget.test.mjs) und `node scripts/measure-fj1.mjs` prüfen Parität, Schreibfreiheit und Laufzeit mit synthetischen Haushalten.
+`balance-market-preview-renderer.js` meldet in der Karte „Was zu tun ist“ über `highPriceProblem` zu alte (`stale`) oder fehlende und lückenhafte Kurse (`missing`) als eine Zeile mit Kurslink (`data-high-stale`); in den ersten zehn Tagen nach dem Jahresende ohne neuen Kurs gibt es keine Zeile. Gleiche Ergebnisse behalten ihre DOM-Knoten. `marketHighSource` und `deepBearText` liefern „Tagesschluss vom …“ und „unter … · noch … Abstand“ beziehungsweise „Kürzung aktiv“; `withMarketHighRows` ergänzt damit die Marktkachel der Diagnose (`balanceMarketFacts`), `marketHighRows` den Schritt „Marktdaten“ (`createAnnualMarketReadings`). Titel und Quellen nennen das Zieljahr und den tatsächlichen Stand. Die Grundzeile „Warum anders als ‹Jahr›“ zeigt bis zu drei Änderungen ab einem Euro mit Wirkungsart, ohne Gesamtsumme.
 
-`balance-market-preview-renderer.js` zeigt das Jahreshoch in Balance nur bei verdecktem Bärenmarkt, als Block „Bärenmarkt, den die Jahresregel nicht sieht“ aus `createHiddenBearBlock` (`shared/annual-todo-view.js`) in der Karte „Was zu tun ist“. Der Block nennt Abstand, Ende Vorjahr, Jahreshoch und heutigen Kurs, die Tabelle „Was das für ‹Jahr› heißt“ und zugeklappt „Kursverlauf ‹Jahr›“ (`data-market-history-details`). Aktualisierungen erhalten die Klappenstellung dieses Verlaufs; gleiche Ergebnisse behalten ihre DOM-Knoten. Die Zusatzzeile „Mit Hoch vom …“ beim Monatsbudget erscheint nur bei abweichendem Budget. Ohne verdeckten Bärenmarkt meldet `hiddenBearPriceProblem` zu alte (`stale`) oder fehlende und lückenhafte Kurse (`missing`) als eine Zeile mit Kurslink; in den ersten zehn Tagen nach dem Jahresende ohne neuen Kurs gibt es keine Zeile. Im Jahresabschluss zeigt `createAnnualMarketReadings` im Schritt „Marktdaten“ nur den Grund fehlender Kurse; Block und Wahl stehen im Schritt „Plan“. Titel und Quellen nennen das Zieljahr und den tatsächlichen Stand. Die Grundzeile „Warum anders als ‹Jahr›“ zeigt bis zu drei Änderungen ab einem Euro mit Wirkungsart, ohne Gesamtsumme.
-
-`balance-annual-market-preview.js` nutzt dieselbe Hochreferenz seit Ende des Vorjahrs und denselben Budgetvergleich mit der vorbereiteten Jahresendquote. Fachdatum für das Kursalter ist das Abschlussjahresende. Der Abrufkurs ersetzt als `quoteOverride` den gespeicherten Schluss seines Tags nur im Entwurf. Die Abdeckung nennt gespeicherte Tage; der Abruf schließt keine früheren Lücken. Im Marktdatenreiter rechnet der Vergleich mit den vorgeschlagenen Folgejahresbedarfen sowie den Tagesgeld- und Pflegewerten des Dialogs. `shared/annual-market-choice.js` zeigt bei verdecktem Bärenmarkt im Schritt „Plan“ die beiden Lesarten ohne Vorauswahl. Die bestätigte Jahreshochwahl ergänzt `yearHigh` im Übergabevertrag und wird im privaten Jahresentwurf angewendet. Altbestand und Jahresendregel bleiben ohne Zusatzfeld gültig; Strategiekacheln, Provenienz und Übersicht behalten bis zum Abschluss die Jahresbasis.
+`balance-annual-market-preview.js` bestimmt mit der vorbereiteten Jahresendquote dasselbe Hoch wie `computeAnnualPlanUpdate`, mit dem Alter bis zum 31.12., und rechnet die Marktlage einmal. Fachdatum für das Kursalter ist das Abschlussjahresende. Der Abrufkurs ersetzt als `quoteOverride` den gespeicherten Schluss seines Tags nur im Entwurf; der Abruf schließt keine früheren Lücken. Ist das Jahr schon abgeschlossen, zeigt die Anzeige die gespeicherten Markteingaben. `shared/annual-market-choice.js` liest nur noch den Altbestand [A7]: Belege und Protokolle mit `reading: 'year_high'` nennen „Plan mit dem Jahreshoch vom …“. Strategiekacheln, Provenienz und Übersicht behalten bis zum Abschluss die Jahresbasis.
 
 `preview` beginnt mit bestätigtem Vorstate; `persist_inputs` schreibt nur Eingaben, `commit_period` den geprüften Periodenkandidaten. `readBalancePlanContext` bindet Fingerabdruck und Eingaben an denselben Bereich, dasselbe Jahr und dieselben Ausgabennachweise. `guardrail-history.js` setzt bei bewussten Planänderungen Leitplanken zurück, erhält aber Steuerstates. Nur der Jahresabschluss schreibt `annual_plan_record_v1`.
 
 Unter `app/balance/balance-renderer-action/` besitzt `renderer.js` die Klasse `ActionRenderer` und ihren Instanzzustand. Ihre Methoden delegieren Detaildarstellung an `details.js`, Cash-Umschichtung an `cash-rebalance.js` und Transaktionsprojektion an `transaction.js`; alle arbeiten mit derselben Instanz. Texte, Tabellen, Kopiertext und Popoverbindungen behalten ihre Reihenfolge.
 
 Unter `app/balance/balance-expenses/` besitzt `context.js` den gemeinsamen Zustand samt DOM-Referenzen, Adaptern, Importgeneration und Entscheidungssperre. `helpers.js` liest Speicher und Profile und liefert die bisherigen Meldungs- und Transaktionshilfen. `recovery.js` führt Export, Bestätigung und Reset aus; `view.js` zeichnet Jahresauswahl, Matrix, Kennzahlen und Monatslupe. `actions.js` verarbeitet Import, Beispiele und Monatslöschung. `entry.js` verbindet diese Funktionen einmal, bindet die bisherigen Ereignisse bei der Initialisierung und exportiert die öffentlichen Zugänge. Recovery und Darstellung erhalten ihre gegenseitigen Aufrufe bei dieser Verbindung ohne Importkreis. Änderungsrückrufe behalten ihren freien Aufruf.
-
-Die Dateiverträge und UI-Handler liegen unter `app/balance/balance-binder-imports/`. Interne Importe verbinden die Module direkt. Schemaobjekte und Fehlerklassen entstehen jeweils einmal. Der bestehende Binder besitzt weiterhin die Ereignisbindung; die Handler behalten ihren Navigations- und Wiederherstellungsablauf. `balance-file-service.js` besitzt Recovery, Replace, Nachprüfung und Rollback.
-
-| Modul | Zuständigkeit |
-|---|---|
-| `schema.js` | Exportkennung, Versionen, Eingabefelder und Legacy-Verträge |
-| `validation-core.js` | gemeinsame Objektprüfung, JSON-Kopie und Importfehlerklassen |
-| `input-validation.js` | skalare und verschachtelte Eingaben gegen das Schema prüfen |
-| `state-validation.js` | Vermögensverlauf, Vorstate und Marktdatenkonsistenz prüfen |
-| `market-provenance.js` | Datum, CSV-Abdeckung, Fensterhoch und Herkunft prüfen |
-| `migration.js` | Legacy- und aktuelle Eingaberepräsentationen migrieren |
-| `documents.js` | Balance-Dokument erzeugen, Format erkennen und normalisieren |
-| `market-csv.js` | historische Markt-CSV ohne DOM parsen |
-| `manual-market-import.js` | historischen CSV-Payload an Periode, Stichtag und Quelle binden |
-| `handlers.js` | JSON-Dateiaktionen, UI-Wiederherstellung und Fehlermeldungen |
 
 Die Aktionszuordnung verwendet die folgenden Module unter `app/profile/profilverbund-action-attribution/`. Interne Importe verbinden die Module direkt. `tax.js` besitzt den Vorschaucache einmal; die Aufrufhülle setzt dessen live importierte Bindung über `setPreviewTermsScope` und stellt den äußeren Cache auch bei Fehlern wieder her.
 
@@ -152,13 +131,19 @@ Die Aktionszuordnung verwendet die folgenden Module unter `app/profile/profilver
 | `asset-plan.js` | Quellen gewichten oder steuerlich auswählen, Nettoziel bisektieren und Deckungslücke behandeln |
 | `attribution.js` | Aufrufhülle und endgültige Haushaltsaktion mit persönlichen Aktionen zusammensetzen |
 
-Der Jahreskoordinator prüft Periode/Quellen, bestätigt den Vorabpunkt und liest den Jahresbatch zurück. `resolveAnnualTargetYear` bindet Dialog, Abruf, Entwurf und Dezemberbeleg ans nächste offene Jahr. `evaluateAnnualDraft` übernimmt Cashentwürfe über `prepareHouseholdCash`; `createCloseCashFields` hält sie lokal und formatiert gültige Eingaben bei `change` mit Tausenderpunkten. `computeAnnualPlanUpdate` schreibt Inflation einmal je Planjahr in alle Haushaltskopien. Dezember hat eine eigene Speichergrenze; Wiederholung ergänzt nur die fehlende Phase. Im Spielbereich berechnet `calculateCashProposal` Ausgangsstand + Rente + Einkünfte − Ausgaben + Zins, ohne Entnahmeabzug; eigene Feldwerte erhalten kein `playValues`. [Belegverträge](DATENVERTRAEGE.md#jahr-und-monat).
+Der Jahreskoordinator prüft Periode und Quellen, bestätigt den Vorabpunkt und liest den Jahresbatch zurück. Ein Vorabpunkt gilt für den ganzen Haushalt; als unklarer Beleg zählt er nur, wenn er Jahresmetadaten hatte, die live fehlen. Das Auswahljahr der Ausgaben prüft die Übersicht schon vor dem Dialog, und Handwerte für Inflation und CAPE reisen im Handkurs-Retry als `manualMarket` mit. Fehlt einem rechenbaren Entwurf der Umfang, liest `evaluateAnnualDraft` ihn aus den eingefrorenen Records. Nach einem gespeicherten Abschluss zieht der Marktvergleich den gespeicherten Planstand und die bereits fortgeschriebene Kursreihe heran. `resolveAnnualTargetYear` bindet Dialog, Abruf, Entwurf und Dezemberbeleg ans nächste offene Jahr. `evaluateAnnualDraft` übernimmt Cashentwürfe über `prepareHouseholdCash`; `createCloseCashFields` hält sie lokal und formatiert gültige Eingaben bei `change` mit Tausenderpunkten. `computeAnnualPlanUpdate` schreibt Inflation einmal je Planjahr in alle Haushaltskopien. Dezember hat eine eigene Speichergrenze; Wiederholung ergänzt nur die fehlende Phase. Im Spielbereich berechnet `calculateCashProposal` Ausgangsstand + Rente + Einkünfte − Ausgaben + Zins, ohne Entnahmeabzug; eigene Feldwerte erhalten kein `playValues`. [Belegverträge](DATENVERTRAEGE.md#jahr-und-monat).
 
-Ausgabenseite und Abschlussdialog teilen Budgetquelle, `memberPlanScope` und Importpräsenz aus `balance-expenses-metrics.js`; der Personenfilter ist getrennt. Lade-, Restore- und Schreibgrenze verwenden denselben [Kategorien-/Zahlungsvertrag](DATENVERTRAEGE.md#plan-und-geplante-ausgaben). Der Controller liefert Kennzahl und Jahresdiagramm dieselbe `projectExpenses`-Hochrechnung; der Renderer projiziert sie ohne eigene Prognose. Die Gesamthochrechnung nutzt den Mittelwert positiver, vollständiger und abgelaufener Ausgabenmonate × 12. Floor/Flex verwenden davon nur Monate mit Aufteilung; ihre Verbraucher zeigen Kennzahlen und Diagramme, ohne Plan-, Abschluss- oder Enginebeträge abzuleiten.
+Ausgabenseite und Abschlussdialog teilen Budgetquelle, `memberPlanScope` und Importpräsenz aus `balance-expenses-metrics.js`; der Personenfilter ist getrennt. Lade-, Restore- und Schreibgrenze verwenden denselben [Kategorien-/Zahlungsvertrag](DATENVERTRAEGE.md#plan-und-geplante-ausgaben). Der Controller liefert Kennzahl und Jahresdiagramm dieselbe `projectExpenses`-Hochrechnung; der Renderer projiziert sie ohne eigene Prognose. Die Gesamthochrechnung nutzt den Mittelwert vollständiger und abgelaufener Monate mit einem Saldo ungleich null × 12. Floor/Flex verwenden davon nur Monate mit Aufteilung. Der Jahresabschluss bietet die Jahreswerte als Ist-Vorschlag an.
 
 `demo/muster-haushalt.js` ergänzt vorbereitete Monatsausgaben um `categoryNeeds`. `demo/beispielausgaben-needs.js` verteilt den Beispiel-Floor centgenau bei unveränderten Kategoriesummen; `demo/beispielausgaben.js` erzeugt CSV mit Bedarfsspalte. Ausgabenseite, Übersicht und `overview-timelapse.js` lesen dafür den gemeinsamen Grundbedarf. Der Ziel-Floor liegt 6 % darüber, begrenzt auf die vorhandene Beispielsumme; das ist ausschließlich synthetische Datenerzeugung. `demo/muster-steckbrief.js` liefert die Übung bis zur Ist-Auswahl im Jahresabschluss.
 
-`parseCategoryCsv` erhält die enumerierbare Kategorienmap; das Symbol `EXPENSE_CSV_CATEGORY_NEEDS` liefert optional die signierte Aufteilung. Nur der getrimmte, kleingeschriebene Kopf `bedarf` aktiviert die Aufteilung. Kategorie/Betrag bleiben Teilstringsuchen, ausgenommen der Bedarfsspaltenindex. Der gemeinsame Import speichert `categoryNeeds` und zeigt die Vorschau auf beiden Importwegen. Ungültige Aufteilungen bleiben beim Laden und Speichern erhalten; die Haushaltskarte zeigt den Neuimporthinweis. `computeHouseholdNeedsStats({ yearData, profileIds, forecastMonths })` berechnet ohne DOM und Speicher je importiertem Monat Floor/Flex und Zahlungsabzug. Alle Haushaltspersonen müssen importiert sein und eine gültige Aufteilung haben. Zahlungen gehen zuerst vom Haushalts-Flex ab, der Rest vom Floor. `forecastMonths` begrenzt die Hochrechnung auf abgelaufene Monate; nur vollständige Monate mit positivem Budgetverbrauch zählen wie in `computeYearStats`. Floor/Flex mitteln davon die aufgeteilten Monate; `total` mittelt alle gezählten Monate. Nullmonate zählen nicht. Ohne aufgeteilte Monate bleiben Floor/Flex null. Bei gemischtem Bestand nennt die Anzeige N von M Monaten; Floor + Flex entspricht Gesamt nur bei durchgehender Aufteilung. `expenses/expenses-needs.js` verwendet diesen Kern für Haushaltskacheln, Monatstabelle sowie Monats- und Jahresdialog. Der Jahresbeleg liefert Grundbedarf und Jahresbudget, ersatzweise der aktuelle Plan und die bestehende Budgetquelle. Kategorien behalten Geplante Ausgaben und kennzeichnen ungeteilte Monate separat. Die Anzeige folgt Kennzahlen, Personenmatrix/Kategorien, Floor-/Flex-Karte mit flüchtiger Monatsklappe, Jahresvergleich. Beide Kennzahlenreihen nutzen `createCloseTiles` bzw. dessen Klassen. `prepareExpensesHistoryMetrics` liefert mit `includeSegments` lesend Floor, Flex und Restbetrag pro Jahr; die Beträge enthalten geplante Zahlungen. Nur die Haushaltsansicht fordert diese Segmente an. `renderExpensesDetails` validiert die optionale Aufteilung mit `hasCategoryNeeds` und zeigt vier Spalten mit Summenzeile oder den passenden Neuimporthinweis. Alle Beträge der Monatslupe verwenden wie die Importvorschau den Centformatter aus `shared-formatting.js`. Kategorien, Floor, Flex und Summenzeile zeigen das umgekehrte Speichervorzeichen: Ausgaben positiv, Erstattungen negativ. Bezahlte geplante Ausgaben erscheinen als positiver Betrag. Die Kategorienfußzeile lässt Nullanteile weg und entfällt ohne Aufteilung; die aufgeklappte Monatstabelle bleibt linksbündig auf 56 rem begrenzt. Die Personenansicht erhält die Aufteilung ausschließlich in der Monatslupe. Die Monatszusammenfassung ergänzt bei lesbarer Aufteilung Floor und Flex. `annual-needs-review.js` projiziert den Vorjahresvergleich mit vorzeichenrichtigen Abweichungen und die Inflationsvorschläge; `annual-plan-editor.js` rundet beide Vorschläge und Mindest-Flex auf volle Tausender auf. Der vorausgewählte Planvorschlag fließt über den bestehenden Planpatch in die Vorschau und den Beschluss. Unter jedem Jahresbedarfsfeld folgt die Herkunft sofort der Vorschlagswahl oder eigenen Eingabe. Ein Ist-Vorschlag schreibt erst nach bewusster Auswahl und Abschluss; keine neue Speicherung.
+`parseCategoryCsv` erhält die enumerierbare Kategorienmap; das Symbol `EXPENSE_CSV_CATEGORY_NEEDS` liefert optional die signierte Aufteilung. Nur der getrimmte, kleingeschriebene Kopf `bedarf` aktiviert die Aufteilung. Kategorie/Betrag bleiben Teilstringsuchen, ausgenommen der Bedarfsspaltenindex. Der gemeinsame Import speichert `categoryNeeds` und zeigt die Vorschau auf beiden Importwegen. Ungültige Aufteilungen bleiben beim Laden und Speichern erhalten. Die Haushaltskarte zeigt den Neuimporthinweis.
+
+`expenseConventions` bestimmt die Richtung je Person und Kalenderjahr. Sie zählt alle Kategoriesalden der Person im Jahr. Ohne negativen Saldo gilt die positive Altimportkonvention. Bei gemischten Vorzeichen gilt sie, wenn die positiven Salden sowohl nach Anzahl als auch nach Betrag überwiegen. Sonst gelten gespeicherte negative Beträge als Ausgaben. Ohne Jahresbezug verwendet `expenseConvention` die Kategorien des einzelnen Imports. Die Vorschau bezieht die vorgesehenen Ersetzungen im jeweiligen Jahr ein. Der erste Importmonat eines leeren Personenjahrs mit ausschließlich Erstattungsüberschüssen erscheint in der Vorschau positiv, bis negative Kategoriesalden nach Anzahl oder Betrag mindestens gleichziehen. Die Import-Schranke vergleicht die zugeordneten Zahlungen mit der Bruttosumme aller Ausgabenzeilen des Personenimports dieses Monats vor Erstattungen. Die Bruttosumme bleibt im Importvorgang. Im gespeicherten Monat kann der Budgetverbrauch nach Zahlungsabzug negativ sein.
+
+`computeHouseholdNeedsStats({ yearData, profileIds, forecastMonths })` berechnet ohne DOM und Speicher je importiertem Monat Floor/Flex und Zahlungsabzug. Alle Haushaltspersonen müssen importiert sein und eine gültige Aufteilung haben. Zahlungen gehen zuerst vom Haushalts-Flex ab. Der Abzug verteilt sich anteilig auf Personen mit positivem Flex. Ein Rest geht vom Floor der Zahlenden ab. Erstattungen mindern Floor und Flex über alle Kategorien der gezählten Monate. Die Jahresrechnung summiert je Person die signierten Kategorien und zieht zugeordnete Zahlungen ab. `boundAnnualNeeds` begrenzt Floor und Flex getrennt auf mindestens null. `forecastMonths` begrenzt die Hochrechnung auf abgelaufene Monate. Floor/Flex mitteln die gezählten Monate mit Aufteilung. `total` mittelt alle gezählten Monate. Ohne Aufteilung bleiben Floor/Flex null. Die Übersicht gibt bereits saldierte Monatsbeträge direkt an die Hochrechnung weiter.
+
+`expenses/expenses-needs.js` verwendet diesen Kern für Haushaltskacheln, Monatstabelle sowie Monats- und Jahresdialog. Der Jahresbeleg liefert Grundbedarf und Jahresbudget, ersatzweise der aktuelle Plan und die bestehende Budgetquelle. Die Kategorien enthalten geplante Ausgaben. „Wofür?“ und das Jahresdiagramm verwenden die lesbare Aufteilung jedes Personenimports, auch in unvollständigen Haushaltsmonaten. Die Anzeige folgt Kennzahlen, Personenmatrix/Kategorien, Floor-/Flex-Karte mit flüchtiger Monatsklappe, Jahresvergleich. Beide Kennzahlenreihen nutzen `createCloseTiles` bzw. dessen Klassen. `prepareExpensesHistoryMetrics` liefert mit `includeSegments` lesend Floor, Flex und Beträge aus Personenimporten ohne lesbare Aufteilung. Die Haushaltsansicht zeichnet diese Jahressegmente einschließlich geplanter Zahlungen. Auch hier gilt die Untergrenze je Person erst für die saldierten Jahressummen. Ihre Skala berücksichtigt die gesamte Segmenthöhe und die Hochrechnung. Im Monatsdiagramm haben negative Salden Balkenhöhe null. Hinweise und Tabellen zeigen den signierten Saldo. `renderExpensesDetails` validiert die optionale Aufteilung mit `hasCategoryNeeds` und zeigt vier Spalten mit Summenzeile oder den passenden Neuimporthinweis. Alle Beträge der Monatslupe verwenden wie die Importvorschau den Centformatter aus `shared-formatting.js`. Kategorien, Floor, Flex und Summenzeile zeigen Ausgaben positiv und Erstattungen negativ. Bezahlte geplante Ausgaben erscheinen als positiver Betrag. „Wofür?“ zeigt Erstattungskategorien mit negativem Betrag und ohne Balken. Für Fußzeile und Balken verteilt die Projektion den begrenzten Jahressaldo je Person für Floor und Flex anteilig auf die positiven Kategoriesalden. Die Fußzeile lässt Nullanteile weg. Der ungeteilte Jahressaldo hat wie in der Jahresgrafik die Untergrenze null und verteilt sich für die Anzeige im Verhältnis der positiven ungeteilten Kategoriesalden. Ohne Aufteilung entfällt die Fußzeile. Die aufgeklappte Monatstabelle bleibt linksbündig auf 56 rem begrenzt. Die Personenansicht erhält die Aufteilung ausschließlich in der Monatslupe. Die Monatszusammenfassung ergänzt bei lesbarer Aufteilung Floor und Flex. `annual-needs-review.js` projiziert den Vorjahresvergleich mit vorzeichenrichtigen Abweichungen und die Inflationsvorschläge; `annual-plan-editor.js` rundet beide Vorschläge und Mindest-Flex auf volle Tausender auf. Der vorausgewählte Planvorschlag fließt über den bestehenden Planpatch in die Vorschau und den Beschluss. Unter jedem Jahresbedarfsfeld folgt die Herkunft sofort der Vorschlagswahl oder eigenen Eingabe. Ein Ist-Vorschlag schreibt erst nach bewusster Auswahl und Abschluss; keine neue Speicherung.
 
 ### Personen und Depot
 
@@ -172,9 +157,10 @@ Ausgabenseite und Abschlussdialog teilen Budgetquelle, `memberPlanScope` und Imp
 | `profile/profile-asset-values.js`, `asset-strategy.js` | Vermögens-/Goldprojektion; Strategie nur nach Nutzeraktion aktivieren |
 | `tranches/tranchen-manager-page.js`, `tranchen-manager-page/` | Seitenfassade; gemeinsamer Zustand, Darstellung, Eingaben, Speicherung und Navigation |
 | `tranches/tranchen-manager-state.js`, `tranchen-recording.js` | Lots normalisieren, Bestand und Kauf erfassen |
-| `tranches/tranchen-manager-sale-dialog.js`, `tranche-reconciliation.js` | reale Ausführung bestätigen; Fassade für Verkauf und getrennten Cashnachweis |
-| `tranches/tranchen-price-service.js`, `tranchen-history-store.js` | Kurse und Abfrageabdeckung |
-| `profile/profile-wealth-history.js`, `profile-wealth-captures.js` | persönliche Historie und bestätigte Messpunkte; Muster schreiben gemeinsame Haushaltsstände mit Personenanteilen |
+| `tranches/tranche-reconciliation.js` | reale Ausführung bestätigen; Fassade für Verkauf und getrennten Cashnachweis |
+| `tranches/tranchen-price-service.js`, `shared/kurswahl.js` | Tagesquote über den lokalen Proxy, reine Kurswahl für Desktop und Handy-Worker |
+| `tranches/tranchen-history-fetch.js`, `tranchen-history-store.js` | Kursverlauf und Abfrageabdeckung anhand des gespeicherten Tickers |
+| `profile/profile-wealth-history.js`, `profile-wealth-captures.js` | persönliche Vermögenshistorie, Altbestand erfasster Stände und Vorbereitung des Abschlussnachweises |
 | `tranches/tranchen-history-model.js` | Tagesbewertung für Manager, Übersicht und Balance; `historyRange` begrenzt Alles, laufendes Jahr, zwölf Monate, Monat und sieben Kalendertage auf gestern und den Aufzeichnungsbeginn |
 | `tranches/tranchen-history-ui.js` | Positionsdetails verwenden `historyRange` für fünf hostlokale Zeiträume, begrenzt auf den ersten gespeicherten Kurs. `bindHistoryDayInteraction` erhält eigene Kurs-/Verkaufszeilen; Vermögenszeilen bleiben Standard. Das Kursfeld erhält über die SVG-Klasse eine Inhaltsbreite von 120 bis 340 px; Vermögensfelder bleiben 340 px breit. Resize erhält Zeitraum und Tageswahl. Kurze Kursachsen schließen den Kaufpreis aus und zeigen ihn außerhalb als Hinweis; die Fußzeile nennt die Kaufpreislinie nur bei gezeichneter Linie und folgt dem Zeitraumwechsel. Kopfzeile, Abdeckung und Verkaufsliste bleiben vollständig |
 | `tranches/tranchen-history-svg.js`, `overview/overview-history.js`, `tranches/tranchen-history-closures.js` | Vermögens- und Kursachse wählen Schritte aus 1 · 2 · 2,5 · 5 × 10ⁿ, Grenzen als Vielfache und 4–7 Rasterlinien; die engste gültige Achse zielt auf mindestens 80 % Datenfüllung außerhalb von Nullstart und kleinen Schwankungen; kleine Schwankungen behalten mindestens 1 % Luft je Seite. Übersicht: 260 px, Manager: 420 px. Die Übersicht nennt Messbeginn nur bei Alles oder einer gegenüber dem Zeitraum verkürzten Messbasis. Kurze Auswahlen filtern Abschlussrauten, gespeicherte Standtabelle bleibt vollständig; Renditezeiträume bleiben getrennt |
@@ -185,7 +171,7 @@ Ausgabenseite und Abschlussdialog teilen Budgetquelle, `memberPlanScope` und Imp
 
 `tranchen-manager-page/tranches.js` reicht den Korrekturgrund an `prepareTrancheDetailWrite` weiter; der Schreiber hängt Vorher-/Nachher-Werte mit Zeitstempel an die Tranche. Die Projektion verwendet Kaufbelege oder die ersten Vorher-Werte und kennzeichnet unbekannte Altdaten. Notizen speichern unabhängig beim Verlassen des Felds. Der [Tranchenvertrag](DATENVERTRAEGE.md#tranchen-und-ausführungsbelege) beschreibt die Verlaufsfelder. Der geführte Kauf setzt bei Aktien den Bestand aus dem Ausführungstag.
 
-`profile-manager-bindings.js` besitzt Personen-/Haushaltsänderungen. Einzelne Tranchen löscht der Tranchenmanager. `profile-storage.js` re-exportiert die bisherigen benannten Profilfunktionen aus `profile/profile-storage/`. Dort führt `live-storage.js` Livekeys, Registry und Ladebasis beim Speichern zusammen. Balance und Simulator lesen Mitgliedschaft nur.
+`profile-manager-bindings.js` besitzt Personen-/Haushaltsänderungen. Einzelne Tranchen löscht der Tranchenmanager. `profile-storage.js` re-exportiert die bisherigen benannten Profilfunktionen aus `profile/profile-storage/`. Dort führt `live-storage.js` Livekeys, Registry und Ladebasis beim Speichern zusammen.
 
 `tranche-reconciliation.js` re-exportiert die bisherigen benannten Bindungen aus `app/tranches/tranche-reconciliation/`. Die Vorschau bleibt lesend. Der Verkaufscommit schreibt Bestand, Profilkopie und Audit gemeinsam; Cashbestätigung und Korrektur schreiben absoluten Tagesgeldstand, Historie und Audit zusammen.
 
@@ -207,14 +193,14 @@ Ausgabenseite und Abschlussdialog teilen Budgetquelle, `memberPlanScope` und Imp
 | `live-base.js` | Ladebasis vergleichen, vormerken und mit genau einem Flushbeobachter verfolgen |
 | `storage-access.js` | Speicherkennungen, gemeinsame Recoveryfehlerklasse und geschützter Einzelzugriff |
 | `load-guards.js` | Identität und ladbare Profilfelder prüfen, Recoveryursache zuordnen |
-| `registry-context.js` | Registrykontext und aktive Kennung lesen, Profilmetadaten und Mitgliedschaft verwalten |
-| `live-storage.js` | Livebestand sichern/laden mit Rollback; Kursausschnitte in inaktiven Originalrecords speichern |
+| `registry-context.js` | Registrykontext und aktive Kennung lesen, Profilmetadaten verwalten |
+| `live-storage.js` | Livebestand sichern/laden mit Rollback, gesichert wird nur bei echter Änderung (`true`, sonst `'unchanged'`, `false` ohne Person); Laden setzt nur abweichende Live-Schlüssel und löscht nur fehlende, der Balance-Stand bleibt bei gleichem Inhalt stehen; Kursausschnitte in inaktiven Originalrecords speichern |
 | `profile-selection.js` | Profilwechsel und Löschen samt Ersatzprofil koordinieren |
 | `bundle-transfer.js` | Bundleein-/ausgabe mit Live-Save und Profil-Ladefunktion verbinden |
 | `recovery-document.js` | Recoverydokument erzeugen und gegen unveränderte Rohdaten prüfen |
-| `bootstrap-recovery.js` | Start und bestätigten Reset ausführen; letztes Bootstrapresultat zentral halten |
+| `bootstrap-recovery.js` | Start und bestätigten Reset ausführen; letztes Bootstrapresultat zentral halten. `written` meldet einen echten Startwrite, auch aus dem Laden der Person (etwa bereinigte Balance-Eigentümerschaft); dann bestätigt der Seitenstart den Flush vor der Bereitschaft |
 
-`validateProfileManagementRecords` in `persistence-backup.js` prüft Registry, Kennungen und betroffene Personen einschließlich Ladefallback inhaltlich, die Ladebasis nur auf Stringform, ohne JSON-/Prüfsummenprüfung. Unveränderte gemeinsame Domänen sperren nicht. `profile-manager-bindings.js` kontrolliert Haushaltsuntergrenze und unveränderte Dialogbasis; `profile-management-recovery.js` bestätigt den vollständigen Vorabpunkt vor dem Write. Die Personendatei enthält keine Ausgaben; ein zusätzliches `expenses` wird beim Import ignoriert und der Ausgabenstore bleibt unverändert. Eigene Exporte haben keine Import-Haushaltsgrenze. [Recordvertrag](DATENVERTRAEGE.md#person-und-restore).
+`validateProfileManagementRecords` in `persistence-backup.js` prüft Registry, Kennungen und betroffene Personen einschließlich Ladefallback inhaltlich, die Ladebasis nur auf Stringform, ohne JSON-/Prüfsummenprüfung. Unveränderte gemeinsame Domänen sperren nicht. `profile-manager-bindings.js` kontrolliert Haushaltsuntergrenze und unveränderte Dialogbasis; einen Wiederherstellungspunkt legt die Personenverwaltung nicht an. Eigene Exporte haben keine Import-Haushaltsgrenze. [Recordvertrag](DATENVERTRAEGE.md#profilbündel-und-restore).
 
 Editoren in `tranchen-manager-income*.js`, `tranchen-manager-planned-expenses.js` und `tranchen-manager-household-plan.js` besitzen Entwürfe und Autosave. Profilwechsel oder fremde Mutation entwertet eine alte Dialogbasis. Renderer reparieren keine beschädigten Records.
 
@@ -231,13 +217,15 @@ Editoren in `tranchen-manager-income*.js`, `tranchen-manager-planned-expenses.js
 
 Die Teilmodule importieren einander direkt. Einzelprojektion und Haushaltsprojektion teilen die Pflegequellen; Klassifikation, Verkaufsauswahl und Vermögensübersichten teilen den Tranchencache. Die Standardwerte und die Reihenfolge der Überschreibungen bleiben in den Projektionsfunktionen erhalten.
 
-`calculateProfileGoldStrategy` verwendet reconciliierte Bestände ohne gesperrte Reserve; Euroziele werden vor Haushaltsquoten summiert. Der Simulator gliedert die summierte Rücklage nach dem Finanzmerge aus und verwendet die erste aktivierte Konfiguration. Lotkopien behalten `sourceProfileId`; fehlende Herkunft erzeugt keine Ersatzlots.
+`calculateProfileGoldStrategy` verwendet reconciliierte Bestände ohne gesperrte Pflegereserve; Euroziele werden vor Haushaltsquoten summiert. Der Simulator gliedert die summierte Pflegereserve nach dem Finanzmerge aus und verwendet die erste aktivierte Konfiguration. Bei einem einzigen persönlichen Reserveziel nutzt der Simulator nur zuordenbare Geldmarktlots und das Tagesgeld dieser Person. Lotkopien behalten `sourceProfileId`. Fehlende Herkunft erzeugt keine Ersatzlots.
 
 ### Simulator und Worker
 
 | Modul unter `app/simulator/` oder `workers/` | Aufgabe |
 |---|---|
 | `simulator-input-dom.js`, `simulator-input-validation.js` | Eingabegrenzen und Prüfung |
+| `simulator-household-widow-persistence.js` | Gemeinsame Hinterbliebenenrente speichern, personengebundene Altwerte beim ersten Lesen übernehmen |
+| `simulator-household-purchases-persistence.js` | Haushaltswahl für simulierte Aktienzukäufe lesen, prüfen und speichern |
 | `simulator-profile-inputs.js` | benannte Re-Exporte der Plan-/Personenprojektion; Implementierung im gleichnamigen Unterordner |
 | `simulator-person-overrides.js`, `simulator-run-assumptions.js` | flüchtige Alternativen und eingefrorene Laufannahmen |
 | `simulator-engine-direct.js` | benannte Re-Exporte des direkten Jahreseinstiegs und der bisherigen Hilfen |
@@ -246,49 +234,48 @@ Die Teilmodule importieren einander direkt. Einzelprojektion und Haushaltsprojek
 | `mc-life-events.js`, `simulator-engine-helpers.js`, `simulator-care-today.js` | Pflege-/Todesereignisse, feste heutige Pflege und Preisabschluss |
 | `target-mortality.js`, `german-cohort-life-table.js` | FR-75: Zieltafel (Kohorte V2 je Geburtsjahr, Periodentafel ohne Geburtsjahr) und exakte Grundsterblichkeit ohne Pflege je Person; die Tafeldaten sind ein erzeugtes, abhängigkeitsfreies Modul |
 | `monte-carlo-duration.js` | FR-75: leeres Feld „Maximale Dauer“ = automatisch 110 − Alter der jüngsten Person; gespeicherte 35 gilt beim Lesen als automatisch |
+| `monte-carlo-method-choice.js` | MS-1: gespeichertes `regime_markov` ohne `sim_mcMethodeQuelle = nutzer` gilt als alte Vorgabe und zeigt Stationary Bootstrap, andere gespeicherte Methoden bleiben; die Wahl im Formular setzt das Merkmal |
 | `../shared/care-needs.js`, `../shared/care-cost-resolver.js`, `simulator-care-projection.js` | Reine Bedarfsbestandteile, lesende Preisvorgaben und Folgejahresbedarf für das Liquiditätsziel |
-| `simulator-home-sale.js`, `simulator-inheritance.js`, `simulator-residence-tax.js` | Verkäufe, Nachlass und Wohnrechtsteuer außerhalb des Enginebudgets |
+| `simulator-home-sale.js`, `simulator-inheritance.js`, `simulator-residence-tax.js` | Verkäufe, Nachlass und Jahressteuer auf Wohnrecht oder Rentenvermächtnis außerhalb des Enginebudgets |
+| `simulator-rent-bequest.js`, `simulator-housing-capital.js` | Rente und Miete aus dem Nachlasszustand. Beim späteren Auszug bucht das Modul Wohnkapital abzüglich der in `household-partnership.js` berechneten Steuerdifferenz vor der Bedarfsrechnung. Die gezahlte Steuer geht in die Jahressumme der Steuern ein. Die selbst bezahlte Miete beginnt im selben Jahr. In Ansparjahren übernimmt `simulator-accumulation-year.js` die Mietzahlung auch beim sofortigen Verkauf. |
 | `simulator-personal-tax.js`, `simulator-tax-recompute.js` | persönliche Jahresbücher und Steuerdeckung |
 | `simulator-forced-sale.js`, `simulator-health-bucket.js` | zusätzliche Deckungswege |
 | `historical-backtest-contract.js`, `historical-backtest-runner.js` | benannte Re-Exporte für manifestgebundene Periodenvorprüfung und Backtest |
 | `simulator-monte-carlo.js`, `monte-carlo-runner.js` | benannte Re-Exporte für Dokumentlauf bzw. DOM-freie Laufbereiche |
-| `stress-replay-ui.js` | benannte Re-Exporte für Controller, Einstieg, Banner und Schrittanzeige; Implementierung im gleichnamigen Unterordner |
 | `mc-run-context.js`, `mc-log-builder.js` | Pfadstart und Jahreslogs |
 | `mc-year-sampling.js` | benannte Re-Exporte für Startjahr, Jahresziehung und Samplingdiagnostik |
 | `simulator-year-result.js`, `simulator-log-order.js` | Jahresergebnis und feste öffentliche Reihenfolge der Protokollfelder |
-| `simulator-crises.js`, `backtest-euro-display.js` | gemeinsame Gesamtvermögensprojektion für Chart und Krisen; Euro-Schalter auf Ergebnis, Backtest und Monte-Carlo teilen `euro-display.js`; real mit kumuliertem Jahresend-Preisfaktor auf „Euro von [Startjahr]“ |
+| `simulator-crises.js`, `backtest-euro-display.js` | gemeinsame Gesamtvermögensprojektion für Chart und Krisen; Euro-Schalter auf Ergebnis, Backtest und Monte-Carlo teilen `euro-display.js`; real auf „Euro von [Startjahr]“, Bestände mit dem kumulierten Jahresend-, Jahresflüsse mit dem Jahresanfangsfaktor (`yearStartPriceFactor`) |
 | `simulator-portfolio-display.js` | lesende Startkacheln mit getrenntem Geldmarkt und optionalem Gold/Anleihen; bisherige Recheneingaben bleiben erhalten |
-| `simulator-heatmap.js`, `simulator-visualization.js` | Heatmaps und Pareto nach gemessener Inhaltsbreite; Neuzeichnung über `bindBalanceDisplaySize`, Sensitivitätsbalken in Prozent |
+| `simulator-heatmap.js` | Heatmaps nach gemessener Inhaltsbreite; Neuzeichnung über `bindBalanceDisplaySize` |
 | `monte-carlo-chunk-result.js`, `monte-carlo-aggregates.js` | benannte Re-Exporte der Chunkverträge bzw. Aggregation |
 | `worker-pool.js`, `mc-worker.js`, `worker-telemetry.js` | Generation, Transport, Abbruch und lokale Messung |
 
-Unter `stress-replay-ui/` hält `entry.js` den einzigen aktiven Controller. `controller.js` besitzt je Controller die lebenden Zustandsbindungen und reicht sie über Zugriffsfunktionen weiter. `presentation.js` aktualisiert Anzeige und Editor, `variants.js` berechnet und speichert Varianten, `capture.js` fixiert Ursprungsläufe und `workspace-actions.js` übernimmt Import, Export und Verwerfen. `lifecycle.js` hält Initialisierung und Ereignisbindungen hinter derselben einmaligen Sperre. `workspace-view.js` zeigt Banner und Schritte, `values.js` hält Formatierung und Leerzustände, `defaults.js` die vorhandenen Lauf-, Kompatibilitäts- und Downloadadapter. Die injizierten Funktionen behalten ihren freien Aufruf ohne Empfängerobjekt.
-
 Unter `historical-backtest-contract/` hält `schema.js` Kennungen und Zuordnungsinventar, `values.js` Kopien, Einfrieren, kanonische Darstellung und SHA-256. `validation.js` prüft Manifest und Rohdaten; `observations.js` erstellt Beobachtungen mit Qualitätsstatus. `year-record.js` erstellt und prüft Jahresrecords, `period.js` prüft Perioden samt Anfangshistorie. `provider.js` besitzt den einzigen Provider-Cache und baut die unveränderlichen Datenzugänge einschließlich Batchvorprüfung.
 
-Unter `historical-backtest-runner/` hält `schema.js` Laufkennungen und Fehlercodes. `entry.js` prüft Abhängigkeiten und Periode, kopiert Eingaben und initialisiert den Lauf. Anschließend übernimmt `years.js` denselben Laufzustand und führt die bisherige Jahresrechnung einschließlich Ruin und technischer Fehler aus. `run-values.js` hält Kopien und Einfrieren, `year-data.js` die Provider- und Jahresdatenadapter, `portfolio.js` beide Vermögensrechenwege. `provenance.js` erstellt Daten- und Engineherkunft; `results.js` bereitet Fehler, Summary und kanonische Kennzahlen auf. Laufzustand und Akkumulatoren bleiben lokal je Aufruf; es gibt keinen modulweiten Runnerzustand.
+Unter `historical-backtest-runner/` hält `schema.js` Laufkennungen und Fehlercodes. `entry.js` prüft Abhängigkeiten und Periode, kopiert Eingaben und initialisiert den Lauf. Anschließend übernimmt `years.js` denselben Laufzustand und führt die bisherige Jahresrechnung einschließlich aufgebrauchten Vermögens und technischer Fehler aus. `run-values.js` hält Kopien und Einfrieren, `year-data.js` die Provider- und Jahresdatenadapter, `portfolio.js` beide Vermögensrechenwege. `provenance.js` erstellt Daten- und Engineherkunft; `results.js` bereitet Fehler, Summary und kanonische Kennzahlen auf. Laufzustand und Akkumulatoren bleiben lokal je Aufruf; es gibt keinen modulweiten Runnerzustand.
 
 Unter `mc-year-sampling/` hält `schema.js` Kennungen und zulässige Verfahren. `samplers.js` erstellt und kopiert Sampler und zieht aus ihrer Verteilungsfunktion; `configuration.js` baut die Jahresbestände und Gewichtungen. `contract.js` prüft Regime-, CAPE- und Stressvorrang, `start-year.js` zieht das Startjahr. `runtime.js` initialisiert den Pfadzustand und zieht Folgejahre; nur dort liegt der gemeinsame WeakMap-Cache für historische Jahresindizes. `diagnostics.js` zählt, prüft und vereinigt die Ziehungsdiagnosen. Die Reihenfolge der Zufallsaufrufe bleibt erhalten; Teilmodule importieren einander direkt.
 
-Unter `simulator-monte-carlo/` besitzt `state.js` den aktiven Lauf als live exportierte Bindung, den Generationszähler und die dokumentbezogenen Navigationsregistrierungen jeweils einmal. `entry.js` startet den Lauf und setzt die Bindung über den einzigen Schreibzugang; `state.js` bricht ihn ab. `serial.js` führt den seriellen Lauf und Protokoll-/Replaynachläufe aus. `workers.js` besitzt den wiederverwendeten Workerpool samt Größe und führt Workerjobs aus; seine URL zeigt weiterhin auf `workers/mc-worker.js`. `helpers.js` hält Abbruchprüfung, Zeitformatierung und Arrayhilfen. `execution.js` enthält den bisherigen UI-Ablauf einschließlich Vergleich, Fallback, Veröffentlichung und Cleanup unverändert als eine Funktion. `execution-dependencies.js` bündelt dessen benannte Abhängigkeiten und reicht die aktive Laufbindung live weiter; interne Importe bleiben kreisfrei. `result-memory.js` merkt das veröffentlichte Ergebnis im bereichsbezogenen `sessionStorage` unter `rs_simulator_mc_result_v1`, mit Fingerabdruck der Eingaben, ohne Szenariozeilen und mit kompaktem Export; über etwa 3 Mio. Zeichen oder bei vollem Speicher merkt es nichts. Nichts davon gelangt in Persistenz, Sicherung oder Export. `result-restore.js` vergleicht beim Seitenstart den Fingerabdruck, rechnet die Szenariozeilen aus der Laufnummer nach und veröffentlicht Anzeige, Export und Übersichtslauf neu. Ein gemerktes Ergebnis ist kein Verlustgrund im Navigationswächter, bis eine Eingabe außerhalb der Ergebnisansicht folgt; danach fragt der Wächter wieder.
+Unter `simulator-monte-carlo/` besitzt `state.js` den aktiven Lauf als live exportierte Bindung, den Generationszähler und die dokumentbezogenen Navigationsregistrierungen jeweils einmal. `entry.js` startet den Lauf und setzt die Bindung über den einzigen Schreibzugang; `state.js` bricht ihn ab. `serial.js` führt den seriellen Lauf und Protokollnachläufe aus. `workers.js` besitzt den wiederverwendeten Workerpool samt Größe und führt Workerjobs aus; seine URL zeigt weiterhin auf `workers/mc-worker.js`. `helpers.js` hält Abbruchprüfung, Zeitformatierung und Arrayhilfen. `execution.js` enthält den bisherigen UI-Ablauf einschließlich Vergleich, Fallback, Veröffentlichung und Cleanup unverändert als eine Funktion. `execution-dependencies.js` bündelt dessen benannte Abhängigkeiten und reicht die aktive Laufbindung live weiter; interne Importe bleiben kreisfrei. `result-memory.js` merkt das veröffentlichte Ergebnis im bereichsbezogenen `sessionStorage` unter `rs_simulator_mc_result_v1`, mit Fingerabdruck der Eingaben, ohne Szenariozeilen und mit kompaktem Export. Typisierte Arrays wie die Fächerklassen speichert es dünn besetzt, nur belegte Felder; Geldfächer und Endwerte je Lauf sind nicht aufzählbar und stehen deshalb getrennt in `hiddenResults`, `result-restore.js` setzt sie wieder ein. Über etwa 3 Mio. Zeichen oder bei vollem Speicher merkt es nichts und meldet „zu groß“ in `#mcResultMemory`; ohne Sitzungsspeicher oder bei einem Fehler beim Serialisieren steht dort ein neutraler Hinweis. Nichts davon gelangt in Persistenz, Sicherung oder Export. `result-restore.js` vergleicht beim Seitenstart den Fingerabdruck, rechnet die Szenariozeilen aus der Laufnummer nach und veröffentlicht Anzeige, Export und Übersichtslauf neu. Ein gemerktes Ergebnis ist kein Verlustgrund im Navigationswächter, bis eine Eingabe außerhalb der Ergebnisansicht folgt; danach fragt der Wächter wieder.
 
-Das Simulatorjahr führt Ereignisse/Einkünfte/Immobilienverkauf → Renditen → Marktfenster/Horizont → Engine → Verkäufe/Deckung/Käufe/Auszahlung → Zinsen/Steuer/Nachlass aus. Vor Ruin darf es mit weiteren einzelnen Immobilienverkäufen vom Jahresanfang wiederholen; nur der endgültige Versuch erreicht den Collector.
+Das Simulatorjahr führt Ereignisse/Einkünfte/Immobilienverkauf → Renditen → Marktfenster/Horizont → Zinsen → Engine → Verkäufe/Deckung/Käufe/Auszahlung → Steuer/Nachlass aus. Der Zins des Jahres auf Tagesgeld, Geldmarkt und Pflegereserve gilt wie die Rendite für den Stand vor der Entscheidung (NG-5); seine Steuer rechnet die Abrechnung am Jahresende. `liqStart` ist der Stand vor dem Zins, `liq_after_interest` der Stand direkt danach. Das Exportfeld `liqEnd` („Liquidität Jahresende (vor Steuer)“, Kurzkopf `LiqEnde`) enthält in Anspar- und Entnahmejahren den Stand nach den Geldbewegungen vor der Steuerabrechnung. Im Ansparjahr sind Sparrate und Zukäufe bereits gebucht. Im Erbfall gilt der Stand nach Steuer und Nachlass. Bevor das Vermögen aufgebraucht ist, darf es mit weiteren einzelnen Immobilienverkäufen vom Jahresanfang wiederholen; nur der endgültige Versuch erreicht den Collector.
 
 Die Implementierung liegt unter `app/simulator/simulator-engine-direct/`. `year-entry.js` besitzt Jahreswiederholung und Collectorweitergabe; `annual-sequence.js` führt die Phasen in der bisherigen Reihenfolge aus. Ein lokaler Jahreskontext reicht dieselben Portfolio-, Aktions- und Diagnoseobjekte weiter. Es gibt keinen veränderlichen Modulzustand; Teilmodule importieren einander direkt.
 
 | Modul im Unterordner | Aufgabe |
 |---|---|
 | `year-preparation.js` | Engineverfügbarkeit, Haushalts-/Pflegezustand, Immobilien und Zuflüsse vorbereiten |
-| `year-market.js` | Wohnrechtsteuer, Renditen, Marktfenster und Ansparzweig ausführen |
+| `year-market.js` | Jährliche Erbschaftsteuer, Renditen, Marktfenster, Ansparzweig und Zins des Jahres ausführen |
 | `engine-decision.js` | Renten und feste Einkünfte, Engineeingabe, Leitplanken und Jahresentscheidung |
 | `action-plan.js` | geplante Aktion, Steuervertrag, Drei-Töpfe-Finalisierung und persönliche Zuordnung prüfen |
 | `action-execution.js` | reguläre Verkäufe und Kaufmittel buchen |
 | `withdrawal-coverage.js` | Pflegekapital, persönliche Deckung und Notverkäufe ausführen |
-| `year-payout.js` | Käufe, Ruinprüfung, Auszahlung und geplante Ausgaben buchen |
-| `year-tax-inheritance.js` | Zinsen, Jahressteuer und Nachlass abrechnen |
+| `year-payout.js` | Käufe, Prüfung auf aufgebrauchtes Vermögen, Auszahlung und geplante Ausgaben buchen |
+| `year-tax-inheritance.js` | Jahressteuer samt Zinssteuer und Nachlass abrechnen |
 | `year-protocol.js` | ausgeführte Verkäufe zusammenführen, Jahresprotokoll und Folgezustand erstellen |
 | `action-contracts.js`, `engine-boundary.js` | Aktions-/Steuerprüfung und Wiederherstellung der Enginegrenze |
-| `outcomes.js`, `year-diagnostics.js` | gemeinsame Ergebnisarten, Ruin-/Fehlerergebnisse und Bilanzphasen |
+| `outcomes.js`, `year-diagnostics.js` | gemeinsame Ergebnisarten, Ergebnisse für aufgebrauchtes Vermögen und Fehler sowie Bilanzphasen |
 
 `simulator-inheritance.js` bewertet beide Vermögen vor Erbaufteilung. Anfangsbestände stammen aus `initializePortfolio(inputs)` samt Immobilien; `applyPlannedInflows` ergänzt `portfolio.equalizationInflows` in Startkaufkraft. `equalizationAllowance` und `inheritancePersonalAllowance` aus `household-partnership.js` sind gemeinsame Quellen für Vorschau, Rechnung und Erbe-ⓘ. [Steuerregeln](STEUERN.md#erbe).
 
@@ -296,11 +283,11 @@ Die Implementierung liegt unter `app/simulator/simulator-engine-direct/`. `year-
 
 Monte Carlo hält Lebensereigniszustände je Pfad; Backtest zieht keine neuen Ereignisse. Der unverheiratete Zahlungsweg deaktiviert Zusammenveranlagung. Explizites Ansparen mit geplanten Ausgaben wird vor Rechnung abgewiesen. `initialAccumulationState` setzt die erste Sparrate; später folgt Indexierung. Einzelpersonen nutzen das persönliche Steuerbuch, aggregierte Mehrpersonen-Alteingaben `beginAggregateTaxYear`/`settleAggregateTaxYear`. Beide Wege erfassen Zinsen, realisierte Geldmarktgewinne und Steuerdeckungsverkäufe.
 
-`mc-euro-metrics.js` erfasst über `recordEuroHealthBucketYear` auch die Ruinzeile; `buildEuroAggregates` trennt Nutzungs- und Bestandsgruppen. `mc-run-metrics.js` sammelt alle aktivierten Zinsläufe; `applyHealthBucketInterest` begrenzt negative Zinsen auf den Bestand. `buildHealthBucketSummary` sucht rückwärts die letzte aktivierte Zeile. [Felder/Preiszeitpunkte](DATENVERTRAEGE.md#simulatorabweichungen), [Bedeutung](SIMULATION_LESEN.md#pflege). Heutige Pflege erhält die Pflegeparameter in den Laufannahmen.
+`mc-euro-metrics.js` erfasst über `recordEuroHealthBucketYear` auch die Zeile mit aufgebrauchtem Vermögen; `buildEuroAggregates` trennt Nutzungs- und Bestandsgruppen. `mc-run-metrics.js` sammelt alle aktivierten Zinsläufe; `applyHealthBucketInterest` begrenzt negative Zinsen auf den Bestand. `buildHealthBucketSummary` sucht rückwärts die letzte aktivierte Zeile. [Felder/Preiszeitpunkte](DATENVERTRAEGE.md#simulatorabweichungen), [Bedeutung](SIMULATION_LESEN.md#pflege). Heutige Pflege erhält die Pflegeparameter in den Laufannahmen.
 
 Worker und Hauptthread rechnen `runMonteCarloChunk`; Generation/Datenversion sperren fremde Fortsetzungen. Fehler erlauben seriellen Ersatz, Abbruch nicht. Alle offenen Promises müssen enden.
 
-`monte-carlo-runner.js`, `monte-carlo-chunk-result.js`, `monte-carlo-contracts.js`, `sweep-runner.js`, `stress-replay-contract.js`, `simulation-data-inventory.js` und `german-gross-wage-growth-chain.js` enthalten ausschließlich benannte Re-Exporte. Ihre Implementierungen bleiben DOM-frei. Die Teilmodule importieren einander direkt. Veränderlicher Zustand entsteht je Chunk oder Pfad; das Sweep-Register historischer Jahresindizes liegt einmal in `sweep-runner/fingerprint.js`.
+`monte-carlo-runner.js`, `monte-carlo-chunk-result.js`, `monte-carlo-contracts.js`, `simulation-data-inventory.js` und `german-gross-wage-growth-chain.js` enthalten ausschließlich benannte Re-Exporte. Ihre Implementierungen bleiben DOM-frei. Die Teilmodule importieren einander direkt. Veränderlicher Zustand entsteht je Chunk oder Pfad. `simulator-run-utils.js` hält `cloneStressContext`, `normalizeWidowOptions` und `computeMarriageYearsCompleted` für Monte Carlo, Vergleich und Parität.
 
 | Unterordner und Module unter `app/simulator/` | Aufgabe |
 |---|---|
@@ -308,23 +295,17 @@ Worker und Hauptthread rechnen `runMonteCarloChunk`; Generation/Datenversion spe
 | `monte-carlo-runner/path-state.js` | Pfadzustand anlegen und Jahresphasen, Fortsetzung sowie Abschluss ausführen |
 | `monte-carlo-runner/annual-life.js` | Marktjahr ziehen, Stress anwenden und Pflege-/Todesereignisse fortschreiben |
 | `monte-carlo-runner/annual-decision.js` | Todesabschluss, Pflegebedarf, Horizont und Jahresadapter ausführen |
-| `monte-carlo-runner/annual-result.js`, `annual-success.js` | Ruin bzw. erfolgreiche Finanzjahre, Kennzahlen und Protokoll erfassen |
-| `monte-carlo-runner/post-ruin.js`, `replay-records.js` | Nullentnahmen und Replayschattenpfad fortsetzen bzw. Replaybelege erstellen |
+| `monte-carlo-runner/annual-result.js`, `annual-success.js` | Jahre mit aufgebrauchtem Vermögen bzw. erfolgreiche Finanzjahre, Kennzahlen und Protokoll erfassen |
+| `monte-carlo-runner/post-ruin.js` | Nullentnahmen nach aufgebrauchtem Vermögen fortsetzen |
 | `monte-carlo-runner/path-completion.js`, `batch.js` | Pfadkennzahlen und terminale Outcomes bzw. technische Inventare und Modellverträge erstellen |
 | `monte-carlo-chunk-result/schema.js`, `outcomes.js` | Feldregister, Versionswerte und disjunkte terminale Outcomes |
 | `monte-carlo-chunk-result/path-buffers.js`, `path-record.js` | typisierte Pfadpuffer samt Transferaliasen anlegen und Pfadzusammenfassungen erfassen |
 | `monte-carlo-chunk-result/validation-primitives.js`, `assert-result.js`, `assert-financial-path.js` | Puffer, Diagnosen, Chunkpopulation und finanzielle Pfadwerte prüfen |
 | `monte-carlo-chunk-result/accumulator.js`, `accumulator-finalization.js` | disjunkte Chunks übernehmen und in globaler Laufreihenfolge finalisieren |
 | `monte-carlo-contracts/schema.js`, `validation-primitives.js`, `portable-json.js` | Versionswerte und gemeinsame Prüfungen halten, portable JSON-Werte, Fingerprints und eingefrorene Kopien erstellen |
-| `monte-carlo-contracts/request.js` | Laufrequest erstellen und prüfen, Replayargumente und Alias-Telemetrie ableiten |
+| `monte-carlo-contracts/request.js` | Laufrequest erstellen und prüfen, Argumente für einen exakten Neulauf und Alias-Telemetrie ableiten |
 | `monte-carlo-contracts/kpi-projection.js`, `result-v1.js` | KPIs projizieren, Missingness und Diagnosen erfassen, V1-Ergebnis erstellen und prüfen |
 | `monte-carlo-contracts/measurement-v2.js`, `result-v2.js` | Beobachtungen, Drawdowns, Heatmap und Einheiten für V2 abbilden, V2-Ergebnis projizieren und prüfen |
-| `sweep-runner/inputs.js`, `runway.js` | Kombinationen prüfen, erlaubte Overrides anwenden und gemessene Reichweite lesen |
-| `sweep-runner/provenance.js`, `fingerprint.js`, `household-risk.js` | gemeinsame Zufallsbasis, Jahresfolge und Haushalts-/Pflege-/Extremrisikodiagnosen belegen |
-| `sweep-runner/chunk.js`, `simulation.js`, `execution.js` | Kombinationen koordinieren, Einzelpfade rechnen und synchron oder asynchron mit Fortschritt und Abbruch ausführen |
-| `stress-replay-contract/schema.js`, `values.js`, `variant-whitelist.js` | Replayversionen, Feldregister, Fingerprints und gemeinsame Prüfungen halten |
-| `stress-replay-contract/source-projection.js`, `source-identity.js`, `path.js` | Quellzeilen projizieren, Quellidentitäten und fixierte Jahrespfade prüfen |
-| `stress-replay-contract/variant-patch.js`, `variant-result.js`, `comparison.js`, `workspace.js` | Strategieänderungen anwenden, Varianten, Ergebnisse, Vergleiche und Arbeitsstände prüfen |
 | `simulation-data-inventory/schema.js`, `entry-builders.js`, `inventory.js` | Evidenzklassen und Eintragsformen halten, Inventar einmal zusammensetzen und einfrieren |
 | `simulation-data-inventory/historical-markets.js`, `historical-german-economy.js` | Aktien-, Gold- und CAPE-Belege bzw. deutsche Inflations-, Zins- und Lohnbelege halten |
 | `simulation-data-inventory/household-data.js`, `policy-data.js`, `validation.js`, `source-gate.js` | Haushalts- und Modellbelege halten, Inventar und Quellenfreigaben prüfen |
@@ -344,21 +325,13 @@ Die [optionale Prüfkonfiguration](../../src-tauri/tauri.pe-1-perf.conf.json) se
 
 ### Planübersicht
 
-`simulator-plan-overview.js` baut in `buildPlanOverview` einen lebenden Haushalt aus heutigem Pflegekontext. `careFormForPerson` berücksichtigt den Partnerausfall, `careAllowanceAnnual` liefert eigene Einkommensgruppen. Zusätzliche Pflegekosten fehlen in dieser [Planprojektion](PFLEGE.md#planübersicht-und-backtest).
+`simulator-plan-overview.js` baut in `buildPlanOverview` einen lebenden Haushalt aus heutigem Pflegekontext. `careFormForPerson` berücksichtigt den Partnerausfall, `careAllowanceAnnual` liefert eigene Einkommensgruppen. Zusätzliche Pflegekosten fehlen in dieser [Planprojektion](PFLEGE.md#eintritt-fortschritt-und-verlaufswahl).
 
 `resolvePlanOverviewRates` verwendet eigene Inflations-/Lohnwerte einschließlich 0 %, sonst das 25-Jahres-Mittel ausschließlich für die Anzeige. [Annahme und Zeitbasis](SIMULATION_LESEN.md#gleiche-vergleichsannahmen); keine Speicherung oder Runnerweitergabe.
 
-### Werkstatt und Vergleich
+### Vergleich
 
 `decision-comparison.js` hält gemeinsame Markt-/Todesziehungen, getrennte Pflege-Forks und Eingabebelege. `target-budget-search.js` prüft Kandidaten im 50-€-Raster und bestätigt mit voller Laufzahl; rasterfremde Ausgangswerte bleiben Vergleichsbasis. Keine Suche schreibt den zentralen Plan. [Suchverfahren und Grenzen](SIMULATION_LESEN.md#zielwertsuche).
-
-`stress-replay-runner.js` materialisiert den Pfad; `sweep-runner.js` variiert Overrides mit getrenntem Plan-/Jahreshorizont. Replay prüft Geldendwert, `health_bucket_end`, `portfolio_total_end` und V2-Quellidentität. Auto-Optimize: `auto_optimize.js` → `auto-optimize-param-meta.js` → `auto-optimize-evaluate.js`/`auto-optimize-worker.js` → `auto-optimize-metrics.js` → `auto-optimize-apply.js`.
-
-[Suchparameter, Metrikfelder und Constraints](DATENVERTRAEGE.md#optimizerrequest) beschreiben den Requestvertrag.
-
-Auto-Optimize filtert mit höchstens 200 Läufen/zwei Train-Seeds, bewertet bis zu 50 Kandidaten, verfeinert fünf und bestätigt drei; je 1–20 Train-/Test-Seeds, bis zu vier parallele Kandidaten. `AutoOptimizeModelStatusV1` bleibt experimentell; Custom-Evaluatoren erben keine eingebauten Belege. [Methodische Grenzen](SIMULATION_LESEN.md#werkstatt).
-
-Singleflight-Abbruch wartet auf Kandidaten, Seeds und Cleanup; späte Ergebnisse veröffentlichen nichts. `applyChampionToForm` prüft `AutoOptimizeRequestFingerprintV2` samt Dynamic-Flex-Modus vor und nach Rücklesen, vor jeder Übernahme. Sie braucht gültigen Plan und lokalen Versuch. „Gegenüber aktuell“ bewertet unveränderte Ausgangseingaben; ein gescheiterter Folgelauf erhält den älteren Champion.
 
 ### Engineaufruf
 
@@ -372,7 +345,7 @@ Die Aktion ist ein Vorschlag. Balance attribuiert ihn; Simulator führt ihn auf 
 
 ### Speicher und Schreibgrenzen
 
-`persistence-facade.js` re-exportiert die benannten Speicherfunktionen und das gemeinsame Objekt `PersistenceFacade`. Die Implementierung unter `shared/persistence-facade/` trennt synchronen Cache und bestätigten Backendbestand. Schlüsselversionen erhalten während Replace eingetroffene Eingaben; nur unveränderte bestätigte Schlüssel verlassen den Puffer. `persistence-transaction.js` vergleicht Ausgangsbytes, ersetzt, liest zurück und validiert. Fehler brauchen bestätigten Rollback; sonst `blockSyncWrites`.
+`persistence-facade.js` re-exportiert die benannten Speicherfunktionen und das gemeinsame Objekt `PersistenceFacade`. Die Implementierung unter `shared/persistence-facade/` trennt synchronen Cache und bestätigten Backendbestand. Schlüsselversionen erhalten während Replace eingetroffene Eingaben; nur unveränderte bestätigte Schlüssel verlassen den Puffer. `persistence-transaction.js` vergleicht Ausgangsbytes, ersetzt, liest zurück und validiert. Fehler brauchen bestätigten Rollback; sonst `blockSyncWrites`. Mit `rollbackAllowKey` prüft der Rollback nur reine Schlüsselzugehörigkeit statt der Frischeprüfung des Schreibvorgangs. Der Jahresabschluss übergibt seine Zielschlüssel; ein fremder, währenddessen geschriebener Schlüssel bleibt unberührt.
 
 | Modul unter `app/shared/persistence-facade/` | Zuständigkeit |
 | --- | --- |
@@ -384,7 +357,7 @@ Die Aktion ist ein Vorschlag. Balance attribuiert ihn; Simulator führt ihn auf 
 | `writes.js` | Web Locks, Ersatzwarteschlange, Probelaufbesitz und Flushreihenfolge |
 | `cache.js` | synchroner Cachezugriff und Vormerkung geänderter Schlüssel |
 | `exchange.js` | Export, Import, Backend-Readback und transaktionaler Bestandsaustausch |
-| `snapshots.js` | Wiederherstellungspunkte lesen, schreiben, löschen und migrieren |
+| `snapshots.js` | Wiederherstellungspunkte lesen, schreiben und löschen |
 | `lifecycle.js` | Eingabe-/Entladebeobachtung und Tauri-Schließprotokoll |
 | `maintenance.js` | Status, Metadaten, Browserpräferenzen und Test-Rücksetzung |
 | `play-area.js` | echten Bestand lesen, Spielbereich aktivieren, verwerfen und übernehmen |
@@ -403,21 +376,25 @@ Module importieren ihre Abhängigkeiten direkt. `api.js` setzt einmal die Rückv
 | `domain-validation.js` | vollständigen Fachbestand und eingeschränkte Personenverwaltung prüfen |
 | `format.js` | Voll- und Recoverysicherung erzeugen, Dateinamen bilden und Schema 1/2 normalisieren |
 | `guard.js` | Vollsicherung und Import bei Spielbereich oder unlesbarem Steuerzustand sperren |
-| `download.js` | Dateiausgabe und gemeinsame Bestätigung von Sicherungszeit und Vergleichsbasis |
+| `download.js` | Dateiausgabe über `save-file.js` (Speicherdialog mit bestätigtem Schreiben oder bloße Übergabe) und gemeinsame Bestätigung von Sicherungszeit, Vergleichsbasis und Art der Sicherung |
 | `restore.js` | Vorabpunkt bestätigen, Livebestand vergleichen und transaktionalen Import ausführen |
 | `bindings.js` | Sicherungs- und Importknöpfe, Bestätigung, Status und geschützten Reload binden |
 
+Alle Dateien, die die App ausgibt, laufen über `saveTextFile` in `app/shared/save-file.js`: Vollsicherung, Wiederherstellungs- und Recoverydateien, Übergabedatei sowie die JSON- und CSV-Exporte des Simulators. In der EXE ruft der Helfer den Befehl `save_file_with_dialog` auf. Rust öffnet dafür mit dem Plugin `tauri-plugin-dialog` den Windows-Dialog „Speichern unter“ mit vorgeschlagenem Namen und Filter, schreibt mit `std::fs::write` und gibt den Pfad zurück, bei Abbruch `null`. Der Dialog blockiert und läuft deshalb in `spawn_blocking`, nie im Hauptthread. Das Plugin steht auf 2.6, `tauri` auf `~2.9.4`; neuere Plugin-Fassungen verlangen tauri 2.10. Capabilities brauchen keinen Eintrag, weil nur Rust das Plugin aufruft und eigene Befehle ohne App-Manifest erlaubt sind. Im Browser bleibt der Download über einen Link mit `download`, er startet noch im Aufruf. Erst `saved: true` bucht eine Vollsicherung; ohne gespeicherte Wiederherstellungsdatei hält der Import an.
+
 Mehrere Haushalte teilen sich eine Installation. `household-registry.js` prüft das Haushaltsverzeichnis, das außerhalb aller Haushaltsbereiche liegt und keine Finanzdaten enthält. `persistence-areas.js` löst daraus den Speicherbereich des geöffneten Haushalts und seines Spielbereichs auf; Haushalt 1 bleibt an den bisherigen Orten. Anlegen und Wechseln schreiben nur das Verzeichnis und erhöhen dessen Generation, danach lädt jede Seite neu. Jeder native Write nennt die erwartete Generation; Rust weist ihn bei Abweichung mit `HOUSEHOLD_CONTEXT_CHANGED` ab. `household-switcher.js` bindet den Umschalter im Kopf, `household-transfer.js` die Übergabedatei, `data/data-households.js` die Verwaltung auf Daten & Sicherung. Schlüssel, Dateinamen und Formate stehen in den [Datenverträgen](DATENVERTRAEGE.md#schlüssel-und-adapterhüllen).
 
-Tauri synchronisiert `.tmp` und ersetzt die Hauptdatei per `rename`. Fehlt sie, gilt eine vollständige Objektdatei aus `.tmp`, sonst `.bak`; unlesbare Rettungsdateien sperren Leerstart/Writes. JavaScript validiert Domänen. IndexedDB öffnet nach dem Altkey-Cursor frische Snapshottransaktionen; Migrationsfehler erreichen den Aufrufer. [Migrationsmarker](DATENVERTRAEGE.md#person-und-restore) und [Fehlerfolgen](SICHERUNG.md#wiederherstellung).
+Tauri synchronisiert `.tmp` und ersetzt die Hauptdatei per `rename`. Geschrieben wird nur ein JSON-Objekt; leerer oder anderer Inhalt scheitert vor jeder Rettung und vor `.tmp`. Fehlt sie, gilt eine vollständige Objektdatei aus `.tmp`, sonst `.bak`; unlesbare Rettungsdateien sperren Leerstart/Writes. JavaScript validiert Domänen. Alte Rückkehrpunkte der früheren Snapshot-Form (`ruhestandsmodell_snapshot_*`) übernimmt die App nicht mehr ins Archiv. [Migrationsmarker](DATENVERTRAEGE.md#profilbündel-und-restore) und [Fehlerfolgen](SICHERUNG.md#wiederherstellung).
+
+Der Tauri-Adapter reiht Schreibvorgänge ein. Scheitert das Speichern eines Batches, von Metadaten oder eines Sicherungspunkts, stellt der Adapter den vorherigen Speicherstand wieder her und reicht den Fehler weiter.
 
 ### Navigation und laufende Operationen
 
 „Neu beginnen“ entfernt die app-eigene Übergabe aus `window.name`. Der bereichsbezogene Sitzungsmerker `rs_profile_handoff_reset_v1` sperrt ihren automatischen Altimport auch nach abgebrochener Navigation; erst eine neue Profilübergabe hebt ihn auf.
 
-`profile-navigation.js`/Guards warten bei Suite-Links, Tauri-X und geführtem Neuladen den Flush ab. Balance übernimmt wartende Formulare über `registerProfileInputFlush` vor dem Personen-Snapshot. Bei `beforeunload`/`pagehide` sichert das nur den Dokumentspeicher; der asynchrone Adapterwrite ist nicht garantiert. Simulator schreibt Livewerte sofort, den Snapshot nach 250 ms/spätestens beim Entladen. Der Bundleexport sichert den Personenstand auch bei offenem Profiltimer. `annual-operation-lock.js` schützt Abschlüsse einschließlich Tauri-Schließen.
+`profile-navigation.js`/Guards warten bei Suite-Links, Tauri-X und geführtem Neuladen den Flush ab. Balance übernimmt wartende Formulare über `registerProfileInputFlush` vor dem Personen-Snapshot. Wenn die Seite Tauri-X binnen drei Sekunden nicht übernimmt, prüft Rust die gemeldeten Speichervorgänge. Es wartet bis zum Schreibende, höchstens zehn Sekunden ab X. Nach einer JS-Freigabe wartet Rust bis zum Schreibende, höchstens sieben Sekunden ab Freigabe. Bei `beforeunload`/`pagehide` sichert das nur den Dokumentspeicher; der asynchrone Adapterwrite ist nicht garantiert. Simulator schreibt Livewerte sofort, den Snapshot nach 250 ms/spätestens beim Entladen. Der Bundleexport sichert den Personenstand auch bei offenem Profiltimer. `annual-operation-lock.js` schützt Abschlüsse einschließlich Tauri-Schließen.
 
-Eine fehlgeschlagene Eingabesicherung wird als Verlustgrund mit Ursache gemeldet, auch bei den Ausgaben- und Vermögensverlauf-Hashzielen der Balance. „Bleiben“ erhält die Eingabe; „Trotzdem schließen/wechseln“ überspringt die fehlgeschlagene Sicherung und ihren erneuten Personen-Snapshot bzw. Bundleexport für diesen Versuch. Der abschließende Adapterflush bereits übernommener Schlüssel läuft weiter. Scheitert er, bleibt die Seite mit einer Fehlermeldung offen. Eine neue Eingabe entwertet die Zustimmung. Balance hält ungesicherte Eingaben in `unsavedInput` statt in einer gelöschten Timer-ID fest.
+Eine fehlgeschlagene Eingabesicherung wird als Verlustgrund mit Ursache gemeldet, auch bei den Ausgaben-Hashzielen der Balance. „Bleiben“ erhält die Eingabe; „Trotzdem schließen/wechseln“ überspringt die fehlgeschlagene Sicherung und ihren erneuten Personen-Snapshot bzw. Bundleexport für diesen Versuch. Der abschließende Adapterflush bereits übernommener Schlüssel läuft weiter. Scheitert er, bleibt die Seite mit einer Fehlermeldung offen. Eine neue Eingabe entwertet die Zustimmung. Balance hält ungesicherte Eingaben in `unsavedInput` statt in einer gelöschten Timer-ID fest.
 
 BFCache sperrt das zurückgekehrte Dokument mit `blockDocumentWrites` bis zum Neustart: Formulare, wartende Flushes, Archiv-/Bestandswrites und Spielaktionen. Bleiben oder fehlgeschlagener Reload heben die Sperre nicht auf. `reload-required-notice.js` zeigt außerhalb des Statushosts den dauerhaften Hinweis mit „Jetzt neu laden“, ebenso beim Bereichswechsel. Der Knopf ruft `location.reload()` auf. Begonnene Adapterwrites behalten ihren Besitzer.
 
@@ -448,15 +425,15 @@ sequenceDiagram
 
 ### Isolation und Recovery
 
-`persistence-areas.js` und `persistence-area-storage.js` trennen `echt` und `spiel`, einschließlich Archiv und Sitzungsmerkern. `probelauf-state.js` besitzt den Controller; `persistence-facade.js` die Bereichsoperationen. `readRealRecords()` liest ohne Migration oder Quarantäne. Nur `adoptPlayArea` überträgt eine Kopie ohne Datumssprung nach Prüfsummenvergleich, bestätigtem echtem Vorabpunkt und Readback. Ein fehlgeschlagener Bereichswechsel stellt Spielkopie und echten Vorher-Stand wieder her; ungeklärter Rollback sperrt Writes.
+`persistence-areas.js` und `persistence-area-storage.js` trennen `echt` und `spiel`, einschließlich Archiv und Sitzungsmerkern. `probelauf-state.js` besitzt den Controller; `persistence-facade.js` die Bereichsoperationen. `readRealRecords()` liest ohne Migration oder Quarantäne. Nur `adoptPlayArea` überträgt eine Kopie ohne Datumssprung nach Prüfsummenvergleich, bestätigtem echtem Vorabpunkt und Readback. Ein fehlgeschlagener Bereichswechsel stellt Spielkopie und echten Vorher-Stand wieder her; ungeklärter Rollback sperrt Writes. Gab es in der EXE vor der Übernahme keine Hauptdatei, entfernt die Rücknahme mit `delete_live_state` die neu angelegte Hauptdatei und deren `.tmp`. Eine alte `.bak` erhält vorher den Namen `<Name>.bak.<Zeitstempel>.json` und scheidet damit aus der automatischen Wiederherstellung aus. Beim Speichern bleibt die `.bak` unberührt. Der Befehl kennt nur Haushalt und Generation und läuft unter derselben Sperre wie `save_app_state`.
 
-Personen-/Planmigrationen benötigen bestätigte Vorabpunkte und erhalten beschädigten Rohtext. `profile-partnership-migration.js` schreibt nur echt; Fehler brechen den Start nicht ab. Einkünfte-/Pflegemigrationen verwenden den aktiven Bereich. Fehlender Güterstand bleibt [Lesevorgabe](DATENVERTRAEGE.md#immobilien-und-nachlass). `snapshot-restore.js` und `data-new-beginning.js` besitzen Replace und geschützten Reload; Archiv und Livebestand sind getrennte Transaktionen.
+Personen-/Planmigrationen benötigen eine bestätigte interne Rücksicherung (`createInternalRecovery`) und erhalten beschädigten Rohtext; nach Erfolg löschen sie die Rücksicherung. `profile-partnership-migration.js` schreibt nur echt; Fehler brechen den Start nicht ab. Einkünfte-/Pflegemigrationen verwenden den aktiven Bereich. Fehlender Güterstand bleibt [Lesevorgabe](DATENVERTRAEGE.md#immobilien-und-nachlass). `snapshot-restore.js` und `data-new-beginning.js` besitzen Replace und geschützten Reload; Archiv und Livebestand sind getrennte Transaktionen.
 
 ### Wiederherstellungsarchiv
 
-`data-renderer.js` sperrt Vollsicherung, Sicherungsimport und Aufräumen auf Daten & Sicherung im Spielbereich sichtbar mit grauer Begründung und ersetzt den Vollsicherungsrat durch den Hinweis auf unveränderte echte Daten. `data-snapshot-presentation.js` gruppiert Punkte ohne Labelwrites und liefert `snapshotBlockReason` für Zähler und Aktionen; `probelauf-runtime.js` denselben Grund für Rückfragen. Beendete Spielbereichspunkte haben keine Restoreaktion.
+`snapshot-archive.js` liest und schreibt Punkte; sichtbar sind drei Arten (`isVisibleRestorePoint`). `snapshot-restore.js` holt einen Punkt für den ganzen Haushalt zurück: Punkt „Vor dem Zurückholen“ anlegen und zurücklesen, dann eine Transaktion über alle Schlüssel eines vollständigen Punkts. `snapshot-retention.js` kürzt nach Erfolg innerhalb der Art (12 Monate, 3 vor dem Einspielen, Jahresabschlüsse immer). `snapshot-reset.js` leert das alte Archiv einmal beim Seitenstart im echten Bereich und führt den Hinweis auf Daten & Sicherung.
 
-`data-model.js` projiziert den Löschplan aus gelesenen Archivpunkten und allen bestätigten Records über `projectSnapshotRetention`; die Darstellung liest das Archiv nicht erneut. Nur `remove` oder `individualRemove` erhalten einen Löschknopf, andere Punkte den Aufbewahrungsgrund. `data-exchange.js`/`snapshot-retention.js` prüfen Identität, Referenzen und Deckung erneut. Vier Rückholpunktarten altern nach 30 Tagen; Ganzbestand, Profilumfang und unterschiedliche Ganzbestand-Keypolicies bleiben getrennt. `data-snapshot-feedback.js` hält Knopfsperren, lokale Meldungen und Einzelpunkt-Löschquittungen ausschließlich im Dokument, auch über Listenrefreshs. [Archivverträge](DATENVERTRAEGE.md#person-und-restore), [Bedienung](../../Handbuch.html#sicherung-punkte).
+`data-model.js` liest Punkte einzeln weiter, wenn das Sammellesen scheitert; ein unlesbarer Punkt erscheint als beschädigt. `data-renderer.js` zeigt eine Liste ohne Gruppen und Zähler, im Spielbereich keine Punkte. Die Überschrift der Vollsicherung (`backupChangesTitle`) nutzt dieselbe Auswertung wie der Änderungstext: „geändert:“ nur bei genannten Änderungen, „unverändert“ nur bei vollständig geprüften Bereichen. `data-restoration.js` fragt mit Datum und Anlass nach und startet das Zurückholen. [Archivverträge](DATENVERTRAEGE.md#profilbündel-und-restore), [Bedienung](../../Handbuch.html#sicherung-punkte).
 
 ### Ergebnisbesitz
 
@@ -472,13 +449,13 @@ Personen-/Planmigrationen benötigen bestätigte Vorabpunkte und erhalten besch�
 | `mc-euro-metrics.js` | Zahlungsfaktor Jahresanfang, Bestandsfaktor Jahresende |
 | `wealth-display.js`, `wealth-distribution.js` | Gesamtvermögen aus Pfadsummen vor Quantilen; Szenariorang weiter Geldvermögen |
 | `monte-carlo-aggregates.js`, `mc-run-metrics.js` | Missingness, Pflegegruppen und ungepaarte Mediane |
-| `historical-backtest-export.js`, `monte-carlo-export.js` | unveränderte Rohwerte, Laufbeleg und Einheiten |
+| `historical-backtest-export.js`, `monte-carlo-export.js` | JSON-Rohwerte, Laufbeleg und Einheiten. Das Backtest-CSV formatiert den Schutzregelgrund wie die Protokolltabelle über `translateProtocolText`. |
 
 `results-metrics.js` re-exportiert die bisherigen Anzeigezugänge aus `results-metrics/`. `display-values.js` hält gemeinsame Preisbasis-, Missingness- und Rundungshilfen. `minimum-flex.js` projiziert die eingefrorene Mindest-Flex-Messung, `summary.js` erstellt Zusammenfassung und Kernantworten. `dashboard.js` setzt das Viewmodel mit den bisherigen operativen, Drawdown-, Risiko- und Tail-Karten zusammen. `stress.js` und `care.js` bereiten Stress- bzw. Pflege-/Reservekarten auf. Reihenfolge, Rundung und Lesebasis bleiben erhalten; die Module verändern keine Laufergebnisse.
 
 Unter `monte-carlo-export/` liegen Kennungen und Feldlisten in `schema.js`, gemeinsame Hüllenprüfung, Fingerprints und Engineherkunft in `envelope.js`. `export-v1.js` liest, erstellt und prüft V1; `export-v2.js` übernimmt V2, den versionsabhängigen Leser und die Downloaddatei. `scenario-record.js` projiziert einzelne Protokollzeilen, `scenario-log.js` erstellt und prüft das Szenariodokument samt Einheiten. `scenario-io.js` liest Szenariodateien und serialisiert JSON und CSV. Die Fassade erhält alle bisherigen Namen und Formate; es gibt keinen veränderlichen Laufzustand im Modul.
 
-[Simulationsergebnisse lesen](SIMULATION_LESEN.md) definiert Nenner und Bedeutung; [Ergebnisdateien](DATENVERTRAEGE.md#ergebnisdateien) führen Schemata. Immobilien ergänzen die Anzeige; Ruin, Deckung, Rendite und Strategiequoten bleiben Geldvermögen.
+[Simulationsergebnisse lesen](SIMULATION_LESEN.md) definiert Nenner und Bedeutung; [Ergebnisdateien](DATENVERTRAEGE.md#ergebnisdateien) führen Schemata. Immobilien ergänzen die Anzeige; aufgebrauchtes Vermögen, Deckung, Rendite und Strategiequoten bleiben Geldvermögen.
 
 ## Diagnose
 
@@ -515,7 +492,7 @@ Unter `monte-carlo-export/` liegen Kennungen und Feldlisten in `schema.js`, geme
 
 ### Paritätsreplay
 
-`parity-replay-collector.js` kopiert als optionaler zehnter Parameter von `simulateOneYear` Anfang, Engineeingang und Entscheidung. `VOR_TRANSAKTION` enthält Renditen, keine Ausführung/Cashzinsen. Aufrufer liefern Quellhash und Planjahr. [Belegformen](DATENVERTRAEGE.md#paritätsbelege).
+`parity-replay-collector.js` kopiert als optionaler zehnter Parameter von `simulateOneYear` Anfang, Engineeingang und Entscheidung. `VOR_TRANSAKTION` enthält Renditen und Cashzinsen, keine Ausführung. Aufrufer liefern Quellhash und Planjahr. [Belegformen](DATENVERTRAEGE.md#paritätsbelege).
 
 `parity-balance-records.js` sperrt Writes; `parity-balance-replay.js` nutzt echten Reader/`evaluateStoredAnnualHousehold`, `parity-case.js` isoliert Simulatorjahr/Jahresentwurf. `parity-year-comparison.js` vergleicht über `parity-compare.js` mit Toleranzen/Lotzuordnung. Fehlende Herkunft bleibt `FEHLT_LOG`/`FEHLT_MODELL`, nicht anwendbar zählt nicht als gleich.
 
@@ -533,9 +510,9 @@ Unter `monte-carlo-export/` liegen Kennungen und Feldlisten in `schema.js`, geme
 | F5/F9 | `transaction-opportunistic.mjs`/`core/input-normalization.mjs`: Rundungsrest ist keine Zielquotenprüfung; fehlendes Abschöpflimit 0, direkte Module mit eigenen Ersatzwerten |
 | F6/F10 | `balance-renderer-action.js`: Cashergänzung auf Anzeigekopie nach persönlichen Zielabständen; fehlender Geldmarkteinstand sperrt die automatische Eintragung |
 | D-10/D-11 | `tax-settlement.mjs`: vereinfachter Satz; `flex-rate-policy.mjs`: Alarmstärke für nicht negative Unterdeckung konstant 10, andere Funktion unbeschlossen |
-| D-12/D-13 | `balance-expenses-metrics.js`: saldierter Nettoabfluss; `annual-marketdata.js`: konservative Fensterhoch-Untergrenze |
+| D-12/D-13 | `balance-expenses-metrics.js`: Nettosaldo mit Jahresvorzeichen je Person; `annual-marketdata.js`: konservative Fensterhoch-Untergrenze |
 | D-14/D-19 | disjunkte Outcomes, fehlend und beobachtete 0 getrennt; `monte-carlo-aggregates.js` |
-| D-15/D-16/D-18 | reale Ausführung getrennt vom Erlösstand; Finanzaggregation ohne Mehrpersonendemografie; Optimizer erbt Samplingvertrag, keine externe Validierung |
+| D-15/D-16/D-18 | reale Ausführung getrennt vom Erlösstand; Finanzaggregation ohne Mehrpersonendemografie; Optimizer entfernt (19.11.2026) |
 | PD-01/PD-02/PD-03 | `simulator-year-result.js`, `simulator-input-care.js`, `results-metrics.js`: einmal deflationieren, Drift einmal normalisieren, Erschöpfungsbasis ausdrücklich nennen |
 
 Annahmen A-01–A-13 und Risiken MR-01–MR-12 sind unter [Modellgrenzen](DATA_SOURCES.md#modellgrenzen-und-validierung) zugeordnet. V1 Contract, V2 Rechenregression und V3 Pfadparität können lokale Tests belegen; V4 historische Plausibilität, V5 externe Kalibrierung und V6 persönlicher Entscheidungsabgleich folgen daraus nicht. Ein Testlauf erneuert keinen externen Reviewstatus.
@@ -546,9 +523,9 @@ Annahmen A-01–A-13 und Risiken MR-01–MR-12 sind unter [Modellgrenzen](DATA_S
 |---|---|---|
 | Tod, Rentenmonate, Hinterbliebenenbedarf | `simulator/mc-life-events.js`, `simulator-household-pension.js`, `simulator-survivor.js` | `care-death-year.test.mjs`, `survivor-needs.test.mjs`, `simulator-household-pension.test.mjs` |
 | Testament, Nettoerbe, persönliche Steuerdeckung | `profile/household-partnership.js`, `household-inheritance-sale.js`; `simulator/simulator-inheritance.js`, `simulator-personal-tax.js` | `et-1-testament.test.mjs`, `inheritance-net.test.mjs`, `simulator-personal-tax-liquidity.test.mjs`, `ar-1b-regressions.test.mjs` |
-| Wohnrecht, amtliche Faktoren, Härteausgleich und Jahreszahlung | `profile/household-partnership.js`; `shared/life-expectancy.js`, `bmf-lifetime-use-2026.js`; `simulator/simulator-home-sale.js`, `simulator-residence-tax.js` | `et-2-residence-tax.test.mjs`, `h-1-residence-tax.test.mjs`, `ar-1-festigung.test.mjs`, `ar-1b-regressions.test.mjs`, `qs-b-regressions.test.mjs`; `scripts/check-bmf-lifetime-use.mjs` ab Repositorywurzel vergleicht alle 202 PDF-Werte |
+| Wohnrecht, amtliche Faktoren, Härteausgleich und Jahreszahlung | `profile/household-partnership.js`; `shared/life-expectancy.js`, `bmf-lifetime-use-2026.js`, `bmf-lifetime-use-2027.js`; `simulator/simulator-home-sale.js`, `simulator-residence-tax.js` | `et-2-residence-tax.test.mjs`, `h-1-residence-tax.test.mjs`, `ar-1-festigung.test.mjs`, `ar-1b-regressions.test.mjs`, `qs-b-regressions.test.mjs`; `scripts/check-bmf-lifetime-use.mjs` ab Repositorywurzel vergleicht alle 202 PDF-Werte |
 | Pflege-Flex nach Tod | `simulator/simulator-survivor.js`: `resolveSurvivorFlexFactors`; Jahresvorbereitung in `simulator-engine-direct/year-preparation.js` | `care-death-year.test.mjs`, `survivor-needs.test.mjs` |
-| Rücklagenstatistik, negative Zinsen, Planübersicht-Pflegegeld | `simulator/mc-euro-metrics.js`, `mc-run-metrics.js`, `historical-backtest-runner.js`, `simulator-health-bucket.js`, `simulator-plan-overview.js` | `qs-d-regressions.test.mjs`, `plan-view-income.test.mjs` |
+| Statistik zur Pflegereserve, negative Zinsen, Planübersicht-Pflegegeld | `simulator/mc-euro-metrics.js`, `mc-run-metrics.js`, `historical-backtest-runner.js`, `simulator-health-bucket.js`, `simulator-plan-overview.js` | `qs-d-regressions.test.mjs`, `plan-view-income.test.mjs` |
 | Heutige Pflege, Fortschritt, Partnerausfall, Preise | `shared/care-benefits.js`, `care-needs.js`, `care-cost-resolver.js`; `simulator/simulator-engine-helpers.js`, `simulator-care-today.js` | `pfa-1-care-needs.test.mjs`, `pfa-1-contracts.test.mjs`, `care-today.test.mjs`, `pa-1-partner-care.test.mjs`, `pa-1b-regressions.test.mjs`, `care-price-continuation.test.mjs` |
 | Heim-/Notverkauf, Wohnmiete und Erlösnachlass | `simulator/simulator-home-sale.js`, `simulator-inheritance.js` | `simulator-emergency-home-sale.test.mjs`, `simulator-home-sale-inheritance.test.mjs`, `he-4-heimpflege-rechnung.test.mjs` |
 | Heimpflege ersetzt den Grundbedarf, Heimkosten, Netto-Pflegekennzahl und Protokoll | `shared/household-care-values.js`; `simulator/simulator-residential-care.js`, `simulator-survivor.js` (`composeYearNeed`, `savedHomeFloorShares`), `simulator-care-log.js`, `protocol-cashflows.js` | `he-2-heimpflege.test.mjs`, `he-3-amtlich-ziehung.test.mjs`, `he-4-heimpflege-rechnung.test.mjs`, `he-4-heimpflege-anzeige.test.mjs` |
@@ -558,7 +535,7 @@ Annahmen A-01–A-13 und Risiken MR-01–MR-12 sind unter [Modellgrenzen](DATA_S
 
 ### Start
 
-`npm run serve` startet `scripts/serve.mjs` auf 127.0.0.1:8000 samt Kursproxy 8787. `--open`, `--port 8001`, `--no-proxy` sind Optionen; `--proxy-port` stellt die Appadresse nicht um. Strg+C beendet beide Dienste. [Betrieb](../guides/EINRICHTUNG_UND_BETRIEB.md) und [Livequellen](DATA_SOURCES.md#live-daten) führen Voraussetzungen und Netzgrenzen.
+`npm run serve` startet `scripts/serve.mjs` auf 127.0.0.1:8000 und den Kursproxy auf 127.0.0.1:8787. `--host` ändert die Adresse des Entwicklungsservers. Der Kursproxy bindet immer an 127.0.0.1, auch beim separaten Start. `--open`, `--port 8001`, `--no-proxy` sind Optionen; `--proxy-port` stellt die Appadresse nicht um. Strg+C beendet beide Dienste. [Betrieb](../guides/EINRICHTUNG_UND_BETRIEB.md) und [Livequellen](DATA_SOURCES.md#live-daten) führen Voraussetzungen und Netzgrenzen.
 
 ### Engine-Wrapper
 
@@ -587,6 +564,10 @@ Neue Exporte erhalten JSDoc-Typen für Parameter und Rückgaben. Hat eine Datei 
 `sync-dist.mjs` übernimmt Frontend, Engine und Leserquellen aus einem Commit. HEAD verlangt sauberen getrackten Baum ohne unversionierte Laufzeitdateien, auch ignorierte; `--rev` wählt den Commit. Rust/Tauri baut aus dem Arbeitsbaum. `__build-provenance.json` belegt `RuntimeBuildProvenanceV1`, Commit, Baumstatus und Provider; fehlende Herkunft bleibt unbekannt.
 
 `npm run build:desktop` synchronisiert `dist/` und baut die Entwicklerkennung `de.vermoegen-ruhestand.entwicklung`; `build:release` verwendet `tauri.release.conf.json`, `--no-bundle`, Produktivkennung `de.vermoegen-ruhestand.suite` und `VermoegenUndRuhestand.exe`. Kandidaten verwenden `.entwicklung.kandidat`, die alte App `com.dieter.ruhestandsapp`. Die Kennung bestimmt den Datenordner, nicht EXE-Name oder Ablageort. Sie bestimmt auch die Startsperre: `single_instance.rs` öffnet vor dem Fensteraufbau eine Sperrdatei je Kennung im Temp-Ordner ohne Schreibfreigabe. Ein zweiter Start derselben Kennung weckt über 127.0.0.1 das offene Fenster und endet; Prüf- und Produktiv-EXE laufen nebeneinander. Die EXE ist ein lokales Artefakt.
+
+### Jahresdaten
+
+`scripts/jahresdaten.mjs` mit `scripts/lib/jahresdaten/` holt, prüft und übernimmt ein Datenjahr der sechs Ketten, `scripts/jahreswerte-pruefen.mjs` prüft das Register `data/jahreswerte.json`; Ablauf, Format und Regeln stehen unter [Jahresdaten pflegen](JAHRESDATEN.md).
 
 ### Lokale Leserseiten und Dokuwerkzeuge
 
@@ -830,14 +811,14 @@ Beschluss nach der Jahresrendite 2000. Dynamic Flex ist aus. Grundbedarf 30.000,
 
 Nach der Rente bleiben 2.400,00 € Grundbedarf und 30.000,00 € Wunsch-Flex offen. Die Marktphase heißt „Stabiler Höchststand“.
 
-Beim Beschluss stehen 701.754,79 € Depot und 90.000,00 € freie Liquidität zur Verfügung. Das aktive Geldvermögen beträgt 791.754,79 €. Der Markt liegt 0,00 % unter seinem Hoch; der reale Vermögensrückgang beträgt 0,00 %.
+Beim Beschluss stehen 701.754,79 € Depot und 93.708,00 € freie Liquidität zur Verfügung. Das aktive Geldvermögen beträgt 795.462,79 €. Der Markt liegt 0,00 % unter seinem Hoch; der reale Vermögensrückgang beträgt 0,00 %.
 
 | Bezugsgröße | Quote |
 | --- | ---: |
 | Quote für den Vermögensfaktor, Ersatz aus aktuellem ungekürztem Bedarf | 4,62 % |
 | Vorläufige Depotquote | 4,62 % |
-| Geschützte Geldvermögensquote | 1,25 % |
-| Geplante tatsächliche Geldvermögensquote | 4,09 % |
+| Geschützte Geldvermögensquote | 1,24 % |
+| Geplante tatsächliche Geldvermögensquote | 4,07 % |
 
 | Stufe | Rate vorher | Rate nachher | € pro Monat | Grund |
 | --- | ---: | ---: | ---: | --- |
@@ -851,7 +832,7 @@ Beim Beschluss stehen 701.754,79 € Depot und 90.000,00 € freie Liquidität z
 | [B9 Mindest-Flex](JAHRESBUDGET.md#b9) | 100,00 % | 100,00 % | 2.500,00 | Offenes Ziel 7.500,00 €/Jahr; bereits gedeckt. |
 | [B10 Flex-Budget](JAHRESBUDGET.md#b10) | 100,00 % | 100,00 % | 2.500,00 | Ausgeschaltet; Jahresbudget 0 €. |
 | [B11 Letzte Änderungsgrenze](JAHRESBUDGET.md#b11) | 100,00 % | 100,00 % | 2.500,00 | Höchstens +12,00 / −12,00 Punkte zum Anker 100,00 %. |
-| [B12 Sicherheitsgrenze](JAHRESBUDGET.md#b12) | 100,00 % | 100,00 % | 2.500,00 | Keine schwere Flex-Notlage; geplante tatsächliche Quote 4,09 %. |
+| [B12 Sicherheitsgrenze](JAHRESBUDGET.md#b12) | 100,00 % | 100,00 % | 2.500,00 | Keine schwere Flex-Notlage; geplante tatsächliche Quote 4,07 %. |
 | [B13 Rundung](JAHRESBUDGET.md#b13) | 100,00 % | 100,00 % | 2.500,00 | Auf volle 100,00 € abgerundet; nächster Anker 100,00 %. |
 
 Die Vermögensentnahme beträgt 2.700,00 € im Monat. Mit Rente stehen dem Haushalt 5.000,00 € monatlich zur Verfügung.
@@ -862,14 +843,14 @@ Beschluss nach der Jahresrendite 2002. Dynamic Flex ist aus. Grundbedarf 30.997,
 
 Nach der Rente bleiben 0,00 € Grundbedarf und 13.639,03 € Wunsch-Flex offen. Die Marktphase heißt „Tiefer Bär“.
 
-Beim Beschluss stehen 393.927,22 € Depot und 96.971,30 € freie Liquidität zur Verfügung. Das aktive Geldvermögen beträgt 490.898,52 €. Der Markt liegt 39,61 % unter seinem Hoch; der reale Vermögensrückgang beträgt 39,99 %.
+Beim Beschluss stehen 396.453,32 € Depot und 94.924,93 € freie Liquidität zur Verfügung. Das aktive Geldvermögen beträgt 491.378,25 €. Der Markt liegt 39,61 % unter seinem Hoch; der reale Vermögensrückgang beträgt 40,22 %.
 
-Übernommen werden der kumulierte Inflationsfaktor 1,03326, die reale Vorjahresentnahme 22.507,40 €, der reale Höchststand 791.754,79 € und der Vorjahresanker 100,00 %. Das reale Depot beträgt 381.246,95 €, das reale aktive Geldvermögen 475.096,80 €.
+Übernommen werden der kumulierte Inflationsfaktor 1,03326, die reale Vorjahresentnahme 22.507,40 €, der reale Höchststand 795.462,79 € und der Vorjahresanker 100,00 %. Das reale Depot beträgt 383.691,73 €, das reale aktive Geldvermögen 475.561,09 €.
 
 | Bezugsgröße | Quote |
 | --- | ---: |
-| Quote für den Vermögensfaktor, aus realer Vorjahresentnahme und realem Depot | 5,90 % |
-| Vorläufige Depotquote | 3,46 % |
+| Quote für den Vermögensfaktor, aus realer Vorjahresentnahme und realem Depot | 5,87 % |
+| Vorläufige Depotquote | 3,44 % |
 | Geschützte Geldvermögensquote | 0,00 % |
 | Geplante tatsächliche Geldvermögensquote | 2,44 % |
 
@@ -894,14 +875,14 @@ Beschluss nach der Jahresrendite 2000. Dynamic Flex ist aus. Grundbedarf 36.000,
 
 Nach der Rente bleiben 2.400,00 € Grundbedarf und 12.000,00 € Wunsch-Flex offen. Die Marktphase heißt „Stabiler Höchststand“.
 
-Beim Beschluss stehen 522.202,99 € Depot und 40.000,00 € freie Liquidität zur Verfügung. Das aktive Geldvermögen beträgt 562.202,99 €. Der Markt liegt 0,00 % unter seinem Hoch; der reale Vermögensrückgang beträgt 0,00 %.
+Beim Beschluss stehen 522.202,99 € Depot und 41.648,00 € freie Liquidität zur Verfügung. Das aktive Geldvermögen beträgt 563.850,99 €. Der Markt liegt 0,00 % unter seinem Hoch; der reale Vermögensrückgang beträgt 0,00 %.
 
 | Bezugsgröße | Quote |
 | --- | ---: |
 | Quote für den Vermögensfaktor, Ersatz aus aktuellem ungekürztem Bedarf | 2,76 % |
 | Vorläufige Depotquote | 2,76 % |
 | Geschützte Geldvermögensquote | 1,49 % |
-| Geplante tatsächliche Geldvermögensquote | 2,56 % |
+| Geplante tatsächliche Geldvermögensquote | 2,55 % |
 
 | Stufe | Rate vorher | Rate nachher | € pro Monat | Grund |
 | --- | ---: | ---: | ---: | --- |
@@ -915,7 +896,7 @@ Beim Beschluss stehen 522.202,99 € Depot und 40.000,00 € freie Liquidität z
 | [B9 Mindest-Flex](JAHRESBUDGET.md#b9) | 100,00 % | 100,00 % | 1.000,00 | Offenes Ziel 6.000,00 €/Jahr; bereits gedeckt. |
 | [B10 Flex-Budget](JAHRESBUDGET.md#b10) | 100,00 % | 100,00 % | 1.000,00 | Ausgeschaltet; Jahresbudget 0 €. |
 | [B11 Letzte Änderungsgrenze](JAHRESBUDGET.md#b11) | 100,00 % | 100,00 % | 1.000,00 | Höchstens +12,00 / −12,77 Punkte zum Anker 100,00 %. |
-| [B12 Sicherheitsgrenze](JAHRESBUDGET.md#b12) | 100,00 % | 100,00 % | 1.000,00 | Keine schwere Flex-Notlage; geplante tatsächliche Quote 2,56 %. |
+| [B12 Sicherheitsgrenze](JAHRESBUDGET.md#b12) | 100,00 % | 100,00 % | 1.000,00 | Keine schwere Flex-Notlage; geplante tatsächliche Quote 2,55 %. |
 | [B13 Rundung](JAHRESBUDGET.md#b13) | 100,00 % | 100,00 % | 1.000,00 | Auf volle 50,00 € abgerundet; nächster Anker 100,00 %. |
 
 Die Vermögensentnahme beträgt 1.200,00 € im Monat. Mit Rente stehen dem Haushalt 4.000,00 € monatlich zur Verfügung.
@@ -924,9 +905,9 @@ Die Vermögensentnahme beträgt 1.200,00 € im Monat. Mit Rente stehen dem Haus
 
 Der synthetische Vergleichshaushalt hat 1.000.000,00 € Depot und 200.000,00 € Liquidität. Grundbedarf 24.000,00 €, Wunsch-Flex 30.000,00 €, Mindest-Flex 30.000,00 € und Rente 30.000,00 € gelten pro Jahr. Der Horizont beträgt 20 Jahre, das Alter 65 und 63 Jahre. Go-Go ist mit Faktor 1,20 angefordert. Inflation ist null; der Markt steht ohne Jahresgewinn am Höchststand. CAPE ist 25, die Fondskosten betragen 0,5 % pro Jahr.
 
-A2: Aktienrendite 6,50 %, nach 0,5 % Fondskosten 5,97 %. Abzüglich 2,00 % Inflation bleiben 3,97 % Aktienrealrendite, Aktiengewicht 83,33 %, sichere Realrendite 0,50 % bei 16,67 % Gewicht. Daraus folgen 3,39 % Portfoliorealrendite, 6,9660 % Annuitätenfaktor und 83.591,93 € Annuität. A3 multipliziert sie mit 1,20 auf 100.310,32 €. Der Netto-Grundbedarf ist null.
+A2: Aktienrendite 6,50 %, nach 0,5 % Fondskosten 5,97 %. Abzüglich 2,00 % Inflation bleiben 3,97 % Aktienrealrendite, Aktiengewicht 83,33 %, sichere Realrendite 0,50 % bei 16,67 % Gewicht. Daraus folgen 3,39 % Portfoliorealrendite, 6,7376 % Annuitätenfaktor und 80.851,40 € Annuität. A3 multipliziert sie mit 1,20 auf 97.021,69 €. Der Netto-Grundbedarf ist null.
 
-A5 begrenzt den Depot-Flex von 100.310,32 € auf 54.000,00 € im Jahr. Die Haushaltsobergrenze beträgt 60.000,00 € einschließlich Rentenanteil.
+A5 begrenzt den Depot-Flex von 97.021,69 € auf 54.000,00 € im Jahr. Die Haushaltsobergrenze beträgt 60.000,00 € einschließlich Rentenanteil.
 
 | Bezugsgröße | Quote |
 | --- | ---: |
@@ -972,7 +953,7 @@ Geschlossene Gegenprobe für einen steuerpflichtigen Teilverkauf: Brutto = (Nett
 <!-- docs:action-examples:start -->
 ### Max und Erika mit Auffüllung und persönlicher Steuer
 
-Synthetische Variante von Max und Erika Mustermann für die Vorschau des Jahresabschlusses 2026 und Plan 2027. Alter 65 und 63; stabiler Höchststand, Inflation 0 %, Dynamic Flex und Go-Go aus, Standardstrategie ohne Gold und Pflege-Rücklage. Kirchensteuer und Zusammenveranlagung sind aus.
+Synthetische Variante von Max und Erika Mustermann für die Vorschau des Jahresabschlusses 2026 und Plan 2027. Alter 65 und 63; stabiler Höchststand, Inflation 0 %, Dynamic Flex und Go-Go aus, Standardstrategie ohne Gold und Pflegereserve. Kirchensteuer und Zusammenveranlagung sind aus.
 
 | Ausgangswert | Max | Erika |
 | --- | ---: | ---: |
@@ -1031,9 +1012,9 @@ Unveränderte Musterprofile im historischen Lauf mit 0,5 % Fondskosten auf Aktie
 | --- | ---: |
 | Jahresentnahme | 12.000,00 € |
 | Liquiditätsziel | 68.200,00 € |
-| Freie Liquidität vorher | 96.971,30 € |
-| Deckung vorher / nachher | 142,19 % / 142,19 % |
-| Reichweite vorher / nachher, vor Auszahlung | 96,97 / 96,97 Monate |
+| Freie Liquidität vorher | 94.924,93 € |
+| Deckung vorher / nachher | 139,19 % / 139,19 % |
+| Reichweite vorher / nachher, vor Auszahlung | 94,92 / 94,92 Monate |
 | Bruttoquellen / Steuer / Netto | 0,00 € / 0,00 € / 0,00 € |
 
 Engineaktion: „Tiefer Bär (Kein Handlungsbedarf)“, Typ NONE. Eine Zielunterdeckung allein würde im Bär ebenfalls keinen opportunistischen Verkauf auslösen.
@@ -1044,11 +1025,11 @@ Variante der Musterprofile: Die Goldwerte und ihre Einstandswerte sind verdreifa
 
 | Wert | Ergebnis |
 | --- | ---: |
-| Jahresentnahme | 63.000,00 € |
+| Jahresentnahme | 60.000,00 € |
 | Liquiditätsziel | 315.000,00 € |
 | Freie Liquidität vorher | 360.000,00 € |
 | Deckung vorher / nachher | 114,29 % / 115,01 % |
-| Reichweite vorher / nachher, vor Auszahlung | 68,57 / 69,01 Monate |
+| Reichweite vorher / nachher, vor Auszahlung | 72,00 / 72,46 Monate |
 | Bruttoquellen / Steuer / Netto | 140.000,00 € / 0,00 € / 140.000,00 € |
 | Verwendung Liquidität | 2.291,26 € |
 | Verwendung Aktien | 137.708,74 € |
@@ -1074,9 +1055,9 @@ Variante derselben Musterprofile: Je Person kommen 300.000 € Tagesgeld hinzu; 
 
 Enginepfad: „Runway-Überschuss investieren“. Das eingestellte Abschöpflimit beträgt 5 %; auch bei 0 % bleibt dieser Überschusskauf gleich.
 
-### Helga und Werner mit Pflege-Rücklage und drei Töpfen
+### Helga und Werner mit Pflegereserve und drei Töpfen
 
-Musterbestände vom 19. Oktober 2026: proportionale Verteilung und Kirchensteuer 9 %. Der Generator sowie Live-Formularleser und gespeicherter Balance-Leser übergeben die gespeicherte Zusammenveranlagung an den Haushaltsaufruf. Die aktivierte Pflege-Rücklage wird vor der Rechnung aus Geldmarkt und Tagesgeld getrennt. Die Tabellen zeigen die operative Basis nach diesem Abzug.
+Musterbestände vom 19. Oktober 2026: proportionale Verteilung und Kirchensteuer 9 %. Der Generator sowie Live-Formularleser und gespeicherter Balance-Leser übergeben die gespeicherte Zusammenveranlagung an den Haushaltsaufruf. Die aktivierte Pflegereserve wird vor der Rechnung aus Geldmarkt und Tagesgeld getrennt. Die Tabellen zeigen die operative Basis nach diesem Abzug.
 
 Liquidität vor Reservierung 100.000,00 €, operative Liquidität 40.000,00 €; reserviert 60.000,00 €. Kirchensteuerfaktor im Modell: 27,995110 %.
 

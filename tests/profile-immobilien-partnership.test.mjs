@@ -17,7 +17,6 @@ import { EngineAPI } from '../engine/index.mjs';
 import { backtest } from './helpers/ek-1b-measurement.mjs';
 import { playFixture } from './helpers/probelauf-area-fixture.mjs';
 import { PersistenceFacade as P, resetPersistenceForTests } from '../app/shared/persistence-facade.js';
-import { previewPersonExport, previewPersonImport, importPersonFile } from '../app/profile/profile-person-file.js';
 
 const same = (a, b, label) => assert(JSON.stringify(a) === JSON.stringify(b), label);
 // VF-2l ergänzt allein den Anzeigewert; alle bisherigen Ergebnisfelder bleiben im Vergleich.
@@ -103,11 +102,6 @@ same(await mc(baseline), await mc(emptyHomes), 'Monte Carlo ohne Immobilien blei
 same(backtest(baseline, 2000, 2005), backtest(emptyHomes, 2000, 2005), 'Backtest ohne Immobilien bleibt bytegleich');
 {
     const f = await playFixture('tauri', storage.records); let controller = await f.boot();
-    const exported = await previewPersonExport(id);
-    assertEqual(exported.file.registry.profiles[id].data[IMMOBILIEN_KEY], writeImmobilien(homes), 'Personendatei enthält Immobilien');
-    assertEqual(Object.keys(exported.file.globals).length, 0, 'Personendatei übernimmt keine Partnerschaft');
-    const draft = await previewPersonImport(exported.file); const imported = await importPersonFile(draft);
-    assertEqual(JSON.parse(P.getItemSync('rs_profiles_v1')).profiles[imported.id].data[IMMOBILIEN_KEY], writeImmobilien(homes), 'Personenimport erhält Immobilien');
     const baseline = f.realBytes();
     await controller.start(() => ({ source: 'copy', testDate: '2026-12-15' })); controller = await f.boot();
     assertEqual(P.getItemSync(IMMOBILIEN_KEY), writeImmobilien(homes), 'Spielbereich kopiert Immobilien');
@@ -144,7 +138,9 @@ same(backtest(baseline, 2000, 2005), backtest(emptyHomes, 2000, 2005), 'Backtest
     nodes.managerPartnership.listeners.change({ target: { id: 'managerMaritalPropertyRegime', value: 'separation' } });
     assert(await editor.flush(), 'Güterstand wird durch dieselbe bestätigte Speicherung gesichert');
     assertEqual(readPartnership(P.getItemSync(PARTNERSHIP_KEY)).maritalPropertyRegime, 'separation', 'Gütertrennung bleibt gespeichert');
-    assert(nodes.managerMaritalPropertyInfo.textContent.includes('Kein Zugewinnausgleich (Gütertrennung). Ohne Versorgungsfreibetrag.'), 'Vorschautext nennt Gütertrennung');
+    // VB-1: Statt „Ohne Versorgungsfreibetrag.“ nennt der Text den gerechneten, um die Hinterbliebenenrente gekürzten Freibetrag.
+    assert(nodes.managerMaritalPropertyInfo.textContent.includes('Kein Zugewinnausgleich (Gütertrennung). Versorgungsfreibetrag (§ 17 ErbStG) gerechnet, vorsichtig gekürzt um die eingetragene Hinterbliebenenrente.'), 'Vorschautext nennt Gütertrennung');
+    assert(!nodes.managerMaritalPropertyInfo.textContent.includes('Ohne Versorgungsfreibetrag'), 'VB-1: Kein Hinweis auf fehlenden Versorgungsfreibetrag');
     assert(!beforeRegime.includes('Kein Zugewinnausgleich'), 'Vorschautext folgt dem gewählten Güterstand');
 
     renderManagerPartnership(doc, { profiles: projection.profiles.map((person, index) => ({ ...person,
@@ -183,7 +179,7 @@ same(backtest(baseline, 2000, 2005), backtest(emptyHomes, 2000, 2005), 'Backtest
     assertEqual(readPartnership(P.getItemSync(PARTNERSHIP_KEY)).maritalPropertyRegime, 'separation', 'Partnerschaftswechsel erhält den gespeicherten Güterstand');
     assertEqual(readPartnership(P.getItemSync(PARTNERSHIP_KEY)).marriedInheritance.muster_a, 50, 'Umschalten erhält die Ehequote');
     nodes.managerPartnership.listeners.input({ target: { closest: () => input } });
-    assert(preview.innerHTML.replaceAll('\u00a0', ' ').includes('30 % auf 187.000 € steuerpflichtig (207.000 € − 20.000 € Freibetrag)'), 'Vorschau nennt steuerpflichtigen Erwerb und Freibetrag');
+    assert(preview.innerHTML.replaceAll('\u00a0', ' ').includes('30 % auf 187.000 € steuerpflichtig (207.000 € − 20.000 € Freibetrag, auf volle 100 € abgerundet)'), 'Vorschau nennt steuerpflichtigen Erwerb, Freibetrag und die Abrundung (HP-4)');
     assert(!preview.innerHTML.includes('Härteausgleich'), '207.000 Euro Erbe ohne tatsächlichen Härteausgleich zeigt keinen solchen Hinweis');
     assert(await editor.flush(), 'Unverheiratete Quote gespeichert');
     input.value = '100'; nodes.managerPartnership.listeners.input({ target: { closest: () => input } });
@@ -192,6 +188,10 @@ same(backtest(baseline, 2000, 2005), backtest(emptyHomes, 2000, 2005), 'Backtest
     assert(nodes.managerInheritance.innerHTML.includes('mit Härteausgleich'), 'Vorschau benennt einen tatsächlich wirksamen Härteausgleich');
     projection.profiles[0].values.immobilien = homes;
     renderManagerPartnership(doc, projection);
+    const switches = [...nodes.managerInheritance.innerHTML.matchAll(/<div class="ds-segment" role="group" aria-labelledby="([^"]+)">[^]*?<\/div>/g)];
+    assertEqual(switches.length, 3, 'Die Immobilienwahl und beide Pflichtteilfelder verwenden An/Aus-Gruppen');
+    assert(switches.every(([group]) => group.includes('>An</button>') && group.includes('>Aus</button>')),
+        'Jeder Schalter zeigt An und Aus als Segmentknöpfe');
     assert(nodes.managerInheritance.innerHTML.includes('data-inheritance-home="muster_a"')
         && !nodes.managerInheritance.innerHTML.includes('data-inheritance-home="muster_b"'), 'Häkchen nur bei Immobilien der verstorbenen Person');
     const homeChoice = { dataset: { inheritanceHome: 'muster_a' }, checked: true };

@@ -215,8 +215,9 @@ export function renderProbelaufUI(doc, controller, error = null) {
     const start = doc.getElementById('probelaufStart');
     const demoStart = doc.getElementById('overviewWelcomeDemo');
     const end = doc.getElementById('probelaufEnd');
-    if (end) end.hidden = !state;
     const allowed = controller.runtime?.canContinue || state?.phase !== 'active' && controller.runtime?.canRecover;
+    // OP-1 (Punkt 2): „Spielbereich beenden“ steht rechts im Kopf an der Stelle von „Spielbereich starten …“, sichtbar wie bisher das Band.
+    if (end) end.hidden = !state || !allowed;
     if (band) band.hidden = !state || !allowed;
     if (text && state && allowed) text.textContent = state.version === 1
         ? `Alter Spielbereich · Rückkehr zum Ausgangsbestand erforderlich${progress ? ` · ${progress}` : ''}`
@@ -340,8 +341,9 @@ function renderMusterBand(doc, controller) {
  * @returns {boolean} Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
 export function bindProbelaufUI(doc, controller, { dateDialog = requestProbelaufDate,
+    // HP-2: Der Neustart nimmt das aktuelle Testdatum (wie probelauf-state); die Rückfrage nennt es.
     confirmRestart = opener => requestPageChoice({ doc, opener, title: 'Beispiel neu starten?',
-        description: 'Alle Änderungen im Spielbereich gehen verloren. Deine echten Daten und Sicherungspunkte bleiben unverändert.',
+        description: `Das Beispiel beginnt neu am ${(controller.state?.testDate || localCalendarDate()).split('-').reverse().join('.')}. Alle Änderungen im Spielbereich gehen verloren. Deine echten Daten und Sicherungspunkte bleiben unverändert.`,
         confirmLabel: 'Beispiel neu starten', cancelLabel: 'Weiter spielen', danger: true }).then(result => result !== null),
     confirmEnd = () => requestProbelaufEnd({ doc, legacy: controller.state?.version === 1, state: controller.state,
         loadReview: controller.readEndReview ? () => controller.readEndReview() : undefined }) } = {}) {

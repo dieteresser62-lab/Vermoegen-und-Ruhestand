@@ -1,8 +1,11 @@
 import { deriveOverviewPlanningStart } from '../app/overview/overview-model.js';
 import { historyDay as day, WEALTH_HISTORY_START_KEY, DAILY_PRICES_KEY, emptyHistorySymbol } from '../app/tranches/tranchen-history-store.js';
 import { PROFILE_WEALTH_LOTS_KEY } from '../app/profile/profile-wealth-history.js';
-import { HISTORY_FETCH_BUDGET_MS, HISTORY_FETCH_SESSION_KEY, historyChartUrl, parseHistoryChart, collectHistoryQueue, fetchHistoryChart,
-    initializeHistoryData, runHistoryFetch, bindHistoryFetch } from '../app/tranches/tranchen-history-fetch.js';
+import { HISTORY_FETCH_BUDGET_MS, HISTORY_FETCH_SESSION_KEY, historyChartUrl, parseHistoryChart, collectHistoryQueue as collectQueue, fetchHistoryChart,
+    initializeHistoryData, runHistoryFetch as runFetch, bindHistoryFetch } from '../app/tranches/tranchen-history-fetch.js';
+// ATH-1b Punkt 7: Diese Prüfungen betreffen die Tranchen; die stets geladene VWCE-Referenz prüft ath-1b-korrekturen.test.mjs.
+const collectHistoryQueue = (registry, start, today, prices) => collectQueue(registry, start, today, prices, { referenceSymbol: null });
+const runHistoryFetch = (options = {}) => runFetch({ referenceSymbol: null, ...options });
 import { createNavigationGuard, createNavigationOperationLifecycle } from '../app/shared/navigation-guard.js';
 function deferred() { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; }
 async function drain() { for (let i = 0; i < 40; i++) await Promise.resolve(); }

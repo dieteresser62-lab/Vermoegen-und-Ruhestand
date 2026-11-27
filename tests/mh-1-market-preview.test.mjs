@@ -2,13 +2,14 @@ import { EngineAPI } from '../engine/index.mjs';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input-storage.js';
 import { createProfilverbundHandlers } from '../app/balance/balance-main-profilverbund.js';
-import { evaluateBalanceFileInputs } from '../app/balance/balance-file-service.js';
+import { evaluateBalanceInputs } from '../app/balance/balance-evaluation.js';
 import { deriveYearEndMarketInputs, prepareMarketPreview, projectMarketPreview } from '../app/balance/balance-market-preview.js';
 import { DAILY_PRICES_KEY, emptyHistorySymbol, historyDay, assertDailyPrices } from '../app/tranches/tranchen-history-store.js';
 import { CONFIG } from '../app/balance/balance-config.js';
 import { persistBalanceUpdate } from '../app/balance/balance-update-pipeline.js';
 import { getAppTestDate, setAppTestDate } from '../app/shared/app-clock.js';
 import { syntheticChart } from '../app/shared/probelauf-prices.js';
+import { projectBalanceBudget } from '../app/balance/balance-budget.js';
 
 const json = JSON.stringify;
 const inputs = { endeVJ: 150, endeVJ_1: 140, endeVJ_2: 120, endeVJ_3: 110, ath: 150, jahreSeitAth: 0 };
@@ -27,35 +28,24 @@ const run = market => {
     return result;
 };
 const prepared = prepareMarketPreview(context), bytes = json({ context, calculation, records });
-const results = { stored: run(inputs), rule: run(prepared.ruleInputs), high: run(prepared.highInputs) };
-const view = projectMarketPreview(prepared, results);
-assertEqual(json(prepared.ruleInputs), json({ endeVJ: 170, endeVJ_1: 150, endeVJ_2: 140, endeVJ_3: 120, ath: 170, jahreSeitAth: 0 }), 'Genau einmal nachgerückte Jahresendstände');
-assertEqual(view.rule.market.key, 'peak_hot', 'Regel: Markt heiß gelaufen');
-assertEqual(view.rule.market.text, 'Markt heiß gelaufen', 'Markttext kommt aus Engine');
-assertEqual(view.rule.monthlyBudget, 5000, 'Regelbudget Max und Erika: 5.000 EUR');
-assertEqual(view.rule.mainAction.type, 'TRANSACTION', 'Regelaktion aus Engine');
-assertEqual(view.rule.mainAction.text, 'Aktien verkaufen', 'Regelaktion: Verkauf');
-assert(Math.abs(view.rule.mainAction.netAmount - 89349.53190916814) < 1e-8, 'Regelverkauf 89.349,53 EUR netto vor persönlicher Attribution');
-assertEqual(view.high.high.value, 200, 'Jahreshoch 200');
-assertEqual(view.high.high.asOf, '2026-07-14', 'Höchster Schluss mit Datum; zukünftige Kurse ausgeschlossen');
-assertEqual(view.high.drawdownPct, 15, '15 % unter dem höchsten Schlusskurs');
-assert(Math.abs(view.high.monthsSinceHigh - 3.548327481057106) < 1e-12, '108 Tage / (365,2425 / 12) ergeben etwa 3,5 Monate');
-assertEqual(results.high.input.jahreSeitAth, prepared.highInputs.jahreSeitAth, 'Validator und Normalisierung erhalten den Bruchteil');
-assertEqual(view.high.market.key, 'corr_young', 'Hochvariante: Junge Korrektur');
-assertEqual(view.high.monthlyBudget, 5000, 'Budget der Hochvariante: 5.000 EUR');
-assertEqual(view.high.mainAction.netAmount, 35000, 'Verkauf der Hochvariante 35.000 EUR netto');
-assertEqual(EngineAPI.analyzeMarket({ ...prepared.highInputs, inflation: 0, jahreSeitAth: 0 }).sKey, 'recovery', 'Genau 0 würde zwölf Monate und Erholung ergeben');
-assertEqual(view.rule.deepBear.threshold, 120, 'AR-2: Regelschwelle aus gespeichertem Hoch 150');
-assertEqual(view.rule.deepBear.remainingDeclinePct.toFixed(1), '29.4', 'AR-2: Restabstand vom Stichtagskurs 170');
-assertEqual(view.high.deepBear.threshold, 160, 'höchster Schlusskurs: Index streng unter 160');
-assertEqual(view.high.deepBear.remainingDeclinePct.toFixed(1), '5.9', 'höchster Schlusskurs: noch 5,9 % Kursrückgang');
-assertEqual(view.rule.changeSinceYearEndPct.toFixed(1), '13.3', 'Seit Jahresende VJ +13,3 %');
-assertEqual(view.readingsEqual, false, 'Gleiches Budget allein macht Lesarten nicht gleich');
-assertEqual(view.withoutAnnualClose, true, 'Erstes Planungsjahr markiert');
-assertEqual(view.storedLabel, 'Jahresmarktdaten Ende VJ', 'Gespeicherte Spalte ohne Jahresabschluss');
-assertEqual(view.stored.market.key, 'peak_stable', 'Gespeicherte Marktlage von Engine berechnet');
-assertEqual(view.rule.high.origin, 'rule_high', 'Neues Regelhoch als Herkunft');
-assertEqual(view.high.high.origin, 'stored_close', 'Gespeicherter Schluss als Herkunft');
+const result = run(prepared.marketInputs);
+const view = projectMarketPreview(prepared, result);
+const yearsSinceHigh = 108 / 365.2425;
+// FR-89: ein Hoch aus allen gespeicherten Schlüssen bis zum Stichtag; Jahresendstände rücken genau einmal nach.
+assertEqual(json(prepared.marketInputs), json({ endeVJ: 170, endeVJ_1: 150, endeVJ_2: 140, endeVJ_3: 120, ath: 200, jahreSeitAth: yearsSinceHigh }), 'Nachgerückte Jahresendstände mit Tageshoch und Bruchalter');
+assertEqual(json(view.high), json({ value: 200, asOf: '2026-07-14', origin: 'daily_close', dated: true, source: 'daily', splitAsOf: null }), 'Höchster Schluss mit Datum; zukünftige Kurse ausgeschlossen');
+assertEqual(view.drawdownPct, 15, '15 % unter dem höchsten Schlusskurs');
+assert(Math.abs(view.yearsSinceHigh * 12 - 3.548327481057106) < 1e-12, '108 Tage / (365,2425 / 12) ergeben etwa 3,5 Monate');
+assertEqual(result.input.jahreSeitAth, prepared.marketInputs.jahreSeitAth, 'Validator und Normalisierung erhalten den Bruchteil');
+assertEqual(view.market.key, 'corr_young', 'Marktlage: Junge Korrektur');
+assertEqual(view.market.text, 'Junge Korrektur', 'Markttext kommt aus Engine');
+assertEqual(projectBalanceBudget({ ...result.ui, input: result.input }).budget, 5000, 'Budget Max und Erika: 5.000 EUR');
+assertEqual(result.ui.action.type, 'TRANSACTION', 'Aktion aus Engine');
+assertEqual(EngineAPI.analyzeMarket({ ...prepared.marketInputs, inflation: 0, jahreSeitAth: 0 }).sKey, 'recovery', 'Genau 0 würde zwölf Monate und Erholung ergeben');
+assertEqual(view.deepBear.threshold, 160, 'höchster Schlusskurs: Index streng unter 160');
+assertEqual(view.deepBear.remainingDeclinePct.toFixed(1), '5.9', 'höchster Schlusskurs: noch 5,9 % Kursrückgang');
+assertEqual(view.deepBear.cutActive, false, 'Junge Korrektur kürzt nicht');
+assertEqual(view.stored.index, 150, 'Gespeicherte Jahresmarktdaten bleiben in der Anzeige erhalten');
 assertEqual(json({ context, calculation, records }), bytes, 'Ableitung und Projektion erhalten alle Eingaben und Speicherbytes');
 for (const price of [150, 149, 151]) {
     const derived = deriveYearEndMarketInputs({ ...inputs, jahreSeitAth: 2 }, price);
@@ -64,33 +54,26 @@ for (const price of [150, 149, 151]) {
 }
 for (const dailyPrices of [null, { version: 1, symbols: {} }, prices([['2026-11-02', 999]]), prices([['2026-10-30', 170]], 'USD')]) {
     const p = prepareMarketPreview({ ...context, dailyPrices });
-    const fallback = projectMarketPreview(p, { stored: results.stored, rule: results.stored, high: results.stored });
-    assertEqual(fallback.withoutQuote, true, 'Ohne verwertbaren EUR-Schluss keine neue Rechnung');
-    assertEqual(json(p.ruleInputs), json(inputs), 'Ohne Kurs kein Nachrücken');
-    assertEqual(fallback.readingsEqual, true, 'Ohne Kurs beide Lesarten gleich');
-    assertEqual(fallback.rule.monthlyBudget, view.stored.monthlyBudget, 'Ohne Kurs bisheriges Budget');
+    assertEqual(p.withoutQuote, true, 'Ohne verwertbaren EUR-Schluss keine neue Rechnung');
+    assertEqual(json(p.marketInputs), json(inputs), 'Ohne Kurs kein Nachrücken');
 }
 const january = prepareMarketPreview({ ...context, today: '2027-01-12', dailyPrices: prices([
     ['2026-07-14', 200], ['2026-12-30', 175], ['2027-01-08', 250]]) });
 assertEqual(january.quote.asOf, '2026-12-30', 'Januar vor Abschluss nutzt letzten Schluss bis Ende Abschlussjahr');
-assertEqual(january.yearlyHigh.price, 200, 'Januarhoch des Folgejahrs ausgeschlossen');
+assertEqual(january.high.value, 200, 'Januarhoch des Folgejahrs ausgeschlossen');
 const equalHigh = prepareMarketPreview({ ...context, dailyPrices: prices([['2026-07-14', 170], ['2026-10-30', 170]]) });
-assertEqual(equalHigh.high.origin, 'stored_close', 'Gleichstand zum Regelhoch belegt den gespeicherten Schluss');
-const equalView = projectMarketPreview(equalHigh, { stored: results.stored, rule: run(equalHigh.ruleInputs), high: run(equalHigh.highInputs) });
-assertEqual(equalView.readingsEqual, true, 'Gleiche Marktlage und gleiches Budget setzen Merker auch mit Kurs');
-const confirmedView = projectMarketPreview({ ...prepared, hasAnnualClose: true }, results);
-assertEqual(confirmedView.storedLabel, 'Plan 2026 / Januar', 'Spaltenjahr folgt gespeichertem Jahresende');
-assertEqual(confirmedView.withoutAnnualClose, false, 'Jahresabschluss vorhanden');
+assertEqual(equalHigh.high.origin, 'quote', 'Gleichstand mit dem Stichtagskurs: der jüngste Tag ist der Stichtag');
+assertEqual(equalHigh.marketInputs.jahreSeitAth, 0, 'Gleichstand am Stichtag: Alter 0');
 const repeated = prepareMarketPreview({ ...context, dailyPrices: prices([['2026-07-14', 200], ['2026-09-01', 200], ['2026-10-30', 170]]) });
 assertEqual(repeated.high.asOf, '2026-09-01', 'Jüngster Tag mit gleichem höchsten Schlusskurs');
 const older = prepareMarketPreview({ ...context, inputs: { ...inputs, ath: 210, jahreSeitAth: 2 } });
-assertEqual(older.highInputs.ath, 210, 'höchster Schlusskurs unter historischem ATH ändert zweite Lesart nicht');
-assertEqual(older.highInputs.jahreSeitAth, 3, 'Alter des historischen ATH wie Jahresregel');
-assertEqual(older.high.asOf, null, 'Historisches Jahreshoch ohne belegtes Datum bleibt undatiert');
+assertEqual(older.marketInputs.ath, 210, 'höchster Schlusskurs unter historischem ATH ändert das Hoch nicht');
+assertEqual(older.marketInputs.jahreSeitAth, 3, 'Alter des historischen ATH wie Jahresregel');
+assertEqual(json(older.high), json({ value: 210, asOf: '2023-12-31', origin: 'stored', dated: false, source: 'stored', splitAsOf: null }), 'Historisches Hoch ohne belegtes Datum: abgeleitetes Jahresende');
 for (const price of [160, 159.99]) {
     const p = prepareMarketPreview({ ...context, dailyPrices: prices([['2026-07-14', 200], ['2026-10-30', price]]) });
-    const r = run(p.highInputs), v = projectMarketPreview(p, { stored: results.stored, rule: run(p.ruleInputs), high: r });
-    assertEqual(v.high.deepBear.reached, price < 160, 'Bärengrenze streng größer als 20 % Drawdown');
+    const v = projectMarketPreview(p, run(p.marketInputs));
+    assertEqual(v.deepBear.reached, price < 160, 'Bärengrenze streng größer als 20 % Drawdown');
 }
 
 // Produktiver Adapter mit persönlicher Steuerzuordnung; Speicherzweig erhält die Jahresbasis.
@@ -113,25 +96,23 @@ const options = { inputData: c.inputData, persistentState: c.history.persistentS
             { engineApi: api, publish, withdrawalMode: c.householdPlan.entry.values.householdWithdrawalMode });
     } } };
 const before = json(records), baseOptions = json({ ...options, engineApi: null, profilverbundHandlers: null });
-const evaluation = evaluateBalanceFileInputs({ ...options, marketPreviewContext: { calculation: c, storage, now: new Date('2026-10-30T12:00:00Z') } });
-assertEqual(calls.length, 3, 'Basis sowie zwei unabhängige Engineaufrufe');
-assertEqual(json(calls[1].input.endeVJ), '170', 'Operative Vorschau nutzt Regelkurs');
-assertEqual(calls[2].input.ath, 200, 'Zweiter Vorschauaufruf nutzt höchsten Schlusskurs');
-assertEqual(json(calls[0].lastState), json(calls[1].lastState), 'Gleiche Historie für Basis und Regel');
-assertEqual(json(calls[1].lastState), json(calls[2].lastState), 'höchster Schlusskurs setzt nicht auf Regel-Ergebniszustand auf');
-assertEqual(json(publication), json([false, false, false]), 'Lesende Aufrufe veröffentlichen keine Profilaktionen');
-assertEqual(evaluation.previewInputData.endeVJ, 170, 'Renderer erhält Regeldaten');
+const evaluation = evaluateBalanceInputs({ ...options, marketPreviewContext: { calculation: c, storage, now: new Date('2026-10-30T12:00:00Z') } });
+assertEqual(calls.length, 2, 'Basis und genau eine Vorschaurechnung (FR-89: keine zweite Lesart)');
+assertEqual(json(calls[1].input.endeVJ), '170', 'Vorschau rückt den Stichtagskurs als Jahresende nach');
+assertEqual(calls[1].input.ath, 200, 'Vorschau rechnet mit dem höchsten Schlusskurs');
+assertEqual(json(calls[0].lastState), json(calls[1].lastState), 'Gleiche Historie für Basis und Vorschau');
+assertEqual(json(publication), json([false, false]), 'Lesende Aufrufe veröffentlichen keine Profilaktionen');
+assertEqual(evaluation.previewInputData.endeVJ, 170, 'Renderer erhält die Vorschaudaten');
+assertEqual(evaluation.previewInputData.ath, 200, 'Renderer erhält das Tageshoch');
 assertEqual(evaluation.persistenceEvaluation.profilverbundRuns.householdInput.endeVJ, 150, 'Persistenz erhält ursprüngliche Jahresmarktdaten');
-assertEqual(evaluation.modelResult.ui.market.sKey, 'peak_hot', 'Bestehende Empfehlung rechnet nach Regel');
-assertEqual(evaluation.marketPreview.high.market.key, 'corr_young', 'Information behält Hochvariante');
+assertEqual(evaluation.modelResult.ui.market.sKey, 'corr_young', 'Empfehlung rechnet mit dem Allzeithoch');
+assertEqual(evaluation.marketPreview.market.key, 'corr_young', 'Anzeige und Empfehlung haben dieselbe Marktlage');
 assertEqual(json(records), before, 'Produktive Vorschau schreibt keine Rohrecords');
 assertEqual(json({ ...options, engineApi: null, profilverbundHandlers: null }), baseOptions, 'Keine Mutation der Eingaben, Profile oder Historie');
-assertEqual(evaluation.marketPreview.rule.mainAction.netAmount.toFixed(2), '89349.53', 'Regelverkauf nach persönlicher Attribution 89.349,53 EUR netto');
-assertEqual(evaluation.marketPreview.high.mainAction.netAmount, 35000, 'Verkauf der Hochvariante nach persönlicher Attribution 35.000 EUR netto');
 publication.length = 0;
-evaluateBalanceFileInputs({ ...options, publish: true, profileSimulationOptions: { publish: true },
+evaluateBalanceInputs({ ...options, publish: true, profileSimulationOptions: { publish: true },
     marketPreviewContext: { calculation: c, storage, now: new Date('2026-10-30T12:00:00Z') } });
-assertEqual(json(publication), json([true, true, false]), 'Rechnung der Hochvariante veröffentlicht auch bei aktiver Regellesart keine Profilaktionen');
+assertEqual(json(publication), json([true, true]), 'Basis und Vorschau veröffentlichen wie die aktive Rechnung');
 const persisted = [];
 persistBalanceUpdate({ mode: 'persist_inputs', inputData: c.inputData, modelResult: evaluation.modelResult,
     persistentState: c.persistentState, profilverbundRuns: evaluation.persistenceEvaluation.profilverbundRuns,
@@ -140,13 +121,17 @@ assertEqual(persisted[0].householdInput.endeVJ, 150, 'Eingabenspeicherung rückt
 assertEqual(persisted[0].householdInput.ath, 150, 'höchster Schlusskurs landet nicht im Speicher');
 delete records[DAILY_PRICES_KEY];
 calls.length = 0;
-const noQuote = evaluateBalanceFileInputs({ ...options, marketPreviewContext: { calculation: c, storage, now: new Date('2026-10-30T12:00:00Z') } });
+const noQuote = evaluateBalanceInputs({ ...options, marketPreviewContext: { calculation: c, storage, now: new Date('2026-10-30T12:00:00Z') } });
 assertEqual(calls.length, 1, 'Ohne Kurs nur bisheriger Engineaufruf');
-assertEqual(json(noQuote.modelResult), json(evaluateBalanceFileInputs(options).modelResult), 'Ohne Kurs vollständiges bisheriges Ergebnis bytegleich');
-assertEqual(noQuote.marketPreview.readingsEqual, true, 'Produktiver Ohne-Kurs-Merker');
+assertEqual(json(noQuote.modelResult), json(evaluateBalanceInputs(options).modelResult), 'Ohne Kurs vollständiges bisheriges Ergebnis bytegleich');
 assertEqual(noQuote.marketPreview.withoutQuote, true, 'Produktiver Ohne-Kurs-Zustand');
+records[DAILY_PRICES_KEY] = json(prices([['2025-12-31', 150], ['2026-03-27', 200], ['2026-10-30', 170]]));
+const lateCorrection = evaluateBalanceInputs({ ...options,
+    marketPreviewContext: { calculation: c, storage, now: new Date('2026-10-30T12:00:00Z') } });
+assertEqual(lateCorrection.marketPreview.market.text, 'Junge Korrektur',
+    'FR-90: Die Tagesvorschau zeigt beim Hoch vor sieben Monaten eine junge Korrektur');
 records[DAILY_PRICES_KEY] = json(prices([['2026-07-14', 200], ['2026-12-30', 175], ['2027-01-08', 250]]));
-const beforeAnnualClose = evaluateBalanceFileInputs({ ...options,
+const beforeAnnualClose = evaluateBalanceInputs({ ...options,
     marketPreviewContext: { calculation: c, storage, now: new Date('2027-01-12T12:00:00Z') } });
 assertEqual(beforeAnnualClose.marketPreview.quote.asOf, '2026-12-30', 'Produktiver Anlass begrenzt offenen Januarabschluss auf das Abschlussjahr');
 assertEqual(beforeAnnualClose.marketPreview.yearEndDate, '2025-12-31', 'Produktiver Januar-Anlass erhält Bezugsjahresende');
@@ -158,7 +143,7 @@ try {
     const chart = syntheticChart('VWCE.DE', [historyDay('2025-12-31'), historyDay('2026-10-30')], '2026-10-30');
     records[DAILY_PRICES_KEY] = json({ version: 1, symbols: { 'VWCE.DE': { ...emptyHistorySymbol(), ...chart } } });
     const gameBytes = json(records);
-    const game = evaluateBalanceFileInputs({ ...options, marketPreviewContext: { calculation: c, storage } });
+    const game = evaluateBalanceInputs({ ...options, marketPreviewContext: { calculation: c, storage } });
     assertEqual(game.marketPreview.quote.price, chart.closes.at(-1), 'Spielbereich nutzt gespeicherten Spielschluss und Fachdatum');
     assertEqual(fetches, 0, 'Marktvorschau ruft weder echte noch synthetische Kurse ab');
     assertEqual(json(records), gameBytes, 'Spielvorschau erhält alle Speicherbytes');

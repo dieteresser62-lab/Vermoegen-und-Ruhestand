@@ -6,7 +6,7 @@ import { getPageNavigationGuard } from '../shared/navigation-guard-dialog.js';
 import { PROFILE_STORAGE_KEYS, PROFILE_TRANCHES_KEY } from '../profile/profile-state.js';
 import { PROFILE_WEALTH_LOTS_KEY, assertWealthLots } from '../profile/profile-wealth-history.js';
 import { normalizeTrancheCollection } from '../../types/tranche-contract.js';
-import { collectHistoryQueue, runHistoryFetch } from '../tranches/tranchen-history-fetch.js';
+import { collectHistoryQueue, runHistoryFetch, REFERENCE_HISTORY_SYMBOL } from '../tranches/tranchen-history-fetch.js';
 import { DAILY_PRICES_KEY, WEALTH_HISTORY_START_KEY, assertDailyPrices, assertHistoryStart,
     requireHistoryRecord, normalizeHistorySymbol, historyDate, localHistoryDate } from '../tranches/tranchen-history-store.js';
 import { normalizeQuote, probeProxyHealth } from '../tranches/tranchen-price-service.js';
@@ -65,7 +65,7 @@ export function projectDataPrices(records, { now = appNow(), startupReport = nul
         const coverage = start ? collectHistoryQueue(registry, start.startDate, localHistoryDate(now), prices) : null;
         const rows = [...new Set([...inventory.keys(), ...Object.keys(prices.symbols)])].sort().map(symbol => {
             const record = prices.symbols[symbol];
-            return { symbol, names: [...(inventory.get(symbol) || [symbol])].join(', '), count: record?.days.length || 0,
+            return { symbol, names: [...(inventory.get(symbol) || [symbol === REFERENCE_HISTORY_SYMBOL ? 'Referenz für das Allzeithoch' : symbol])].join(', '), count: record?.days.length || 0,
                 first: record?.days.length ? historyDate(record.days[0]) : null,
                 requested: coverage?.wanted.find(item => item.symbol === symbol)?.intervals.map(([a, b]) => [historyDate(a), historyDate(b)]) || [],
                 gaps: coverage ? coverage.queue.filter(job => job.symbol === symbol).map(job => job.interval.map(historyDate)) : null,

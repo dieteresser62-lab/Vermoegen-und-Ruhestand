@@ -104,7 +104,7 @@ function buildWarning(code, detail = '') {
         return 'Frühere Simulator-Bedarfswerte waren mehreren Profilen zugeordnet und konnten nicht eindeutig als Haushaltswert übernommen werden.';
     }
     if (code === 'legacy_migrated') {
-        return `Frühere Simulator-Haushaltswerte wurden einmalig übernommen: Floor ${/** @type {Record<string, string>} */ (detail).startFloorBedarf}, Flex ${/** @type {Record<string, string>} */ (detail).startFlexBedarf}, Mindest-Flex ${/** @type {Record<string, string>} */ (detail).minimumFlexAnnual}.`;
+        return `Frühere Simulator-Haushaltswerte wurden einmalig übernommen: Grundbedarf ${/** @type {Record<string, string>} */ (detail).startFloorBedarf}, Flex ${/** @type {Record<string, string>} */ (detail).startFlexBedarf}, Mindest-Flex ${/** @type {Record<string, string>} */ (detail).minimumFlexAnnual}.`;
     }
     return 'Gespeicherte Simulator-Haushaltswerte sind beschädigt und wurden nicht angewendet.';
 }

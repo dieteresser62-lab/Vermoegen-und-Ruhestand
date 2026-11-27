@@ -9,6 +9,7 @@ import {
 import { BACKTEST_RESULT_SCHEMA_VERSION } from './historical-backtest-runner.js';
 import { normalizeRuntimeBuildProvenance } from '../shared/runtime-build-provenance.js';
 import { protocolAnnualTotals } from './protocol-cashflows.js';
+import { formatProtocolValue, PROTOCOL_COLUMNS, readProtocolValue } from './protocol-columns.js';
 
 export const HISTORICAL_BACKTEST_EXPORT_SCHEMA_ID = 'de.ruhestandsapp.historical-backtest.raw';
 export const HISTORICAL_BACKTEST_EXPORT_SCHEMA_VERSION = 'HistoricalBacktestExportV2';
@@ -547,13 +548,19 @@ function recordForYear(recordsByYear, year) {
     return Number.isInteger(year) ? recordsByYear.get(year) || null : null;
 }
 
+const BACKTEST_PROTOCOL = { source: 'backtest' };
+function backtestCsvText(column) {
+    return ({ entry }) => formatProtocolValue(column, readProtocolValue(column, entry, BACKTEST_PROTOCOL), entry, BACKTEST_PROTOCOL);
+}
+const textColumn = id => PROTOCOL_COLUMNS.find(column => column.id === id);
+
 export const HISTORICAL_BACKTEST_CSV_COLUMNS = deepFreeze([
     { id: 'run_id', read: ({ runId }) => runId },
     { id: 'simulation_year_calendar_year', read: ({ entry }) => entry?.jahr ?? null },
     { id: 'outcome_code', read: ({ result }) => result.outcome?.kind ?? '' },
-    { id: 'action_code', read: ({ entry }) => entry?.row?.aktionUndGrund ?? '' },
-    { id: 'cut_reason_code', read: ({ entry }) => entry?.row?.CutReason ?? '' },
-    { id: 'minimum_flex_status_code', read: ({ entry }) => entry?.row?.minimumFlexStatus ?? '' },
+    { id: 'action_code', read: backtestCsvText(textColumn('action')) },
+    { id: 'cut_reason_code', read: backtestCsvText(textColumn('cutreason')) },
+    { id: 'minimum_flex_status_code', read: backtestCsvText(textColumn('minimumflexstatus')) },
     { id: 'equity_return_ratio', read: ({ record }) => record?.realized?.equityReturn?.value ?? null },
     { id: 'gold_return_pct', read: ({ record }) => record?.realized?.goldReturn?.value ?? null },
     { id: 'cash_bond_return_pct', read: ({ record }) => record?.realized?.cashBondReturn?.value ?? null },
@@ -595,6 +602,9 @@ export const HISTORICAL_BACKTEST_CSV_COLUMNS = deepFreeze([
     { id: 'portfolio_bond_bucket_end_nominal_eur', read: ({ entry }) => finiteOrNull(entry?.row?.bondBucketAfter, entry?.row?.threeBucket?.bondBucketAfter) ?? 0 }
 ]);
 
+const VPW_CSV_COLUMNS = ['vpw-status', 'vpwfallbackhint'].map(textColumn)
+    .map(column => ({ id: column.header, read: backtestCsvText(column) }));
+
 function escapeCsvCell(value) {
     if (value == null) return HISTORICAL_BACKTEST_CSV_CONTRACT.missingValue;
     let text = typeof value === 'number'
@@ -625,13 +635,16 @@ export function serializeHistoricalBacktestCsv(result, { cohortInventory = null,
             read: ({ entry }) => id.endsWith('_personen') ? JSON.stringify(entry?.row?.[id] ?? []) : finiteOrNull(entry?.row?.[id]) ?? 0 })) : [];
     const totalColumns = [['Einnahmen', 'einnahmen_gesamt'], ['Ausgaben', 'ausgaben_gesamt']].map(([id, key]) => ({ id,
         read: ({ entry }) => protocolAnnualTotals(entry?.row)[key] }));
+    const guardColumns = rows.some(entry => entry.row?.GuardNote)
+        ? [{ id: 'Schutzregel Grund', read: backtestCsvText(textColumn('guardnote')) }] : [];
     const homeColumns = result.request?.inputs?.home?.length || rows.some(entry => Object.hasOwn(entry.row || {}, 'immobilien_wert_end'))
         ? [{ id: 'Immobilien', read: ({ entry }) => finiteOrNull(entry?.row?.immobilien_wert_end) },
             { id: 'Gesamtvermögen', read: ({ entry }) => {
                 const money = finiteOrNull(entry?.row?.portfolio_total_end), homes = finiteOrNull(entry?.row?.immobilien_wert_end);
                 return money === null || homes === null ? null : money + homes;
             } }] : [];
-    const columns = [...HISTORICAL_BACKTEST_CSV_COLUMNS, ...expenseColumns, ...Object.keys(extra).map(id => ({ id, read: () => extra[id] })), ...incomeColumns, ...totalColumns, ...homeColumns];
+    const vpwColumns = rows.some(entry => entry?.vpw?.status || entry?.vpwFallbackHint) ? VPW_CSV_COLUMNS : [];
+    const columns = [...HISTORICAL_BACKTEST_CSV_COLUMNS, ...expenseColumns, ...Object.keys(extra).map(id => ({ id, read: () => extra[id] })), ...incomeColumns, ...totalColumns, ...guardColumns, ...homeColumns, ...vpwColumns];
     const header = columns.map(column => column.id).join(HISTORICAL_BACKTEST_CSV_CONTRACT.delimiter);
     const lines = exportRows.map(entry => {
         const context = {

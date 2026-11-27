@@ -8,6 +8,7 @@ import { evaluateStoredAnnualHousehold } from '../../app/balance/balance-main-pr
 import { createParityReplayCollector } from '../../app/simulator/parity-replay-collector.js';
 import { sealParityReplayLog, restoreParityReplayValue } from '../../app/simulator/parity-replay-contract.js';
 import { projectPerson } from '../../app/profile/profile-person-data.js';
+import { INCOME_KEY, writeIncome } from '../../app/profile/profile-income.js';
 import { buildPlanRecord, planScope } from '../../app/profile/household-plan.js';
 import { EngineAPI } from '../../engine/index.mjs';
 import { inputs, records, recordBytes, runFixture, source } from './parity-replay-fixture.mjs';
@@ -98,8 +99,14 @@ export function testParityBalanceReplay() {
         }
     }
     const second = buildParityBalanceReplayYear(log, 1);
-    equal(second.calculation.profiles.find(profile => profile.profileId === 'muster_b').inputs.renteMonatlich, 820,
-        'Balance leitet sechs Bezugsmonate selbst aus dem tatsächlichen Rentenbeginn ab');
+    const erikaData = initialRegistry.profiles.muster_b.data;
+    const initialPension = projectPerson(erikaData, log.years[1].logicalPlanningYear).renteImJahr;
+    const previousCpi = log.years[0].engineInput.inflation;
+    equal(erikaData.profile_rentenanpassung_art, 'cpi', 'Beispielrente folgt dem CPI');
+    const expectedMonthlyPension = initialPension * (1 + previousCpi / 100) / 12;
+    ok(Math.abs(second.calculation.profiles.find(profile => profile.profileId === 'muster_b').inputs.renteMonatlich
+        - expectedMonthlyPension) < 1e-10,
+        'Balance leitet Bezugsmonate aus dem Rentenbeginn und die Fortschreibung aus dem CPI des Vorjahres ab');
     ok(Math.abs(second.calculation.engineInput.renteMonatlich * 12 - log.years[1].effectiveAnnualPensions.pensionAnnual) < 0.01,
         'FR-11: Nettorenten stimmen mit der Kalenderprojektion überein');
     equal(second.calculation.inputData.tagesgeld, log.years[1].cashAndLots.componentCash.tagesgeld, 'fortgeschriebenes persönliches Cash');
@@ -115,7 +122,11 @@ export function testParityBalanceReplay() {
     const independent = evaluateParityBalanceReplayYear(changed, 0, { engineApi: EngineAPI });
     equal(independent.householdResult, original.householdResult, 'Entscheidungswerte und Runnerhorizont ersetzen keine Balance-Ableitung');
     equal(independent.calculation.engineInput.horizonYears, 30);
-    const liveIncome = buildParityBalanceReplayYear(mutate(copy => { copy.initialRecords.profile_sonstige_einkuenfte = '7'; }), 0);
+    // Die aktuelle Einkünfteliste hat Vorrang vor dem alten Einzelbetragsfeld.
+    const liveIncome = buildParityBalanceReplayYear(mutate(copy => {
+        copy.initialRecords[INCOME_KEY] = writeIncome([{ id: 'live-income', art: 'sonstige',
+            bezeichnung: 'Zusatz', betragMonat: 7, ab: null, bis: null, anpassung: 'keine' }]);
+    }), 0);
     equal(liveIncome.calculation.inputData.renteMonatlich, original.calculation.inputData.renteMonatlich + 7,
         'native Liveprojektion und Balance-Zusatzeinkommen bleiben erhalten');
 

@@ -146,7 +146,7 @@ try {
     const coverageText = details(e.action, e.input);
     assert(coverageText.includes('1.846,25') && coverageText.includes('527,50') && coverageText.includes('Steuer Kaufdeckung aus Geldmarkt'), 'S-2: Dialog und Kopie trennen Transfersteuer 1.846,25 und Kaufdeckung 527,50');
     const lossText = details(f, input(10000, -.2));
-    assert(lossText.includes('Geldmarktverlust mindert die Steuer um 527,50 €') && lossText.includes('Steuern (final, Settlement)')
+    assert(lossText.includes('Geldmarktverlust mindert die Steuer um 527,50 €') && lossText.includes('Steuern (abgerechnet)')
         && !lossText.includes('Steuern (geschätzt)'), 'S-3: Verlustanzeige erklärt Null und verwendet durchgehend das finale Settlement');
     const tables = dialogElements(host).filter(n => n.tag === 'table');
     for (const table of tables) {

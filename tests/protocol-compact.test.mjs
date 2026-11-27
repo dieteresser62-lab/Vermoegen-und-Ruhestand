@@ -40,8 +40,8 @@ for (const [patch, expected] of [
     assert(cell(html, 'action').includes(expected), 'Kurzhandlung nennt Transaktion und Betrag');
 }
 for (const source of ['mc', 'backtest']) for (const moneyBasis of ['real', 'nominal']) {
-    // Backtest rechnet Geldflüsse zum Jahresende um, MC zum Jahresanfang.
-    const year = { ...raw, inflation_factor_cum: source === 'backtest' ? 1 : 1.1,
+    // Backtest und MC rechnen Geldflüsse mit dem Preisstand am Jahresanfang um (ST7-A).
+    const year = { ...raw, inflation_factor_cum: 1.1,
         vk: { vkGes: 110000, vkAkt: 110000 }, kaufAkt: 0,
         aktionUndGrund: 'BÄR / Verkauf 110000.00 € / Ziel 110.000 € / Reserve 11.000,00 € / 10 % / 12 Monate' };
     const entry = source === 'mc' ? year : { jahr: 2000, row: year, netA: 110000, inflationVJ: 10 };
@@ -62,18 +62,22 @@ for (const source of ['mc', 'backtest']) for (const moneyBasis of ['real', 'nomi
     assert(cell(saleHtml, 'action').includes(`>Immobilienverkauf ${moneyBasis === 'real' ? '720.000' : '792.000'}\u00a0€ · Aktien kaufen ${amount}\u00a0€`), 'Handlung nennt den Immobilienverkauf zuerst, in derselben Euro-Basis');
     if (source === 'mc') assert(saleHtml.includes('data-protocol-column="home-sale"'), 'Eigene Spalte Immobilienverkauf bleibt erhalten');
     assertEqual(JSON.stringify(entry), bytes, 'Euro-Umrechnung mutiert keine Jahresdaten');
-    assert(serializeScenarioLogCsvV2(projectScenarioLogV2([year])).includes(year.aktionUndGrund), 'CSV behält Kontowerte und vollständigen Originaltext');
+    assert(serializeScenarioLogCsvV2(projectScenarioLogV2([year])).includes('Tiefer Bär / Verkauf 110000.00 € / Ziel 110.000 € / Reserve 11.000,00 € / 10 % / 12 Monate'), 'CSV behält die nominalen Beträge und die vollständige Begründung');
 }
-for (const partnership of [undefined, { status: 'married' }, { status: 'unmarried' }]) {
+for (const partnership of [undefined, {}, { status: 'married' }, { status: 'unmarried' }]) {
     const html = renderProtocolTable([{ ...raw, abgang_erben: 0, erbschaftsteuer: 0 }], { inputs: { partnership } });
     assert(html.includes('Erbschaftsteuer: vereinfachte Rechnung'), 'Steuerspalte hat ein erklärendes Info-Popover');
     assertEqual(html.includes('Ehejahre davor zählen nicht, daher kann die echte Steuer bei langer Ehe niedriger oder höher sein.'),
-        partnership?.status !== 'unmarried', 'Ehepartner-Hinweis erscheint auch ohne gespeicherte Partnerschaft');
+        partnership?.status === 'married', 'Ehepartner-Hinweis erscheint bei gespeichertem Ehe-Status');
+    if (!partnership?.status) {
+        assert(html.includes('Partnerschaftsstatus fehlt') && html.includes('20.000 € Freibetrag')
+            && !html.includes('500.000 € Freibetrag'), 'JA-1: Fehlender Status führt zum vorsichtigen Freibetrag und einem Hinweis');
+    }
 }
 assertEqual(JSON.stringify(raw), original, 'Anzeige mutiert keine Rohdaten');
 const exported = projectScenarioLogV2([raw]);
 assert(JSON.stringify(exported).includes('Ein vollständiger Grund <sicher>'), 'JSON erhält die volle Begründung');
-assert(serializeScenarioLogCsvV2(exported).includes(raw.aktionUndGrund), 'CSV erhält die volle Begründung');
+assert(serializeScenarioLogCsvV2(exported).includes('Tiefer Bär (Stagflation) · kein Handlungsbedarf / Ein vollständiger Grund <sicher>'), 'CSV erhält die volle Begründung auf Deutsch');
 // Gemeinsamer Binder auf den tatsächlich erzeugten Info-Knoten, ohne Browser.
 const tree = tokenizeHTML(renderProtocolTable([raw], { caRThreshold: 10000 }));
 const doc = { activeElement: null, querySelectorAll: selector => select(tree, selector), addEventListener() {} };

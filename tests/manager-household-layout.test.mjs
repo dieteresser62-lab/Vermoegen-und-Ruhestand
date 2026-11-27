@@ -45,6 +45,10 @@ assert(cards.some(el => el.attrs.class === 'pv-allocation-values') && hosts.mana
 renderManagerPlanSummary(doc, JSON.parse(records.household_plan_v1).entries[Object.keys(JSON.parse(records.household_plan_v1).entries)[0]].values);
 assert(['Flex-Budget', 'Reserven', 'Strategie', 'Dynamik', 'CAPE'].every(label => hosts.managerPlanMoreSummary.textContent.includes(label)), 'Zusammenfassung zeigt die tatsächlichen Planwerte');
 assertEqual(JSON.stringify(projection), before, 'Neue Anordnung schreibt keine Fachwerte');
+for (const legend of hosts.managerHousehold.innerHTML.matchAll(/<ul class="pv-legend">(.*?)<\/ul>/g)) {
+    const shares = [...legend[1].matchAll(/(\d+) %<\/li>/g)].map(match => Number(match[1]));
+    assertEqual(shares.reduce((sum, value) => sum + value, 0), 100, 'Die angezeigten Anteile der Anlageklassen ergeben zusammen 100 %');
+}
 
 for (const detail of hosts.managerHousehold.innerHTML.matchAll(/<details[^>]*data-wealth-details[\s\S]*?<\/details>/g)) {
     const headings = [...detail[0].matchAll(/<h3>([^<]+)<\/h3>/g)].map(match => match[1]);

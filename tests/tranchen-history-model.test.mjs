@@ -82,8 +82,7 @@ for (const [period, firstDate, secondDate, today] of [
     assertEqual(end.metrics.adjusted, 0, period + ': Entnahmen konsistent zu beiden Tagesabschlüssen');
 }
 const profiles = freeze([{ id: 'a', currentCash: 100, cashHistory: cash, lots: [lot] },
-    { id: 'b', currentCash: 20, cashHistory: { version: 1, baselineValue: 20, entries: [] }, lots: [] },
-    { id: 'outside', belongsToHousehold: false, currentCash: 10000, lots: [] }]);
+    { id: 'b', currentCash: 20, cashHistory: { version: 1, baselineValue: 20, entries: [] }, lots: [] }]);
 const input = freeze({ profiles, prices: { symbols: { TEST: record } }, events, startDate: '2026-01-01', today: '2026-01-09' });
 const bytes = JSON.stringify(input), household = evaluateWealthHistory(input);
 assertEqual(household.points[0].total, 120, 'Vor Kauf nur Haushaltstagesgeld');
@@ -95,7 +94,6 @@ const person = evaluateWealthHistory({ ...input, profileId: 'a' });
 const asset = evaluateWealthHistory({ ...input, assetType: 'aktien_neu' });
 assertEqual(person.points[4].total + 20, household.points[4].total, 'Person/Haushalt nachvollziehbar');
 assertEqual(asset.points[4].total, 72, 'Anlageformsumme');
-assertEqual(evaluateWealthHistory({ ...input, profileId: 'outside' }).points[0].total, 10000, 'Fremde Person einzeln sichtbar');
 assertEqual(JSON.stringify(input), bytes, 'Tief eingefrorene Inputs bleiben unverändert');
 assertEqual(JSON.stringify(evaluateWealthHistory(input)), JSON.stringify(household), 'Deterministische Projektion');
 assertEqual(evaluateWealthHistory({ ...input, profiles: [{ id: 'a', currentCash: 0, lots: [] }] }).points[0].total, null, 'Alte Verkäufe ohne Stammdaten machen Historie unvollständig');
@@ -258,8 +256,7 @@ assert(Math.abs(shiftedCash.metrics.adjustedPercent - 100 / 1080 * 100) < 1e-10,
         uncertainty: { fromDate: '2026-01-05', originalTranche } };
     const fixture = freeze({ startDate: '2026-01-01', today: '2026-01-07', prices: predecessorPrices,
         profiles: [{ id: 'a', currentCash: 100, lots: [valid, uncertain] },
-            { id: 'b', currentCash: 20, lots: [{ ...valid, trancheId: 'b-valid', shares: 1 }] },
-            { id: 'outside', belongsToHousehold: false, currentCash: 9999, lots: [] }] });
+            { id: 'b', currentCash: 20, lots: [{ ...valid, trancheId: 'b-valid', shares: 1 }] }] });
     const bytes = JSON.stringify(fixture), result = evaluateWealthHistory(fixture);
     for (const point of result.points) {
         const price = historyPriceAt(predecessorPrices.symbols.TEST, point.day).value;
@@ -276,7 +273,7 @@ assert(Math.abs(shiftedCash.metrics.adjustedPercent - 100 / 1080 * 100) < 1e-10,
             assert(point.quality.includes('unknown-stock'), 'Konkreter Qualitätshinweis ab Grenze');
         }
     }
-    assert(result.errors.some(error => error.includes('2026-01-05')), 'Diagnose nennt gesicherte Unsicherheitsgrenze');
+    assert(result.errors.some(error => error.endsWith(': Bestand ab 05.01.2026 nicht belegt.')), 'Diagnose nennt gesicherte Unsicherheitsgrenze mit deutschem Datum (OP-2 Punkt 3)');
     assertEqual(result.metrics.status, 'unavailable', 'Preispräfixregel überspringt Bestandsunsicherheit nicht');
     const beforeExistence = evaluateWealthHistory({ ...fixture, today: '2026-01-05' });
     assertEqual(beforeExistence.metrics.change, 60, 'Zeitraum ganz vor gesicherter Existenz bleibt trotz Diagnose messbar');

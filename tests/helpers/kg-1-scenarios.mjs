@@ -3,7 +3,7 @@ import { inputs, runFixture } from '../extended/parity-replay-fixture.mjs';
 import { EngineAPI } from '../../engine/index.mjs';
 import { runMonteCarloChunk } from '../../app/simulator/monte-carlo-runner.js';
 import { annualData } from '../../app/simulator/simulator-data.js';
-import { normalizeWidowOptions } from '../../app/simulator/simulator-sweep-utils.js';
+import { normalizeWidowOptions } from '../../app/simulator/simulator-run-utils.js';
 import { dynamicFlexPresetPatch } from '../../app/shared/dynamic-flex-presets.js';
 
 export const kg1Parameters = Object.freeze({

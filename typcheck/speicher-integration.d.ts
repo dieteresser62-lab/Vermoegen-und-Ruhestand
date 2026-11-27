@@ -1,5 +1,5 @@
 import type * as D from './datenvertraege.js';
-export interface AppError extends Error { code?: string; quarantinePath?: string; recoverySnapshotId?: string; rollbackError?: unknown; recovery?: D.ProfileRecovery; }
+export interface AppError extends Error { code?: string; quarantinePath?: string; recoverySnapshotId?: string; rollbackError?: unknown; recovery?: D.ProfileRecovery; areaUnchanged?: boolean; }
 export interface Operation { check(): void; commit(phase?: string): void; controller: AbortController; owns?(owner?: symbol): boolean; }
 export interface Reason { phase?: string; owner?: symbol; message?: string; }
 export interface Guard {
@@ -17,6 +17,8 @@ export type LoadRegistry = (storage?: D.RecordReader) => RegistryResult;
 export interface ReplaceOptions extends LifecycleOptions {
     probelaufOwner?: symbol;
     allowKey?: (key: string, options?: ReplaceOptions) => boolean; expectedRecords?: D.StringRecords;
+    /** NG-15: zustandsfreie Schlüsselprüfung nur für die Rücknahme; fehlt sie, gilt allowKey. */
+    rollbackAllowKey?: (key: string) => boolean;
     postValidate?: (records: D.StringRecords) => unknown | Promise<unknown>;
     deleteKeys?: string[]; upserts?: [string, string][]; replace?: boolean;
     probelaufDomainWrite?: boolean; restoreLock?: boolean;
@@ -25,7 +27,7 @@ export interface Facade {
     getItemSync(key: string): string | null; exportAllSync(): { records: D.StringRecords };
     getPersistenceStatus(): { activeArea: string }; readPersistedRecords(policy?: D.KeyPolicy): Promise<D.StringRecords>;
     flush(): Promise<boolean>; replaceRecordsTransactional(records: D.StringRecords, options?: ReplaceOptions): Promise<unknown>;
-    hasSyncWriteBlocks?(): boolean; blockSyncWrites?(keys: string[], message: string): unknown;
+    hasSyncWriteBlocks?(): boolean; blockSyncWrites?(keys: string[], message: string, options?: { prefixes?: string[]; predicate?: (key: string) => boolean }): unknown;
 }
 export interface BackupOptions extends LifecycleOptions {
     persistence?: Facade; storage?: (Facade & Partial<D.RecordStorage>) | (D.RecordStorage & {exportAllSync?: () => {records: D.StringRecords}}); snapshotStorage?: unknown;
@@ -33,10 +35,12 @@ export interface BackupOptions extends LifecycleOptions {
     window?: Window & typeof globalThis; document?: Document; filename?: string; reason?: string;
     download?: (data: D.FullBackup, filename: string, doc: Document) => unknown | Promise<unknown>;
     preparedRecovery?: { recoverySnapshotId: string; previousRecords: D.StringRecords };
+    /** HL-1: Einspielen über die Seite sperrt danach fachliche Schreibwege bis zum Neuladen. */
+    lockUntilReload?: boolean;
     validateAfterLoad?: (records: D.StringRecords, backup: D.NormalizedFullBackup) => unknown;
     button?: HTMLButtonElement; status?: HTMLElement; fileInput?: HTMLInputElement;
     confirmImport?: (description: string) => boolean | Promise<boolean>;
-    createRecoveryBackup?: (options: BackupOptions) => Promise<{ skipped: boolean }>;
+    createRecoveryBackup?: (options: BackupOptions) => Promise<{ skipped: boolean; saved?: boolean }>;
     reload?: () => unknown;
 }
 export interface OverviewOptions extends LifecycleOptions {
@@ -48,7 +52,7 @@ export interface Cash { people: {id: string; cashRaw: string | null; historyRaw:
 export interface MonthRequest { month: string; scope: D.PlanScope; expectedProfileId: string; cash?: Cash; }
 export interface ProfileOptions { registryRaw?: unknown; scope?: string; preservePersonInputs?: boolean; }
 export interface RecoveryOptions { storage?: D.RecordStorage; recoveryDocument?: D.ProfileRecoveryDocument | null; confirmed?: boolean; captureProfileData?: () => D.StringRecords; exportedAt?: string; backend?: string; }
-export interface QuotePatch { profileId: string; raw: string; updates: { index: number; trancheId: string; quote: { price: number; asOf: number; currency: string; symbol: string } }[]; }
+export interface QuotePatch { profileId: string; raw: string; updates: { index: number; trancheId: string; quote: { price: number; asOf: number; currency: string; symbol: string; exchange?: string|null } }[]; }
 export interface ProbelaufProtection { ownsWrites?(options: ReplaceOptions): boolean; checkCurrent?(): unknown; mutation?(options: ReplaceOptions): unknown; snapshot?(id: string, options: ReplaceOptions): unknown; }
 export interface InitOptions { adapter?: import('./runtime-contracts.js').PersistenceAdapter; debounceMs?: number; window?: Window & typeof globalThis; doc?: Document; localStorage?: D.RecordStorage | null; installLifecycleHooks?: boolean; installTauriCloseHook?: boolean; }
 export interface Warning { code: string; message: string; quarantinePath?: string; }
@@ -57,11 +61,11 @@ export interface CloseBinding { pending: CloseRequest | null; lastId: bigint; di
     rejections: Map<string, { promise: Promise<void> | null; timer: ReturnType<typeof setTimeout> | null }>;
     reject(id: string): Promise<void> | null; cancelPending(): void; dispose(): void; }
 
-export interface AnnualDraft { status: string; yearHigh?: D.YearHighChoice; records: D.StringRecords; baseRecords: D.StringRecords; periodId: string;
+export interface AnnualDraft { status: string; records: D.StringRecords; baseRecords: D.StringRecords; periodId: string;
     targetYear: number; planningYear: number; scope: D.PlanScope; profileId: string; values: D.PlanValues;
     ageByPerson: Record<string, number>; results?: Record<string, unknown>; inflation?: import("./balance-ui.js").InflationResult; }
-export interface AnnualOptions { yearHigh?: D.YearHighChoice; engineApi?: typeof import('../engine/index.mjs').EngineAPI; adoptedPlanPatch?: import("./profile-ui.js").PlanPatch;
-    careValues?: unknown; careToday?: Record<string, number>; cash?: Cash; now?: () => Date; }
+export interface AnnualOptions { engineApi?: typeof import('../engine/index.mjs').EngineAPI; adoptedPlanPatch?: import("./profile-ui.js").PlanPatch;
+    careValues?: unknown; careToday?: Record<string, number>; propertyValues?: unknown; cash?: Cash; now?: () => Date; }
 export interface AnnualCommitOptions extends AnnualOptions { draft?: AnnualDraft; targetYear?: number; marketData?: import("./balance-ui.js").ComputeAnnualOptions["marketData"]; scope?: D.PlanScope;
     storage?: D.RecordStorage; persistence?: Facade; navigationOperation?: Operation; isCurrent?: () => boolean; }
 export type StoredCalculation = Omit<ReturnType<typeof import('../app/balance/balance-input-storage.js').buildBalanceEngineInputFromStorage>, 'householdPlan'> & {householdPlan: import('./profile-ui.js').PlanRead & {status: 'valid'; entry: import('./profile-ui.js').PlanEntry} & {scope: D.PlanScope}};

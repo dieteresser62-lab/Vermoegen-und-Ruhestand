@@ -4,6 +4,7 @@ import { registeredPlanTrial, planTrialPatch, planTrialDifferences } from '../sh
 import { syncWithdrawalModeOptions, carrierModeText } from '../shared/household-plan-fields.js';
 import { parseWithdrawalMode, ONE_CARRIES } from '../profile/household-withdrawal-mode.js';
 import { readBalanceInflationSource, renderBalanceInflationSource } from './balance-inflation-source.js';
+import { MARKET_DISPLAY_DECIMALS, readExactFieldValue, setExactFieldValue } from './balance-exact-field.js';
 import { BALANCE_STORAGE_FIELD_IDS, buildBalanceEngineInputFromStorage } from './balance-input-storage.js';
 import { readBalancePersonStatus, projectParticipatingPerson } from '../shared/person-data-status.js';
 import { PLAN_FIELDS, BALANCE_PLAN_INPUT_KEYS, HOUSEHOLD_PLAN_KEY, buildPlanRecord, readBalanceHouseholdPlan, projectPlanToBalance, assertPlanValues, applyBalanceEquityCost } from '../profile/household-plan.js';
@@ -52,7 +53,7 @@ const REQUIRED_BALANCE_CURRENCY_FIELDS = new Set([
 ]);
 
 const BALANCE_CURRENCY_FIELD_LABELS = Object.freeze({
-    floorBedarf: 'Floor-Bedarf p.a.',
+    floorBedarf: 'Grundbedarf p.a.',
     flexBedarf: 'Flex-Bedarf p.a.',
     minimumFlexAnnual: 'Mindest-Flex p.a.',
     flexBudgetAnnual: 'Flex-Budget p.a.',
@@ -155,8 +156,8 @@ export function getMarketDataProvenanceViewModel(meta) {
     const engineReference = enginePolicy === 'window_high_as_conservative_ath_lower_bound'
         ? (
             engineReferenceApplied === true
-                ? '; Engine-Referenz: konservative ATH-Untergrenze angewendet'
-                : '; Engine-Referenz: nicht angewendet (kein belegter Fensterabstand)'
+                ? '; Konservative Allzeithoch-Untergrenze angewendet'
+                : '; Konservative Allzeithoch-Untergrenze nicht angewendet (kein belegter Fensterabstand)'
         )
         : '';
     return {
@@ -249,16 +250,12 @@ export const UIReader = {
         return patch;
     },
     /** Formularbesitzer: isolierte Rohrecordprojektion; kein Fachwrite und keine Fensteraggregate. */
-    captureStorageDraft(metadata = {}, { includePreviewBase = false } = {}) {
+    captureStorageDraft(metadata = {}) {
         for (const id of REQUIRED_BALANCE_CURRENCY_FIELDS) {
             if (dom.inputs[id]) parseBalanceCurrencyInput(id, dom.inputs[id].value);
         }
         const plan = readBalanceHouseholdPlan();
         const patch = this.readHouseholdPlanPatch(plan);
-        if (plan.status === 'valid') {
-            const own = readBalanceHouseholdPlan({ profileId: persistenceStorage.getItem('rs_current_profile') });
-            if (!registeredPlanTrial(globalThis.document)?.read().active && own.scope.key !== plan.scope.key && Object.keys(patch).length) throw new Error('Die geöffnete Außenperson darf den Haushaltsplan nicht ändern.');
-        }
         const state = JSON.parse(persistenceStorage.getItem(CONFIG.STORAGE.LS_KEY) || '{}');
         const trial = registeredPlanTrial(globalThis.document);
         const trialState = trial?.read();
@@ -268,7 +265,7 @@ export const UIReader = {
         const fields = Object.fromEntries(Object.entries(dom.inputs)
             .filter(([id]) => BALANCE_STORAGE_FIELD_IDS.includes(id) && (isDemo || !['aktuellesAlter', 'renteAktiv', 'renteMonatlich', 'sonstigeEinkuenfte', 'sparerPauschbetrag', 'kirchensteuerSatz'].includes(id))
                 && (plan.status !== 'valid' || !BALANCE_PLAN_INPUT_KEYS.includes(id) && id !== 'profilverbund-withdrawal-mode'))
-            .map(([id, field]) => [id, { value: String(id === 'inflation' ? readBalanceInflationSource({ scope: plan.scope }).value : field.value ?? ''), checked: field.checked === true }]));
+            .map(([id, field]) => [id, { value: String(id === 'inflation' ? readBalanceInflationSource({ scope: plan.scope }).value : readExactFieldValue(field) ?? ''), checked: field.checked === true }]));
         const nextState = { ...state, inputs: { ...state.inputs, ...metadata }, balanceInputFields: fields };
         const values = plan.status === 'valid' ? { ...plan.entry.values, ...patch,
             cape: { ...plan.entry.values.cape, ...patch.cape }, decumulation: { ...plan.entry.values.decumulation, ...patch.decumulation } } : null;
@@ -285,10 +282,6 @@ export const UIReader = {
         }
         return { storage, patch, fields, plan, trialActive: trialState?.active === true,
             deviationApplied: Boolean(trialState?.active && trialState.differences.length), source: this.readInputSourceFingerprint(),
-            // Nur Vorschauen benötigen die unkorrigierte Speicherbasis. Ein ungültiger
-            // Altstand darf die Bestätigung eines gültigen Formulars nicht sperren.
-            baseSourceFingerprint: includePreviewBase
-                ? buildBalanceEngineInputFromStorage({ scope: plan.scope, storage: persistenceStorage }).sourceFingerprint : null,
             calculation };
     },
     /** Rohwerte binden auch direkte Änderungen ohne Inputevent; keine erneute Fachaggregation. */
@@ -342,7 +335,7 @@ export const UIReader = {
         const num = (id) => dom.inputs[id]
             ? parseBalanceCurrencyInput(id, dom.inputs[id].value)
             : 0;
-        const val = (id) => dom.inputs[id] ? dom.inputs[id].value : '';
+        const val = (id) => dom.inputs[id] ? readExactFieldValue(dom.inputs[id]) : '';
         const finiteNumber = (id, fallback = 0, { integer = false } = {}) => {
             const rawValue = val(id);
             if (rawValue === null || rawValue === undefined || String(rawValue).trim() === '') {
@@ -620,6 +613,9 @@ export const UIReader = {
                     // Auch unerwartete Legacy-/Korruptionsstrings duerfen die Rente
                     // nicht per Truthiness aktivieren.
                     el.value = storedInputs[key] === true ? 'ja' : 'nein';
+                } else if (MARKET_DISPLAY_DECIMALS[key] !== undefined) {
+                    // Anzeige gerundet; der genaue Wert bleibt erhalten, solange das Feld unveraendert ist.
+                    setExactFieldValue(el, storedInputs[key], MARKET_DISPLAY_DECIMALS[key]);
                 } else {
                     el.value = storedInputs[key];
                 }
@@ -686,20 +682,12 @@ export const UIReader = {
      *
      * Zeigt/verbirgt Panels und aktiviert/deaktiviert Felder abhängig
      * von bestimmten Eingabewerten:
-     * - Gold-Panel: nur sichtbar wenn goldAktiv aktiviert
      * - Renten-Feld: nur aktiviert wenn renteAktiv = 'ja'
      * - Setzt inaktive Felder auf 0 zurück
      *
      * Wird automatisch von applyStoredInputs() aufgerufen.
      */
     applySideEffectsFromInputs() {
-        const goldAktivInput = dom.inputs.goldAktiv;
-        const goldPanel = dom.controls.goldPanel;
-        const isGoldActive = goldAktivInput ? goldAktivInput.checked : false;
-        if (goldPanel) {
-            goldPanel.style.display = isGoldActive ? 'block' : 'none';
-        }
-
         const entnahmeStrategieInput = dom.inputs.entnahmeStrategie;
         const threeBucketConfigGroup = document.getElementById('threeBucketConfigGroup');
         if (entnahmeStrategieInput && threeBucketConfigGroup) {

@@ -1,6 +1,7 @@
 import { formatDisplayNumber } from './designsystem-number-format.js';
 import { infoPopoverContentHtml } from './designsystem-info-popover.js';
 import { escapeHtml } from './security-utils.js';
+import { immobilienWertverlauf, immobilienWertAm } from '../profile/profile-immobilien.js';
 
 export const allocationNames = Object.freeze({ aktien: 'Aktien', aktien_alt: 'Aktien Altbestand', aktien_neu: 'Aktien Neubestand',
     geldmarkt: 'Geldmarkt', cash: 'Tagesgeld', gold: 'Gold', anleihe: 'Anleihen', homeSelf: 'Immobilien selbst genutzt', homeRented: 'Immobilien vermietet' });
@@ -18,7 +19,7 @@ export const optionalWealthVisible = (active, amount) => active === true || amou
  * @returns {string} Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
 export const wealthMoney = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 0 }) : '—';
-export const propertyHistoryNotice = 'Die gestapelte Fläche zeigt das Gesamtvermögen. Immobilien werden vereinfacht über den ganzen Zeitraum mit ihrem heutigen Wert gezeigt. Veränderung, Entnahmen und Rendite beziehen sich auf das Geldvermögen.';
+export const propertyHistoryNotice = 'Die gestapelte Fläche zeigt das Gesamtvermögen. Immobilien zählen an jedem Tag mit dem damals gültigen Wert. Veränderung, Entnahmen und Rendite beziehen sich auf das Geldvermögen.';
 export const percentileWealthNotice = 'Eine eindeutige Aufteilung gibt es für Perzentile nicht: Die Summe der Klassen-Perzentile ist nicht das Perzentil der Summe; die angezeigten Geld- und Immobilienanteile stammen aus denselben nach Gesamtvermögen sortierten Beobachtungen und werden am selben Rang interpoliert. Die Pfadauswahl bleibt beim Geldvermögen.';
 
 /**
@@ -90,18 +91,25 @@ export function wealthAllocation(allocation = {}, homes = {}) {
     return { ...allocation, homeSelf: homes.self || 0, homeRented: homes.rented || 0 };
 }
 
-/** Eigene Anzeigeprojektion; Tageswerte und Messkennzahlen bleiben unverändert.
+/** Eigene Anzeigeprojektion; Tageswerte und Messkennzahlen bleiben unverändert. FR-85: An jedem Tag zählt der damals gültige
+ * Immobilienwert, vor dem ersten Eintrag der erste bekannte Wert; eine entfernte Immobilie zählt bis zu ihrem Ende.
  *
  * @param history Wert für den bestehenden Aufrufvertrag.
- * @param profiles Wert für den bestehenden Aufrufvertrag.
+ * @param profiles Personen mit `values.immobilien` und optional `immobilienBeendet` (Verläufe entfernter Immobilien).
  * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
 export function withPropertyHistory(history, profiles = []) {
     if (!history) return history;
     const homes = profiles.flatMap(person => person.values?.immobilien || []);
-    if (!homes.length) return history;
+    const ended = profiles.flatMap(person => person.immobilienBeendet || []);
+    if (!homes.length && !ended.length) return history;
+    const rows = [...homes.map(home => ({ nutzung: home.nutzung, verlauf: immobilienWertverlauf(home), ende: null })),
+        ...ended.map(home => ({ nutzung: home.nutzung, verlauf: home.wertverlauf, ende: home.ende }))];
     const points = history.points.map(point => {
-        const parts = propertyParts([{ values: { immobilien: homes } }]);
+        const date = point.date ?? (Number.isInteger(point.day) ? new Date(point.day * 86400000).toISOString().slice(0, 10) : null);
+        const valued = rows.filter(row => !row.ende || !date || date <= row.ende)
+            .map(row => ({ nutzung: row.nutzung, wert: date ? immobilienWertAm(row.verlauf, date) : row.verlauf.at(-1).wert }));
+        const parts = propertyParts([{ values: { immobilien: valued } }]);
         return { ...point, property: parts, totalWithHomes: Number.isFinite(point.total) ? point.total + parts.total : null };
     });
     return { ...history, hasHomes: true, points, end: points.at(-1) || null };

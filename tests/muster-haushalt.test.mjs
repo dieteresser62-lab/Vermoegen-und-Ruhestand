@@ -1,4 +1,6 @@
+import { readDM1References } from './helpers/dm-1-expectations.mjs';
 import { readGU1References } from './helpers/gu-1-expectations.mjs';
+import { readVS2References } from './helpers/vs-2-expectations.mjs';
 import { withoutExampleNeeds } from './helpers/ff-3-expectations.mjs';
 import { installRealClock } from './helpers/fixed-real-clock.mjs';
 import { readQSCReferences } from './helpers/qs-c-expectations.mjs';
@@ -50,7 +52,7 @@ try {
         '2026-10-16': readQSCReferences('0ed222171e89f1dca39b382a61c531ad7d7aadc5c2be5455fdfea6cae0c5052f'),
         '2031-06-15': '981708735e271fa4ae567ab742ed48aa51cc7c820463353934afa3a47d258a02',
         '2060-06-15': readQSCReferences('e45eea4f6572c8af77d13ef071ed787f6b5d5623677dfdeef9a698bf3f9f823f')
-    })) assertEqual(createHash('sha256').update(JSON.stringify(legacyDemoIncomeRecords(withoutExampleNeeds(createMusterHaushaltRecords(date))))).digest('hex'), readGU1References(readQSCReferences(readVF2BReferences(expected))),
+    })) assertEqual(createHash('sha256').update(JSON.stringify(legacyDemoIncomeRecords(withoutExampleNeeds(createMusterHaushaltRecords(date))))).digest('hex'), readDM1References(readVS2References(readGU1References(readQSCReferences(readVF2BReferences(expected))))),
         `${date}: Max und Erika entsprechen der FF-E-Referenz samt berechnetem Jahresplan`);
 } finally {
     if (previousTimezone === undefined) delete process.env.TZ; else process.env.TZ = previousTimezone;
@@ -235,7 +237,7 @@ try {
                 assert(annual.outcome.monthlyBudget * 12 >= entry.values.floorBedarf, 'Jan und Lena decken ihren Grundbedarf mit der linearen Renditeannahme');
                 assert(annual.inputData.dynamicFlex, 'Dynamic Flex ist in der Jahresrechnung aktiv');
                 assert(annual.modelResult.ui.spending.kuerzungProzent > 0 && annual.modelResult.ui.spending.kuerzungProzent < 100, 'FR-33: Kürzung der dynamischen Basis bleibt sichtbar');
-                assertEqual(annual.outcome.monthlyBudget * 12, 51600, 'Jan und Lena erhalten mit 6.750 € Mindest-Flex ein Startbudget von 51.600 € (KO-2: 0,5 % Fondskosten in der erwarteten Rendite, zusammen mit dem Horizont nach FR-75; nur KO-2 52.800 €, nur LE-1 und vorher 55.200 €)');
+                assertEqual(annual.outcome.monthlyBudget * 12, 49200, 'Jan und Lena erhalten mit 6.750 € Mindest-Flex ein Startbudget von 49.200 € (FR-88 vorschüssig; vorher 51.600 € mit KO-2-Fondskosten und Horizont nach FR-75; nur KO-2 52.800 €, nur LE-1 und vorher 55.200 €)');
                 assert(model.household.assets > 1100000 && model.household.assets < 1300000, 'Jan und Lena besitzen rund 1,2 Mio. € einschließlich Tagesgeld');
             } else if (household.id === 'helga-werner') {
                 assertEqual(annual.inputData.renteMonatlich, 2800, 'Beide Renten laufen vollständig');
@@ -372,20 +374,8 @@ try {
             assertEqual(summary.monthlyWithdrawal, receipt.adopted.monthlyWithdrawal, 'Monatsinformation entspricht dem Jahresbeleg');
             assertEqual(summary.monthlyBudget, receipt.adopted.monthlyBudget, 'Budgetinformation entspricht dem Jahresbeleg');
             assertWealthHistory(state.value.wealthHistory);
-            assertEqual(state.value.wealthHistory.entries.length, 0, 'QS-C: keine alten Personenlisten neben den gemeinsamen Musterständen');
-            for (const entry of JSON.parse(records.rs_household_wealth_captures_v1).captures.map(capture => capture.people[id])) {
-                const historicalCash = cashHistory.entries.filter(point => point.date <= entry.asOf).at(-1)?.value ?? cashHistory.baselineValue;
-                assertEqual(entry.tagesgeld, historicalCash, 'Historischer Cash aus Cashquelle');
-                for (const [key, type] of [['depotwertAlt', 'aktien_alt'], ['depotwertNeu', 'aktien_neu'], ['geldmarktEtf', 'geldmarkt']]) {
-                    const expected = lots.filter(lot => lot.type === type && lot.purchaseDate <= entry.asOf)
-                        .reduce((sum, lot) => sum + lot.shares * syntheticQuote(lot.ticker, entry.asOf).price, 0);
-                    assert(Math.abs(entry[key] - expected) < 0.01, 'Historische Bewertung aus Stück-/Kursquelle: ' + key);
-                }
-                assert(entry.total > 0 && Number.isFinite(entry.total), 'Historische Summe positiv und endlich');
-                assertEqual(entry.aktienEtf, entry.depotwertAlt + entry.depotwertNeu, 'Historische Aktiensumme');
-                assertEqual(entry.total, entry.tagesgeld + entry.geldmarktEtf + entry.aktienEtf, 'Historische Gesamtsumme');
-                assertEqual(entry.asOf, entry.reason === 'annual_close' ? `${year - 1}-12-31` : `${year}-01-01`, 'Jahresend-/Januarvertrag unverändert');
-            }
+            assertEqual(state.value.wealthHistory.entries.length, 0, 'QS-C: keine alten Personenlisten im Balance-Zustand');
+            assert(!Object.hasOwn(records, 'rs_household_wealth_captures_v1'), 'VS-2: Beispielhaushalt legt keine erfassten Stände an');
             for (let n = 0; n < 4; n++) assertEqual(state.value.inputs[n ? `endeVJ_${n}` : 'endeVJ'], Math.round(syntheticAnnualQuote('VWCE.DE', year - 1 - n, date).price), 'Vorjahreskursfolge passend zur bestätigten Periode');
             assertEqual(state.value.inputs.ath, Math.max(...[0, 1, 2, 3].map(n => state.value.inputs[n ? `endeVJ_${n}` : 'endeVJ'])), 'ATH konsistent mit Kursfolge');
             assertEqual(data[CONFIG.STORAGE.LS_KEY], JSON.stringify(state.value), 'Balance vollständig parsebar');
@@ -410,8 +400,15 @@ try {
         assertClose(model.summary.monthlyBudget, (30000 + 30000 * receipt.adopted.flexRate / 100) / 12, 0.01,
             'Festes Budget berücksichtigt die Flex-Kürzung der echten Jahresrechnung');
         assertEqual(model.summary.monthlyBudget - model.summary.monthlyWithdrawal, 2300, 'Budget enthält nur die im Startjahr laufende Max-Rente');
-        const january = JSON.parse(records.rs_household_wealth_captures_v1).captures.find(capture => capture.household.asOf === `${year}-01-01`).household;
-        const januaryLiquidity = january.tagesgeld + january.geldmarktEtf;
+        // Januarliquidität aus Tagesgeld-Historie und Geldmarktstücken zum 01.01. (früher aus der Januar-Erfassung).
+        const januaryDate = `${year}-01-01`;
+        const januaryLiquidity = Object.values(registry.profiles).reduce((sum, profile) => {
+            const history = JSON.parse(profile.data.profile_cash_history_v1);
+            const cashOnJanuary = history.entries.filter(point => point.date <= januaryDate).at(-1)?.value ?? history.baselineValue;
+            const moneyMarket = JSON.parse(profile.data.depot_tranchen).filter(lot => lot.type === 'geldmarkt' && lot.purchaseDate <= januaryDate)
+                .reduce((value, lot) => value + lot.shares * syntheticQuote(lot.ticker, januaryDate).price, 0);
+            return sum + cashOnJanuary + moneyMarket;
+        }, 0);
         assertClose(receipt.adopted.liquidityBefore, januaryLiquidity / receipt.adopted.action.zielLiquiditaet * 100, 1e-8,
             'Beleg bewertet die vorhandenen Stücke und Cashstände wie der Januar-Verlauf');
         const expenses = JSON.parse(records.balance_expenses_v1);

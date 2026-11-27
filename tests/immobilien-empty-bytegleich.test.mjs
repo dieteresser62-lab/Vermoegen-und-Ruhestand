@@ -1,4 +1,15 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { fz1References } from './helpers/fz-1-expectations.mjs';
+import { readDM1References } from './helpers/dm-1-expectations.mjs';
+import { readJA1References } from './helpers/ja-1-expectations.mjs';
+import { readHP4References } from './helpers/hp-4-expectations.mjs';
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import { readVB1References } from './helpers/vb-1-expectations.mjs';
+import { readRK1MergeReferences } from './helpers/rk-1-merge-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
+import { readVS2References } from './helpers/vs-2-expectations.mjs';
 import { readTRG1References } from './helpers/trg-1-expectations.mjs';
+const readFZ1Reference = fz1References(import.meta.url);
 const readQSCReferences = value => readPFA1References(beforePFA1QSCReferences(value));
 import { readGU1References } from './helpers/gu-1-expectations.mjs';
 import { withPreviousRunEvidence } from './helpers/le-1b-expectations.mjs';
@@ -41,9 +52,9 @@ import { readFI1References } from './helpers/fi-1-expectations.mjs';
 const readRNG1Hash = before => readQSCReferences(readAS1Hash(readEP1Hash(readBeforeEP1Hash(before))));
 const baseline = JSON.parse(readFileSync(new URL('./fixtures/up-1a-parity.json', import.meta.url)));
 const { inputs, historical, chunk } = await measure(0, baseline.count, { historicalSurvivor: true });
-assertEqual(hash(inputs), readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(baseline.inputsHash))))), 'Ohne Immobilien: vollständige Eingaben bytegleich zum Ausgangsstand');
-assertEqual(hash(historical), readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(baseline.backtestHash))))), 'Ohne Immobilien: vollständiger Backtest 2000–2025 bytegleich zum Ausgangsstand');
-assertEqual(hash(withPreviousRunEvidence(chunk)), readFI1References(readLE1KO2References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(baseline.monteCarloHash)))))))), 'Ohne Immobilien: vollständige 24 MC-Pfade mit Seed 12345 und belegter Ehe-Erbschaftsteuer');
+assertEqual(hash(inputs), readDM1References(readVB1References(readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(baseline.inputsHash))))))), 'Ohne Immobilien: vollständige Eingaben nach gemessener Referenz');
+assertEqual(hash(historical), readFZ1Reference(readDM1References(readKR1cReferences(readVB1References(readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(baseline.backtestHash))))))))), 'Ohne Immobilien: vollständiger Backtest 2000–2025 nach gemessener Referenz');
+assertEqual(hash(withPreviousRunEvidence(chunk)), readFZ1Reference(readDM1References(readJA1References(readHP4References(readKR1cReferences(readVB1References(readFI1References(readLE1KO2References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(baseline.monteCarloHash)))))))))))))), 'Ohne Immobilien: vollständige 24 MC-Pfade mit Seed 12345 und belegter Ehe-Erbschaftsteuer');
 const { durationMs, ...parity } = runParityScenarios({ source });
 assertEqual(parity.cases.length, baseline.parityCases, 'Paritätsbeleg enthält dieselben 208 Jahres- und Fortsetzungsfälle');
 assertEqual(parity.failed, false, 'Keine ungeklärten Paritätsabweichungen');
@@ -95,4 +106,7 @@ legacyDisplay.cases = legacyDisplay.cases.map(value => {
     if (value.replay?.log) value.replay.log = sealParityReplayLog(value.replay.log);
     return sealParityCase(value);
 });
-assertEqual(hash(legacyDisplay), readTRG1References(readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(baseline.parityHash)))))), 'Ohne Immobilien: vollständiger Paritätsbeleg mit bisheriger Anzeigebasis bytegleich zum Ausgangsstand');
+const textEvidence = JSON.parse(readFileSync(new URL('./fixtures/parity-summary-text-delta.json', import.meta.url)));
+const previousParityHash = readVS2References(readTRG1References(readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(baseline.parityHash)))))));
+assertEqual(previousParityHash, textEvidence.beforeHash, 'Textbeleg schließt an den vollständigen historischen Paritätshash an');
+assertEqual(hash(legacyDisplay), readFZ1Reference(readDM1References(readKR1cReferences(readRK1MergeReferences(textEvidence.afterHash)))), 'Ohne Immobilien: vollständiger Paritätsbeleg mit erklärtem Ausgabetext nach gemessener Referenz zum gemessenen Stand');

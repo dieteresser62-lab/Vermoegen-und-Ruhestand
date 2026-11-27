@@ -6,7 +6,7 @@ import { PersistenceFacade as P, persistenceStorage, resetPersistenceForTests } 
 import { bindManagerCareValues, renderManagerCareValues } from '../app/tranches/tranchen-manager-care-values.js';
 import { resolveCarePrices, careDriftScheduleOf, careValuesWithPrices } from '../app/shared/care-prices.js';
 import { readCareValues } from '../app/shared/household-care-values.js';
-import { careSettingsStorage, sharesHouseholdCareValues } from '../app/shared/care-profile-settings.js';
+import { careSettingsStorage } from '../app/shared/care-profile-settings.js';
 import { careCostDriftFactor } from '../app/shared/care-cost-drift.js';
 import { carePriceValue } from '../app/shared/care-price-fields.js';
 import { displayedWithdrawal } from '../app/shared/display-rounding.js';
@@ -40,7 +40,7 @@ const factor2045 = prices => careCostDriftFactor(2026, 2045, schedule(prices));
 {
     const base = careValuesWithPrices(null, {}, { priceYear: 2026 });
     assertClose(factor2045(resolveCarePrices({ prices: { ...base.prices, driftPercent: 5 } }, null)), 1.8911, 1e-4, 'GN-2b: markierte 5 % → Stufe');
-    assertClose(factor2045(resolveCarePrices(null, { sim_pflegeKostenDrift: '5' }, { shared: false })), 1.8911, 1e-4, 'GN-2b: unmarkierte 5 % → Stufe');
+    assertClose(factor2045(resolveCarePrices(null, { sim_pflegeKostenDrift: '5' })), 1.8911, 1e-4, 'GN-2b: unmarkierte 5 % → Stufe');
 }
 
 // Punkt 4 (Gemini 3): ohne Planzeilen dieselbe Deckung in Reservekarte und Übersicht, ganze Prozent.
@@ -63,7 +63,8 @@ assertEqual(displayedWithdrawal(1550, 2950), displayedWithdrawal(1560, 2960), 'G
 
 // Fable P2-1: sichtbare Tabelle der Übersicht, Text wie in der Balance.
 {
-    const date = '2026-10-23', expected = { 'max-erika': '109 %', renate: '105 %', 'jan-lena': '51 %', 'helga-werner': '108 %', sophie: '100 %', 'martin-petra': '100 %' };
+    // HP-3: Jan und Lena 50 % statt 51 % (Plan 58.118 + 41.882 = 100.000 € einmal gerundet statt 60.000 + 42.500 = 102.500 €), Helga und Werner 107 % statt 108 %.
+    const date = '2026-10-23', expected = { 'max-erika': '109 %', renate: '105 %', 'jan-lena': '50 %', 'helga-werner': '107 %', sophie: '100 %', 'martin-petra': '100 %' };
     for (const [id, coverage] of Object.entries(expected)) {
         const records = createMusterHaushaltRecords(date, id);
         const model = await overviewModel(records, date);
@@ -114,7 +115,7 @@ assertEqual(displayedWithdrawal(1550, 2950), displayedWithdrawal(1560, 2960), 'G
     try {
         const page = managerDocument(); bindManagerCareValues(page.doc); renderManagerCareValues(page.doc);
         const settle = async () => { await P.flush(); for (let i = 0; i < 20; i++) await Promise.resolve(); };
-        const effective = () => resolveCarePrices(readCareValues(persistenceStorage), careSettingsStorage(persistenceStorage), { shared: sharesHouseholdCareValues(persistenceStorage) });
+        const effective = () => resolveCarePrices(readCareValues(persistenceStorage), careSettingsStorage(persistenceStorage));
         const fields = () => ['managerCareDrift', 'managerCareDriftUntil', 'managerCareDriftAfter'].map(id => page.nodes.get(id).value).join(' / ');
         // GN-2c (Gemini P3-2): auch leer und negativ mit der Jahresmeldung, nicht „Betrag ab 0“.
         for (const bad of ['2035,5', '1800', '2101', '', '-1']) {
@@ -128,5 +129,89 @@ assertEqual(displayedWithdrawal(1550, 2950), displayedWithdrawal(1560, 2960), 'G
         page.doc.activeElement = null;
         page.change('managerCareDriftUntil', '2030'); await settle();
         assertEqual(JSON.stringify(careDriftScheduleOf(effective())), JSON.stringify({ firstPercent: 4, untilYear: 2030, afterPercent: 2 }), 'GN-2b: gültiges Jahr 2030 gespeichert');
+        page.change('managerCareDriftUntil', '2026'); await settle();
+        setAppTestDate('2027-01-02');
+        renderManagerCareValues(page.doc);
+        page.change('managerCareDriftAfter', '3'); await settle();
+        assertEqual(fields(), '4 / 2026 / 3', 'JA-1: Ändern der zweiten Rate erhält das vergangene Bis-Jahr');
+        assertEqual(page.nodes.get('managerCareStatus').textContent, 'Gespeichert', 'JA-1: Altjahr löst bei anderer Eingabe keine Meldung aus');
+        page.change('managerCareDriftUntil', '2025'); await settle();
+        assert(page.nodes.get('managerCareStatus').textContent.includes('von 2027 bis 2100'), 'JA-1: Aktive Änderung prüft die Grenze zum Testjahr');
+        assertEqual(effective().driftUntilYear, 2026, 'JA-1: Ungültige Änderung erhält das gespeicherte Bis-Jahr');
+        page.change('managerCareDriftUntil', '2027'); await settle();
+        assertEqual(effective().driftUntilYear, 2027, 'JA-1: Das Testjahr ist gültig');
     } finally { await resetPersistenceForTests(); setAppTestDate(null); }
+}
+
+// OP-2 (Punkt 4): 2035 → 2025 (abgewiesen) → 2035. Das Feld zeigt nach der Abweisung wieder 2035; der Browser meldet beim erneuten
+// Eintippen desselben Werts keine Änderung. Meldung und roter Rahmen verschwinden trotzdem beim Verlassen des Felds.
+// Die kleine Seite bildet die Browserregeln nach: Feldzustand mit Grund-Element, „change“ nur bei anderem Wert als beim letzten
+// Ändern oder Setzen ohne Fokus, Reihenfolge change → focusout beim Verlassen.
+{
+    setAppTestDate('2026-10-23');
+    function fieldDocument() {
+        const nodes = new Map(), listeners = {};
+        const doc = { activeElement: null, getElementById: id => nodes.get(id) ?? null, querySelectorAll: selector => selector === '#managerCarePreset [data-care-preset]' ? presets : [],
+            createElement: tag => node(null, { tagName: tag.toUpperCase() }) };
+        function node(id, extra = {}) {
+            const element = { id, dataset: {}, hidden: false, disabled: false, textContent: '', innerHTML: '', title: '', tagName: 'DIV', attributes: {}, ownerDocument: doc,
+                setAttribute(name, value) { this.attributes[name] = String(value); }, getAttribute(name) { return this.attributes[name] ?? null; },
+                hasAttribute(name) { return Object.hasOwn(this.attributes, name); }, removeAttribute(name) { delete this.attributes[name]; },
+                remove() { if (this.owner?.nextSibling === this) this.owner.nextSibling = null; }, closest: () => null, ...extra };
+            if (id) nodes.set(id, element);
+            return element;
+        }
+        const html = readFileSync(new URL('../depot-tranchen-manager.html', import.meta.url), 'utf8');
+        const dispatch = (type, target, extra = {}) => (listeners[type] || []).forEach(fn => fn({ target, preventDefault() {}, ...extra }));
+        node('managerCarePanel', { addEventListener(type, fn) { (listeners[type] ||= []).push(fn); }, querySelectorAll: () => [] });
+        for (const match of html.matchAll(/<(input|select|dl|div|p|span|strong|td)\b[^>]*\bid="(managerCare[^"]+)"[^>]*>/g)) {
+            if (nodes.has(match[2])) continue;
+            const careField = /data-care-field="([^"]+)"/.exec(match[0])?.[1];
+            const field = node(match[2], { tagName: match[1].toUpperCase(), ...(careField ? { dataset: { careField } } : {}) });
+            if (match[1] !== 'input') continue;
+            let current = '';
+            Object.defineProperty(field, 'value', { get: () => current, set(value) { current = String(value); if (doc.activeElement !== field) field.baseline = current; } });
+            field.baseline = '';
+            field.nextSibling = null;
+            field.parentNode = { classList: { contains: () => false }, insertBefore(child) { field.nextSibling = child; child.owner = field; } };
+            field.blur = () => {
+                if (doc.activeElement !== field) return;
+                doc.activeElement = null;
+                if (field.value !== field.baseline) { field.baseline = field.value; dispatch('change', field); }
+                dispatch('focusout', field);
+            };
+        }
+        const presets = ['custom', 'ambulant', 'amtlich'].map(preset => node(null, { tagName: 'BUTTON', dataset: { carePreset: preset } }));
+        /** Klick ins Feld, Inhalt ersetzen, Enter. */
+        const enter = (id, value) => {
+            const field = nodes.get(id);
+            doc.activeElement = field; dispatch('focusin', field);
+            field.value = value; dispatch('input', field);
+            dispatch('keydown', field, { key: 'Enter' });
+        };
+        return { doc, nodes, enter };
+    }
+    const { records } = pfa2Records({});
+    for (const [second, expectedYear] of [['2035', 2035], ['2030', 2030]]) {
+        const store = new Map(Object.entries(records));
+        P.resetPersistenceForTests({ name: 'op-2-4', async loadAll() { return Object.fromEntries(store); },
+            async saveBatch({ upserts, deletes }) { for (const key of deletes) store.delete(key); for (const [key, value] of upserts) store.set(key, value); } });
+        await P.init({ installLifecycleHooks: false, installTauriCloseHook: false });
+        try {
+            const page = fieldDocument(); bindManagerCareValues(page.doc); renderManagerCareValues(page.doc);
+            const settle = async () => { await P.flush(); for (let i = 0; i < 20; i++) await Promise.resolve(); };
+            const field = page.nodes.get('managerCareDriftUntil');
+            const untilYear = () => careDriftScheduleOf(resolveCarePrices(readCareValues(persistenceStorage), careSettingsStorage(persistenceStorage))).untilYear;
+            assertEqual(`${field.value} / ${untilYear()}`, '2035 / 2035', 'OP-2 Punkt 4: Ausgangswert 2035');
+            page.enter('managerCareDriftUntil', '2025'); await settle();
+            assertEqual(field.getAttribute('data-field-state'), 'error', 'OP-2 Punkt 4: 2025 wird abgewiesen, roter Rahmen');
+            assert(/^Bitte ein ganzes Jahr von 2026 bis 2100/.test(field.nextSibling?.textContent || ''), 'OP-2 Punkt 4: Meldung am Feld');
+            assertEqual(`${field.value} / ${untilYear()}`, '2035 / 2035', 'OP-2 Punkt 4: Feld zeigt wieder den gespeicherten Wert');
+            page.enter('managerCareDriftUntil', second); await settle();
+            assertEqual(field.getAttribute('data-field-state'), 'editable', `OP-2 Punkt 4: nach ${second} kein roter Rahmen mehr`);
+            assertEqual(field.nextSibling, null, `OP-2 Punkt 4: nach ${second} keine Meldung mehr am Feld`);
+            assertEqual(page.nodes.get('managerCareStatus').textContent, 'Gespeichert', `OP-2 Punkt 4: nach ${second} keine rote Statusmeldung`);
+            assertEqual(`${field.value} / ${untilYear()}`, `${expectedYear} / ${expectedYear}`, `OP-2 Punkt 4: ${expectedYear} ist gespeichert`);
+        } finally { await resetPersistenceForTests(); setAppTestDate(null); }
+    }
 }

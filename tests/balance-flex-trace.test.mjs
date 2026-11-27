@@ -125,7 +125,7 @@ try {
     const renderer = new SummaryRenderer({ outputs });
     const button = outputs.balanceBudgetWhy, region = outputs.balanceBudgetTrace;
     renderer.renderPlanCards(hot);
-    assert(region.children.some(node => node.textContent.includes('Guardrail (Vorsicht)')),
+    assert(region.children.some(node => node.textContent.includes('Leitplanke (Vorsicht)')),
         'Balance zeigt bei gesperrtem Floor den Vorsichtsgrund');
     assert(region.children.some(node => node.children?.[0]?.children?.[1]?.textContent.includes('Einschränkung liegt erst vor') && node.children[0].children[1].textContent.includes('Rentenbeitrag')), 'Warum-Treppe unterscheidet Wunsch-Kürzung und Mindest-Flex-Einschränkung');
     assert(!button.hidden && region.hidden && button.getAttribute('aria-expanded') === 'false', 'Jedes Ergebnis beginnt mit geschlossener Warum-Treppe');

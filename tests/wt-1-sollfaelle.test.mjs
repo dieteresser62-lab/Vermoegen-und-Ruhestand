@@ -1,4 +1,5 @@
 // WT-1 (FR-77, FR-71 geändert): von Hand hergeleitete Sollfälle als dauerhafte Node-Tests. Nur synthetische Daten.
+import { readVS2References } from './helpers/vs-2-expectations.mjs';
 import { readKO2References } from './helpers/ko-2-expectations.mjs';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -6,10 +7,9 @@ import { EngineAPI } from '../engine/index.mjs';
 import { MockDocument } from './helpers/balance-page-fixture.mjs';
 import { projectAnnualActionProgress } from '../app/balance/annual-action-progress.js';
 import { projectAnnualTodoPlan, projectCashRefill, CASH_REFILL_MIN_MONTHS, saleEntryHref } from '../app/balance/annual-todo.js';
-import { createTodoPlan, createCashRefill, createHiddenBearBlock, createPlanProgressNote, createTodoResult } from '../app/shared/annual-todo-view.js';
-import { prepareMarketPreview, projectMarketPreview, isHiddenBearMarket, hiddenBearCheckUnreliable, unavailableBudgetComparison } from '../app/balance/balance-market-preview.js';
-import { createAnnualMarketReadings } from '../app/balance/balance-market-preview-renderer.js';
-import { createAnnualMarketChoice } from '../app/shared/annual-market-choice.js';
+import { createTodoPlan, createCashRefill, createPlanProgressNote, createTodoResult } from '../app/shared/annual-todo-view.js';
+import { prepareMarketPreview, projectMarketPreview, highCheckUnreliable, unavailableMarketPreview } from '../app/balance/balance-market-preview.js';
+import { createAnnualMarketReadings, marketHighRows } from '../app/balance/balance-market-preview-renderer.js';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input-storage.js';
 import { planScope } from '../app/profile/household-plan.js';
@@ -58,7 +58,7 @@ const text = node => clean(node.textContent);
     const open = projectAnnualTodoPlan({ confirmed: { year: 2026, committedAt: '2026-01-02T11:00:00.000Z', action,
         progress: projectAnnualActionProgress({ action, year: 2026, decidedOn: '2026-01-02', sales: [] }) }, people: [] });
     const openText = text(createTodoPlan(new MockDocument(), open));
-    assert(openText.includes('OffenNoch kein Verkauf eingetragen.') && openText.includes('Aktien verkaufenca. 89.500 €netto, Steuer ca. 1.000 € schon abgezogen'), 'S1: offen mit Verb und gerundetem Netto-Betrag „ca.“ (VN-1 Punkt 4), Steuer 827 € aufgerundet');
+    assert(openText.includes('OffenNoch kein Verkauf eingetragen.') && openText.includes('Aktien verkaufenca. 90.000 €netto, Steuer ca. 1.000 € schon abgezogen'), 'S1: offen mit Verb und gerundetem Netto-Betrag „ca.“ (VN-1 Punkt 4, HP-3: Summe einmal gerundet), Steuer 827 € aufgerundet');
     assert(openText.includes('Wohin das Geld geht') && openText.includes('Beschlossen im Jahresabschluss am 02.01.2026.'), 'S1: offen mit „Wohin das Geld geht“ und Beschlusszeile');
     const done = projectAnnualTodoPlan({ confirmed: { year: 2026, committedAt: '2026-01-02T11:00:00.000Z', action,
         progress: projectAnnualActionProgress({ action, year: 2026, decidedOn: '2026-01-02', sales: [sale('max', 9300, '2026-03-12'), sale('erika', 79500, '2026-09-02')] }) }, people: [] });
@@ -68,9 +68,10 @@ const text = node => clean(node.textContent);
     assert(note.includes('Teilweise umgesetztPlan 2026') && note.includes('39.938 € von 89.312 € verkauft') && note.includes('Der Plan 2027 rechnet mit deinem Bestand vom 31.12.'), 'S1: Jahresabschluss, Schritt Plan (VN-1 Punkt 4: wie die Karte auf den Euro)');
     assert(text(createPlanProgressNote(new MockDocument(), { ...progress, year: 2026 }, true)).includes('Plan 2026 · teilweise umgesetzt'), 'S1: Ergebnis nennt den Stand des alten Plans');
     const result = text(createTodoResult(new MockDocument(), projectAnnualTodoPlan({ confirmed: { year: 2027, action,
-        marketReading: { reading: 'year_high', asOf: '2026-08-12' } }, people: [], routing: { tagesgeld: 32400, geldmarkt: 56912 }, cashMonths: 12 })));
+        marketReading: { reading: 'year_high', asOf: '2026-08-12' } }, people: [], routing: { tagesgeld: 32400, geldmarkt: 56912, people: [] } })));
+    // Altbestand [A7]: Belege vor FR-89 mit der Wahl „Jahreshoch“ nennen sie weiter.
     assert(result.includes('Was zu tun istPlan 2027') && result.includes('Gewählt: mit dem Jahreshoch vom 12.08.2026 (vorsichtiger).'), 'S1: Ergebnis im selben Baustein');
-    assert(result.includes('Aufs Tagesgeld, bis es 12 Monate Entnahme deckt32.500 €') && result.includes('Der Rest in den Geldmarkt57.000 €'), 'S1: Ergebnis mit Aufteilung (32.500 € und der Rest des angezeigten Plans 89.500 − 32.500 = 57.000 €)');
+    assert(result.includes('Aufs Tagesgeld bis zum Tagesgeldziel32.500 €') && result.includes('Der Rest in den Geldmarkt57.500 €'), 'S1: Ergebnis mit Aufteilung (32.500 € und der Rest des angezeigten Plans 90.000 − 32.500 = 57.500 €, HP-3)');
 }
 
 // S2 C: Ziel 12 × 2.700 = 32.400 €. Tagesgeld 13.500 € (5 Monate), Geldmarkt 60.000 €, Plan erledigt → 18.900 €.
@@ -92,7 +93,7 @@ const text = node => clean(node.textContent);
     assertEqual(household.rows.map(row => `${row.name} ${row.amount}`).join(' · '), 'Max 2000 · Erika 14900', 'S2: je Person bis zum eigenen Ziel, höchstens ihr Geldmarkt');
 }
 
-// S3 verdeckter Bär: Ende 2025 120 €, Jahreshoch 165,79 € am 12.08.2026; Max und Erika am 15.12.2026.
+// S3 (seit FR-89 ohne zweite Lesart): Ende 2025 120 €, Tageshoch 165,79 € am 12.08.2026; Max und Erika am 15.12.2026.
 const bearView = (() => {
     const records = createMusterHaushaltRecords('2026-12-15', 'max-erika');
     const registry = JSON.parse(records.rs_profiles_v1);
@@ -109,32 +110,25 @@ const bearView = (() => {
             if (result.error) throw result.error;
             return result;
         };
-        return projectMarketPreview(prepared, { stored: run(prepared.inputs), rule: run(prepared.ruleInputs), high: run(prepared.highInputs) });
+        return projectMarketPreview(prepared, run(prepared.marketInputs));
     };
 })();
 {
-    const hidden = bearView(126);
-    assertClose(hidden.rule.changeSinceYearEndPct, 5, 1e-9, 'S3: Jahresendregel +5 %');
-    assert(['bear_deep', 'recovery_in_bear'].includes(hidden.high.market.key), `S3: 24 % unter dem Hoch kürzt die Engine den Flex (${hidden.high.market.key})`);
-    assert(isHiddenBearMarket(hidden), 'S3: 126 € → Block und Wahl');
-    const block = text(createHiddenBearBlock(new MockDocument(), hidden));
-    assert(block.includes('Bärenmarkt, den die Jahresregel nicht sieht') && block.includes('Aktien liegen heute 24 % unter dem Jahreshoch vom 12.08.2026.'), 'S3: Abstand und Datum');
-    assert(block.includes('Von Ende 2025 bis heute ist das ein Plus von 5 %, also kein Bärenmarkt.'), 'S3: Sicht der Jahresendregel');
-    assert(block.includes('Ende 2025120,00 €') && block.includes('Jahreshoch 12.08.165,79 €') && block.includes('Heute126,00 €24 % unter dem Hoch'), 'S3: drei Kurse');
-    assert(block.includes('Was das für 2027 heißt') && block.includes('Marktlagekein BärenmarktBärenmarkt') && block.includes('Kursverlauf 2026'), 'S3: Tabelle und zugeklappter Kursverlauf');
-    const annual = text(createHiddenBearBlock(new MockDocument(), hidden, { annual: true, choice: createAnnualMarketChoice(new MockDocument(), hidden, null, () => {}) }));
-    assert(annual.includes('Wahl nötig') && annual.includes('Welcher Plan soll gelten?') && annual.includes('Nach Kursen zum Jahresende') && annual.includes('Mit dem Jahreshoch vom 12.08.2026'), 'S3: Wahl im Jahresabschluss');
-    assert(annual.includes('Die App wählt nichts vor.'), 'S3: ohne Vorauswahl');
+    const bear = bearView(126);
+    assertEqual(bear.high.value, 165.79, 'S3: das Tageshoch ist das Allzeithoch');
+    assert(['bear_deep', 'recovery_in_bear'].includes(bear.market.key) && bear.deepBear.cutActive, `S3: 24 % unter dem Hoch kürzt die Engine den Flex (${bear.market.key})`);
+    const rows = Object.fromEntries(marketHighRows(bear));
+    assertEqual(rows.Allzeithoch, '165,79 € · Tagesschluss vom 12.08.2026', 'S3: Hoch mit Datum');
+    assertEqual(rows['Tiefer Bär'], 'unter 132,63 € · Kürzung aktiv', 'S3: Kursschwelle, Kürzung aktiv');
     const corrected = bearView(141);
-    assert(!isHiddenBearMarket(corrected), `S3: 141 € (15 % unter dem Hoch, ${corrected.high.market.key}) → kein Block, keine Wahl`);
-    const bear = bearView(90);
-    assert(['bear_deep', 'recovery_in_bear'].includes(bear.rule.market.key), `S3: 90 € ist auch nach der Jahresendregel ein Bärenmarkt (${bear.rule.market.key})`);
-    assert(!isHiddenBearMarket(bear), 'S3: 90 € → kein Block');
+    assert(!corrected.deepBear.cutActive && Object.fromEntries(marketHighRows(corrected))['Tiefer Bär'].includes('Abstand'), `S3: 141 € (15 % unter dem Hoch, ${corrected.market.key}) → keine Kürzung, Restabstand`);
+    assert(bearView(90).deepBear.cutActive, 'S3: 90 € → Kürzung');
     // „Nicht belastbar“ nur, wenn die Kurse fehlen und es auf sie ankäme.
-    const missing = { withoutQuote: true, withoutQuoteReason: 'kein Tageskurs seit Jahresende VJ', quote: null, yearEndDate: null, readingsEqual: true, comparison: unavailableBudgetComparison('kein Tageskurs seit Jahresende VJ') };
-    assert(hiddenBearCheckUnreliable(missing) && !createAnnualMarketReadings(new MockDocument(), missing).hidden, 'S3: fehlende Kurse → Hinweis im Schritt Marktdaten');
-    assert(createAnnualMarketReadings(new MockDocument(), hidden).hidden && createAnnualMarketReadings(new MockDocument(), corrected).hidden, 'S3: belastbare Kurse → Schritt Marktdaten ohne Jahreshoch');
-    assert(!hiddenBearCheckUnreliable({ ...bear, comparison: unavailableBudgetComparison('alt') }), 'S3: Sieht die Jahresendregel schon einen Bären, kommt es auf die Kurse nicht an');
+    const missing = unavailableMarketPreview('kein Tageskurs seit Jahresende VJ');
+    assert(highCheckUnreliable(missing) && !createAnnualMarketReadings(new MockDocument(), missing).hidden, 'S3: fehlende Kurse → Hinweis im Schritt Marktdaten');
+    const shown = text(createAnnualMarketReadings(new MockDocument(), bear));
+    assert(shown.includes('Allzeithoch') && !shown.includes('Kurse auf Daten & Sicherung holen'), 'S3: belastbare Kurse → Schritt Marktdaten mit Hoch, ohne Hinweis');
+    assert(!highCheckUnreliable({ ...bear, unreliableReason: 'alt' }), 'S3: Kürzt die Engine schon, kommt es auf die Kurse nicht an');
 }
 
 // Verkaufsdialog im Vermögen: Sprungziel mit Person und Tranche.
@@ -156,7 +150,7 @@ const bearView = (() => {
         assertEqual(hash(balance), expected[id].balance, `S4: ${id} Engine bytegleich`);
         const overview = projectOverviewFromRecords({ registry, activeId: records.rs_current_profile, liveData: records, now: new Date('2026-10-28T12:00:00Z') });
         // KO-2: Der Planstand der Übersicht trägt den gelesenen Planwert equityCostPct; Zahlen bleiben gleich.
-        assertEqual(hash(overview), readKO2References(expected[id].overview), `S4: ${id} Übersicht bytegleich`);
+        assertEqual(hash(overview), readVS2References(readKO2References(expected[id].overview)), `S4: ${id} Übersicht bytegleich`);
     }
 }
 

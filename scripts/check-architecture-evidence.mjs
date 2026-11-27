@@ -384,6 +384,12 @@ function validateModelMatrixReviewDates({ content, file, today, errors }) {
             ));
         }
         const reviewCell = row.cells[7] || '';
+        // A retired domain keeps its ID for existing references. It needs no review date,
+        // but must state owner and review as "entfaellt" and carry a valid removal date.
+        const retiredDate = row.cells[2]?.match(/^entfernt, Stand (\d{4}-\d{2}-\d{2})\b/)?.[1] || '';
+        if (row.cells[1] === 'entfaellt' && reviewCell === 'entfaellt' && parseIsoDate(retiredDate)) {
+            continue;
+        }
         const reviewDate = reviewCell.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0] || '';
         if (!parseIsoDate(reviewDate)) {
             errors.push(createError(

@@ -3,9 +3,10 @@ import { CONFIG } from '../../app/balance/balance-config.js';
 import { PLAN_DEFAULTS, HOUSEHOLD_PLAN_KEY, planScope, buildPlanRecord, projectPlanToBalance } from '../../app/profile/household-plan.js';
 import { UIReader, initUIReader } from '../../app/balance/balance-reader.js';
 import { ANNUAL_PLAN_RECORD_KEY } from '../../app/profile/annual-plan-record.js';
+import { WEALTH_CAPTURES_KEY, assertWealthCaptures } from '../../types/wealth-capture-contract.js';
+import { createManualWealthHistoryEntry } from '../../types/wealth-history-contract.js';
 
-export const STORAGE_FIXTURE_KINDS = ['Muster-Haushalt', 'Einzelprofil', 'Haushalt mit Außenperson',
-    'aktive Außenperson', 'synthetische Echtform', 'Altbestand'];
+export const STORAGE_FIXTURE_KINDS = ['Muster-Haushalt', 'Einzelprofil', 'synthetische Echtform', 'Altbestand'];
 export function recordStorage(records) {
     return { getItem: key => records[key] ?? null };
 }
@@ -19,17 +20,8 @@ export function balanceStorageFixture(kind, strategy = 'standard', cape = 25) {
         // KO-2: Mechanikfixture ohne Fondskosten wie die Mechaniktests aus GU-1; die Wirkung von k prüft tests/ko-2-sollfaelle.test.mjs.
         equityCostPct: 0 };
     values.decumulation.mode = strategy;
-    if (kind === 'Einzelprofil') {
-        registry.profiles = { muster_a: registry.profiles.muster_a };
-        registry.profiles.muster_a.meta.belongsToHousehold = false;
-    }
-    if (['Haushalt mit Außenperson', 'aktive Außenperson', 'ein ausgewähltes Fremdmitglied'].includes(kind)) {
-        registry.profiles.outside = structuredClone(registry.profiles.muster_a);
-        registry.profiles.outside.meta = { ...registry.profiles.outside.meta, id: 'outside', name: 'Synthetische Außenperson', belongsToHousehold: false };
-        registry.profiles.outside.data.profile_tagesgeld = '99999';
-        if (kind === 'ein ausgewähltes Fremdmitglied') registry.profiles.muster_a.meta.belongsToHousehold = false;
-        if (['aktive Außenperson', 'ein ausgewähltes Fremdmitglied'].includes(kind)) records.rs_current_profile = records.rs_active_profile = 'outside';
-    }
+    // Einzelprofil: Haushalt mit einer Person und eigenem Einzelplan.
+    if (kind === 'Einzelprofil') registry.profiles = { muster_a: registry.profiles.muster_a };
     if (kind === 'zweites geöffnetes Mitglied') records.rs_current_profile = records.rs_active_profile = 'muster_b';
     if (kind === 'synthetische Echtform') {
         registry.profiles.muster_a.data.profile_gold_rebal_band = '18';
@@ -46,11 +38,19 @@ export function balanceStorageFixture(kind, strategy = 'standard', cape = 25) {
     }
     records.rs_profiles_v1 = JSON.stringify(registry);
     Object.assign(records, registry.profiles[records.rs_current_profile].data);
-    const ids = Object.keys(registry.profiles).filter(id => registry.profiles[id].meta.belongsToHousehold !== false);
-    const scope = ids.length ? planScope('household', ids) : planScope('single', [records.rs_current_profile]);
+    const ids = Object.keys(registry.profiles);
+    const scope = planScope(kind === 'Einzelprofil' ? 'single' : 'household', ids);
+    if (kind === 'Einzelprofil') {
+        // VS-2: Beispielhaushalte legen keine Erfassung mehr an. Diese Umfänge stehen für einen Altbestand, dessen
+        // Planungsbeginn 2026 nur eine gespeicherte Erfassung belegt; vorhandene Erfassungen werden weiter gelesen.
+        const entry = { ...createManualWealthHistoryEntry({ tagesgeld: 18000, geldmarktEtf: 0, depotwertAlt: 0, depotwertNeu: 0 }, '2026-01-01'), goldWert: 0, anleihen: 0 };
+        const people = Object.fromEntries(scope.ids.map(id => [id, entry]));
+        const household = Object.fromEntries(Object.entries(entry).map(([key, value]) => [key, typeof value === 'number' ? value * scope.ids.length : value]));
+        records[WEALTH_CAPTURES_KEY] = JSON.stringify(assertWealthCaptures({ schemaVersion: 1,
+            captures: [{ capturedAt: '2026-01-01T12:00:00.000Z', household, people }] }));
+    }
     delete records[HOUSEHOLD_PLAN_KEY];
-    if (kind !== 'Altbestand') records[HOUSEHOLD_PLAN_KEY] = buildPlanRecord(null, [{ scope, values },
-        ...(registry.profiles.outside ? [{ scope: planScope('single', ['outside']), values: structuredClone(PLAN_DEFAULTS) }] : [])]).raw;
+    if (kind !== 'Altbestand') records[HOUSEHOLD_PLAN_KEY] = buildPlanRecord(null, [{ scope, values }]).raw;
     return { records, values, scope };
 }
 export function installBalanceStorageForm(inputs, values) {
@@ -108,7 +108,8 @@ export function readyAnnualFixture(kind = 'Muster-Haushalt', strategy = 'standar
     records[CONFIG.STORAGE.MIGRATION_FLAG] = '1';
     records.balance_expenses_v1 = JSON.stringify({ version: 1, activeYear: 2026, years: {} });
     const registry = JSON.parse(records.rs_profiles_v1);
-    Object.assign(registry.profiles[records.rs_current_profile].data, { [CONFIG.STORAGE.LS_KEY]: records[CONFIG.STORAGE.LS_KEY], balance_expenses_v1: records.balance_expenses_v1 });
+    // SV-1b: Ausgaben sind haushaltsweit; Personendaten tragen nur personenbezogene Schlüssel (Domänenprüfung beim Zurückholen).
+    Object.assign(registry.profiles[records.rs_current_profile].data, { [CONFIG.STORAGE.LS_KEY]: records[CONFIG.STORAGE.LS_KEY] });
     records.rs_profiles_v1 = JSON.stringify(registry);
     return sample;
 }

@@ -12,7 +12,7 @@ import { formatDisplayPercentValue, formatDisplayPercentRatio, formatDisplayMont
 import { UIUtils } from './balance-utils.js';
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
 import { describeBalanceActionSummary } from './balance-action-summary.js';
-import { displayTradeAmount, translateBufferActionText } from '../shared/transaction-display-text.js';
+import { displayTradeAmount, translateBufferActionText, translateEngineTerms } from '../shared/transaction-display-text.js';
 
 const THRESHOLD_LABEL_MAP = Object.freeze({
     allocationpolicy: 'Allokationsregel',
@@ -37,14 +37,13 @@ const THRESHOLD_LABEL_MAP = Object.freeze({
     grund: 'Begründung',
     targetallocationpct: 'Ziel-Allokation',
     maxallocationpct: 'Max. Allokation',
-    maxallocpctofeq: 'Max. Allokation (Eq)',
+    maxallocpctofeq: 'Max. Allokation (% des Aktienwerts)',
     rebalancingbandpct: 'Rebalancing-Band',
     minallocationpct: 'Min. Allokation',
     targetgoldvalue: 'Zielwert Gold',
     mingoldreserve: 'Min. Goldreserve',
-    maxbearrellicofeq: 'Max. Drawdown Eq',
-    minrunwaymonate: 'Min. Runway (Monate)',
-    targetrunwaymonate: 'Ziel-Runway (Monate)',
+    minrunwaymonate: 'Mindestreichweite (Monate)',
+    targetrunwaymonate: 'Zielreichweite (Monate)',
     minsoldreserve: 'Min. Reserve'
 });
 
@@ -189,7 +188,7 @@ function buildGoldWhyNotRows(diag) {
     } else if (reasonKey === 'min_trade') {
         reason = 'Zielabweichung liegt unter Mindestgröße bzw. Hysterese; kein kleiner Einzelkauf.';
     } else if (reasonKey === 'guardrail_block' || reasonKey === 'cap_active') {
-        reason = 'Liquiditäts-/Guardrail-Schutz hat Vorrang vor Gold-Aufbau.';
+        reason = 'Schutz von Liquidität und Leitplanken hat Vorrang vor Gold-Aufbau.';
     } else if (underMinReserve || underTarget) {
         reason = 'Gold liegt unter Ziel, aber Kauf wird erst bei ausreichender freier Liquidität und relevanter Rebalancing-Abweichung vorgeschlagen.';
     }
@@ -312,7 +311,7 @@ const DIAGNOSIS_TERMS = Object.freeze({
  * @returns Ergebnis der bestehenden Operation.
  */
 export function displayDiagnosisText(value, { formatNumbers = true } = {}) {
-    let text = translateBufferActionText(value ?? 'Nicht verfügbar').replaceAll('Bonds Auffüllen', 'Anleihen auffüllen')
+    let text = translateEngineTerms(translateBufferActionText(value ?? 'Nicht verfügbar')).replaceAll('Bonds Auffüllen', 'Anleihen auffüllen')
         .replaceAll('Profilverbund-Transaktionen', 'Verkäufe und Käufe je Person')
         // VK-3d P9: Schritt und Quellenangaben der Engine auf Deutsch.
         .replaceAll('Surplus Rebalancing', 'Überschuss anlegen')

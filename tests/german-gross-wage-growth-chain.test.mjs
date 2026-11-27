@@ -7,9 +7,13 @@ import {
     GERMAN_GROSS_WAGE_GROWTH_CHAIN,
     GERMAN_GROSS_WAGE_GROWTH_PCT
 } from '../app/simulator/german-gross-wage-growth-chain.js';
-import { annualData, HISTORICAL_DATA, HISTORICAL_DATA_MANIFEST } from '../app/simulator/simulator-data.js';
+import { annualData, HISTORICAL_DATA, HISTORICAL_DATA_MANIFEST, HISTORICAL_DATENSTAND } from '../app/simulator/simulator-data.js';
 import { canonicalizeHistoricalContractValue } from '../app/simulator/historical-backtest-contract.js';
 import { SIMULATION_DATA_INVENTORY } from '../app/simulator/simulation-data-inventory.js';
+
+// JD-1: Endjahr und Jahresanzahl kommen aus dem Datenstand; Werte bis 2025 bleiben fest.
+const DATA_END_YEAR = HISTORICAL_DATENSTAND.endYear;
+const DATA_YEAR_COUNT = DATA_END_YEAR - HISTORICAL_DATENSTAND.startYear + 1;
 
 console.log('--- German Gross-Wage Growth Chain Tests ---');
 
@@ -41,7 +45,7 @@ const assertJsonEqual = (actual, expected, message) => assertEqual(
 console.log('Test 1: source identity, proxy boundary and period are pinned');
 assertEqual(GERMAN_GROSS_WAGE_GROWTH_CHAIN.schemaVersion, 'GermanGrossWageGrowthChainV2', 'Wage schema should be versioned');
 assert(GERMAN_GROSS_WAGE_GROWTH_CHAIN.variant.includes('without special payments'), 'Selected wage variant should exclude special payments');
-assertEqual(GERMAN_GROSS_WAGE_GROWTH_CHAIN.coverage.yearCount, 101, 'Wage chain should contain 101 years');
+assertEqual(GERMAN_GROSS_WAGE_GROWTH_CHAIN.coverage.yearCount, DATA_YEAR_COUNT, `Wage chain should contain ${DATA_YEAR_COUNT} years`);
 assertEqual(sha256(fs.readFileSync(sourcePath)), GERMAN_GROSS_WAGE_GROWTH_CHAIN.sourceFiles[1].sha256, 'Pinned Destatis HTML hash should match');
 assertEqual(sha256(fs.readFileSync(jstSourcePath)), GERMAN_GROSS_WAGE_GROWTH_CHAIN.sourceFiles[0].sha256, 'Pinned JST R6 hash should match');
 assert(GERMAN_GROSS_WAGE_GROWTH_CHAIN.pensionQualification.excludedClaim.includes('not an official historical statutory pension-adjustment series'), 'Wage proxy must reject statutory pension-adjustment identity');
@@ -59,7 +63,7 @@ assertJsonEqual(
     [
         { startYear: 1925, endYear: 1946 },
         { startYear: 1947, endYear: 1990 },
-        { startYear: 1991, endYear: 2025 }
+        { startYear: 1991, endYear: DATA_END_YEAR }
     ],
     'Territorial segments should distinguish the former federal territory from post-reunification Germany'
 );
@@ -98,7 +102,7 @@ assert(
 console.log('✓ source boundaries and discontinuities OK');
 
 console.log('Test 3: JST proxy and runtime projection are explicit and complete');
-for (let year = 1925; year <= 2025; year += 1) {
+for (let year = 1925; year <= DATA_END_YEAR; year += 1) {
     const value = GERMAN_GROSS_WAGE_GROWTH_PCT[year];
     assert(Number.isFinite(value) && value > -100, `${year} wage growth should be finite and above -100 percent`);
     assertEqual(HISTORICAL_DATA[year].lohn_de, value, `${year} runtime history should use the generated wage rate`);
@@ -114,8 +118,9 @@ for (let year = 1925; year <= 2025; year += 1) {
 }
 assertClose(GERMAN_GROSS_WAGE_GROWTH_PCT[1925], 26.51997683844818, 1e-12, '1925 should use the JST level-derived change rather than 3 percent');
 assertClose(GERMAN_GROSS_WAGE_GROWTH_PCT[1932], -9.715177526336326, 1e-12, '1932 should retain the JST contraction');
-assertEqual(Object.keys(GERMAN_GROSS_WAGE_GROWTH_PCT).length, 101, 'Wage chain should contain 101 runtime rates');
-const runtimeSource = fs.readFileSync(path.join(projectRoot, 'app', 'simulator', 'simulator-data.js'), 'utf8');
+assertEqual(Object.keys(GERMAN_GROSS_WAGE_GROWTH_PCT).length, DATA_YEAR_COUNT, `Wage chain should contain ${DATA_YEAR_COUNT} runtime rates`);
+const runtimeSource = ['simulator-data.js', 'historical-data-records.js']
+    .map(file => fs.readFileSync(path.join(projectRoot, 'app', 'simulator', file), 'utf8')).join('\n');
 assertEqual(/lohn_de:\s*-?\d/.test(runtimeSource), false, 'Runtime history should not retain numeric wage literals');
 console.log('✓ explicit early model segment and generated-only runtime projection OK');
 

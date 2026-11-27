@@ -1,5 +1,5 @@
 import { wealthInfo, propertyHistoryNotice } from '../app/shared/wealth-display.js';
-import { BalanceImportError } from '../app/balance/balance-binder-imports.js';
+import { AppError } from '../app/balance/balance-config.js';
 
 const previousCash = '<span class="ds-info"><button type="button" class="ds-info-button" aria-label="Aufteilung des Vermögens" aria-expanded="false">i</button><span class="ds-info-pop" role="tooltip"><span class="ds-wealth-allocation"><span>Tagesgeld</span><span class="ds-wealth-amount">100\u00a0€</span><span class="ds-wealth-share">100,0\u00a0%</span></span></span></span>';
 const previousEmpty = '<span class="ds-info"><button type="button" class="ds-info-button" aria-label="Aufteilung des Vermögens" aria-expanded="false">i</button><span class="ds-info-pop" role="tooltip">Alle Anlageklassen 0 €</span></span>';
@@ -20,11 +20,11 @@ const escaped = wealthInfo({ cash: 100 }, {}, '<img src=x onerror="alert(1)"> & 
 assert(!escaped.includes('<img') && escaped.includes('&lt;img') && escaped.includes('&amp; Hinweis'), 'Hinweistexte werden als Text maskiert');
 
 const cause = new Error('Synthetischer Rollbackfehler');
-const message = 'Import und Rollback fehlgeschlagen. Punkt „fs-1-recovery“ unter Daten & Sicherung zurückholen.';
-const error = new BalanceImportError('rollback_failed', message, { originalError: cause });
+// AK-1: Der Balance-Import ist entfallen; die Fehlerbasis gibt die Standard-Error-Option weiter.
+const message = 'Synthetische Nutzermeldung.';
+const error = new AppError(message, { code: 'synthetic' }, { cause });
 assertEqual(error.message, message, 'Die Nutzermeldung bleibt unverändert');
 assertEqual(error.cause, cause, 'Die ursprüngliche Fehlerinstanz bleibt als cause erhalten');
-assertEqual(error.code, 'rollback_failed', 'Der Fehlercode bleibt erhalten');
-assertEqual(error.name, 'BalanceImportError', 'Der Fehlername bleibt erhalten');
+assertEqual(error.context.code, 'synthetic', 'Der Kontext bleibt erhalten');
 assertEqual(Object.getOwnPropertyDescriptor(error, 'cause')?.enumerable, false, 'cause verwendet die nicht aufzählbare Standard-Error-Eigenschaft');
-assert(!Object.hasOwn(new BalanceImportError('dry_run_failed', 'Unverändert'), 'cause'), 'Ohne Diagnoseparameter wird keine cause ergänzt');
+assert(!Object.hasOwn(new AppError('Unverändert'), 'cause'), 'Ohne Diagnoseparameter wird keine cause ergänzt');

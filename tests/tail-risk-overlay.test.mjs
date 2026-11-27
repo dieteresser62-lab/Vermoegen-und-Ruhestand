@@ -40,12 +40,12 @@ const enabledConfig = {
 }
 
 {
-    const scheduleResult = createTailRiskSchedule(387, enabledConfig, 15);
+    const scheduleResult = createTailRiskSchedule(16455, enabledConfig, 15);
     const activeIndices = scheduleResult.schedule
         .map((entry, index) => entry ? index : null)
         .filter(index => index !== null);
     assertEqual(JSON.stringify(activeIndices), JSON.stringify([0, 1, 5, 6, 10, 11]), 'Duration and cooldown should be enforced without overlap');
-    assertEqual(scheduleResult.events.length, 3, 'Seed 387 three low draws should create every allowed non-overlapping event');
+    assertEqual(scheduleResult.events.length, 3, 'Seed 16455 three low draws should create every allowed non-overlapping event');
     assertEqual(scheduleResult.schedule[0].tailRiskEventType, TAIL_RISK_EVENT_TYPE_CRASH_INFLATION, 'Event type should be contractual');
     assertEqual(scheduleResult.schedule[1].eventYearOffset, 1, 'Second active year should expose event offset');
     assertEqual(scheduleResult.schedule[2], null, 'Cooldown years should remain inactive');
@@ -60,7 +60,7 @@ const enabledConfig = {
 
 {
     const yearData = Object.freeze({ jahr: 2001, rendite: -0.1, inflation: 3, regime: 'SIDEWAYS' });
-    const event = createTailRiskSchedule(387, enabledConfig, 5).schedule[0];
+    const event = createTailRiskSchedule(16455, enabledConfig, 5).schedule[0];
     const result = applyTailRiskOverlay(yearData, event);
     assertEqual(result.tailRiskActive, true, 'Scheduled event should mark tail risk active');
     assertEqual(result.tailRiskApplied, true, 'Eligible non-crisis year should receive overlay');
@@ -71,7 +71,7 @@ const enabledConfig = {
 }
 
 {
-    const event = createTailRiskSchedule(387, enabledConfig, 5).schedule[0];
+    const event = createTailRiskSchedule(16455, enabledConfig, 5).schedule[0];
     const result = applyTailRiskOverlay({ jahr: 2008, rendite: -0.3, inflation: 2, regime: 'BEAR' }, event);
     assertEqual(result.tailRiskActive, true, 'Historical crisis year still records active tail event');
     assertEqual(result.tailRiskApplied, false, 'Historical crisis year should skip additional shock');
@@ -80,7 +80,7 @@ const enabledConfig = {
 }
 
 {
-    const event = createTailRiskSchedule(387, {
+    const event = createTailRiskSchedule(16455, {
         ...enabledConfig,
         tailRiskReturnShockPct: -60,
         tailRiskInflationShockPct: 15,
@@ -93,7 +93,7 @@ const enabledConfig = {
 }
 
 {
-    const event = createTailRiskSchedule(387, enabledConfig, 5).schedule[0];
+    const event = createTailRiskSchedule(16455, enabledConfig, 5).schedule[0];
     const inactive = applyTailRiskOverlay({ rendite: 0.02, inflation: 2 }, null);
     const applied = applyTailRiskOverlay({ rendite: 0.02, inflation: 2 }, event);
     const skipped = applyTailRiskOverlay({ rendite: -0.3, inflation: 2 }, event);

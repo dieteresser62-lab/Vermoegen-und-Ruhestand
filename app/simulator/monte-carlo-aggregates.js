@@ -9,6 +9,7 @@ import { MONTE_CARLO_MISSINGNESS_CODE } from './monte-carlo-chunk-result.js';
 import { summarizePerRunRealWithdrawalP10 } from './monte-carlo-statistics.js';
 import { summarizeMinimumFlexPaths } from './minimum-flex-metrics.js';
 import { buildEuroAggregates } from './mc-euro-metrics.js';
+import { summarizeStressRecovery } from './mc-stress-tracker.js';
 
 const NO_OBSERVATIONS = 'no_observations';
 const WITHDRAWAL_RATE_DEFINITION_VERSION = 'MedianWithdrawalRateD14V1';
@@ -234,10 +235,21 @@ function summarizePerRunMeanWithdrawalRate(buffers, totalRuns) {
     };
 }
 
-/** @param {{allRealWithdrawalsSample?:number[];wealthFan?:unknown;displayHomeValueFan?:unknown;inputs:SimulatorInputs;totalRuns:number;buffers:NumericBuffers;heatmap:Uint32Array[];bins:number[];totals:Record<string,number>;lists:Record<string,number[]>;pathSummaries?:NumericBuffers|null;pathMissingness?:NumericBuffers|null}} options */
+/** FR-84: Läufe mit Hilfe zur Pflege: Anteil, Median des ersten Jahres und Median der Summe (nominal).
+ * @param {{runIndices: number[], firstYears: number[], sumsNominal: number[]}} careAid @param {number} totalRuns */
+export function summarizeCareAid(careAid, totalRuns) {
+    const runCount = careAid.runIndices.length;
+    return { runCount, runSharePct: totalRuns > 0 ? runCount / totalRuns * 100 : 0,
+        firstYearMedian: /** @type {import('../../typcheck/rechenkern-integration').Quantile} */ (quantile)(careAid.firstYears, 0.5),
+        sumMedianNominalEur: /** @type {import('../../typcheck/rechenkern-integration').Quantile} */ (quantile)(careAid.sumsNominal, 0.5) };
+}
+
+/** @param {{allRealWithdrawalsSample?:number[];wealthFan?:unknown;displayHomeValueFan?:unknown;careAid?:{runIndices:number[];firstYears:number[];sumsNominal:number[]}|null;droppedExpense?:{runIndices:number[];firstYears:number[];sumsNominal:number[]}|null;inputs:SimulatorInputs;totalRuns:number;buffers:NumericBuffers;heatmap:Uint32Array[];bins:number[];totals:Record<string,number>;lists:Record<string,number[]>;pathSummaries?:NumericBuffers|null;pathMissingness?:NumericBuffers|null}} options */
 export function buildMonteCarloAggregates({
     wealthFan = null,
     displayHomeValueFan = null,
+    careAid = null,
+    droppedExpense = null,
     inputs,
     totalRuns,
     buffers,
@@ -466,6 +478,9 @@ export function buildMonteCarloAggregates({
         // Anzeigezusatz: vorhandene Realbeobachtungen, keine KPI-/Exportprojektion.
         wealthView,
         ...(displayHomeValueFan ? { displayHomeValueFan } : {}),
+        ...(careAid?.runIndices?.length ? { careAid: summarizeCareAid(careAid, totalRuns) } : {}),
+        // NK-2 (FR-84 Punkt 16): Läufe mit entfallener Einmalausgabe, gleiche Zusammenfassung.
+        ...(droppedExpense?.runIndices?.length ? { droppedExpense: summarizeCareAid(droppedExpense, totalRuns) } : {}),
         ...(inputs.home?.length ? { displayWealth: aggregateDisplayWealth(pathSummaries, pathMissingness, totalRuns, MONTE_CARLO_MISSINGNESS_CODE, true) } : {}),
         outcomeCounts: {
             ruin: outcomeRuinCount,
@@ -595,9 +610,7 @@ export function buildMonteCarloAggregates({
                 replacement: 'stressKPI.realWithdrawalP10',
                 removalTarget: 'Slice 11'
             },
-            recoveryYears: {
-                p50: /** @type {import('../../typcheck/rechenkern-integration').Quantile} */ (quantile)(stress_recoveryYears, 0.50)
-            }
+            recoveryYears: summarizeStressRecovery(stress_recoveryYears, (STRESS_PRESETS[stressPresetKey]?.years || 0) > 0)
         }
     }, 'wealthFan', { value: wealthFan, enumerable: false });
 }

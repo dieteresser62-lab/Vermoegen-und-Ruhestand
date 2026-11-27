@@ -72,6 +72,9 @@ export function displayAnnualFromMonthly(monthly, direction) {
  * Kopf, „von … gekauft“, Jahresabschluss und Reserven nehmen diese Summe. @param {{amount: number}[]} lines @returns {number} */
 export const displayedBuyTotal = lines => lines.reduce((sum, line) => sum + (displayDown(line.amount) ?? line.amount), 0);
 
+/** FR-78: Der Verkaufskopf rundet die Summe der auf volle Euro gezeigten Planzeilen. @param {{planNet: number}[]} lines */
+export const displayedSaleTotal = lines => displayUp(lines.reduce((sum, line) => sum + Math.round(line.planNet), 0));
+
 /** RD-1c: Betrag einer Hauptaktion. Ein Kauf ist Geld, das zum Anlegen zur Verfügung steht, und wird abgerundet; so unterschreitet
  * der angezeigte Kauf nie die Reserve. Verkäufe und Umschichtungen werden aufgerundet.
  * @param {string|null|undefined} verb z. B. „Aktien kaufen“ @param {number|null|undefined} amount @returns {any} */

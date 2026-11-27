@@ -38,6 +38,8 @@ const daily = JSON.parse(completeHistory[DAILY_PRICES_KEY]);
 const fullDays = ['2026-01-01', '2026-01-02', '2026-01-05', '2026-01-06', '2026-01-07', '2026-01-08', '2026-01-09'].map(day);
 daily.symbols['TEST.DE'] = { ...daily.symbols['TEST.DE'], days: fullDays, closes: fullDays.map(() => 100) };
 daily.symbols['SOLD.DE'] = { ...daily.symbols['TEST.DE'] };
+// ATH-1b Punkt 7: Die VWCE-Referenz gehört zur vollständigen Kursreihe.
+daily.symbols['VWCE.DE'] = { ...daily.symbols['TEST.DE'] };
 completeHistory[DAILY_PRICES_KEY] = JSON.stringify(daily);
 const storedOffline = projectDataPrices(completeHistory, { now, startupReport: { ...report, status: 'offline', results: [] } });
 assertEqual(storedOffline.usableQuoteCount, 2, 'Fehlgeschlagener Abruf entwertet gespeicherte Kurse nicht');
@@ -74,7 +76,8 @@ function harness({ fetchImpl, flush = async () => true, coordinator, readModel, 
     const guard = createNavigationGuard({ decide: async () => true });
     const binder = bindDataPrices(doc, { win, guard, now: () => now, storage, persistence: { getPersistenceStatus: () => ({}) },
         readModel: readModel || (async () => ({ priceCoverage: projectDataPrices(Object.fromEntries(map), { now }) })),
-        probe, coordinator: coordinator || (args => runHistoryFetch({ ...args, flush, fetchImpl })), refresh: async () => {} });
+        // ATH-1b Punkt 7: Die stets geladene VWCE-Referenz prüft ath-1b-korrekturen.test.mjs; hier zählen die Tranchen.
+        probe, coordinator: coordinator || (args => runHistoryFetch({ ...args, flush, fetchImpl, referenceSymbol: null })), refresh: async () => {} });
     return { binder, storage, writes, guard, listeners, doc, map };
 }
 const chart = symbol => ({ chart: { result: [{ meta: { symbol, currency: 'EUR', exchangeTimezoneName: 'Europe/Berlin' }, timestamp: [], indicators: { quote: [{ close: [] }] } }] } });

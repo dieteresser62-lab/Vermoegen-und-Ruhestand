@@ -106,12 +106,15 @@ export async function fetchHistoryChart(symbol, interval, { fetchImpl = globalTh
     try { return await Promise.race([boundary, request()]); }
     finally { unschedule(timer); signal?.removeEventListener('abort', abort); }
 }
+/** Referenz für das Allzeithoch der Balance (FR-89); ihre Tageskurse lädt die App immer, auch ohne Tranche (ATH-1b Punkt 7). */
+export const REFERENCE_HISTORY_SYMBOL = 'VWCE.DE';
 /** @param {import("../../typcheck/datenvertraege.js").ProfileRegistry} registry
  * @param {string} startDate
  * @param {string} today
  * @param {H.DailyPrices} [prices]
+ * @param {{referenceSymbol?: string|null}} [options] Referenzsymbol ab Historienstart; `null` nur für Prüfungen einzelner Tranchen.
  * @returns Kursjobs und nicht abrufbare Lots. */
-export function collectHistoryQueue(registry, startDate, today, prices = { version: 1, symbols: {} }) {
+export function collectHistoryQueue(registry, startDate, today, prices = { version: 1, symbols: {} }, { referenceSymbol = REFERENCE_HISTORY_SYMBOL } = {}) {
     assertDailyPrices(prices);
     const start = historyDay(startDate), end = historyDay(today) - (isSyntheticPriceMode() ? 0 : 1);
     const wanted = new Map(), issues = [];
@@ -131,6 +134,8 @@ export function collectHistoryQueue(registry, startDate, today, prices = { versi
             wanted.get(symbol).push([from, end]);
         }
     }
+    // Die Referenz kommt ab Historienstart dazu; sie erzeugt keine Tranche, keine Vermögenszeile und keine Depotposition.
+    if (referenceSymbol && start <= end) wanted.set(referenceSymbol, [...wanted.get(referenceSymbol) || [], [start, end]]);
     const queue = [];
     for (const [symbol, intervals] of wanted) for (const [from, to] of mergeHistoryIntervals(intervals)) {
         const record = prices.symbols[symbol], queried = record?.queried || [];
@@ -201,7 +206,7 @@ export async function initializeHistoryData(firstPlanningYear, { storage = persi
 /** @param {H.RunOptions} [options]
  * @returns {Promise<H.FetchReport>} */
 export async function runHistoryFetch({ firstPlanningYear, storage = persistenceStorage, today = localHistoryDate(), now = () => performance.now(),
-    valid = () => true, signal, withOperation = execute => execute(null), flush = () => PersistenceFacade.flush(), ...fetchOptions } = {}) {
+    valid = () => true, signal, withOperation = execute => execute(null), flush = () => PersistenceFacade.flush(), referenceSymbol = REFERENCE_HISTORY_SYMBOL, ...fetchOptions } = {}) {
     const deadline = now() + HISTORY_FETCH_BUDGET_MS;
     const externalValid = valid;
     const identity = [PROFILE_STORAGE_KEYS.active, PROFILE_STORAGE_KEYS.current, PROFILE_TRANCHES_KEY].map(key => [key, storage.getItem(key)]);
@@ -217,7 +222,7 @@ export async function runHistoryFetch({ firstPlanningYear, storage = persistence
         return { status: 'cancelled', completed: 0 };
     }
     const prices = requireHistoryRecord(storage.getItem(DAILY_PRICES_KEY), assertDailyPrices, { version: 1, symbols: {} });
-    const { queue, issues } = collectHistoryQueue(initialized.registry, initialized.start.startDate, today, prices);
+    const { queue, issues } = collectHistoryQueue(initialized.registry, initialized.start.startDate, today, prices, { referenceSymbol });
     let completed = 0, status = 'complete';
     const failed = new Set();
     for (const job of queue) {

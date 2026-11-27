@@ -1,11 +1,11 @@
 {
   "1-reset-2001": {
     "simulator": {
-      "withdrawal": 22800,
-      "flexRate": 74.59032576505429,
-      "budget": 53057.99999999999,
+      "withdrawal": 27600,
+      "flexRate": 90.38499506416584,
+      "budget": 57857.99999999999,
       "market": "side_long",
-      "runway": 70.87219494015362,
+      "runway": 58.546595820126896,
       "coverageAfter": 88.18413253850154,
       "action": {
         "type": "NONE",
@@ -19,11 +19,11 @@
       }
     },
     "balanceWithPreviousEvidence": {
-      "withdrawal": 22800,
-      "flexRate": 74.59032576505429,
-      "budget": 53057.99999999999,
+      "withdrawal": 27600,
+      "flexRate": 90.38499506416584,
+      "budget": 57857.99999999999,
       "market": "side_long",
-      "runway": 70.87219494015362,
+      "runway": 58.546595820126896,
       "coverageAfter": 88.18413253850154,
       "action": {
         "type": "NONE",
@@ -39,11 +39,11 @@
       }
     },
     "balanceWithCurrentEvidence": {
-      "withdrawal": 22800,
-      "flexRate": 74.59032576505429,
-      "budget": 53057.99999999999,
+      "withdrawal": 27600,
+      "flexRate": 90.38499506416584,
+      "budget": 57857.99999999999,
       "market": "side_long",
-      "runway": 70.87219494015362,
+      "runway": 58.546595820126896,
       "coverageAfter": 88.18413253850154,
       "action": {
         "type": "NONE",
@@ -96,11 +96,11 @@
   },
   "1-reset-2002": {
     "simulator": {
-      "withdrawal": 18600,
-      "flexRate": 64.00412269136098,
-      "budget": 51534.971999999994,
+      "withdrawal": 17400,
+      "flexRate": 59.87482445320865,
+      "budget": 50334.971999999994,
       "market": "bear_deep",
-      "runway": 74.83342738878478,
+      "runway": 79.99435341559753,
       "coverageAfter": 79.77428641858076,
       "action": {
         "type": "NONE",
@@ -114,11 +114,11 @@
       }
     },
     "balanceWithPreviousEvidence": {
-      "withdrawal": 18600,
-      "flexRate": 64.00412269136098,
-      "budget": 51534.971999999994,
+      "withdrawal": 17400,
+      "flexRate": 59.87482445320865,
+      "budget": 50334.971999999994,
       "market": "bear_deep",
-      "runway": 74.8334273887848,
+      "runway": 79.99435341559754,
       "coverageAfter": 79.77428641858076,
       "action": {
         "type": "NONE",
@@ -134,11 +134,11 @@
       }
     },
     "balanceWithCurrentEvidence": {
-      "withdrawal": 18600,
-      "flexRate": 64.00412269136098,
-      "budget": 51534.971999999994,
+      "withdrawal": 17400,
+      "flexRate": 59.87482445320865,
+      "budget": 50334.971999999994,
       "market": "bear_deep",
-      "runway": 74.8334273887848,
+      "runway": 79.99435341559754,
       "coverageAfter": 79.77428641858076,
       "action": {
         "type": "NONE",
@@ -196,10 +196,10 @@
     "simulator": {
       "isBadYear": false,
       "bondBucketBefore": 50000,
-      "bondBucketAfter": 149999.99999999997,
-      "bondRefillGross": 153381.75428348902,
-      "bondRefillNet": 150000,
-      "bondRefillTax": 3381.75428348902,
+      "bondBucketAfter": 0,
+      "bondRefillGross": 0,
+      "bondRefillNet": 0,
+      "bondRefillTax": 0,
       "bondSaleAmount": 50000,
       "bondRefillDebugVersion": "shared-finalizer-before-payout",
       "bondRefillSaleShortfallGross": 0,
@@ -210,10 +210,10 @@
       "is3Bucket": true,
       "isBadYear": false,
       "bondBucketBefore": 50000,
-      "bondBucketAfter": 150000,
-      "bondRefillGross": 153381.75428348902,
-      "bondRefillNet": 150000,
-      "bondRefillTax": 3381.75428348902,
+      "bondBucketAfter": 0,
+      "bondRefillGross": 0,
+      "bondRefillNet": 0,
+      "bondRefillTax": 0,
       "bondSaleAmount": 50000,
       "equityPreserved": 0,
       "unmetLiquidity": 0
@@ -221,7 +221,7 @@
     "balanceError": null,
     "simulatorPlannedAction": {
       "type": "TRANSACTION",
-      "tax": 3720.207751006134,
+      "tax": 338.45346751711435,
       "sources": [
         {
           "owner": "muster_a",
@@ -235,29 +235,20 @@
           "owner": "muster_b",
           "lot": "muster_b:muster_b_lot_2",
           "kind": "aktien_neu",
-          "gross": 189000,
-          "net": 185416.48742543082,
-          "tax": 3583.5125745691666
-        },
-        {
-          "owner": "muster_a",
-          "lot": "muster_a:muster_a_lot_2",
-          "kind": "aktien_neu",
-          "gross": 4381.754283489006,
-          "net": 4245.059107052039,
-          "tax": 136.6951764369674
+          "gross": 40000,
+          "net": 39661.546532482884,
+          "tax": 338.45346751711435
         }
       ],
       "uses": {
         "liquiditaet": 89661.54653248288,
         "gold": 0,
-        "aktien": 0,
-        "bonds": 150000
+        "aktien": 0
       }
     },
     "balancePlannedAction": {
       "type": "TRANSACTION",
-      "tax": 3720.207751006134,
+      "tax": 338.45346751711435,
       "sources": [
         {
           "owner": "muster_a",
@@ -271,35 +262,31 @@
           "owner": "muster_b",
           "lot": "muster_b:muster_b_lot_2",
           "kind": "aktien_neu",
-          "gross": 189000,
-          "net": 185416.48742543082,
-          "tax": 3583.5125745691666
-        },
-        {
-          "owner": "muster_a",
-          "lot": "muster_a:muster_a_lot_2",
-          "kind": "aktien_neu",
-          "gross": 4381.754283489006,
-          "net": 4245.059107052039,
-          "tax": 136.6951764369674
+          "gross": 40000,
+          "net": 39661.546532482884,
+          "tax": 338.45346751711435
         }
       ],
       "uses": {
         "liquiditaet": 89661.54653248288,
         "gold": 0,
-        "aktien": 0,
-        "bonds": 150000
+        "aktien": 0
       }
     },
-    "simulatorBondBeforePayout": 149999.99999999997,
-    "simulatorBondAtEnd": 149999.99999999997,
-    "balanceBondAfterTransaction": 150000,
+    "simulatorBondBeforePayout": 0,
+    "simulatorBondAtEnd": 0,
+    "balanceBondAfterTransaction": 0,
     "deltaBondAfterTransaction": 2.9103830456733704e-11,
     "deltaBondAtEnd": 2.9103830456733704e-11,
     "flowDelta": 0,
     "phases": [
       {
         "phase": "after_returns",
+        "bonds": 50000,
+        "cash": 90000
+      },
+      {
+        "phase": "after_cash_interest",
         "bonds": 50000,
         "cash": 90000
       },
@@ -315,23 +302,18 @@
       },
       {
         "phase": "after_buys",
-        "bonds": 149999.99999999997,
+        "bonds": 0,
         "cash": 179661.54653248287
       },
       {
         "phase": "after_payout",
-        "bonds": 149999.99999999997,
-        "cash": 149661.54653248287
-      },
-      {
-        "phase": "after_cash_interest",
-        "bonds": 149999.99999999997,
-        "cash": 149661.54653248287
+        "bonds": 0,
+        "cash": 147261.5465324829
       },
       {
         "phase": "after_tax_reconciliation",
-        "bonds": 149999.99999999997,
-        "cash": 149661.54653248287
+        "bonds": 0,
+        "cash": 147261.5465324829
       }
     ]
   },
@@ -408,24 +390,24 @@
     ],
     "simulatorPersonalPayout": [
       {
-        "id": "muster_b",
-        "withdrawal": 28800
+        "id": "muster_a",
+        "withdrawal": 32400
       },
       {
-        "id": "muster_a",
+        "id": "muster_b",
         "withdrawal": 0
       }
     ],
     "balancePeople": [
       {
         "id": "muster_a",
-        "withdrawal": 0,
+        "withdrawal": 32400,
         "tax": 0,
         "lossCarry": 0
       },
       {
         "id": "muster_b",
-        "withdrawal": 28800,
+        "withdrawal": 0,
         "tax": 935.6704804303678,
         "lossCarry": 0
       }
@@ -514,6 +496,11 @@
         "cash": 90000
       },
       {
+        "phase": "after_cash_interest",
+        "bonds": 50000,
+        "cash": 90000
+      },
+      {
         "phase": "after_action_sales",
         "bonds": 0,
         "cash": 140000
@@ -531,17 +518,12 @@
       {
         "phase": "after_payout",
         "bonds": 0,
-        "cash": 111200
-      },
-      {
-        "phase": "after_cash_interest",
-        "bonds": 0,
-        "cash": 111200
+        "cash": 107600
       },
       {
         "phase": "after_tax_reconciliation",
         "bonds": 0,
-        "cash": 111200
+        "cash": 107600
       }
     ]
   },
@@ -552,9 +534,9 @@
     "simulator": {
       "isBadYear": false,
       "bondBucketBefore": 50000,
-      "bondBucketAfter": 150000,
-      "bondRefillGross": 150000,
-      "bondRefillNet": 150000,
+      "bondBucketAfter": 0,
+      "bondRefillGross": 0,
+      "bondRefillNet": 0,
       "bondRefillTax": 0,
       "bondSaleAmount": 50000,
       "bondRefillDebugVersion": "shared-finalizer-before-payout",
@@ -566,9 +548,9 @@
       "is3Bucket": true,
       "isBadYear": false,
       "bondBucketBefore": 50000,
-      "bondBucketAfter": 150000,
-      "bondRefillGross": 150000,
-      "bondRefillNet": 150000,
+      "bondBucketAfter": 0,
+      "bondRefillGross": 0,
+      "bondRefillNet": 0,
       "bondRefillTax": 0,
       "bondSaleAmount": 50000,
       "equityPreserved": 0,
@@ -591,16 +573,15 @@
           "owner": "muster_b",
           "lot": "muster_b:muster_b_lot_2",
           "kind": "aktien_neu",
-          "gross": 180000,
-          "net": 180000,
+          "gross": 30000,
+          "net": 30000,
           "tax": 0
         }
       ],
       "uses": {
         "liquiditaet": 80000,
         "gold": 0,
-        "aktien": 0,
-        "bonds": 150000
+        "aktien": 0
       }
     },
     "balancePlannedAction": {
@@ -619,27 +600,31 @@
           "owner": "muster_b",
           "lot": "muster_b:muster_b_lot_2",
           "kind": "aktien_neu",
-          "gross": 180000,
-          "net": 180000,
+          "gross": 30000,
+          "net": 30000,
           "tax": 0
         }
       ],
       "uses": {
         "liquiditaet": 80000,
         "gold": 0,
-        "aktien": 0,
-        "bonds": 150000
+        "aktien": 0
       }
     },
-    "simulatorBondBeforePayout": 150000,
-    "simulatorBondAtEnd": 150000,
-    "balanceBondAfterTransaction": 150000,
+    "simulatorBondBeforePayout": 0,
+    "simulatorBondAtEnd": 0,
+    "balanceBondAfterTransaction": 0,
     "deltaBondAfterTransaction": 0,
     "deltaBondAtEnd": 0,
     "flowDelta": 0,
     "phases": [
       {
         "phase": "after_returns",
+        "bonds": 50000,
+        "cash": 90000
+      },
+      {
+        "phase": "after_cash_interest",
         "bonds": 50000,
         "cash": 90000
       },
@@ -655,41 +640,36 @@
       },
       {
         "phase": "after_buys",
-        "bonds": 150000,
+        "bonds": 0,
         "cash": 170000
       },
       {
         "phase": "after_payout",
-        "bonds": 150000,
-        "cash": 140000
-      },
-      {
-        "phase": "after_cash_interest",
-        "bonds": 150000,
-        "cash": 140000
+        "bonds": 0,
+        "cash": 137600
       },
       {
         "phase": "after_tax_reconciliation",
-        "bonds": 150000,
-        "cash": 140000
+        "bonds": 0,
+        "cash": 137600
       }
     ]
   },
   "6-jahresrentenrundung": {
     "annualPension": 32934.971999999994,
     "balanceAnnualPension": 32934.972,
-    "simulatorMonthlyBudget": 4294.580999999999,
-    "balanceMonthlyBudget": 4294.581,
+    "simulatorMonthlyBudget": 4194.580999999999,
+    "balanceMonthlyBudget": 4194.581,
     "deltaMonthly": 9.094947017729282e-13,
     "deltaAnnualIncome": 7.275957614183426e-12
   },
   "7-cashaufteilung": {
     "historicalDeltaLiquidity": -44657.170386291866,
     "historicalDeltaRunway": -23.503773887522037,
-    "simulatorPool": 155611.23446201812,
-    "componentSum": 155611.23446201812,
-    "simulatorRunway": 84.11418079028007,
-    "componentRunway": 84.11418079028007,
+    "simulatorPool": 146379.34667117623,
+    "componentSum": 146379.34667117623,
+    "simulatorRunway": 61.2522877216717,
+    "componentRunway": 61.2522877216717,
     "deltaLiquidity": 0,
     "deltaRunway": 0,
     "personalAccountDelta": -2.9103830456733704e-11,
@@ -710,5 +690,43 @@
     "simulatorMarket": "peak_hot",
     "balanceMarket": "peak_hot",
     "deltaAnnual": 0
-  }
+  },
+  "3-horizont": [
+    {
+      "preset": "konservativ",
+      "simulatorHorizon": 35,
+      "balanceHorizon": 35,
+      "deltaHorizonYears": 0,
+      "simulatorWithdrawal": 27600,
+      "balanceWithdrawal": 27600,
+      "simulatorDynamicFlex": 25963.484703274935,
+      "balanceDynamicFlex": 25963.484703274935,
+      "deltaDynamicFlex": 0,
+      "deltaAnnual": 0
+    },
+    {
+      "preset": "ausgewogen",
+      "simulatorHorizon": 33,
+      "balanceHorizon": 33,
+      "deltaHorizonYears": 0,
+      "simulatorWithdrawal": 32400,
+      "balanceWithdrawal": 32400,
+      "simulatorDynamicFlex": 30277.90815941873,
+      "balanceDynamicFlex": 30277.90815941873,
+      "deltaDynamicFlex": 0,
+      "deltaAnnual": 0
+    },
+    {
+      "preset": "offensiv",
+      "simulatorHorizon": 26,
+      "balanceHorizon": 26,
+      "deltaHorizonYears": 0,
+      "simulatorWithdrawal": 37200,
+      "balanceWithdrawal": 37200,
+      "simulatorDynamicFlex": 40880.47898961255,
+      "balanceDynamicFlex": 40880.47898961255,
+      "deltaDynamicFlex": 0,
+      "deltaAnnual": 0
+    }
+  ]
 }

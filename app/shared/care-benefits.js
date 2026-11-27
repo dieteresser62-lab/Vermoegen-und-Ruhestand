@@ -1,12 +1,12 @@
 /** BMG: Leistungsansprüche 2026, Übersicht vom 11.12.2025. Beträge in Euro. */
-import { CARE_ALLOWANCE_SOURCE, DEFAULT_CARE_VALUES, officialResidentialShare } from './household-care-values.js';
+import { CARE_ALLOWANCE_MONTHLY, CARE_ALLOWANCE_SOURCE, DEFAULT_CARE_VALUES, officialResidentialShare } from './household-care-values.js';
 export const CARE_BENEFITS_SOURCE = CARE_ALLOWANCE_SOURCE;
 export const CARE_BENEFITS_2026 = Object.freeze({
     1: Object.freeze({ allowance: 0, services: 0, relief: 131, respiteAnnual: 0, residential: 0 /* PG1: nur Entlastungsbetrag, kein Leistungsbetrag nach § 43 SGB XI */ }),
-    2: Object.freeze({ allowance: 347, services: 796, relief: 131, respiteAnnual: 3539, residential: 805 }),
-    3: Object.freeze({ allowance: 599, services: 1497, relief: 131, respiteAnnual: 3539, residential: 1319 }),
-    4: Object.freeze({ allowance: 800, services: 1859, relief: 131, respiteAnnual: 3539, residential: 1855 }),
-    5: Object.freeze({ allowance: 990, services: 2299, relief: 131, respiteAnnual: 3539, residential: 2096 })
+    2: Object.freeze({ allowance: CARE_ALLOWANCE_MONTHLY[2], services: 796, relief: 131, respiteAnnual: 3539, residential: 805 }),
+    3: Object.freeze({ allowance: CARE_ALLOWANCE_MONTHLY[3], services: 1497, relief: 131, respiteAnnual: 3539, residential: 1319 }),
+    4: Object.freeze({ allowance: CARE_ALLOWANCE_MONTHLY[4], services: 1859, relief: 131, respiteAnnual: 3539, residential: 1855 }),
+    5: Object.freeze({ allowance: CARE_ALLOWANCE_MONTHLY[5], services: 2299, relief: 131, respiteAnnual: 3539, residential: 2096 })
 });
 
 export const CARE_FORMS = Object.freeze({ family: 'zu Hause durch Angehörige',
@@ -55,6 +55,24 @@ export function careFormForPerson(inputs, grade, personIndex = 0, household = nu
         : official ? officialDrawnCareForm(household?.care?.[personIndex === 0 ? 'p1' : 'p2'], grade)
             : inputs.pflegeGradeConfigs?.[grade]?.careForm, grade);
     return form === 'family' && familyCareFallback(inputs, grade, personIndex, household) ? 'home-support' : form;
+}
+
+/** FR-84 Punkt 6: Warum eine Person ins Heim kommt. Die heutige Form gilt bis zum ersten Gradwechsel; danach entscheidet bei
+ * „Amtlich“ die Ziehung nach dem amtlichen Heimanteil des Grads, sonst die Pflegeform der Staffel.
+ *
+ * @param inputs Eingaben des Aufrufers.
+ * @param {number} grade Pflegegrad im Jahr des Wechsels.
+ * @param {number} [personIndex] 0 für Person 1, 1 für Person 2.
+ * @returns {string} z. B. „Heim (ausgelost nach amtlichem Heimanteil 17,7 %)“ oder „Heim laut Staffel“.
+ */
+export function residentialReasonText(inputs, grade, personIndex = 0) {
+    const today = personIndex === 0 ? inputs?.careToday : inputs?.partner?.careToday;
+    if (normalizeCareForm(today?.form, grade) === 'residential' && Number(today?.grade) === Number(grade)) return 'Heim (wie heute)';
+    if (inputs?.pflegeKostenStaffelPreset === 'amtlich') {
+        const percent = (officialResidentialShare(grade) * 100).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+        return `Heim (ausgelost nach amtlichem Heimanteil ${percent}\u00a0%)`;
+    }
+    return 'Heim laut Staffel';
 }
 
 /** Heimpflege beendet ein Wohnrecht unabhängig vom Pflegegrad.
@@ -119,16 +137,16 @@ export function effectiveCareFormToday(care, settings = {}) {
 }
 
 /**
- * @param {{grade?: number; preset?: string; careForm?: string}} [options]
+ * @param {{grade?: number; preset?: string; careForm?: string; name?: string}} [options]
  * @returns {string} Grund für fehlendes Pflegegeld.
  */
-export function noCareAllowanceReason({ grade, preset, careForm } = {}) {
+export function noCareAllowanceReason({ grade, preset, careForm, name = 'Die Person' } = {}) {
     if (!grade) return '';
-    if (preset === 'amtlich') return 'kein Pflegegeld: im amtlichen Durchschnitt bereits verrechnet';
+    if (preset === 'amtlich') return `${name} bekommt kein separates Pflegegeld, weil es im amtlichen Durchschnitt bereits verrechnet ist.`;
     const form = normalizeCareForm(careForm, grade);
-    if (form === 'home-support') return 'kein Pflegegeld: zu Hause mit externer Unterstützung, die Kasse zahlt an den Dienst';
-    if (form === 'residential') return 'kein Pflegegeld: im Heim, die Kasse zahlt an das Heim';
-    return Number(grade) === 1 ? 'kein Pflegegeld: Grad 1 hat keinen Pflegegeldanspruch' : '';
+    if (form === 'home-support') return `${name} bekommt kein Pflegegeld, weil die Pflegekasse den Pflegedienst direkt bezahlt.`;
+    if (form === 'residential') return `${name} bekommt kein Pflegegeld, weil die Pflegekasse direkt an das Heim zahlt.`;
+    return Number(grade) === 1 ? `${name} bekommt bei Pflegegrad 1 kein Pflegegeld.` : '';
 }
 
 /** Einzige Betragsableitung für Balance und sämtliche Simulatorpfade.

@@ -61,7 +61,7 @@ async function fixture(kind) {
         local: [...local.records].filter(([key]) => !reserved(key)),
         session: [...session.records].filter(([key]) => !reserved(key)),
         backend: tauri ? [tauri.files.get('live'), tauri.files.get('snapshots')]
-            : indexedDB ? [indexedDB.bytes('ruhestand-suite'), indexedDB.bytes('snapshotDB')] : null
+            : indexedDB ? [indexedDB.bytes('ruhestand-suite')] : null
     });
     const restart = async () => { persistence.resetPersistenceRuntimeForTests(); await persistence.init(options); };
     return { kind, local, session, indexedDB, tauri, window, options, firstBytes, restart };
@@ -106,7 +106,6 @@ for (const kind of ['tauri', 'indexeddb', 'localstorage']) {
     assertEqual(f.session.getItem('balance.annual-retry.once'), 'real retry', `${kind}: Sitzungsmerker getrennt`);
     // HV-2: Die Echtleser des Spielbereichs lesen den geöffneten Haushalt, nie Haushalt 1.
     assertEqual((await persistence.readRealRecords()).profile_tagesgeld, '5000.00', `${kind}: Echtleser in B lesen B`);
-    assert(!(await persistence.readRealSnapshots()).some(entry => entry.id === 'real-point'), `${kind}: Echtpunkte in B ohne Haushalt 1`);
     assert(exportProfilesBundleToWindowName({ windowRef: f.window }), `${kind}: Seitenübergabe aus B`);
     assertEqual(f.firstBytes(), before, `${kind}: Arbeit in B lässt Haushalt 1 bytegleich`);
     if (f.tauri) assert(f.tauri.files.get(`hh/${id}/live`)?.includes('5000.00'), `${kind}: B liegt im eigenen Ordner`);

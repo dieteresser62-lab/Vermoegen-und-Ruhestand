@@ -1,3 +1,5 @@
+import { readHP4References } from './helpers/hp-4-expectations.mjs';
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { paymentPortfolio, paymentInterest, noDepotInheritance } from './helpers/ev-1-cases.mjs';
@@ -46,7 +48,7 @@ function payment(config, cost, options = {}) {
 for (const [name, config, cost] of [['zero', {}, 0], ['noDepot', { depot: 0 }, 25000]]) {
     assertEqual(hash(payment(config, cost)), controls[name], `${name}: vollständige Zahlung bytegleich zum Ausgangsstand`);
 }
-assertEqual(hash(noDepotInheritance(applyUnmarriedInheritance, beginPersonalTaxYear)), controls.inheritanceNoDepot,
+assertEqual(hash(noDepotInheritance(applyUnmarriedInheritance, beginPersonalTaxYear)), readHP4References(controls.inheritanceNoDepot),
     'Ohne Depot: vollständiger Nachlass, Zahlungsbeleg und Jahressteuer bytegleich');
 const year = { jahr: 2000, inflation: 0, rendite: 0, gold_eur_perf: 0, zinssatz: 0 };
 const household = { p1Alive: false, p2Alive: true };
@@ -56,7 +58,7 @@ const run = (inputs, state = initMcRunState(inputs), index = 0, data = year) =>
     const married = { ...structuredClone(fixture), partnership: { status: 'married' } };
     const result = run(married);
     assertEqual(result.logData.erbschaftsteuer, 0, 'Ehe mit 100 % unter Freibetrag');
-    assertEqual(hash(result), controls.married, 'Steuerfreie Ehe: gesamtes Todesjahr bytegleich');
+    assertEqual(hash(result), readKR1cReferences(controls.married), 'Steuerfreie Ehe: gesamtes Todesjahr bytegleich');
 }
 const inputs = { ...structuredClone(fixture), dynamicFlex: false, goldAktiv: false,
     startFloorBedarf: 40000, startFlexBedarf: 20000, minimumFlexAnnual: 0,

@@ -21,7 +21,7 @@
   - `app/profile/` und `app/tranches/` für Profilverbund und Tranchen,
   - `app/shared/` für gemeinsam genutzte Hilfen.
 - Deterministische Fachlogik gehört bevorzugt nach `engine/`.
-- Rechenintensive, DOM-freie Abläufe gehören nach `workers/`, `monte-carlo-runner.js`, `sweep-runner.js` oder angrenzende Runner-Module statt in UI-Dateien.
+- Rechenintensive, DOM-freie Abläufe gehören nach `workers/`, `monte-carlo-runner.js` oder angrenzende Runner-Module statt in UI-Dateien.
 - Native ES-Module und Browser-/Tauri-Kompatibilität erhalten; keine unnötigen Framework- oder Build-Step-Abhängigkeiten einführen.
 - Vorhandene Spezialisierung beibehalten: lieber bestehendes Fachmodul erweitern als neue Sammeldateien oder Monolithen aufbauen.
 
@@ -36,6 +36,7 @@
 
 ### Selbstprüfung und Berichte
 
+- Für die Einordnung von Befunden gilt der [Prüfrahmen in AGENTS.md](AGENTS.md#prüfrahmen).
 - Standardvalidierung ist `npm test`; im orchestrierten Lauf führt sie der Orchestrator aus.
 - Nach Engine- oder öffentlichen API-Änderungen sind Fachtests und Vertragsprüfungen verpflichtend; ein unverändertes `engine.js` ist im Wrapperbetrieb erwartbar. `tests/engine-wrapper-contract.test.mjs` schützt den reinen Wrapper in der Standardsuite.
 - Bei gezielten Fixes kann `node tests/run-single.mjs <datei>` sinnvoll sein; unvollständige Abdeckung muss im Abschluss erwähnt werden.

@@ -47,31 +47,34 @@ function chartMarkup(rows, currentYear, hostWidth = 0, forecast = null) {
     const baseline = 190, height = 140;
     const forecastFor = row => row.isCurrentPartialYear && forecast?.year === row.year
         && Number.isFinite(forecast.amount) && forecast.amount > 0 ? forecast.amount : null;
-    const maximum = rows.reduce((max, row) => Math.max(max, row.annualUsed, forecastFor(row) || 0), 1);
+    const barTotal = row => row.segments
+        ? Object.values(row.segments).reduce((sum, amount) => sum + Math.max(0, amount), 0)
+        : Math.max(0, row.annualUsed);
+    const maximum = rows.reduce((max, row) => Math.max(max, barTotal(row), forecastFor(row) || 0), 1);
     const y = value => baseline - (value / maximum) * height;
     const bars = rows.map((row, index) => {
         const status = yearStatus(row, currentYear);
         const slot = (width - 110 - labelSpace) / rows.length;
         const barWidth = Math.min(64, slot - 20);
         const x = 110 + index * slot + (slot - barWidth) / 2, center = x + barWidth / 2;
-        const projected = forecastFor(row);
-        const extension = projected > row.annualUsed
-            ? `<rect class="expenses-year-forecast" fill="url(#expensesForecastHatch)" x="${x}" y="${y(projected)}" width="${barWidth}" height="${(projected - row.annualUsed) / maximum * height}"/>` : '';
-        let actualBar = `<rect class="expenses-year-bar${status.barClass ? ` ${status.barClass}` : ''}" x="${x}" y="${y(row.annualUsed)}" width="${barWidth}" height="${(row.annualUsed / maximum) * height}"/>`;
+        const projected = forecastFor(row), actual = barTotal(row);
+        const extension = projected > actual
+            ? `<rect class="expenses-year-forecast" fill="url(#expensesForecastHatch)" x="${x}" y="${y(projected)}" width="${barWidth}" height="${(projected - actual) / maximum * height}"/>` : '';
+        let actualBar = `<rect class="expenses-year-bar${status.barClass ? ` ${status.barClass}` : ''}" x="${x}" y="${y(actual)}" width="${barWidth}" height="${(actual / maximum) * height}"/>`;
         let partsDescription = '', partLabels = '';
         if (row.segments) {
             let cumulative = 0;
-            const labels = { floor: 'Floor', flex: 'Flex', unallocated: 'ohne Aufteilung' };
+            const labels = { floor: 'Grundbedarf', flex: 'Flex', unallocated: 'ohne Aufteilung' };
             const positions = [];
             actualBar = Object.entries(row.segments).map(([key, amount]) => {
+                if (amount <= 0) return '';
                 const bottom = y(cumulative); cumulative += amount; const top = y(cumulative);
-                if (amount === 0) return '';
                 positions.push({ label: labels[key], amount, at: (top + bottom) / 2 });
-                return `<rect class="expenses-year-bar expenses-year-${key}" x="${x}" y="${Math.min(top, bottom)}" width="${barWidth}" height="${Math.abs(bottom - top)}"/>`;
+                return `<rect class="expenses-year-bar expenses-year-${key}" x="${x}" y="${top}" width="${barWidth}" height="${bottom - top}"/>`;
             }).join('');
             partsDescription = Object.entries(row.segments).map(([key, amount]) => `, ${labels[key]} ${euro(amount)}`).join('');
             if (row.year === currentYear) {
-                if (extension) positions.push({ label: 'Prognose', amount: projected - row.annualUsed, at: (y(projected) + y(row.annualUsed)) / 2 });
+                if (extension) positions.push({ label: 'Prognose', amount: projected - actual, at: (y(projected) + y(actual)) / 2 });
                 let previous = 20;
                 partLabels = positions.reverse().map(part => {
                     const at = Math.max(previous + 20, Math.min(174, part.at)); previous = at;
@@ -80,17 +83,17 @@ function chartMarkup(rows, currentYear, hostWidth = 0, forecast = null) {
             }
         }
         const valueX = !segmented && extension ? x + barWidth + 8 : center;
-        const valueY = y(segmented && extension ? projected : row.annualUsed) - 8;
+        const valueY = y(segmented && extension ? projected : actual) - 8;
         return `<g><title>${escape(yearLabel(row, status))}: Ausgaben gesamt ${euro(row.annualUsed)}${partsDescription}, ${row.monthsWithData} Monate mit Daten, Ø pro Monat ${euro(row.avgMonthly)}${projected === null ? '' : `, Hochrechnung ${euro(projected)}`}</title>${actualBar}${extension}<text x="${valueX}" y="${valueY}" text-anchor="${!segmented && extension ? 'start' : 'middle'}">${euro(segmented && extension ? projected : row.annualUsed)}</text>${partLabels}<text class="expenses-year-label" x="${center}" y="212" text-anchor="middle">${row.year}</text><text x="${center}" y="234" text-anchor="middle">${row.monthsWithData} Monate mit Daten</text><text x="${center}" y="254" text-anchor="middle">${status.showLabel ? status.label : ''}</text></g>`;
     }).join('');
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} 270" width="${width}" height="270" style="width:${width}px;min-width:${width}px;height:270px" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="expensesChartTitle" aria-describedby="expensesChartDesc"><title id="expensesChartTitle">Ausgaben je Jahr in nominalen Euro</title><desc id="expensesChartDesc">Säulen zeigen tatsächliche Jahresausgaben aller gespeicherten Personen.${segmented ? ' Von unten: Floor (dunkles Gold), Flex (helles Gold), ohne oder mit nicht lesbarer Aufteilung (grau). Geplante Ausgaben sind enthalten.' : ''} Laufende Teiljahre sind textlich markiert; die helle Schraffur verlängert bis zur verfügbaren Hochrechnung aus vollständigen, abgelaufenen Monaten. Die folgende Tabelle enthält je Jahr die Ausgaben gesamt, Monate mit Daten und Ø pro Monat. Monate mit Daten sind Monate mit positiven Ausgaben; Nullimporte zählen nicht. Für den Vergleich unvollständiger Jahre dient Ø pro Monat. Historische Jahresbudgets werden nicht gespeichert.</desc><defs><pattern id="expensesForecastHatch" width="6" height="6" patternUnits="userSpaceOnUse"><rect class="expenses-year-forecast-base" width="6" height="6"/><path class="expenses-year-hatch" d="M -1 1 L 1 -1 M 0 6 L 6 0 M 5 7 L 7 5"/></pattern></defs>${bars}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} 270" width="${width}" height="270" style="width:${width}px;min-width:${width}px;height:270px" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="expensesChartTitle" aria-describedby="expensesChartDesc"><title id="expensesChartTitle">Ausgaben je Jahr in nominalen Euro</title><desc id="expensesChartDesc">Säulen zeigen tatsächliche Jahresausgaben aller gespeicherten Personen.${segmented ? ' Von unten: Grundbedarf (dunkles Gold), Flex (helles Gold), ohne oder mit nicht lesbarer Aufteilung (grau). Geplante Ausgaben sind enthalten.' : ''} Laufende Teiljahre sind textlich markiert; die helle Schraffur verlängert bis zur verfügbaren Hochrechnung aus vollständigen, abgelaufenen Monaten. Die folgende Tabelle enthält je Jahr die Ausgaben gesamt, Monate mit Daten und Ø pro Monat. Monate mit Daten haben einen Saldo ungleich null. Nullimporte bleiben erfasst. Für den Vergleich unvollständiger Jahre dient Ø pro Monat. Historische Jahresbudgets werden nicht gespeichert.</desc><defs><pattern id="expensesForecastHatch" width="6" height="6" patternUnits="userSpaceOnUse"><rect class="expenses-year-forecast-base" width="6" height="6"/><path class="expenses-year-hatch" d="M -1 1 L 1 -1 M 0 6 L 6 0 M 5 7 L 7 5"/></pattern></defs>${bars}</svg>`;
 }
 
 function tableMarkup(rows, currentYear) {
     return `<table class="ds-table"><caption class="balance-table-caption">Alle Personen · Beträge ohne Inflationsbereinigung · Ø pro Monat zum Vergleich unvollständiger Jahre</caption><thead><tr>${['Jahr', 'Status', 'Ausgaben gesamt', 'Monate mit Daten', 'Ø pro Monat'].map(label => `<th scope="col">${label}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr><th scope="row">${row.year}</th><td>${yearStatus(row, currentYear).label}${row.origin || ''}</td><td>${euro(row.annualUsed)}</td><td>${row.monthsWithData}</td><td>${euro(row.avgMonthly)}</td></tr>`).join('')}</tbody></table>`;
 }
 
-export function renderBalanceExpensesHistory(dom, result, currentYear, backend = 'unknown', forecast = null) {
+export function renderBalanceExpensesHistory(dom, result, currentYear, backend = 'unknown', forecast = null, playArea = false) {
     if (!dom) return false;
     if (dom.chart) {
         bindBalanceDisplaySize(dom.chart, null);
@@ -108,7 +111,7 @@ export function renderBalanceExpensesHistory(dom, result, currentYear, backend =
         validateContainers(result.store);
         const rows = prepareExpensesHistoryMetrics(result.store, currentYear, { includeSegments: Boolean(dom.showNeedsSegments) }).map(row => {
             const records = Object.values(result.store.years[row.year]?.months || {}).flatMap(month => Object.values(month.profiles || {}));
-            const count = records.filter(record => record.source === 'probelauf-example').length;
+            const count = playArea ? records.filter(record => record.source === 'probelauf-example').length : 0;
             return { ...row, origin: count ? ` · Beispieldaten (Spielbereich)${count < records.length ? ' · gemischte Herkunft' : ''}` : '' };
         });
         if (rows.some(row => !Number.isFinite(row.annualUsed) || !Number.isFinite(row.avgMonthly))) throw new Error('amount');
@@ -136,12 +139,16 @@ export function renderBalanceExpensesHistory(dom, result, currentYear, backend =
 
 export function refreshBalanceExpensesHistory(dom, options = {}) {
     if (!dom) return false;
-    let backend = 'unknown';
-    try { backend = String((options.getPersistenceStatus || (() => PersistenceFacade.getPersistenceStatus()))()?.backend || 'unknown'); } catch { /* Diagnose bleibt lesbar. */ }
+    let backend = 'unknown', playArea = false;
+    try {
+        const status = (options.getPersistenceStatus || (() => PersistenceFacade.getPersistenceStatus()))();
+        backend = String(status?.backend || 'unknown');
+        playArea = status?.activeArea === 'spiel';
+    } catch { /* Diagnose bleibt lesbar. */ }
     try {
         return renderBalanceExpensesHistory(dom,
             (options.loadStore || (() => loadExpensesStoreResult(options.storage)))(),
-            (options.now || appNow)().getFullYear(), backend, options.forecast);
+            (options.now || appNow)().getFullYear(), backend, options.forecast, playArea);
     } catch {
         return renderBalanceExpensesHistory(dom, null, 0, backend);
     }

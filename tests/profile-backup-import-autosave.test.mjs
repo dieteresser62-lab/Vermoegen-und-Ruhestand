@@ -5,8 +5,6 @@ import { bootstrapProfileContext, PROFILE_LIVE_BASE_KEY, createProfileOwnedBalan
 import { bindFullBackupImport, buildFullPersistenceBackup } from '../app/shared/persistence-backup.js';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { CONFIG } from '../app/balance/balance-config.js';
-import { bindDataExchange } from '../app/data/data-exchange.js';
-import { previewPersonExport } from '../app/profile/profile-person-file.js';
 import { createSelectionDocument, addField } from './designsystem-selection-dom.mjs';
 import { MemoryWebStorage, fakeAreaTauri } from './helpers/persistence-area-backends.mjs';
 
@@ -126,40 +124,6 @@ try {
             persistenceStorage.setItem('sim_mcSeed', 'eb1-formulareingabe'); f.emit(field, 'input');
             await f.advance(250);
             assertEqual(f.saves, 1, 'Ein gewöhnlicher Formulardialog sichert gespeicherte Eingaben weiterhin');
-        }
-        {
-            const f = await fixture(kind);
-            const id = persistence.getItemSync('rs_current_profile');
-            const { file: personFile } = await previewPersonExport(id);
-            let dialog;
-            const createElement = f.doc.createElement.bind(f.doc);
-            f.doc.createElement = tag => {
-                const node = createElement(tag);
-                node.append = (...children) => children.forEach(child => node.appendChild(child));
-                node.focus = () => {};
-                node.close = () => { node.open = false; };
-                node.showModal = () => { node.open = true; dialog = node; };
-                return node;
-            };
-            for (const key of ['dataPersonImport', 'dataExchangeStatus', 'dataExchangeTechnical']) {
-                const node = f.doc.body.appendChild(f.doc.createElement('button')); node.id = key;
-            }
-            const file = addField(f.doc, 'dataPersonFile'); file.type = 'file';
-            file.files = [{ text: async () => JSON.stringify(personFile) }];
-            persistenceStorage.setItem('sim_mcSeed', 'eb1-personeneingabe');
-            f.emit(addField(f.doc, 'mcSeed'), 'input');
-            const controller = bindDataExchange(f.doc, { win: f.win });
-            file.listeners.change[0]({ target: file }); f.emit(file);
-            for (let i = 0; i < 100 && !dialog; i++) await new Promise(resolve => setImmediate(resolve));
-            assert(dialog?.open, 'Personenimport erreicht den echten Seitendialog');
-            await f.advance(250);
-            assertEqual(f.saves, 1, 'Personenimport holt nur die wartende Eingabe vor seiner Vorschau nach');
-            dialog.querySelectorAll('*').find(node => node.dataset.pageDialogAccept === '').listeners.click[0]();
-            for (let i = 0; i < 100 && controller.busy; i++) await new Promise(resolve => setImmediate(resolve));
-            const profiles = JSON.parse(persistence.getItemSync('rs_profiles_v1')).profiles;
-            assertEqual(Object.keys(profiles).length, 3, `${kind}: Personenimport gelingt trotz unterschiedlicher Live- und Personenstände`);
-            assertEqual(persistence.getItemSync('rs_current_profile'), id, 'Personenimport erhält die aktive Auswahl');
-            assertEqual(profiles[id].data.sim_mcSeed, 'eb1-personeneingabe', 'Personenimport erhält die vorher gesicherte echte Eingabe');
         }
     }
 } finally {

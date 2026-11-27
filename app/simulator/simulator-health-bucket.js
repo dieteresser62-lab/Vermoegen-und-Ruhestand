@@ -261,7 +261,8 @@ export function applyHealthBucketCoverage({
 
 function distributeInterestAcrossBucketSources(portfolio, interest) {
     const amount = signedEuros(interest);
-    if (amount === 0) return;
+    const cashInterestByOwner = /** @type {{profileId: string, cashInterest: number}[]} */ ([]);
+    if (amount === 0) return { cashInterest: 0, cashInterestByOwner };
 
     const tranches = Array.isArray(portfolio.healthBucketTranches)
         ? portfolio.healthBucketTranches
@@ -270,19 +271,30 @@ function distributeInterestAcrossBucketSources(portfolio, interest) {
     const cashAmount = euros(portfolio.healthBucketCashAmount);
     const total = trancheTotal + cashAmount;
 
-    if (total <= 0) return;
+    if (total <= 0) return { cashInterest: 0, cashInterestByOwner };
 
     for (const tranche of tranches) {
         const share = trancheTotal > 0 ? euros(tranche?.marketValue) / total : 0;
         tranche.marketValue = euros((Number(tranche.marketValue) || 0) + amount * share);
     }
 
-    if (cashAmount > 0 || tranches.length === 0) {
-        const cashShare = tranches.length === 0 ? 1 : cashAmount / total;
-        portfolio.healthBucketCashAmount = euros(cashAmount + amount * cashShare);
-        for (const row of portfolio.healthBucketCashOwners || []) row.amount *= cashAmount > 0
-            ? portfolio.healthBucketCashAmount / cashAmount : 1;
+    if (cashAmount <= 0) return { cashInterest: 0, cashInterestByOwner };
+
+    const cashShare = tranches.length === 0 ? 1 : cashAmount / total;
+    portfolio.healthBucketCashAmount = euros(cashAmount + amount * cashShare);
+    const cashInterest = portfolio.healthBucketCashAmount - cashAmount;
+    for (const row of portfolio.healthBucketCashOwners || []) {
+        if (cashInterest !== 0) cashInterestByOwner.push({
+            profileId: row.profileId, cashInterest: cashInterest * (row.amount / cashAmount)
+        });
+        row.amount *= portfolio.healthBucketCashAmount / cashAmount;
     }
+    if (cashInterest !== 0 && !cashInterestByOwner.length) {
+        const accounts = portfolio.personAccounts || [];
+        const account = accounts.find(row => row.profileId === portfolio.simulationSourceProfileId) || accounts[0];
+        if (account) cashInterestByOwner.push({ profileId: account.profileId, cashInterest });
+    }
+    return { cashInterest, cashInterestByOwner };
 }
 
 /**
@@ -303,17 +315,16 @@ export function applyHealthBucketInterest({
         ? Number(rC)
         : 0;
     const interest = Math.max(-startAmount, signedEuros(startAmount * rate));
-    if (interest !== 0) {
-        distributeInterestAcrossBucketSources(portfolio, interest);
-        portfolio.healthBucketGeldmarkt = euros(startAmount + interest);
-    }
+    const cash = distributeInterestAcrossBucketSources(portfolio, interest);
+    if (interest !== 0) portfolio.healthBucketGeldmarkt = euros(startAmount + interest);
 
     return {
         enabled: config.enabled,
         startAmount,
         rate,
         interest,
-        endAmount: euros(portfolio.healthBucketGeldmarkt)
+        endAmount: euros(portfolio.healthBucketGeldmarkt),
+        ...cash
     };
 }
 

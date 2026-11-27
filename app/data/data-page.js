@@ -1,4 +1,3 @@
-import { bindDataExchange } from './data-exchange.js';
 import { initSuiteFrame } from '../shared/suite-frame.js';
 import { initializeProfilePage } from '../profile/profile-navigation.js';
 import { PersistenceFacade } from '../shared/persistence-facade.js';
@@ -11,6 +10,7 @@ import { bindPersistenceLocation } from '../shared/persistence-location.js';
 import { renderDataPage } from './data-renderer.js';
 import { bindDataNewBeginning } from './data-new-beginning-ui.js';
 import { renderDataHouseholds } from './data-households.js';
+import { startRestorePointReset, closeRestorePointNotice } from '../shared/snapshot-reset.js';
 
 const initialized = new WeakMap();
 // Der bestehende Sicherungsbinder behält seine Entscheidungen; nur seine Ausgabe
@@ -24,14 +24,19 @@ export function dataBackupStatus(doc) {
     return {
         dataset: host.dataset,
         get textContent() { return host.textContent; },
+        // Technische Prüfmeldung zu einer schon verständlichen Hauptmeldung.
+        set technical(text) { if (detail) detail.textContent = text; },
         set textContent(raw) {
             if (detail) detail.textContent = raw;
             const technical = /IndexedDB|localStorage|UTF-8|Quota|\bSHA(?:-256)?\b|Fingerabdruck|serialisiert|\b(?:kv|metadata|snapshots|ruhestand-suite)\b|(?:rs_|profile_|snapshot_|overview_|balance_)[\w-]+|\b[A-Z]+(?:_[A-Z]+)+\b|Store|Browser-Dateidialog/i.test(raw);
             if (host.dataset.kind === 'error') {
                 host.textContent = /Spielbereich/.test(raw) ? 'Im Spielbereich ist diese Sicherungsaktion gesperrt. Bitte zuerst den Spielbereich beenden.'
-                    : !technical && /Haushaltspersonen|Wiederherstellungspunkt|wiederherstellen|erneut|nicht bestätigt/.test(raw) ? raw
+                    : !technical && /Haushaltspersonen|Wiederherstellungspunkt|wiederherstellen|erneut|nicht bestätigt|nichts ersetzt/.test(raw) ? raw
                         : 'Die Sicherungsaktion konnte nicht abgeschlossen werden. Weitere Hinweise findest du unter „Technische Details“.';
-            } else if (/Komplettes fachliches Backup erstellt/.test(raw)) host.textContent = 'Vollsicherung erstellt. Wähle einen sicheren Ablageort.';
+            } else if (/^Komplettes fachliches Backup gespeichert unter /.test(raw)) {
+                // SD-1/Befund 1908: Die Desktop-App nennt den im Dialog gewählten Pfad samt Dateinamen.
+                host.textContent = `Vollsicherung gespeichert unter ${raw.replace(/^Komplettes fachliches Backup gespeichert unter /, '').replace(/ \(\d+ Einträge\)\..*$/s, '')}.`;
+            } else if (/Komplettes fachliches Backup erstellt/.test(raw)) host.textContent = 'Vollsicherung erstellt. Sie liegt im Download-Ordner des Browsers; wähle einen sicheren Ablageort.';
             else if (/Backup wird erstellt/.test(raw)) host.textContent = 'Vollsicherung wird erstellt …';
             else host.textContent = technical ? 'Die Sicherungsaktion ist noch nicht abgeschlossen. Weitere Hinweise findest du unter „Technische Details“.' : raw;
         }
@@ -50,7 +55,7 @@ async function initializeDataPage(doc, win) {
     initSuiteFrame(doc); // Handoff ist vor jedem asynchronen Wartepunkt gebunden.
     const ready = await initializeProfilePage({ doc, win });
     // Vollimport bleibt auch ohne gültigen Profilbestand erreichbar.
-    const options = { document: doc, window: win, probelaufController: getProbelaufController(doc), status: /** @type {HTMLElement} */ (dataBackupStatus(doc)) };
+    const options = { document: doc, window: win, probelaufController: getProbelaufController(doc), status: /** @type {HTMLElement} */ (/** @type {unknown} */ (dataBackupStatus(doc))) };
     bindFullBackupButton(options);
     bindFullBackupImport(options);
     // Das Haushaltsverzeichnis liegt nach dem Profilstart schon im Speicher; die Tabelle wartet nicht auf
@@ -83,10 +88,15 @@ async function initializeDataPage(doc, win) {
     await bindPersistenceLocation(doc, { win });
     // Codex HV6-1: Nach „Jetzt sichern“ zeigt auch die Haushaltstabelle den neuen Sicherungsstand (ein Listener).
     doc.addEventListener('overview-backup-changed', () => { const done = refresh(); renderDataHouseholds(doc); return done; });
+    // SV-1: Die einmalige Archivleerung läuft vor der ersten Liste, damit sie keine alten Punkte zeigt.
+    await startRestorePointReset();
+    doc.getElementById('dataRestorePointsNoticeClose')?.addEventListener('click', async () => {
+        try { await closeRestorePointNotice(); } catch (error) { reportDataRestoration(doc, { message: 'Der Hinweis konnte nicht geschlossen werden.', technical: error.message }); }
+        await refresh();
+    });
     await refresh();
     if (!householdsShown) renderDataHouseholds(doc);
     bindDataRestoration(doc, { refresh });
-    bindDataExchange(doc, { win, refresh });
     try { await assertFullBackupAllowed(options); }
     catch (error) {
         if (error.code !== 'probelauf_backup_blocked') { options.status.dataset.kind = 'error'; options.status.textContent = error.message; }
@@ -98,7 +108,6 @@ async function initializeDataPage(doc, win) {
     }
     const openTarget = () => {
         const hash = win.location?.hash;
-        if (['#balance-austausch', '#dataBalanceExport', '#dataBalanceImport'].includes(hash)) { const details = doc.getElementById('balance-austausch'); if (details) details.open = true; }
         const target = hash && doc.getElementById(hash.slice(1));
         if (target) { if (!target.hasAttribute?.('tabindex')) target.setAttribute?.('tabindex', '-1'); target.focus?.(); target.scrollIntoView?.({ block: 'start' }); }
     };
@@ -113,13 +122,13 @@ async function initializeDataPage(doc, win) {
         newBeginning = bindDataNewBeginning(doc, { win, refresh, ready: false });
         return false;
     }
-    // Der Recovery-Einstieg gehört nur zum Seitenstart; Hashwechsel navigieren.
+    // Der Recovery-Einstieg gehört nur zum Seitenstart; er markiert den Punkt, das Zurückholen bleibt ein eigener Klick.
     const id = new URLSearchParams(win.location?.search || '').get('punkt');
     if (id) {
-        const button = Array.from(doc.querySelectorAll?.('[data-restore-preview]') || []).find(button => button.dataset.restorePreview === id);
-        // Direkte Recovery-Links öffnen auch die Karte und ältere Punkte.
-        for (let node = button?.parentElement; node; node = node.parentElement) if (node.tagName === 'DETAILS') node.open = true;
-        button?.click();
+        const button = Array.from(doc.querySelectorAll?.('[data-restore-point]') || []).find(button => button.dataset.restorePoint === id);
+        const row = button?.closest?.('li');
+        if (row) row.dataset.selected = 'true';
+        button?.focus?.();
     }
     doc.documentElement.dataset.dataReady = 'true';
     newBeginning = bindDataNewBeginning(doc, { win, refresh, ready });

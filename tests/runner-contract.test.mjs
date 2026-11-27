@@ -50,6 +50,27 @@ console.log('--- Runner Contract Tests ---');
 {
     const dir = createTempTestDir();
     try {
+        writeTest(dir, 'git-env.test.mjs', `
+            assertEqual(Object.keys(process.env).filter(name => /^GIT_/i.test(name)).join(','), '',
+                'Child test receives no Git environment variables');
+            assertEqual(process.env.RUNNER_ENV_PROBE, 'retained', 'Child test keeps ordinary environment variables');
+        `);
+        const result = runNode([runTestsPath], {
+            TESTS_DIR: dir,
+            GIT_DIR: path.join(dir, 'unused.git'),
+            GIT_OPTIONAL_LOCKS: '0',
+            RUNNER_ENV_PROBE: 'retained'
+        });
+        assertEqual(result.status, 0, 'Runner should isolate child tests from Git environment variables'
+            + (result.status === 0 ? '' : `\n${combinedOutput(result)}`));
+    } finally {
+        cleanup(dir);
+    }
+}
+
+{
+    const dir = createTempTestDir();
+    try {
         writeTest(dir, 'b.test.mjs', "console.log('ORDER:b');\nassert(true, 'b pass');\n");
         writeTest(dir, 'a.test.mjs', "console.log('ORDER:a');\nassert(true, 'a pass');\n");
 

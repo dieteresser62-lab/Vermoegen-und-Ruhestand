@@ -6,7 +6,7 @@
  * Die App kennt kein Depot je Tranche, deshalb gilt die Gruppe je Person. Engine, Balance und Simulator nutzen dieselben Funktionen.
  */
 
-/** @typedef {{isin?: string|null, sourceProfileId?: string|null, purchaseDate?: string|null, trancheId?: string|null}} FifoLot */
+/** @typedef {{isin?: string|null, sourceProfileId?: string|null, purchaseDate?: string|null, trancheId?: string|null, simulationPurchaseOrder?: number}} FifoLot */
 
 /** RK-3 Punkt 4: normierte ISIN je Rohwert nur einmal bilden (Großschreibung, ohne Leerraum). */
 const NORMAL_ISIN = new Map();
@@ -33,9 +33,14 @@ function purchaseStamp(lot) {
     return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
 }
 
-/** Bankreihenfolge zweier Tranchen derselben Gruppe: Kaufdatum aufsteigend, ohne Datum zuerst, dann Tranchen-ID.
+/** Bankreihenfolge zweier Tranchen derselben Gruppe.
  * @param {FifoLot} left @param {FifoLot} right */
 export function compareBankOrder(left, right) {
+    // Der Anfangsbestand kommt vor Zukäufen. Zukäufe folgen der Kaufreihenfolge im Pfad;
+    // das historische Marktjahr im Kaufdatum kann im Monte Carlo zurückspringen.
+    const leftPurchase = left?.simulationPurchaseOrder ?? 0;
+    const rightPurchase = right?.simulationPurchaseOrder ?? 0;
+    if (leftPurchase !== rightPurchase) return leftPurchase - rightPurchase;
     const a = purchaseStamp(left), b = purchaseStamp(right);
     if (a !== b) return a < b ? -1 : 1;
     return String(left?.trancheId || '').localeCompare(String(right?.trancheId || ''));

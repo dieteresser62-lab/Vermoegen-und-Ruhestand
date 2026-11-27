@@ -66,7 +66,7 @@ export function renderDepotHistory() {
     const context = registry.value ? readManagerHistoryContext(registry.value) : { status: 'missing' };
     const focusId = state.historyUI?.beforeRender(state.profileId, state.tranchen);
     let strategyWarnings = [];
-    try { strategyWarnings = readAssetStrategyWarnings({ plan: readBalanceHouseholdPlan({ profileId: state.profileId }) }); }
+    try { strategyWarnings = readAssetStrategyWarnings({ plan: readBalanceHouseholdPlan() }); }
     catch { /* Beschädigte Quellen behandelt die bestehende Profil-/Depot-Recovery. */ }
     renderAssetStrategyWarnings(byId('managerBondStrategyWarning'), strategyWarnings.filter(warning => warning.kind === 'bonds'));
     renderAssetStrategyWarnings(byId('managerPlanGoldWarning'), strategyWarnings.filter(warning => warning.kind === 'gold'), { showName: true });

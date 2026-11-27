@@ -68,7 +68,7 @@ const handbookUi = fs.readFileSync(new URL('../app/handbook/handbook.js', import
 const imageManifest = JSON.parse(fs.readFileSync(new URL('../docs/ui/manifest.json', import.meta.url), 'utf8'));
 const handbookImages = [...handbook.matchAll(/<img\b[^>]*src="((?:docs\/ui|assets\/handbook)\/[^"]+)"/g)].map(match => match[1]);
 const budgetImages = imageManifest.images.filter(image => /^docs\/ui\/jahresbudget-max-erika-(?:normal|2002)\.png$/.test(image.path));
-assertEqual(handbookImages.filter(src => src.endsWith('.png')).length, 49 + budgetImages.length, 'Ausgewählte App-Ansichten stehen direkt bei den Klickwegen (VK-1: geführter Verkauf mit sechs Bildern; VK-2: geführter Kauf mit vier Bildern; BV-1: Tranche im Detail; TD-1: Stückzahlkorrektur; PFA-10: Bereich Pflege; UR-1b: erfasste Stände, übernommene Rentenanpassung; GU-1b: Fondskosten, Hinweis „wie Löhne“; KO-2: Fondskosten in Haushalt & Plan)');
+assertEqual(handbookImages.filter(src => src.endsWith('.png')).length, 48 + budgetImages.length, 'Ausgewählte App-Ansichten stehen direkt bei den Klickwegen (WS-1: Werkstattbild entfällt; IM-1: Jahresabschluss-Schritt Immobilienwerte; VK-1: geführter Verkauf mit sechs Bildern; VK-2: geführter Kauf mit vier Bildern; BV-1: Tranche im Detail; TD-1: Stückzahlkorrektur; PFA-10: Bereich Pflege; UR-1b: übernommene Rentenanpassung (erfasste Stände entfielen mit VS-2); GU-1b: Fondskosten, Hinweis „wie Löhne“; KO-2: Fondskosten in Haushalt & Plan)');
 assertEqual(handbookImages.filter(src => src.endsWith('.svg')).length, 3, 'Monat, Jahr und Spielbereich zeigen Offline-Abläufe');
 assert(handbookImages.every(src => src.endsWith('.svg') || imageManifest.images.some(image => image.path === src)), 'Handbuchbilder stammen aus dem geprüften Manifest');
 assertEqual((handbook.match(/<figcaption>/g) || []).length, handbookImages.length, 'Jedes Handbuchbild hat eine Unterschrift');
@@ -77,10 +77,10 @@ assert(handbook.includes('ds-card') && handbook.includes('ds-note-warning') && h
 assert(!handbook.includes('@media print') && !handbook.includes('role="tablist"'), 'Handbuch besitzt Kapitelnavigation und keine eigenen Druckregeln');
 const handbookIds = [...handbook.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
 assertEqual(new Set(handbookIds).size, handbookIds.length, 'Alle Handbuch-IDs sind eindeutig');
-for (const id of ['erste-schritte','noch-nicht-im-ruhestand','monat-abschliessen','jahr-abschliessen','ausgaben','kauf','verkauf','haushalt-plan','balance','tod-und-erbe','pflege','immobilien','vermoegensverlauf','simulator','monte-carlo','werkstatt','daten-sicherung','probelauf','haeufige-fragen','begriffe']) {
+for (const id of ['erste-schritte','noch-nicht-im-ruhestand','monat-abschliessen','jahr-abschliessen','ausgaben','kauf','verkauf','haushalt-plan','balance','tod-und-erbe','pflege','immobilien','vermoegensverlauf','simulator','monte-carlo','daten-sicherung','probelauf','haeufige-fragen','begriffe']) {
     assert(handbook.includes(`id="${id}" class="hb-article`) && handbook.includes(`class="toc-link" href="#${id}"`), 'Kapitel und Navigation: ' + id);
 }
-assertEqual((handbook.match(/data-handbook-chapter/g) || []).length, 20, '20 Aufgaben- und Begriffskapitel einschließlich Ansparen vor dem Ruhestand');
+assertEqual((handbook.match(/data-handbook-chapter/g) || []).length, 19, '19 Aufgaben- und Begriffskapitel einschließlich Ansparen vor dem Ruhestand');
 const browser = fs.readFileSync(new URL('./browser-smoke.test.mjs', import.meta.url), 'utf8');
 assert(browser.includes("['Designsystem recovery banner', runDesignsystemRecoveryBanner]"), 'I10: Browserfall ist registriert');
 assert(browser.includes("['Handbuch.html', runManualSmoke]"), 'Handbuch: Browserfall ist registriert');
@@ -133,9 +133,9 @@ try {
 
 // Der erhaltene Altanker erläutert den Wegfall, verspricht keinen CSV-Button.
 const marketChapter = handbook.slice(handbook.indexOf('id="hilfe-offline"'), handbook.indexOf('id="hilfe-verlassen"'));
-assert(marketChapter.includes('Jahresvorbereitung') && marketChapter.includes('von Hand ein') && !marketChapter.includes('CSV-Provenienz'), 'Handbuch hilft bei fehlenden Daten und erhält den Altanker');
+assert(marketChapter.includes('<a href="#jahr-schritte">Jahresabschluss</a> im Reiter „Marktdaten“') && marketChapter.includes('von Hand ein') && !marketChapter.includes('CSV-Provenienz'), 'Handbuch hilft bei fehlenden Daten und erhält den Altanker');
 assert(!marketChapter.includes('Der CSV-Button') && !handbook.includes('„🗓️ Nachr.“'), 'Handbuch verspricht keine entfernten Markt-CSV-/Nachrückenknöpfe');
-assert(handbook.includes('Alt+N entfällt') && !handbook.includes('Alt+J') && handbook.includes('Alt+I') && handbook.includes('Alt+E'), 'Handbuch nennt aktive Kürzel und den Wegfall von Alt+N');
+assert(!/Alt\+[EIJN]/.test(handbook), 'AK-1: Handbuch nennt keine entfallenen Alt-Kürzel');
 const expensesChapter = handbook.slice(handbook.indexOf('<article id="ausgaben"'), handbook.indexOf('<article id="kauf"'));
 assert(expensesChapter.includes('id="balance-ausgaben-check"') && expensesChapter.includes('Ausgaben.html'), 'AU1: Eigenständiges Handbuchkapitel erhält den alten Ausgabenanker und den neuen Seitenweg');
 assert(handbook.includes('class="toc-link" href="#ausgaben">') && expensesChapter.includes('festgeschriebenen Jahresbeleg'), 'AU1: Handbuch-TOC und Budgetherkunft verweisen auf das eigenständige Ausgabenkapitel');
@@ -148,7 +148,7 @@ for (const id of ['overviewWelcome', 'overviewWelcomeImport', 'overviewNormal', 
 }
 assert(index.indexOf('id="kursdetails"') < index.indexOf('<header class="overview-heading ds-page-head">'), 'I14: eindeutiger Statushost liegt im Kursaufklappfeld am Kopf');
 assertEqual((index.match(/id="startupPriceStatus"/g) || []).length, 1, 'I14: Kursstatushost wird nicht dupliziert');
-assert(!/<details id="kursdetails"[^>]*\bopen\b/.test(index) && index.includes('Kursdetails schließen'), 'I14: geschlossenes Kursfeld besitzt sichtbaren nativen Schließweg nach Öffnung');
+assert(!/<details id="kursdetails"[^>]*\bopen\b/.test(index) && index.includes('Kursdetails schließen') && index.includes('aria-controls="kursdetails"'), 'I14: geschlossenes Kursfeld öffnet über das ⓘ (OP-3) und besitzt sichtbaren nativen Schließweg');
 assert(index.includes('href="depot-tranchen-manager.html#personen"') && !index.includes('Demo ansehen'), 'Eigene Daten öffnen vorhandenen Personendialog ohne Demo');
 assert(renderer.includes("openOverviewBackupTarget(doc, '#fullBackupImportBtn')"), 'Erststart verwendet denselben Sicherungsimport');
 const readDoc = path => fs.readFileSync(new URL('../' + path, import.meta.url), 'utf8');
@@ -193,7 +193,7 @@ assert(handbook.includes('href="#profilverbund-personendaten"')
 const simulatorChapter = chapter('simulator-renten');
 assert(simulatorChapter.includes('schreibfreie Liste')
     && simulatorChapter.includes('Ausschalten, Profilwechsel oder Seitenreload')
-    && simulatorChapter.includes('beim Lauf verwendeten Werte') && simulatorChapter.includes('JSON-/CSV-Downloads'),
+    && simulatorChapter.includes('beim Lauf verwendeten Werte') && simulatorChapter.includes('JSON-/CSV-Exporte'),
     'P10: Handbuch erklärt flüchtige Alternativen und eingefrorene Downloads');
 const scenarioChapter = chapter('simulator-szenario-log');
 const answerChapter = chapter('simulator-ergebnisse');
@@ -215,9 +215,8 @@ assert(scenarioChapter.includes('Finanzannahmen des abgeschlossenen Laufs samt d
 const annualChapter = chapter('jahr-abschliessen');
 const snapshotChapter = chapter('balance-snapshots');
 assert(annualChapter.includes('erhöht kein gespeichertes Alter') && annualChapter.includes('Altalter')
-    && snapshotChapter.includes('gesamten Bestand') && snapshotChapter.includes('personenbezogener Punkt')
-    && snapshotChapter.includes('dieselbe Person im aktuellen Bestand')
-    && snapshotChapter.includes('Nach bestätigtem Zurückholen lädt die App die Seite neu'),
+    && snapshotChapter.includes('ganzen Haushalt') && snapshotChapter.includes('Der heutige Stand wird ersetzt.')
+    && snapshotChapter.includes('„Vor dem Zurückholen“') && snapshotChapter.includes('Danach lädt die App die Seite neu'),
     'P10: Handbuch erklärt Jahresabschluss ohne Alterswrite und vollständigen Restore');
 
 const technical = readDoc('docs/reference/DATENVERTRAEGE.md');
@@ -262,7 +261,7 @@ assert(monthChapter.includes('Abschluss starten') && monthChapter.toLowerCase().
     && monthChapter.includes('Alles gespeichert') && monthChapter.includes('Fertig')
     && monthChapter.includes('Erneut versuchen'), 'Monatskapitel erklärt echten Dialog, Ergebnis und Retry');
 assert(monthChapter.includes('Bleiben') && monthChapter.includes('Verwerfen')
-    && monthChapter.includes('nur ungespeichertes Tagesgeld') && monthChapter.includes('Vermögenspunkte bleiben erhalten')
+    && monthChapter.includes('nur ungespeichertes Tagesgeld') && monthChapter.includes('importierte Ausgaben bleiben erhalten') && !monthChapter.includes('Vermögenspunkt')
     && monthChapter.includes('Jahresabschluss'), 'Monatskapitel erklärt Importpersistenz, Cashentwurf und erhaltenen Jahresweg');
 
 assert(monthChapter.includes('Tagesgeld für jede Person') && !monthChapter.includes('Tagesgeld-Stand jetzt'), 'Abschlusskapitel beschreibt die sichtbaren Personenlabels');

@@ -63,7 +63,8 @@ export function createAnnualActionResult({ doc, result, compact = false }) {
     const root = node('section'); root.dataset.annualActionResult = '';
     if (compact) root.className = 'ds-card annual-action-result';
     root.append(node('h3', `Handlungsanweisung ${result.year}${result.action ? ' · festgeschrieben' : ''}`));
-    if (result.marketReading) { const label = node('p', annualMarketChoiceLabel(result.marketReading)); label.dataset.annualMarketChoiceLabel = ''; root.append(label); }
+    const legacyReading = annualMarketChoiceLabel(result.marketReading);
+    if (legacyReading) { const label = node('p', legacyReading); label.dataset.annualMarketChoiceLabel = ''; root.append(label); }
     const translateAction = text => String(text || '').replaceAll('Profilverbund-Transaktionen', 'Verkäufe und Käufe je Person');
     const instruction = node('p', translateAction(result.text || result.notice || ANNUAL_ACTION_NOTICE));
     if (compact) instruction.className = 'annual-action-instruction';
@@ -165,7 +166,9 @@ export function createAnnualPlanResult({ doc, result, model, peoplePreview }) {
     }
     const details = node('details', undefined, 'close-dialog-derivation'); details.dataset.annualPlanDerivation = '';
     details.append(node('summary', `Herleitung Plan ${result.year}`));
-    details.append(node('p', annualMarketChoiceLabel(result.marketReading)));
+    // Altbestand [A7]: Belege mit der Wahl „Jahreshoch“ nennen sie weiter.
+    const legacyReading = annualMarketChoiceLabel(result.marketReading);
+    if (legacyReading) details.append(node('p', legacyReading));
     if (!result.needs) details.append(node('p', result.notice || ANNUAL_ACTION_NOTICE));
     else {
         for (const need of result.needs) details.append(node('p', `${need.id === 'floorBedarf' ? 'Grundbedarf' : 'Flex-Bedarf'} jährlich: ${formatAnnualNeed(need, result)}`));
@@ -267,7 +270,7 @@ export function createAnnualExpenseStatus({ doc, model, targetYear }) {
         { label: 'Jahresbudget', value: money(budget) }
     ] }));
     const needs = model.expenseNeeds;
-    if (needs) root.append(createCloseTiles({ doc, items: ['floor', 'flex'].map(key => ({ label: `Jahresdurchschnitt ${key === 'floor' ? 'Floor' : 'Flex'} / Monat`, value: money(needs.avgMonthly?.[key]) })) }));
+    if (needs) root.append(createCloseTiles({ doc, items: ['floor', 'flex'].map(key => ({ label: `Jahresdurchschnitt ${key === 'floor' ? 'Grundbedarf' : 'Flex'} / Monat`, value: money(needs.avgMonthly?.[key]) })) }));
     if (difference !== null) root.append(node('p', difference === 0 ? 'Genau im Jahresbudget' : `${money(Math.abs(difference))} ${difference > 0 ? 'über' : 'unter'} dem Jahresbudget${budget > 0 ? ` · ${formatDisplayNumber(Math.abs(difference) / budget * 100, { fractionDigits: 1 })} %` : ''}`));
     return root;
 }
@@ -310,10 +313,8 @@ export function createAnnualTodoResult(doc, actionResult) {
     if (!actionResult?.action) return full;
     let routing = null;
     try { routing = annualLiquidityInflowRouting(actionResult.action, actionResult.liquidityContext); } catch { routing = null; }
-    const context = actionResult.liquidityContext;
     const plan = projectAnnualTodoPlan({ confirmed: { year: actionResult.year, action: actionResult.action, text: actionResult.text,
-        marketReading: actionResult.marketReading }, people: actionResult.people || [], routing,
-        cashMonths: context?.input?.liquidityCashMonths ?? context?.entries?.[0]?.input?.liquidityCashMonths ?? null });
+        marketReading: actionResult.marketReading }, people: actionResult.people || [], routing });
     if (!plan) return full;
     const details = full.querySelector('[data-annual-action-details]');
     // WT-1b: „zeigen“/„ausblenden“ hängt das Designsystem an (.ds-technical-details); die Beschriftung bleibt „Details“.

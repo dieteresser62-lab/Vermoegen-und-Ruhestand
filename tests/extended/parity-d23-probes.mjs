@@ -9,7 +9,9 @@ function currentPersonalRun() {
 }
 // D23 measurement paths adopted without fixture generation or filesystem writes.
 import assert from 'node:assert/strict';
-import { EngineAPI } from '../../engine/index.mjs';
+import { EngineAPI, _internal_calculateModel } from '../../engine/core.mjs';
+import { FinancialCalculationError } from '../../engine/errors.mjs';
+import TransactionEngine from '../../engine/transactions/TransactionEngine.mjs';
 import { buildBalanceEngineInputFromStorage } from '../../app/balance/balance-input-storage.js';
 import { evaluateStoredAnnualHousehold } from '../../app/balance/balance-main-profilverbund.js';
 import { evaluateAnnualDraft } from '../../app/balance/balance-annual-storage-commit.js';
@@ -220,12 +222,46 @@ export function measure(f) {
         const policy = deriveLiquidityRunwayPolicy(years);
         const input = { ...f.input, liquidityRunwayYears: years };
         const r = engine(input, null);
+        // Der Zusatzlauf prüft die diagnostizierte Notfallschwelle in einem Engine-Jahr.
+        // Das reine Tagesgeldvermögen deckt die Jahresausgabe, reicht aber nicht für die Mindestreserve.
+        const minimumFlex = engine({ ...input, minimumFlexAnnual: input.flexBedarf,
+            depotwertAlt: 0, depotwertNeu: 0, costBasisAlt: 0, costBasisNeu: 0, detailledTranches: [],
+            tagesgeld: 40000, geldmarktEtf: 0, aktuelleLiquiditaet: 40000 }, null).diagnosis.keyParams;
+        assert.equal(minimumFlex.minimumFlexBlockReason, 'minimum_runway_not_restorable');
         return { years, targetMonths: policy.targetMonths, hardMinimumMonths: policy.hardMinimumMonths,
             simulatorFloorNeed: computeLiqNeedForFloor({ inputs: input, inflatedFloor: f.netFloor }),
-            engineHardMinimumMonths: r.ui.runway.hardMinimumMonths ?? r.diagnosis.keyParams.minimumFlexEmergencyMinRunwayMonths,
-            minimumFlexRunway: r.diagnosis.keyParams.minimumFlexEmergencyMinRunwayMonths };
+            engineHardMinimumMonths: r.diagnosis.guardrails.find(item => item.name === 'Runway (vs. Min)')?.threshold,
+            minimumFlexRunway: minimumFlex.minimumFlexEmergencyMinRunwayMonths };
     });
     default: throw Error(`Unknown fixture kind: ${f.kind}`);
+    }
+}
+
+export function testD23TaxReserve() {
+    const input = {
+        depotwertNeu: 30000,
+        costBasisNeu: 10000,
+        floorBedarf: 12000,
+        flexBedarf: 0,
+        sparerPauschbetrag: 1000
+    };
+    // Der Test ersetzt nur die Transaktionsplanung durch einen Aktienverkauf ohne Steuerreserve.
+    const action = {
+        type: 'TRANSACTION',
+        quellen: [{ kind: 'aktien_neu', brutto: 3000, netto: 3000, steuer: 0,
+            realizedGainSigned: 2000, taxableAfterTqfSigned: 2000 }],
+        verwendungen: { liquiditaet: 3000 },
+        nettoErlös: 3000,
+        steuer: 0,
+        taxRawAggregate: { sumRealizedGainSigned: 2000, sumTaxableAfterTqfSigned: 2000 }
+    };
+    const originalDetermineAction = TransactionEngine.determineAction;
+    try {
+        TransactionEngine.determineAction = () => action;
+        assert.throws(() => _internal_calculateModel(input, null),
+            error => error instanceof FinancialCalculationError && error.context?.contract === 'tax_reserve');
+    } finally {
+        TransactionEngine.determineAction = originalDetermineAction;
     }
 }
 

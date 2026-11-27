@@ -1,6 +1,7 @@
 import { EngineAPI } from '../engine/index.mjs';
 import { projectAnnualMarketReadings } from '../app/balance/balance-annual-market-preview.js';
 import { createAnnualMarketReadings, renderBalanceMarketPreview } from '../app/balance/balance-market-preview-renderer.js';
+import { highCheckUnreliable } from '../app/balance/balance-market-preview.js';
 import { computeAnnualPlanUpdate } from '../app/balance/balance-annual-storage.js';
 import { createAnnualCloseDialog } from '../app/shared/annual-close-dialog.js';
 import { createDialogFixture, prepareCloseFixture } from './close-dialog.test.mjs?fixture';
@@ -27,35 +28,43 @@ const marketData = { ...annualTestMarketData, etf: { ...annualTestMarketData.etf
 const options = { targetYear: 2026, quote: marketData.etf, storage, engineLoader: { load: async () => EngineAPI } };
 const prices = (closes, dates = ['2025-12-31', '2026-07-14', '2026-12-30', '2027-01-01']) => {
     records[DAILY_PRICES_KEY] = JSON.stringify({ version: 1, symbols: { 'VWCE.DE': {
-        ...emptyHistorySymbol(), currency: 'EUR', days: dates.map(historyDay), closes, queried: [[historyDay(dates[0]), historyDay(dates.at(-1))]]
+        // Abgefragt ab Historienstart wie die Referenzreihe (ATH-1b); sonst wären die Tage davor ungeprüft.
+        ...emptyHistorySymbol(), currency: 'EUR', days: dates.map(historyDay), closes, queried: [[historyDay('2025-01-01'), historyDay(dates.at(-1))]]
     } } });
 };
 const draft = () => JSON.stringify(computeAnnualPlanUpdate({ targetYear: 2026, marketData, storage, now: annualTestNow }));
 delete records[DAILY_PRICES_KEY];
-assertEqual((await projectAnnualMarketReadings(options)).comparison.state, 'not_reliable', 'Ohne Tageskurse kein belastbarer Vergleich trotz Jahresendabruf');
+// Gutachten P2-1: Ohne Tagesreihe gilt der Jahresendabruf; Marktschritt und Jahresentwurf zeigen dasselbe Hoch, keine Vorjahreswerte.
+const withoutSeries = await projectAnnualMarketReadings(options), withoutSeriesDraft = JSON.parse(JSON.parse(draft()).records[key]).inputs;
+assert(!withoutSeries.withoutQuote && withoutSeries.index === 170.25 && withoutSeries.quote.price === 170.25, 'Ohne Tageskurse zählt der Jahresendabruf');
+assert(withoutSeries.inputs.ath === withoutSeriesDraft.ath && withoutSeries.inputs.jahreSeitAth === withoutSeriesDraft.jahreSeitAth
+    && withoutSeries.inputs.endeVJ === withoutSeriesDraft.endeVJ, 'Ohne Tageskurse: Marktschritt und Jahresentwurf gleich');
+assert(withoutSeries.high.origin === 'quote' && withoutSeries.high.value === 170.25, 'Ohne Tageskurse: Hoch aus gespeichertem Hoch und Abschlusskurs');
+// Gutachten P3-1: Ohne Kurse ab Historienstart bleibt die Marktlage „nicht belastbar“.
+assert(highCheckUnreliable(withoutSeries) && withoutSeries.unreliableReason.startsWith('Kursreihe hat ungeprüfte Tage'), 'Ohne Tageskurse keine belastbare Marktlage trotz Jahresendabruf');
 assertEqual(await projectAnnualMarketReadings({ ...options, quote: undefined }), null, 'Vor Jahresendabruf kein Vergleich');
 prices([140, 200, 169, 1000]);
 const baseline = draft();
 const before = JSON.stringify({ records, marketData });
 const view = await projectAnnualMarketReadings(options);
-assertEqual(view.rule.index, 170.25, 'Index verwendet unveränderten Abrufkurs mit Nachkommastellen');
-assertEqual(view.rule.high.value, 170.25, 'Regelhoch entspricht Jahresabschluss');
-assertEqual(view.high.high.value, 200, 'Gesamte gespeicherte Historie bis zum Jahresendkurs zählt');
-assertEqual(view.high.high.asOf, '2026-07-14', 'Höchster Schlusskurs behält Herkunft');
-assertEqual(view.rule.market.key, 'peak_hot', 'Engine liefert Regelphase');
-assertEqual(view.high.market.key, 'corr_young', 'Engine liefert zweite Phase');
-assertEqual(JSON.stringify({ records, marketData }), before, 'Vergleich verändert weder Speicher noch vorbereitete Werte');
-assert(draft() === baseline, 'Übernommener Jahresentwurf bleibt nach Vergleich bytegleich');
+assertEqual(view.index, 170.25, 'Index verwendet unveränderten Abrufkurs mit Nachkommastellen');
+assertEqual(view.high.value, 200, 'Gesamte gespeicherte Historie bis zum Jahresendkurs zählt');
+assertEqual(view.high.asOf, '2026-07-14', 'Höchster Schlusskurs behält Herkunft');
+assertEqual(view.market.key, 'corr_young', 'Engine liefert die Marktlage zum Allzeithoch');
+assertEqual(view.inputs.ath, JSON.parse(JSON.parse(baseline).records[key]).inputs.ath, 'Anzeige und Jahresentwurf verwenden dasselbe Hoch');
+assertEqual(JSON.stringify({ records, marketData }), before, 'Anzeige verändert weder Speicher noch vorbereitete Werte');
+assert(draft() === baseline, 'Übernommener Jahresentwurf bleibt nach der Anzeige bytegleich');
 const doc = new MockDocument(), all = node => [node, ...node.children.flatMap(all)];
 const content = node => node.textContent.replaceAll('\u00a0', ' ');
 const rendered = createAnnualMarketReadings(doc, view);
-// WT-1 (FR-77 Punkt 5): Junge Korrektur am Jahreshoch ist kein verdeckter Bärenmarkt; der Schritt Marktdaten zeigt nichts zum Jahreshoch.
-assert(rendered.hidden && !rendered.children.length, 'Kein verdeckter Bär: keine Lesarten-Tabelle im Jahresabschluss');
+// FR-89: Der Schritt Marktdaten zeigt Allzeithoch mit Datum, Abstand, Marktlage und Kursschwelle, ohne zweite Lesart.
+const shown = all(rendered).map(node => content(node)).join(' | ');
+assert(!rendered.hidden && shown.includes('200,00 € · Tagesschluss vom 14.07.2026') && shown.includes('Junge Korrektur') && !shown.includes('Jahresendregel'), `Jahresabschluss zeigt ein Hoch (${shown})`);
 prices([170.25, 170.25], ['2026-07-14', '2026-12-31']);
-const equal = createAnnualMarketReadings(doc, await projectAnnualMarketReadings(options));
-assert(equal.hidden && !content(equal).includes('Nahe am Jahreshoch'), 'Gleiche Varianten zeigen nichts');
+const equal = await projectAnnualMarketReadings(options);
+assertEqual(equal.high.origin, 'quote', 'Gleicher Schluss am Stichtag: der Jahresendkurs ist das Hoch');
 prices([500, 600], ['2025-12-31', '2027-01-01']);
-assertEqual((await projectAnnualMarketReadings(options)).high.high.value, 500, 'Früheres Hoch zählt auch ohne gespeicherten Schluss im Abschlussjahr');
+assertEqual((await projectAnnualMarketReadings(options)).high.value, 500, 'Früheres Hoch zählt auch ohne gespeicherten Schluss im Abschlussjahr');
 const absent = createAnnualMarketReadings(doc, null);
 assert(absent.hidden && !absent.children.length, 'Ohne Kurs kein sichtbarer Text');
 
@@ -73,8 +82,6 @@ async function prepared(projectMarketReadings, visible = false) {
     const host = doc.getElementById('balanceAnnualClose');
     if (visible) assert(host.querySelector('[data-close-dialog-step="market"]').querySelector('[data-annual-market-readings]'), 'Vergleich im Marktdatenschritt der gemeinsamen Abschlusskette');
     await prepareCloseFixture(doc);
-    const choice = doc.querySelector('[data-annual-market-reading=\"year_end\"]');
-    if (choice) { choice.checked = true; await choice.fire('change'); }
     await doc.getElementById('annualConfirmBtn').fire('click');
     const result = await pending;
     binding.close(true);
@@ -82,14 +89,13 @@ async function prepared(projectMarketReadings, visible = false) {
 }
 assertEqual(await prepared(async () => view, true), await prepared(async () => null), 'Bestätigung liefert mit und ohne Vergleich bytegleiche übernommene Werte');
 
-// TN-1: Echter update()-Weg, einschließlich noch laufender und überholter Projektionen. Seit WT-1 steht im Schritt Marktdaten
-// nur noch der Hinweis „nicht belastbar“; geprüft wird, dass gleiche Ergebnisse den Knoten behalten und überholte nichts ersetzen.
+// TN-1: Echter update()-Weg, einschließlich noch laufender und überholter Projektionen. Geprüft wird am Hinweis „nicht belastbar“,
+// dass gleiche Ergebnisse den Knoten behalten und überholte nichts ersetzen.
 {
     const { doc } = createDialogFixture();
     const model = { occasion: { previousYear: 2026, previousMonth: 12 }, expenses: { complete: true } };
     let binding, resolveReading;
-    const unreliable = reason => ({ withoutQuote: true, withoutQuoteReason: reason, quote: null, yearEndDate: null, readingsEqual: true,
-        comparison: { state: 'not_reliable', text: 'Vergleich nicht belastbar verfügbar', reason, rule: null, high: null, difference: null, changedParts: [] } });
+    const unreliable = reason => ({ withoutQuote: true, withoutQuoteReason: reason, unreliableReason: reason, quote: null, yearEndDate: null });
     let nextView = unreliable('Kurse fehlen'), delay = false;
     const ui = createAnnualCloseDialog({ document: doc, getModel: () => model, isCommitActive: () => false,
         projectMarketReadings: () => delay ? new Promise(resolve => { resolveReading = resolve; }) : Promise.resolve(structuredClone(nextView)),
@@ -117,22 +123,19 @@ assertEqual(await prepared(async () => view, true), await prepared(async () => n
     binding.close(false); await pending;
 }
 
-// Balance: Beim verdeckten Bärenmarkt behält der Kursverlauf seine Auswahl über gleiche und geänderte Ergebnisse.
+// Balance: Die Kurszeile in „Was zu tun ist“ behält bei gleichem Ergebnis ihren Knoten und verschwindet mit belastbaren Kursen.
 {
     const { doc } = createDialogFixture();
     for (const id of ['balanceMarketPreview', 'balanceMarketPreviewBody']) {
         const node = doc.createElement('div'); node.id = id; doc.body.append(node);
     }
-    const bear = structuredClone(view); bear.high.market = { key: 'bear_deep', text: 'Tiefer Bär' };
+    const stale = { ...structuredClone(view), unreliableReason: 'letzter Schlusskurs älter als 10 Kalendertage' };
     const host = doc.getElementById('balanceMarketPreviewBody');
-    const history = () => host.querySelector('[data-market-history-details]');
-    renderBalanceMarketPreview(doc, bear);
-    const initial = history(); initial.open = true;
-    renderBalanceMarketPreview(doc, structuredClone(bear));
-    assert(history() === initial && history().open, 'TN-1: Balance behält bei gleichem Ergebnis den offenen Kursverlauf');
-    const changed = structuredClone(bear); changed.rule.index += 1;
-    renderBalanceMarketPreview(doc, changed);
-    assert(history() !== initial && history().open, 'TN-1: Balance erhält den offenen Kursverlauf bei geändertem Ergebnis');
+    const line = () => host.querySelector('[data-high-stale]');
+    renderBalanceMarketPreview(doc, stale);
+    const initial = line();
+    renderBalanceMarketPreview(doc, structuredClone(stale));
+    assert(initial && line() === initial, 'TN-1: Balance behält bei gleichem Ergebnis die Kurszeile');
     renderBalanceMarketPreview(doc, view);
-    assert(!history() && doc.getElementById('balanceMarketPreview').hidden, 'TN-1: ohne verdeckten Bären verschwindet der Block');
+    assert(!line() && doc.getElementById('balanceMarketPreview').hidden, 'TN-1: mit belastbaren Kursen verschwindet die Zeile');
 }

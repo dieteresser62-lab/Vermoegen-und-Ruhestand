@@ -1,0 +1,139 @@
+{
+  "reason": "HP-3 Punkt 1 (FR-78 Ergänzung 6, Nutzer 20.11.2026: „Das verwirrt - korrigieren“): Zeigen die Verkaufszeilen genaue Beträge, rundet der Kopf von „Was zu tun ist“ die Summe der Zeilen auf den Euro einmal, statt je Zeile aufgerundete Beträge zu addieren. „Wohin das Geld geht“, der Zufluss in „Deine Reserven“ (nach Umsetzung) und die Handlungsanweisung im Planvergleich der Übersicht folgen diesem Kopf, damit jede Karte weiter in sich aufgeht (Ergänzung 2). HP-3 Punkt 3: Das Erbschaftsteuer-ⓘ nennt bei „Euro von heute“ hinter Zugewinnausgleich und Versorgungsfreibetrag „gilt nominal, in Euro von heute …“. Nur synthetische Beispielhaushalte.",
+  "changes": [
+    {
+      "test": "tests/rd-1b-sollfaelle.test.mjs",
+      "field": "Max und Erika 23.10.2026, „Was zu tun ist“: Handlungszeile und „Wohin das Geld geht“",
+      "old": { "kopf": "ca. 89.500 €", "rest": "89.500 €" },
+      "new": { "kopf": "ca. 90.000 €", "rest": "90.000 €" },
+      "reason": "Zeilen 9.363 € + 79.950 € = 89.313 €, einmal aufgerundet (Stufe 5.000 €) 90.000 €. Vorher 9.500 € + 80.000 € = 89.500 €."
+    },
+    {
+      "test": "tests/rd-1b-sollfaelle.test.mjs",
+      "field": "Max und Erika 23.10.2026, „Deine Reserven“: Liquidität und Geldmarkt nach Umsetzung",
+      "old": { "liquiditaet": "179.500 €", "geldmarkt": "147.000 €" },
+      "new": { "liquiditaet": "180.000 €", "geldmarkt": "147.500 €" },
+      "reason": "Zufluss wie der Kopf der Karte: 90.000 € + 90.000 € = 180.000 €, Tagesgeld bleibt auf dem Ziel 32.500 €, der Geldmarkt nimmt den Rest."
+    },
+    {
+      "test": "tests/rd-1-sollfaelle.test.mjs",
+      "field": "Max und Erika 23.10.2026: Liquidität nach Umsetzung",
+      "old": "179.500 €",
+      "new": "180.000 €",
+      "reason": "Wie oben: heute 90.000 € plus angezeigter Plan 90.000 €."
+    },
+    {
+      "test": "tests/rd-1-sollfaelle.test.mjs",
+      "field": "Max und Erika 23.10.2026: Handlungszeile",
+      "old": "Aktien verkaufen ca. 89.500 € netto",
+      "new": "Aktien verkaufen ca. 90.000 € netto",
+      "reason": "Summe der Zeilen 89.313 € einmal aufgerundet."
+    },
+    {
+      "test": "tests/vn-1-sollfaelle.test.mjs",
+      "field": "Punkt 4, offener Plan 89.312,16 €: Handlungszeile",
+      "old": "ca. 89.500 €",
+      "new": "ca. 90.000 €",
+      "reason": "Zeilen 9.363 € + 79.950 € = 89.313 €, einmal aufgerundet; die Zeilen bleiben auf den Euro."
+    },
+    {
+      "test": "tests/wt-1b-sollfaelle.test.mjs",
+      "field": "Befund 11: Karte zeigt weiter den Beleg",
+      "old": "Aktien verkaufen ca. 89.500 €",
+      "new": "Aktien verkaufen ca. 90.000 €",
+      "reason": "Derselbe Beleg von Max und Erika, Kopf aus der Summe der Zeilen. Die Reserven mit der Neuberechnung (180.500 €) bleiben."
+    },
+    {
+      "test": "tests/wt-1-sollfaelle.test.mjs",
+      "field": "S1 offen: Handlungszeile",
+      "old": "Aktien verkaufen ca. 89.500 € netto",
+      "new": "Aktien verkaufen ca. 90.000 € netto",
+      "reason": "Summe der Zeilen 89.313 € einmal aufgerundet."
+    },
+    {
+      "test": "tests/wt-1-sollfaelle.test.mjs",
+      "field": "S1 Ergebnis: „Der Rest in den Geldmarkt“",
+      "old": "57.000 €",
+      "new": "57.500 €",
+      "reason": "Angezeigter Plan 90.000 € minus Tagesgeld 32.500 €."
+    },
+    {
+      "test": "tests/rd-1c-sollfaelle.test.mjs",
+      "field": "8: Übersicht echt, Jan und Lena 28.10.2026, Handlungsanweisung „Beschlossener Plan“",
+      "old": "102.500 € netto",
+      "new": "100.000 € netto",
+      "reason": "Zeilen 58.118 € + 41.882 € = 100.000 €, liegt auf der Stufe. Vorher 60.000 € + 42.500 € = 102.500 €. Die Übersicht nennt denselben Betrag wie der Kopf der Karte."
+    },
+    {
+      "test": "tests/rd-1c-sollfaelle.test.mjs",
+      "field": "RD-1e Kaufanteil offen (Gold 10.300 €): Kopf und Rest in den Geldmarkt",
+      "old": { "kopf": "ca. 89.500 €", "rest": "79.500 €" },
+      "new": { "kopf": "ca. 90.000 €", "rest": "80.000 €" },
+      "reason": "Kopf 90.000 €, Gold abgerundet 10.000 €, der Rest nimmt den Unterschied."
+    },
+    {
+      "test": "tests/rd-1c-sollfaelle.test.mjs",
+      "field": "RD-1f Anteile (Gold 14.900 / 10.300 / 300 €): Kopf und Rest, Karte und Jahresabschluss",
+      "old": { "kopf": "ca. 89.500 €", "rest": ["75.500 €", "79.500 €", "89.250 €"] },
+      "new": { "kopf": "ca. 90.000 €", "rest": ["76.000 €", "80.000 €", "89.750 €"] },
+      "reason": "Kopf 90.000 € statt 89.500 €; jeder Rest ist Kopf minus abgerundetes Gold und steigt um 500 €."
+    },
+    {
+      "test": "tests/balance-action-origin.test.mjs",
+      "field": "BA-1b: Kopf bei einer Planzeile mit 1.000,49 € netto",
+      "old": "1.250 €",
+      "new": "ca. 1.000 €",
+      "reason": "Die Zeile steht auf den Euro als 1.000 €; der Kopf rundet diese Summe, 1.000 € liegt auf der Stufe. Vorher wurde 1.000,49 € je Zeile auf 1.250 € aufgerundet."
+    },
+    {
+      "test": "tests/gu-1-sollfaelle.test.mjs",
+      "field": "S4: Reservekarte nach Umsetzung (Max und Erika, Projektion)",
+      "old": "179.500 €",
+      "new": "180.000 €",
+      "reason": "Zufluss wie der Kopf der Karte, 90.000 € + 90.000 €."
+    },
+    {
+      "test": "tests/gu-1b-sollfaelle.test.mjs",
+      "field": "A1: Reservekarte nach Umsetzung (Beleg offen)",
+      "old": "179.500 €",
+      "new": "180.000 €",
+      "reason": "Zufluss wie der Kopf der Karte, 90.000 € + 90.000 €. A3 (teilweise, offener Rest auf den Euro) und der Planversuch (180.500 €) bleiben."
+    },
+    {
+      "test": "tests/gn-1-sollfaelle.test.mjs",
+      "field": "Max und Erika 23.10.2026: Reserven nach Umsetzung (Deckung 109 % bleibt)",
+      "old": "179.500 €",
+      "new": "180.000 €",
+      "reason": "Zufluss wie der Kopf der Karte, 90.000 € + 90.000 €; 180.000 € zu 165.000 € sind weiter 109 %."
+    },
+    {
+      "test": "tests/gn-1-sollfaelle.test.mjs",
+      "field": "N3: Liquidität nach Umsetzung bei Verkäufen 9.362 + 79.950 € und Kauf 2.000 €",
+      "old": 177500,
+      "new": 178000,
+      "reason": "Verkäufe wie der Kopf: 89.312 € einmal aufgerundet 90.000 € (vorher 9.500 + 80.000 €), 90.000 + 90.000 − 2.000 €."
+    },
+    {
+      "test": "tests/gn-2b-sollfaelle.test.mjs",
+      "field": "Übersicht 23.10.2026, Liquidität nach Umsetzung: Jan und Lena, Helga und Werner",
+      "old": { "jan-lena": "51 %", "helga-werner": "108 %" },
+      "new": { "jan-lena": "50 %", "helga-werner": "107 %" },
+      "reason": "Jan und Lena: Plan 58.118 + 41.882 = 100.000 € (vorher 102.500 €), 160.000 € zu 320.000 €. Helga und Werner: 18.449 + 21.341 = 39.790 € → 40.000 € (vorher 19.000 + 22.000 = 41.000 €), 80.000 € zu 75.000 €. Balance und Übersicht bleiben gleich."
+    },
+    {
+      "test": "tests/gn-2c-sollfaelle.test.mjs",
+      "field": "Mit Beleg, Balance | Plan: Jan und Lena, Helga und Werner",
+      "old": { "jan-lena": "51 % | 51 %", "helga-werner": "108 % | 108 %" },
+      "new": { "jan-lena": "50 % | 50 %", "helga-werner": "107 % | 107 %" },
+      "reason": "Wie GN-2b; der Unterschied zur Vorschau (GN-2d) rechnet der Test aus den angezeigten Werten."
+    },
+    {
+      "test": "tests/jd-1-gleichheit.test.mjs",
+      "field": "protocolHash (Protokolltexte zur Erbschaftsteuer)",
+      "old": "11474cb2dbe6ce07af7a267e86676bc3725ad591ce2c1f4388be8c10a7d660a6",
+      "new": "2a426243c70381f9eb6a4197605954ffe2793632986b2279a863863bd3233b3a",
+      "reason": "HP-3 Punkt 3: Bei „Euro von heute“ steht „, gilt nominal, in Euro von heute 909 €“ hinter dem Zugewinnausgleich. Ohne diesen Zusatz ergibt sich genau der alte Hash (geprüft)."
+    }
+  ],
+  "unchanged": ["measure-ph1", "Käufe aus dem Plan (Kopf = Summe der abgerundeten Kaufzeilen, VK-3d P4)", "Teilweise erledigte Pläne (offener Rest auf den Euro)", "Steuer und Rechnung"]
+}

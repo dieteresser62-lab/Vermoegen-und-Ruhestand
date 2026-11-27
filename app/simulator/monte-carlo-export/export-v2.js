@@ -31,7 +31,7 @@ function buildExportEnvelopeV2({ request, result, engine, app, exportedAt }) {
     return {
         schemaId: MONTE_CARLO_EXPORT_SCHEMA_ID,
         schemaVersion: /** @type {'MonteCarloExportV2'} */ (MONTE_CARLO_EXPORT_V2_VERSION),
-        exportedAtUtc: normalizeExportedAt(exportedAt),
+        exportedAtUtc: normalizeExportedAt(exportedAt, MONTE_CARLO_EXPORT_V2_VERSION),
         app: normalizeMonteCarloJsonValue(app, { path: '$.app' }),
         engine: normalizeMonteCarloJsonValue(engine || {}, { path: '$.engine' }),
         snapshotPolicy: { ...MONTE_CARLO_SNAPSHOT_POLICY },

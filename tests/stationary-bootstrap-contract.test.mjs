@@ -53,7 +53,9 @@ console.log('--- Stationary Bootstrap Contract Tests ---');
         useCapeSampling: true,
         startYearMode: 'RECENCY'
     });
-    assertEqual(policy.blockStartSelector, 'CAPE', 'CAPE sampling has priority for new block starts');
+    // MS-1 (NG-8): CAPE wählt nur den ersten Block, spätere Blockstarts ziehen gleich gewichtet aus dem Fenster.
+    assertEqual(policy.initialBlockSelector, 'CAPE', 'CAPE sampling has priority for the first block');
+    assertEqual(policy.blockStartSelector, 'UNIFORM', 'later block starts ignore CAPE and the overridden recency weighting');
     assertEqual(policy.capeHasPriority, true, 'CAPE priority is explicit in the contract');
     assertEqual(
         policy.weightedSelectionScope,
@@ -78,10 +80,12 @@ console.log('--- Stationary Bootstrap Contract Tests ---');
         startYearMode: 'FILTER'
     });
     assertEqual(policy.blockStartSelector, 'FILTER', 'FILTER selects new block starts when CAPE is inactive');
+    assertEqual(policy.initialBlockSelector, 'FILTER', 'FILTER also selects the first block when CAPE is inactive');
     assertEqual(policy.capeHasPriority, false, 'CAPE priority is inactive when CAPE sampling is off');
 }
 
 {
+    // Seit MS-1 (NG-9) entsteht data_end nicht mehr; der Name bleibt für alte Diagnosen lesbar.
     assertEqual(STATIONARY_BOOTSTRAP_RESTART_REASONS.DATA_END, 'data_end', 'data_end restart reason is contractual');
     assertEqual(STATIONARY_BOOTSTRAP_RESTART_REASONS.RANDOM, 'random', 'random restart reason is contractual');
 }

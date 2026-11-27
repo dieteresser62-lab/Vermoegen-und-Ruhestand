@@ -18,6 +18,7 @@ import { simulateOneYear } from '../app/simulator/simulator-engine-direct.js';
 import { createPresentationTestDocument } from './designsystem-source-contract.mjs';
 import { PersistenceFacade as P } from '../app/shared/persistence-facade.js';
 import { setAppTestDate } from '../app/shared/app-clock.js';
+import { readKR1bReferences } from './helpers/kr-1b-expectations.mjs';
 
 // GL-1 / AS1: gekürzte Anzeigeobjekte und ungültige Einkünfte bleiben endlich.
 const surplusInput = { renteAktiv: true, renteMonatlich: 4000, floorBedarf: 24000, flexBedarf: 12000 };
@@ -106,5 +107,5 @@ for (const control of controls.probes) {
     assert(!result.error, `${control.label}: Entnahmejahr gerechnet`);
     assertEqual(decidedFixedIncomeSurplus({ ...result.ui, input: control.input }), 0, `${control.label}: kein FR-52-Überschuss`);
     const actual = createHash('sha256').update(JSON.stringify(result)).digest('hex');
-    assertEqual(actual, readVF2DReferences(readGL1References(control.beforeSha256)), `${control.label}: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich`);
+    assertEqual(actual, readKR1bReferences(readVF2DReferences(readGL1References(control.beforeSha256))), `${control.label}: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich`);
 }

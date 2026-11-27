@@ -13,9 +13,6 @@ const { inputs: fixture } = await load(baseline, 'tests/extended/parity-replay-f
 const { readCareInputs } = await load(baseline, 'app/simulator/simulator-input-care.js');
 const { runFixture: currentBacktest } = await load(root, 'tests/extended/parity-replay-fixture.mjs');
 const { runMonteCarloChunk } = await load(root, 'app/simulator/monte-carlo-runner.js');
-const { runSweepChunk } = await load(root, 'app/simulator/sweep-runner.js');
-const { createStressReplayCaptureRequest } = await load(root, 'app/simulator/stress-replay-path-materializer.js');
-const { careAllowanceAnnual } = await load(resolve(import.meta.dirname, '..'), 'app/shared/care-benefits.js');
 const { EngineAPI } = await load(root, 'engine/index.mjs');
 const html = readFileSync(resolve(baseline, 'Simulator.html'), 'utf8');
 const careDefaults = readCareInputs({ doc: { getElementById(id) {
@@ -38,33 +35,24 @@ const params = { anzahl: Number(countArg), maxDauer: 47, methode: 'block', block
     seed: 12345, rngMode: 'per-run-seed', startYearMode: 'UNIFORM' };
 const backtestOnly = process.argv.includes('--backtest-only');
 const result = backtestOnly ? JSON.parse(readFileSync(output, 'utf8')) : { params, source: root === baseline ? 'PG-1' : 'FR-47', scenarios: {} };
-const isOld = root === baseline;
 for (const [name, inputs] of Object.entries(scenarios)) {
     const digest = createHash('sha256'), wealth = [];
     let bytes = 0, failed = 0, careCost = 0, allowance = 0;
     for (let start = 0; start < (backtestOnly ? 0 : params.anzahl); start += 50) {
         const count = Math.min(50, params.anzahl - start), indices = Array.from({ length: count }, (_, i) => start + i);
         const chunk = await runMonteCarloChunk({ inputs, monteCarloParams: params, widowOptions: inputs.widowOptions,
-            useCapeSampling: true, runRange: { start, count }, logIndices: new Set(indices),
-            stressReplayCapture: createStressReplayCaptureRequest(indices), engine: EngineAPI });
+            useCapeSampling: true, runRange: { start, count }, logIndices: new Set(indices), engine: EngineAPI });
         if (!chunk.financialMetricsValid || chunk.batchStatus !== 'completed') throw new Error('Technischer Messfehler.');
         const serialized = JSON.stringify(chunk); digest.update(serialized); bytes += Buffer.byteLength(serialized);
         wealth.push(...chunk.pathSummaries.finalValueRealEur); failed += chunk.totals.failCount;
         for (const meta of chunk.runMeta) {
             let inflation = 1;
-            for (const year of meta.stressReplayCapture.years) {
-                const event = year.householdEvents[0];
-                for (const p of [1, 2]) {
-                    const care = event?.[`careMetaP${p}`];
-                    if (!care?.active) continue;
-                    const weight = event[`p${p}Alive`] ? 1 : .5;
-                    careCost += care.zusatzFloorZiel * weight / inflation;
-                    // Voller Lebenspfad einschließlich Schattenjahre nach finanziellem Ruin.
-                    allowance += isOld ? (care.initialAllowanceAsIncome && care.grade === care.initialGrade
-                        ? [0, 0, 347, 599, 800, 990][care.grade] * 12 * weight : 0)
-                        : careAllowanceAnnual({ grade: care.grade, preset: inputs.pflegeKostenStaffelPreset, lifeFactor: weight });
-                }
-                inflation *= 1 + year.inflationPct / 100;
+            // MC-Protokollzeilen bis Ruin bzw. letztem Tod; seit dem Wegfall des Stresspfad-Replays ohne Schattenjahre.
+            // Pflegegeld wie im Backtest aus dem Protokoll, auch für die alte Basis (dort früher aus dem Replay-Personenzustand).
+            for (const row of meta.logDataRows) {
+                careCost += (row.pflege_zusatz_floor || 0) / inflation;
+                allowance += (row.pflegegeld || 0) / inflation;
+                inflation *= 1 + (row.inflation || 0) / 100;
             }
         }
         if ((start + count) % 500 === 0) console.log(`${result.source}/${name}: ${start + count}/${params.anzahl}`);
@@ -78,9 +66,6 @@ for (const [name, inputs] of Object.entries(scenarios)) {
         const probe = { ...params, anzahl: 4, maxDauer: 12 };
         probes[`${couple ? 'couple' : 'single'}-mc`] = hash(await runMonteCarloChunk({ inputs: probeInputs, monteCarloParams: probe,
             widowOptions: inputs.widowOptions, useCapeSampling: false, logIndices: new Set([0, 1, 2, 3]), engine: EngineAPI }));
-        probes[`${couple ? 'couple' : 'single'}-sweep`] = hash(runSweepChunk({ baseInputs: probeInputs,
-            paramCombinations: [{ liquidityRunwayYears: 3, goldRebalancingBand: 20, maxSkimPct: 10, maxBearRefillPct: 5, goldTargetPct: 0 }],
-            sweepConfig: { anzahlRuns: 4, maxDauer: 12, blockSize: 3, baseSeed: 12345, methode: 'block', rngMode: 'per-run-seed', startYearMode: 'UNIFORM' }, engine: EngineAPI }));
     }
     result.scenarios[name] = { ...(backtestOnly ? result.scenarios[name] : { inputHash: hash(inputs), completeOutputSha256: digest.digest('hex'), outputBytes: bytes,
         successPct: 100 * (params.anzahl - failed) / params.anzahl, realEndP10: q(.1), realEndP50: q(.5),

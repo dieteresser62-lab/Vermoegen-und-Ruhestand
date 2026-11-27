@@ -5,7 +5,7 @@ function createDocument(session = new Map()) {
     const elements = new Map();
     const doc = { getElementById: id => elements.get(id), activeElement: null,
         defaultView: { location: { hash: '' }, sessionStorage: { getItem: key => session.get(key), setItem: (key, value) => session.set(key, value) }, listeners: {}, addEventListener(type, fn) { this.listeners[type] = fn; } } };
-    for (const id of ['managerCardsToggleAll', 'managerBirthSupplement', 'managerBirthDate', 'profileGeburtsdatum', ...['Person', 'Assets', 'Care'].flatMap(card => [`manager${card}Toggle`, `manager${card}Action`, `manager${card}Body`])]) {
+    for (const id of ['managerBirthSupplement', 'managerBirthDate', 'profileGeburtsdatum', ...['Person', 'Assets', 'Care'].flatMap(card => [`manager${card}Toggle`, `manager${card}Action`, `manager${card}Body`])]) {
         elements.set(id, { hidden: true, textContent: '', attrs: {}, listeners: {}, setAttribute(key, value) { this.attrs[key] = value; },
             addEventListener(type, fn) { this.listeners[type] = fn; }, click() { this.listeners.click?.(); }, focus() { doc.activeElement = this; } });
     }
@@ -24,11 +24,11 @@ doc.getElementById('managerPersonToggle').click();
 assert(!open('Person') && !open('Assets'), 'Ein nativer Klick schließt genau eine Karte einmal');
 doc.getElementById('managerPersonToggle').click();
 assertEqual(doc.getElementById('managerPersonToggle').attrs['aria-expanded'], 'true', 'ARIA-Zustand folgt der sichtbaren Region');
-assertEqual(doc.getElementById('managerCardsToggleAll').textContent, '▸ Alle Details zeigen', 'Gemischter Zustand bietet Öffnen an');
-doc.getElementById('managerCardsToggleAll').click();
-assert(['Person', 'Assets', 'Care'].every(open), 'Gesamtknopf öffnet aus gemischtem Zustand alle');
-doc.getElementById('managerCardsToggleAll').click();
-assert(['Person', 'Assets', 'Care'].every(card => !open(card)), 'Gesamtknopf schließt aus vollständig offenem Zustand alle');
+// OP-3 Punkt 4: Kein Gesamtknopf mehr; die Einzelknöpfe öffnen und schließen jede Karte.
+for (const card of ['Assets', 'Care']) doc.getElementById(`manager${card}Toggle`).click();
+assert(['Person', 'Assets', 'Care'].every(open), 'Einzelknöpfe öffnen aus gemischtem Zustand alle');
+for (const card of ['Person', 'Assets', 'Care']) doc.getElementById(`manager${card}Toggle`).click();
+assert(['Person', 'Assets', 'Care'].every(card => !open(card)), 'Einzelknöpfe schließen aus vollständig offenem Zustand alle');
 doc.getElementById('managerAssetsToggle').click(); api.sync();
 assert(open('Assets'), 'Rerender erhält Zustand');
 person = 'b'; api.sync(); assert(!open('Assets'), 'Person B beginnt unabhängig geschlossen');
@@ -68,15 +68,13 @@ assert(describePersonDates({ profile_rentenbeginn: '2026-07-01' }, 2027).pension
 {
     const drift = createDocument(); bindManagerPersonCards(drift, () => 'a');
     for (const card of ['Person', 'Assets', 'Care']) drift.getElementById(`manager${card}Body`).hidden = false;
-    drift.getElementById('managerCardsToggleAll').click();
-    assert(['Person', 'Assets', 'Care'].every(card => drift.getElementById(`manager${card}Body`).hidden), 'Erster Gesamtklick schließt tatsächlich alle offenen Regionen trotz geschlossener Erinnerung');
+    drift.getElementById('managerPersonToggle').click();
+    assert(drift.getElementById('managerPersonBody').hidden && !drift.getElementById('managerAssetsBody').hidden && !drift.getElementById('managerCareBody').hidden,
+        'Erster Einzelklick schließt tatsächlich die offene Region trotz geschlossener Erinnerung und lässt die übrigen sichtbar');
 }
 
 function assertCardState(doc, label) {
     const present = ['Person', 'Assets', 'Care'].filter(card => doc.getElementById(`manager${card}Body`));
-    const all = present.every(card => !doc.getElementById(`manager${card}Body`).hidden);
-    assertEqual(doc.getElementById('managerCardsToggleAll').attrs['aria-expanded'], String(all), label + ': Gesamt-ARIA entspricht Regionen');
-    assertEqual(doc.getElementById('managerCardsToggleAll').textContent, all ? '▾ Alle Details ausblenden' : '▸ Alle Details zeigen', label + ': Gesamttext entspricht Regionen');
     for (const card of present) {
         const open = !doc.getElementById(`manager${card}Body`).hidden;
         assertEqual(doc.getElementById(`manager${card}Toggle`).attrs['aria-expanded'], String(open), label + ': Einzel-ARIA ' + card);
@@ -88,24 +86,24 @@ function assertCardState(doc, label) {
     const api = bindManagerPersonCards(doc, () => profile);
     assertCardState(doc, 'Initialisierung');
     doc.getElementById('managerPersonToggle').click(); assertCardState(doc, 'Einzelöffnung');
-    doc.getElementById('managerCardsToggleAll').click(); assertCardState(doc, 'Gesamtöffnung');
+    doc.getElementById('managerCareToggle').click(); assertCardState(doc, 'Zweite Einzelöffnung');
     doc.getElementById('managerAssetsToggle').click(); assertCardState(doc, 'Einzelschließen');
     api.openPerson(); assertCardState(doc, 'openPerson');
     doc.defaultView.location.hash = '#personendaten'; api.openTarget(); assertCardState(doc, 'Hashöffnung');
     api.sync(); assertCardState(doc, 'Rerender');
     profile = 'b'; api.sync(); assertCardState(doc, 'Profil B');
-    doc.getElementById('managerCardsToggleAll').click(); assertCardState(doc, 'Profil B geöffnet');
+    doc.getElementById('managerAssetsToggle').click(); assertCardState(doc, 'Profil B geöffnet');
     profile = 'a'; api.sync(); assertCardState(doc, 'A/B/A');
     const reload = createDocument(session); bindManagerPersonCards(reload, () => 'a'); assertCardState(reload, 'Sitzungsreload');
     const mixed = createDocument(); bindManagerPersonCards(mixed, () => 'a');
     mixed.getElementById('managerPersonBody').hidden = false;
-    mixed.getElementById('managerCardsToggleAll').click();
-    assert(['Person', 'Assets', 'Care'].every(card => !mixed.getElementById(`manager${card}Body`).hidden), 'Sichtbare Einzelöffnung wird beim Gesamtklick nicht aus Erinnerung zurückgesetzt');
+    mixed.getElementById('managerAssetsToggle').click();
+    assert(['Person', 'Assets'].every(card => !mixed.getElementById(`manager${card}Body`).hidden), 'Sichtbare Einzelöffnung wird beim nächsten Einzelklick nicht aus Erinnerung zurückgesetzt');
     assertCardState(mixed, 'Sichtbare Einzelöffnung');
-    // Nur die tatsächlich vorhandenen Regionen bestimmen den Gesamtzustand.
+    // Fehlende Regionen stören die vorhandenen Einzelknöpfe nicht.
     const partial = createDocument(), originalLookup = partial.getElementById;
     partial.getElementById = id => id === 'managerCareBody' ? null : originalLookup(id);
-    bindManagerPersonCards(partial, () => 'a'); partial.getElementById('managerCardsToggleAll').click();
+    bindManagerPersonCards(partial, () => 'a'); partial.getElementById('managerPersonToggle').click();
     assertCardState(partial, 'Zwei vorhandene Regionen');
     const blocked = createDocument(); blocked.defaultView.sessionStorage.getItem = blocked.defaultView.sessionStorage.setItem = () => { throw new Error('blocked'); };
     const blockedApi = bindManagerPersonCards(blocked, () => 'a'); blockedApi.openPerson(); assertCardState(blocked, 'Gesperrter Sitzungsspeicher');

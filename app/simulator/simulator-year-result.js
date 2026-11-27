@@ -37,6 +37,7 @@ const PERSONAL_FLEX_CUT_SOURCE = 'persönlicher Anteil ungedeckt';
  * @param options.jahresEntnahmeEffektiv
  * @param {number} [options.personalFlexCutNominal] FR-81: persönliche Flex-Kürzung Unverheirateter (nur für den Engine-Anker).
  * @param {number} [options.personalFlexCutTotal] RK-3 Punkt 1: ganze persönliche Flex-Kürzung Unverheirateter im Haushalt.
+ * @param {number} [options.careAidNominal] FR-84 (NK-1b): Hilfe zur Pflege aus der Auszahlung; der Staat zahlt sie, sie ist keine Kürzung.
  * @param options.liqBeforePayout
  * @param options.liqAfterPayout
  * @param options.portfolioTotalBeforePayout
@@ -67,7 +68,8 @@ const PERSONAL_FLEX_CUT_SOURCE = 'persönlicher Anteil ungedeckt';
  * @param options.goldAfterSales
  * @param options.goldAfterBuys
  * @param options.cashZinsen
- * @param options.liqNachZins
+ * @param options.liqNachZins Liquidität unmittelbar nach dem Zins des Jahres, vor Auszahlung und Umschichtung.
+ * @param options.liqJahresende Liquidität am Jahresende nach allen Bewegungen, vor der Steuerabrechnung.
  * @param options.zielLiquiditaet
  * @param options.bondBucketBefore
  * @param options.bondRefillGross
@@ -100,7 +102,6 @@ const PERSONAL_FLEX_CUT_SOURCE = 'persönlicher Anteil ungedeckt';
  * @param [options.healthBucketCoverage]
  * @param [options.healthBucketInterest]
  * @param [options.healthBucketDiagnostics]
- * @param [options.stressReplayTransactionDiagnostics]
  * @param [options.balanceTrace]
  * @param {boolean} [options.preserveLogOrder]
  * @returns Ergebnis der Operation.
@@ -127,6 +128,7 @@ export function buildSimulatorYearResult({
     jahresEntnahmeEffektiv,
     personalFlexCutNominal,
     personalFlexCutTotal,
+    careAidNominal = 0,
     liqBeforePayout,
     liqAfterPayout,
     portfolioTotalBeforePayout,
@@ -158,6 +160,7 @@ export function buildSimulatorYearResult({
     goldAfterBuys,
     cashZinsen,
     liqNachZins,
+    liqJahresende,
     zielLiquiditaet,
     bondBucketBefore,
     bondRefillGross,
@@ -190,10 +193,10 @@ export function buildSimulatorYearResult({
     healthBucketCoverage = null,
     healthBucketInterest = null,
     healthBucketDiagnostics = null,
-    stressReplayTransactionDiagnostics = null,
     balanceTrace = [],
     preserveLogOrder = true
 }) {
+    const careAid = Math.max(0, Number(careAidNominal) || 0);
     const kaufAktTotal = buyEqAmount + kaufAkt;
     const totalGoldKauf = buyGoldAmount + kaufGld;
     let aktionText = shortenReasonText(
@@ -225,7 +228,8 @@ export function buildSimulatorYearResult({
     const nextSpendingState = {
         ...spendingNewState,
         cumulativeInflationFactor: nextCumulativeInflationFactor,
-        lastEntnahmeReal: (jahresEntnahmeEffektiv + (personalFlexCutNominal || 0)) / cumulativeInflationFactor
+        // FR-84 (NK-1b, Fable P1-2): Die Hilfe zur Pflege mindert den Engine-Anker nicht.
+        lastEntnahmeReal: (jahresEntnahmeEffektiv + (personalFlexCutNominal || 0) + careAid) / cumulativeInflationFactor
     };
     const {
         nextWidowPensionP1,
@@ -241,16 +245,17 @@ export function buildSimulatorYearResult({
     const portfolioActiveEnd = euros(wertAktien + wertGold + liquiditaet);
     const portfolioTotalEnd = euros(portfolioActiveEnd + healthBucketEnd);
     const taxCashAdjustment = signedEuros(actionResult?.taxSettlement?.taxCashAdjustment);
-    const signedCashInterest = Number.isFinite(Number(cashZinsen)) ? Number(cashZinsen) : 0;
+    // KR-1c (NG-5): Der Zins des Jahres ist vor der Entscheidung gebucht und steckt schon im Bestand vor der Auszahlung.
     const portfolioFlowDelta = portfolioActiveEnd - (
         euros(portfolioTotalBeforePayout)
         - euros(jahresEntnahmeEffektiv)
         - (expenseLog?.geplante_ausgaben || 0)
-        + signedCashInterest
         + taxCashAdjustment
-        - (inheritanceLog?.abgang_erben || 0)
+        // ER-2: Das Wohnkapital kommt aus dem Hausverkauf im Erbfall aufs Tagesgeld.
+        - ((inheritanceLog?.abgang_erben || 0) + (inheritanceLog?.inheritance?.estateCosts || 0) - (inheritanceLog?.wohnkapital || 0))
         + (inheritanceLog?.healthLeaves || 0)
-        - (inheritanceLog?.erbschaftsteuer || 0)
+        // NK-2: Ungedeckte Erbschaftsteuer bleibt Schuld und fließt nicht ab.
+        - ((inheritanceLog?.erbschaftsteuer || 0) - (inheritanceLog?.inheritancePayment?.shortfall > .01 ? inheritanceLog.inheritancePayment.shortfall : 0))
     );
     const normalizedBalanceTrace = Array.isArray(balanceTrace)
         ? balanceTrace.map(entry => ({
@@ -316,15 +321,18 @@ export function buildSimulatorYearResult({
         grossHouseholdFlex,
         pensionFlexSurplus
     );
-    const fulfilledFlexFromPortfolio = jahresEntnahmeEffektiv > inflatedFloor
-        ? jahresEntnahmeEffektiv - inflatedFloor
+    // FR-84 (NK-1b, Fable P1-2): Der Floor ohne Staatsanteil; die Hilfe zur Pflege ist keine Flex-Kürzung.
+    const floorFromPortfolio = Math.max(0, inflatedFloor - careAid);
+    // Mit Hilfe zur Pflege ein Cent Spielraum, damit Rundungsreste keinen Schein-Flex ergeben.
+    const fulfilledFlexFromPortfolio = jahresEntnahmeEffektiv > floorFromPortfolio + (careAid > 0 ? 0.01 : 0)
+        ? jahresEntnahmeEffektiv - floorFromPortfolio
         : 0;
     // RK-3 Punkt 1 (FR-81 Punkt 3): Eine persönliche Flex-Kürzung Unverheirateter mindert den gezahlten Haushalts-Flex wie eine Kürzung
     // bei Verheirateten, auch wenn sie aus verbrauchten Einkünften fehlt. Basis ist die geplante Auszahlung, die Kürzung zählt ganz.
     const personalCut = personalFlexCutTotal > 0 ? personalFlexCutTotal : 0;
     const plannedPayout = jahresEntnahmeEffektiv + (personalFlexCutNominal || 0);
     const fulfilledHouseholdFlex = personalCut > 0
-        ? Math.max(0, pensionFlexContribution + Math.max(0, plannedPayout - inflatedFloor) - personalCut)
+        ? Math.max(0, pensionFlexContribution + Math.max(0, plannedPayout - floorFromPortfolio) - personalCut)
         : pensionFlexContribution + fulfilledFlexFromPortfolio;
     const displayedWishFlex = Number.isFinite(fullResult.input?.flexBedarf)
         ? fullResult.input.flexBedarf : inflatedFlex;
@@ -535,7 +543,8 @@ export function buildSimulatorYearResult({
             cash_interest_tax_delta: signedEuros(actionResult?.taxSettlement?.cashInterestTaxDelta),
             balance_trace: normalizedBalanceTrace,
             health_bucket_enabled: !!healthBucketDiagnostics?.enabled,
-            health_bucket_start: euros(healthBucketCoverage?.startAmount ?? healthBucketInterest?.startAmount),
+            // KR-1c: Start ist der Stand vor dem Zins; die Deckung sieht den Topf erst nach dem Zins.
+            health_bucket_start: euros(healthBucketInterest?.startAmount ?? healthBucketCoverage?.startAmount),
             health_bucket_triggered: !!healthBucketCoverage?.triggered,
             health_bucket_reason: healthBucketCoverage?.reason || '',
             health_bucket_eligible_need: euros(healthBucketCoverage?.eligibleNeed),
@@ -573,7 +582,7 @@ export function buildSimulatorYearResult({
             personAccounts: nextPortfolio.personAccounts?.map(person => ({ ...person })),
             personalTaxModel: actionResult.personalAnnualTaxes ? 'personal_annual_settlement' : 'legacy_pooled_tax_unproven',
             cashInterestEarned: cashZinsen,
-            liqEnd: inheritanceLog ? liquiditaet : liqNachZins,
+            liqEnd: inheritanceLog ? liquiditaet : liqJahresende,
             liq_post_payout_end_of_year: liquiditaet,
             zielLiquiditaet: zielLiquiditaet || 0,
             bondBucketAfter,
@@ -659,15 +668,6 @@ export function buildSimulatorYearResult({
     const logData = result.logData;
     // RK-3 Punkt 1: Grund der persönlichen Kürzung; der Schlüssel stammt schon aus `spendingResult`, die Reihenfolge bleibt.
     if (personalCutOnly) logData.entscheidung.kuerzungQuelle = cutSource;
-    if (Array.isArray(stressReplayTransactionDiagnostics)) {
-        logData.stressReplayTransactionDiagnostics = stressReplayTransactionDiagnostics.map(diagnostic => ({
-            ...diagnostic,
-            breakdown: Array.isArray(diagnostic?.breakdown)
-                ? diagnostic.breakdown.map(entry => ({ ...entry })) : [],
-            missingness: Array.isArray(diagnostic?.missingness)
-                ? diagnostic.missingness.map(entry => ({ ...entry })) : []
-        }));
-    }
     if (fullResult.input?.decumulation?.mode === '3_bucket_jilge') {
         Object.assign(logData, { wertAktienEnthaeltAnleihen: true,
             executedSaleAkt: legacySaleTotals.vkAkt, executedSaleAnl: legacySaleTotals.vkBnd });

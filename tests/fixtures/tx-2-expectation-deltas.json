@@ -1,0 +1,278 @@
+{
+  "reason": "TX-2 (Textpaket 2): Englische Restwörter in sichtbaren Texten heißen wie die eingeführten deutschen Begriffe aus Handbuch-Glossar, Jahresbudget und Handlungsanweisung (Floor = Grundbedarf, Runway = Reichweite, Guardrail = Leitplanke, Drawdown = Rückgang, Safety = Sicherheitsstufe/Sicherheitsgrenze, Pflegebucket = Pflegereserve). Engine-Texte bleiben unverändert und werden nur bei der Anzeige übersetzt; Exportköpfe, Logcodes und die Werte „Floor“/„Flex“ im Ausgabenimport bleiben. measure-ph1 ist vor und nach der Änderung gleich. Nur synthetische Testdaten.",
+  "changes": [
+    {
+      "test": "tests/results-metrics.test.mjs",
+      "field": "Titel der Monte-Carlo-Kennzahl",
+      "old": "Floor-Deckung im gewählten Horizont",
+      "new": "Grundbedarf gedeckt im gewählten Horizont",
+      "reason": "TX-2 Punkt 1: wie die vorhandene Kennzahl „Grundbedarf gedeckt“."
+    },
+    {
+      "test": "tests/simulator-monte-carlo-browser.mjs",
+      "field": "sichtbares Monte-Carlo-Ergebnis",
+      "old": "Floor-Deckung im gewählten Horizont",
+      "new": "Grundbedarf gedeckt im gewählten Horizont",
+      "reason": "TX-2 Punkt 1: dieselbe Kennzahl im Browserlauf."
+    },
+    {
+      "test": "tests/monte-carlo-outcome-horizon.test.mjs",
+      "field": "Meldung bei technischem Fehler",
+      "old": "Floor-Deckung im gewaehlten Horizont: nicht ausgewiesen. Terminale Outcomes:",
+      "new": "Grundbedarf gedeckt im gewählten Horizont: nicht ausgewiesen. Endzustände:",
+      "reason": "TX-2 Punkt 1: Kennzahlname und „Endzustände“ wie die Ergebniskarte."
+    },
+    {
+      "test": "tests/simulator-monte-carlo-browser.mjs",
+      "field": "Meldung bei technischem Fehler",
+      "old": "Terminale Outcomes:",
+      "new": "Endzustände:",
+      "reason": "TX-2 Punkt 1: wie oben."
+    },
+    {
+      "test": "tests/results-metrics.test.mjs",
+      "field": "Titel der Rückgangskarten (Lookup und Erwartung)",
+      "old": "Max. Drawdown nominal (Median) / Max. Drawdown real (Median)",
+      "new": "Max. Rückgang nominal (Median) / Max. Rückgang real (Median)",
+      "reason": "TX-2 Punkt 1: Glossar „Größter Rückgang“."
+    },
+    {
+      "test": "tests/results-metrics.test.mjs",
+      "field": "Stresskarten",
+      "old": "Max. Drawdown (Median, Stress) / Max. Drawdown (P90, Stress)",
+      "new": "Max. Rückgang (Median, Stress) / Max. Rückgang (P90, Stress)",
+      "reason": "TX-2 Punkt 1: Drawdown = Rückgang."
+    },
+    {
+      "test": "tests/simulator-tab-layout.test.mjs",
+      "field": "synthetische Kennzahlleiste",
+      "old": "Max. Drawdown nominal (Median) / Max. Drawdown real (Median)",
+      "new": "Max. Rückgang nominal (Median) / Max. Rückgang real (Median)",
+      "reason": "TX-2 Punkt 1: die Leiste sucht die Karten über den neuen Titel."
+    },
+    {
+      "test": "tests/simulator-monte-carlo-browser.mjs",
+      "field": "synthetische Rückgangskarten",
+      "old": "Max. Drawdown nominal (Median) / Max. Drawdown real (Median)",
+      "new": "Max. Rückgang nominal (Median) / Max. Rückgang real (Median)",
+      "reason": "TX-2 Punkt 1: wie oben."
+    },
+    {
+      "test": "tests/results-metrics.test.mjs",
+      "field": "Beschreibung 4,5-%-Kennzahl",
+      "old": "keine Alarm- oder Guardrail-Schwelle",
+      "new": "keine Alarm- oder Leitplanken-Schwelle",
+      "reason": "TX-2 Punkt 1: Guardrail = Leitplanke."
+    },
+    {
+      "test": "tests/simulator-heatmap.test.mjs",
+      "field": "Heatmap-Hinweis",
+      "old": "keine Alarm- oder Guardrail-Schwelle",
+      "new": "keine Alarm- oder Leitplanken-Schwelle",
+      "reason": "TX-2 Punkt 1: wie oben."
+    },
+    {
+      "test": "tests/slice-02-risk-display-copy-contract.test.mjs",
+      "field": "Ergebniskarte und Heatmap",
+      "old": "keine Alarm- oder Guardrail-Schwelle",
+      "new": "keine Alarm- oder Leitplanken-Schwelle",
+      "reason": "TX-2 Punkt 1: wie oben."
+    },
+    {
+      "test": "tests/simulator-result-overview.test.mjs",
+      "field": "Backtest-Urteil und Status bei Ruin",
+      "old": "Der Floor wäre … / Floor nicht gedeckt",
+      "new": "Der Grundbedarf wäre … / Grundbedarf nicht gedeckt",
+      "reason": "TX-2 Punkt 1: Floor = Grundbedarf."
+    },
+    {
+      "test": "tests/simulator-tab-layout.test.mjs",
+      "field": "Backtest-Urteil bei Ruin",
+      "old": "Der Floor wäre",
+      "new": "Der Grundbedarf wäre",
+      "reason": "TX-2 Punkt 1: wie oben."
+    },
+    {
+      "test": "tests/protocol-renderer.test.mjs",
+      "field": "ⓘ niedrige Entnahme",
+      "old": "Reale Entnahme unter dem 10-%-Wert aller simulierten Jahre (CaR)",
+      "new": "Reale Entnahme unter dem 10-%-Wert aller simulierten Jahre",
+      "reason": "TX-2 Punkt 1: englische Abkürzung entfällt, der deutsche Satz bleibt."
+    },
+    {
+      "test": "tests/protocol-columns.test.mjs",
+      "field": "sichtbare Protokoll-Kurzköpfe (keine Exportköpfe)",
+      "old": "Floor aus Depot / Runway-Deckung / Runway-Ziel / Pflegebucket Beginn / Pflegebucket genutzt / Pflegebucket Ende / Pflegebucket-Warnung",
+      "new": "Grundbedarf aus Depot / Reichweitendeckung / Zielreichweite / Pflegereserve Beginn / Pflegereserve genutzt / Pflegereserve Ende / Pflegereserve-Warnung",
+      "reason": "TX-2 Punkt 1: Anzeigeköpfe; die Kompatibilitäts- und Exportköpfe (FloorDep, Runway%, HBStart …) bleiben."
+    },
+    {
+      "test": "tests/balance-diagnosis-chips.test.mjs",
+      "field": "Chip der Reichweite",
+      "old": "Runway · nach Vorschlag",
+      "new": "Reichweite · nach Vorschlag",
+      "reason": "TX-2 Punkt 1: Runway = Reichweite (Glossar)."
+    },
+    {
+      "test": "tests/balance-diagnosis-keyparams.test.mjs",
+      "field": "Kennzahlen der Diagnose",
+      "old": "Runway-Ziel / 50 % Drawdown-Severity / Pflegebucket / Pflegebucket-Zieldeckung / ATH-Untergrenze / Mindest-Runway nicht wiederherstellbar / Safety-Flex-Obergrenze / Floor bleibt geschützt",
+      "new": "Zielreichweite / 50 % Schwere des Rückgangs / Pflegereserve / Zieldeckung der Pflegereserve / Allzeithoch-Untergrenze / Mindestreichweite nicht wiederherstellbar / Flex-Obergrenze der Sicherheitsgrenze / Grundbedarf bleibt geschützt",
+      "reason": "TX-2 Punkt 1: deutsche Begriffe aus Glossar und Jahresbudget (A4, B12)."
+    },
+    {
+      "test": "tests/balance-diagnosis-decision-tree.test.mjs",
+      "field": "Diagnosesatz aus der Engine",
+      "old": "Flex-Anteil 100 % → Cap 20,1 %.",
+      "new": "Flex-Anteil 100 % → Obergrenze 20,1 %.",
+      "reason": "TX-2 Punkt 1: Engine-Text wird nur bei der Anzeige übersetzt."
+    },
+    {
+      "test": "tests/balance-flex-trace.test.mjs",
+      "field": "Kürzungsgrund in „Warum gekürzt?“",
+      "old": "Guardrail (Vorsicht)",
+      "new": "Leitplanke (Vorsicht)",
+      "reason": "TX-2 Punkt 1: Kürzungsgrund der Engine bei der Anzeige übersetzt; der Engine-Wert bleibt."
+    },
+    {
+      "test": "tests/balance-diagnosis-copy-contract.test.mjs",
+      "field": "Text „Diagnose kopieren“",
+      "old": "Runway-Ziel-Glättung: Runway-Ziel geglättet / 50% Drawdown-Severity / Mindest-Runway nicht wiederherstellbar / Realer Drawdown aktives Geldvermögen / geplanter Floor bleibt geschützt",
+      "new": "Glättung der Zielreichweite: Zielreichweite geglättet / 50% Schwere des Rückgangs / Mindestreichweite nicht wiederherstellbar / Realer Rückgang aktives Geldvermögen / geplanter Grundbedarf bleibt geschützt",
+      "reason": "TX-2 Punkt 1: der Kopiertext läuft durch dieselbe Anzeigeübersetzung wie die Diagnose."
+    },
+    {
+      "test": "tests/designsystem-display-contract.test.mjs",
+      "field": "Bytes des Diagnose-Kopiertexts",
+      "old": "Realer Drawdown aktives Geldvermögen / Runway nach Vorschlag / --- Guardrails --- / Drawdown: / Runway:",
+      "new": "Realer Rückgang aktives Geldvermögen / Reichweite nach Vorschlag / --- Leitplanken --- / Rückgang: / Reichweite:",
+      "reason": "TX-2 Punkt 1: fünf Zeilen mit englischen Restwörtern; alle übrigen Bytes und alle CSV/JSON-Exporte des Tests bleiben gleich."
+    },
+    {
+      "test": "tests/balance-reader.test.mjs",
+      "field": "Eingabefehler Grundbedarf",
+      "old": "Floor-Bedarf p.a. enthaelt keine gueltige vollstaendige Zahl.",
+      "new": "Grundbedarf p.a. enthaelt keine gueltige vollstaendige Zahl.",
+      "reason": "TX-2 Punkt 1: Floor = Grundbedarf."
+    },
+    {
+      "test": "tests/balance-renderer-action.test.mjs",
+      "field": "Steuerzeile in „Wohin das Geld geht“",
+      "old": "Steuern (final, Settlement)",
+      "new": "Steuern (abgerechnet)",
+      "reason": "TX-2 Punkt 1: Gegenstück zu „Steuern (geschätzt)“."
+    },
+    {
+      "test": "tests/liquidity-cash-rebalance-lq1b.test.mjs",
+      "field": "Steuerzeile",
+      "old": "Steuern (final, Settlement)",
+      "new": "Steuern (abgerechnet)",
+      "reason": "TX-2 Punkt 1: wie oben."
+    },
+    {
+      "test": "tests/ff-1-expenses.test.mjs",
+      "field": "Importvorschau",
+      "old": "Floor und Flex",
+      "new": "Grundbedarf und Flex",
+      "reason": "TX-2 Punkt 1: Hinweis zur gespeicherten Aufteilung; die Spaltenwerte „Floor“/„Flex“ im Import bleiben."
+    },
+    {
+      "test": "tests/ff-1b-expenses.test.mjs",
+      "field": "Karte und Monatsabschluss",
+      "old": "Floor und Flex aus …",
+      "new": "Grundbedarf und Flex aus …",
+      "reason": "TX-2 Punkt 1: Floor = Grundbedarf."
+    },
+    {
+      "test": "tests/ff-2-expenses.test.mjs",
+      "field": "Jahreskachel, Kategorienbalken, Fußzeile",
+      "old": "Floor 33.000 € / Floor 5.500",
+      "new": "Grundbedarf 33.000 € / Grundbedarf 5.500",
+      "reason": "TX-2 Punkt 1: wie oben."
+    },
+    {
+      "test": "tests/fl-1-expenses-display.test.mjs",
+      "field": "Fußzeile „Wofür“",
+      "old": "Floor, Flex",
+      "new": "Grundbedarf, Flex",
+      "reason": "TX-2 Punkt 1: wie oben."
+    },
+    {
+      "test": "tests/overview-month-confirmation.test.mjs",
+      "field": "Ausgabenzusammenfassung im Monatsabschluss",
+      "old": "· Floor 650,00 € · Flex 250,00 €",
+      "new": "· Grundbedarf 650,00 € · Flex 250,00 €",
+      "reason": "TX-2 Punkt 1: wie oben."
+    },
+    {
+      "test": "tests/ff-3-examples.test.mjs",
+      "field": "Übung im Steckbrief Max und Erika",
+      "old": "Floor über Plan erkennen / Floor und Flex",
+      "new": "Grundbedarf über Plan erkennen / Grundbedarf und Flex",
+      "reason": "TX-2 Punkt 1: Kartenname auf der Seite Ausgaben."
+    },
+    {
+      "test": "tests/annual-plan-editor.test.mjs",
+      "field": "Abweichungskachel im Jahresabschluss",
+      "old": "Floor +10.000 € · Flex −10.000 €",
+      "new": "Grundbedarf +10.000 € · Flex −10.000 €",
+      "reason": "TX-2 Punkt 1: Floor = Grundbedarf."
+    },
+    {
+      "test": "tests/jd-1-gleichheit.test.mjs",
+      "field": "protocolHash (Protokolltexte zur Erbschaftsteuer)",
+      "old": "2a426243c70381f9eb6a4197605954ffe2793632986b2279a863863bd3233b3a",
+      "new": "4c93db79e3fa8818298bf11cb48db3175c5ab78157814022c9b6a0147b813909",
+      "reason": "TX-2 Punkt 1: einzige Abweichung ist das ⓘ der Spalte Aktien/ETF („in der Strategie Drei Töpfe“ statt „in der Drei-Bucket-Strategie“); mit dem alten Wortlaut zurückersetzt ergibt sich genau der alte Hash (geprüft gegen d9587e78)."
+    },
+    {
+      "test": "tests/simulator-backtest-characterization.test.mjs",
+      "field": "historische Projektion der Backtest-Kopfkarte (healthLabel)",
+      "old": "Suche nach „Pflegebucket am Laufende …“",
+      "new": "Suche nach „Pflegebucket am Laufende …“ oder „Pflegereserve am Laufende …“, Projektion weiter mit „Pflegebucket“",
+      "reason": "TX-2 Punkt 1: Die Anzeige heißt Pflegereserve; die eingefrorene Charakterisierung behält ihren alten Wortlaut, Soll- und Fachwerte bleiben unverändert."
+    },
+    {
+      "test": "tests/protocol-columns.test.mjs",
+      "field": "Pf.Akt% bei −0,125",
+      "old": "-12,5 %",
+      "new": "−12,5 %",
+      "reason": "TX-2 H-OP1-MINUSZEICHEN: formatProtocolValue setzt bei negativen Zahlen das echte Minuszeichen."
+    },
+    {
+      "test": "tests/designsystem-data-display.test.mjs",
+      "field": "vpw.expectedRealReturn bei −0,015",
+      "old": "-1,5 %",
+      "new": "−1,5 %",
+      "reason": "TX-2 H-OP1-MINUSZEICHEN: wie oben."
+    },
+    {
+      "test": "tests/he-4-heimpflege-anzeige.test.mjs",
+      "field": "Heimkostenänderung im Ausgaben-ⓘ (nominal und heutige Kaufkraft)",
+      "old": "Heimkosten -3.756 € / Heimkosten -7.084 €",
+      "new": "Heimkosten −3.756 € / Heimkosten −7.084 €",
+      "reason": "TX-2 H-OP1-MINUSZEICHEN: wie oben. Der Erbschaftsteuer-Hash in jd-1-gleichheit bleibt dadurch unverändert (keine negativen Werte im Fall)."
+    },
+    {
+      "test": "tests/protocol-cashflows.test.mjs",
+      "field": "Summenzeile unter „Summe“ im Ausgaben-ⓘ (2 Stellen)",
+      "old": "<span>davon aus dem Vermögen bezahlt</span>",
+      "new": "<span>Aus dem Vermögen bezahlt</span>",
+      "reason": "TX-2 H-OP1-DAVON-EINRUECKUNG: Zeilen unter „Summe“ teilen die Summe auf und beginnen nicht mit „davon“; nur eingerückte Erläuterungen (davon feste geplante Ausgaben, davon Hilfe zur Pflege unter Pflege/Heimkosten, davon entfällt) behalten „davon“. Gleiches gilt für die Summenzeile „Hilfe zur Pflege (zahlt der Staat)“."
+    },
+    {
+      "test": "tests/jd-1-gleichheit.test.mjs",
+      "field": "protocolHash (Protokolltexte zur Erbschaftsteuer)",
+      "old": "4c93db79e3fa8818298bf11cb48db3175c5ab78157814022c9b6a0147b813909",
+      "new": "32d73c59c566d42bf837fd95be35f30ec926f1070319f253c21f839f4355d589",
+      "reason": "TX-2 H-OP1-DAVON-EINRUECKUNG: einzige Abweichung ist die Summenzeile „Aus dem Vermögen bezahlt“; mit „davon aus dem Vermögen bezahlt“ zurückersetzt ergibt sich genau der vorige Hash (geprüft). Das echte Minuszeichen ändert diesen Hash nicht."
+    },
+    {
+      "test": "tests/simulator-backtest-characterization.test.mjs",
+      "field": "canonicalSummaryLabelPresent (Suche im Quelltext von simulator-backtest.js)",
+      "old": "/Jahre mit Kürzung \\(≥ 10 %\\)/",
+      "new": "/Jahre mit Kürzung ab 10 %/",
+      "reason": "TX-2 H-NG6-ANZEIGE (1): Der Backtest-Kopf heißt „Jahre mit Kürzung ab 10 %“ (und „Max. Kürzungsdauer ab 10 %“), das Protokoll „Jahre mit einer Kürzung“. Der Vertrag (einschließlich genau 10 %) und die eingefrorenen Sollwerte bleiben; das Feld bleibt true."
+    }
+  ]
+}

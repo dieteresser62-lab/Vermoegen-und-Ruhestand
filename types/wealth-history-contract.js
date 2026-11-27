@@ -1,6 +1,9 @@
 
 export const WEALTH_HISTORY_SCHEMA_VERSION = 1;
-export const WEALTH_HISTORY_START_DATE = '2026-01-01';
+/** Einführungsjahr der App, an genau dieser Stelle gepflegt: Automatische Jahresabschlussstände beginnen mit diesem
+ * Abschlussjahr, und geplante Ausgaben ohne eigenes Preisjahr stammen aus diesem Jahr. */
+export const APP_INTRODUCTION_YEAR = 2026;
+export const WEALTH_HISTORY_START_DATE = `${APP_INTRODUCTION_YEAR}-01-01`;
 export const WEALTH_HISTORY_REASONS = Object.freeze({
     MANUAL: 'manual',
     ANNUAL_CLOSE: 'annual_close'
@@ -30,8 +33,8 @@ export function assertWealthHistoryDate(value, path = 'asOf') {
     const [year, month, day] = value.split('-').map(Number);
     const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
     const days = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    if (year < 2026 || month < 1 || month > 12 || day < 1 || day > days[month - 1]) {
-        fail(path, 'Ein echtes Kalenderdatum ab 2026-01-01 ist erforderlich.');
+    if (year < APP_INTRODUCTION_YEAR || month < 1 || month > 12 || day < 1 || day > days[month - 1]) {
+        fail(path, `Ein echtes Kalenderdatum ab ${WEALTH_HISTORY_START_DATE} ist erforderlich.`);
     }
     return value;
 }
@@ -134,8 +137,8 @@ export function createManualWealthHistoryEntry(inputData, asOf = new Date()) {
 }
 
 export function createAnnualWealthHistoryEntry(inputData, targetYear) {
-    if (!Number.isInteger(targetYear) || targetYear < 2026 || targetYear > 9999) {
-        fail('targetYear', 'Ein Abschlussjahr zwischen 2026 und 9999 ist erforderlich.');
+    if (!Number.isInteger(targetYear) || targetYear < APP_INTRODUCTION_YEAR || targetYear > 9999) {
+        fail('targetYear', `Ein Abschlussjahr zwischen ${APP_INTRODUCTION_YEAR} und 9999 ist erforderlich.`);
     }
     return createEntry(inputData, {
         id: `annual:${targetYear}`,

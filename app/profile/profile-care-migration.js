@@ -33,14 +33,13 @@ export function migrateStoredCareForms(storage = persistenceStorage) {
     const live = Object.fromEntries(keys.map(key => [key, storage.getItem(key)]).filter(([, value]) => value !== null));
     const profiles = Object.entries(registry?.profiles || {});
     const sources = profiles.map(([id, profile]) => [id, id === current ? { ...profile.data, ...live } : { ...profile.data }]);
-    const members = profiles.filter(([, p]) => p.meta?.belongsToHousehold !== false).map(([id, p]) => ({ id, meta: p.meta }));
+    const members = profiles.map(([id, p]) => ({ id, meta: p.meta }));
     const primary = sources.find(([id]) => id === getHouseholdPrimaryProfileId(members));
     const settings = careSettingsFromRecord(primary?.[1] || live);
     const writes = [];
     let changed = false;
     for (const [id, source] of sources) {
-        const inHousehold = registry.profiles[id].meta?.belongsToHousehold !== false;
-        const next = migrateCareFormsRecord(source, inHousehold ? settings : careSettingsFromRecord(source));
+        const next = migrateCareFormsRecord(source, settings);
         for (const key of keys) if (next[key] !== undefined) {
             if (registry.profiles[id].data[key] !== next[key]) { registry.profiles[id].data[key] = next[key]; changed = true; }
             if (id === current && storage.getItem(key) !== next[key]) writes.push([key, next[key]]);

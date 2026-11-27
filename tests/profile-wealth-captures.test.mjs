@@ -4,8 +4,7 @@ import { createManualWealthHistoryEntry, createAnnualWealthHistoryEntry, assertW
 import { CONFIG } from '../app/balance/balance-config.js';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { buildFullPersistenceBackup, normalizeFullPersistenceBackup, validatePersistenceDomainRecords, importFullPersistenceBackup } from '../app/shared/persistence-backup.js';
-import { isAllowedSnapshotCaptureKey, isSnapshotGlobalDomainKey, isProbelaufRecordKey } from '../app/shared/persistence-key-policy.js';
-import { createBalanceWealthHistoryService } from '../app/balance/balance-wealth-history.js';
+import { isAllowedSnapshotCaptureKey, isAllowedSnapshotRestoreLiveKey, isProbelaufRecordKey } from '../app/shared/persistence-key-policy.js';
 import { playFixture } from './helpers/probelauf-area-fixture.mjs';
 import { PersistenceFacade as P, persistenceStorage } from '../app/shared/persistence-facade.js';
 import { switchProfile } from '../app/profile/profile-storage.js';
@@ -22,8 +21,7 @@ const registry = { version: 1, profiles: {
             lot('geldmarkt', 'money_market', 200), lot('gold', 'gold', 50), lot('anleihe', 'bonds', 50)]),
         [stateKey]: JSON.stringify({ inputs: values, wealthHistory: { schemaVersion: 1, entries: [oldA] } }) } },
     b: { meta: { name: 'Erika Mustermann' }, data: { profile_tagesgeld: '10',
-        [stateKey]: JSON.stringify({ inputs: Object.fromEntries(Object.entries(values).map(([k, v]) => [k, v / 10])), wealthHistory: { schemaVersion: 1, entries: [oldB] } }) } },
-    outside: { meta: { belongsToHousehold: false }, data: {} }
+        [stateKey]: JSON.stringify({ inputs: Object.fromEntries(Object.entries(values).map(([k, v]) => [k, v / 10])), wealthHistory: { schemaVersion: 1, entries: [oldB] } }) } }
 } };
 let raw = null;
 const storage = { getItem: key => key === WEALTH_CAPTURES_KEY ? raw : registry.profiles.a.data[key] ?? null };
@@ -65,7 +63,7 @@ const annual = createAnnualWealthHistoryEntry(values, 2026);
 raw = prepareWealthCapture({ storage, registry, activeId: 'a', entry: annual, inputData: {} });
 const annualBefore = raw;
 assertEqual(prepareWealthCapture({ storage, registry, activeId: 'a', entry: annual, inputData: {} }), annualBefore, 'Jahreswiederholung erhält den bereits bestätigten Personen- und Haushaltsstand');
-assert(isAllowedSnapshotCaptureKey(WEALTH_CAPTURES_KEY) && isSnapshotGlobalDomainKey(WEALTH_CAPTURES_KEY)
+assert(isAllowedSnapshotCaptureKey(WEALTH_CAPTURES_KEY) && isAllowedSnapshotRestoreLiveKey(WEALTH_CAPTURES_KEY)
     && isProbelaufRecordKey(WEALTH_CAPTURES_KEY), 'Gemeinsamer Record gehört zu Snapshot, Restore und Spielbereich');
 
 const records = createMusterHaushaltRecords('2026-10-15');
@@ -86,8 +84,11 @@ for (const kind of ['localstorage', 'indexeddb', 'tauri']) {
         assertEqual(P.getItemSync(WEALTH_CAPTURES_KEY), raw, `${kind}: Wiederherstellung erhält alle Personenstände`);
         await controller.start(() => ({ source: 'copy', testDate: null })); controller = await f.boot();
         const registry = JSON.parse(P.getItemSync('rs_profiles_v1'));
-        const service = createBalanceWealthHistoryService({ storage: persistenceStorage, persistence: P, guard: null,
-            loadState: () => JSON.parse(P.getItemSync(stateKey)), loadRegistry: () => JSON.parse(P.getItemSync('rs_profiles_v1')) });
+        // Die frühere Handerfassung gibt es nicht mehr; der Schreibweg bleibt prepareWealthCapture in einer bestätigten Transaktion.
+        const service = { captureManual: async ({ result, asOf }) => P.replaceRecordsTransactional({ [WEALTH_CAPTURES_KEY]: prepareWealthCapture({
+            storage: persistenceStorage, registry: JSON.parse(P.getItemSync('rs_profiles_v1')), activeId: P.getItemSync('rs_current_profile'),
+            entry: createManualWealthHistoryEntry(result.inputData, asOf), inputData: result.inputData }) },
+        { probelaufDomainWrite: true, allowKey: key => key === WEALTH_CAPTURES_KEY }) };
         const inputData = JSON.parse(registry.profiles.muster_a.data[stateKey]).inputs;
         await service.captureManual({ result: { ok: true, inputData }, asOf: '2026-10-16' });
         const capturedBeforeSwitch = P.getItemSync(WEALTH_CAPTURES_KEY);

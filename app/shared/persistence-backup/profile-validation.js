@@ -11,7 +11,7 @@ import { requireHistoryRecord, historyDay } from '../../tranches/tranchen-histor
 import { isSnapshotTechnicalKey } from '../persistence-key-policy.js';
 import { PROFILE_HEALTH_BUCKET_KEY, PROFILE_CASH_CONFIRMED_DATE_KEY, PROFILE_LOAD_STATUS, PROFILE_STORAGE_KEYS, PROFILE_TRANCHES_KEY, PROFILE_VALUE_KEYS, loadProfileHealthBucketFromData, loadStoredBalanceStateFromData, parseStoredBool, parseStoredNumber } from '../../profile/profile-state.js';
 import { isProfileScopedKey } from '../../profile/profile-key-policy.js';
-import { loadProfileRegistry, assertHouseholdLimit } from '../../profile/profile-registry.js';
+import { loadProfileRegistry, assertHouseholdLimit, OUTSIDE_PERSON_CODE, OUTSIDE_PERSON_IMPORT_MESSAGE } from '../../profile/profile-registry.js';
 import { readReconciliationHistory, TRANCHE_RECONCILIATION_REGISTRY_FIELD } from '../../tranches/tranche-reconciliation.js';
 import { assertProfileIdentityRecords } from '../../profile/profile-storage.js';
 import { CONFIG } from '../../balance/balance-config.js';
@@ -161,6 +161,8 @@ function validateProfileData(data, path, { allowHistoricalTechnicalKeys = false 
 export function validateRegistryAndProfiles(records, options = {}, profileIds = null) {
     const storage = createRecordsStorage(records);
     const registryResult = /** @type {I.LoadRegistry} */ (/** @type {unknown} */ (loadProfileRegistry))(storage);
+    // AP-1 [A7]: Eine Person außerhalb des Haushalts lehnt der Import vor jedem Schreiben ab.
+    if (registryResult.error?.code === OUTSIDE_PERSON_CODE) throw new Error(OUTSIDE_PERSON_IMPORT_MESSAGE);
     if (registryResult.status === PROFILE_LOAD_STATUS.CORRUPT
         || registryResult.status === PROFILE_LOAD_STATUS.UNAVAILABLE) {
         throw new Error(registryResult.error?.message || 'Die Profilregistry ist ungueltig.');

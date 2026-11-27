@@ -5,6 +5,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
+import { HISTORICAL_END_YEAR } from './lib/historical-end-year.mjs';
+import { GRUNDBESTAND_END_YEAR } from './lib/jahresdaten/grundbestand.mjs';
+import { fortschreibungAnwenden } from './lib/jahresdaten/fortschreibung.mjs';
+import * as lohnKette from './lib/jahresdaten/ketten/lohn.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIRECTORY, '..');
@@ -16,7 +20,6 @@ const SOURCE_PATH = path.join(
     'originals',
     'destatis-bruttomonatsverdienst-index-2026-08-01.html'
 );
-const OUTPUT_DIRECTORY = path.join(PROJECT_ROOT, 'app', 'simulator', 'german-gross-wage-growth-chain');
 const JST_SOURCE_PATH = path.join(
     PROJECT_ROOT,
     'data',
@@ -27,7 +30,11 @@ const JST_SOURCE_PATH = path.join(
 );
 const VERIFY_ONLY = process.argv.includes('--verify-only');
 const START_YEAR = 1925;
-const END_YEAR = 2025;
+const END_YEAR = HISTORICAL_END_YEAR;
+// Das Skript baut aus den Originalen nur den Grundbestand bis GRUND_END_YEAR (2025). Darauf beruhen die festen
+// Annahmen zum Endjahr: Veröffentlichungsstand nach 2025, Zeilen bis 2025 in der Destatis-Seite. Jahre danach
+// bis END_YEAR kommen unverändert aus den Jahreslieferungen (Fortschreibung, JD-2a).
+const GRUND_END_YEAR = GRUNDBESTAND_END_YEAR;
 const OFFICIAL_FIRST_CHANGE_YEAR = 1947;
 const SOURCE_SHA256 = '1f62492a2efe78fba3ec2ac81dfd90a1c4ccd6f8b68b7bcc6c53ae4d8cd51f1a';
 const JST_SOURCE_SHA256 = 'c1bb91fe56ea50d4f27af5c0fc897d481e89ae38ce41eaecab62134c9354981d';
@@ -206,13 +213,19 @@ function percentageChange(current, previous) {
     return Object.is(value, -0) ? 0 : value;
 }
 
+/** Plausibilität des Veröffentlichungsstands: Die Tabelle trägt einen „Stand“ nach Ablauf des Endjahrs. */
+function publishedAfterEndYear(html) {
+    const stand = html.match(/Stand&nbsp;(\d{1,2})\. (Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember) (\d{4})/);
+    return Boolean(stand) && Number(stand[3]) > GRUND_END_YEAR;
+}
+
 function readDestatisObservations(html) {
     const tableTitle = 'Index der Bruttomonatsverdienste (ohne Sonderzahlungen)';
     if (!html.includes(tableTitle)
         || !html.includes('Bundesrepublik Deutschland nach dem Gebietsstand seit 03.10.1990.')
         || !html.includes('Ab 2007: Produzierendes Gewerbe und Dienst\u00adleistungs\u00adbereich.')
         || !html.includes('Seit 2022 Ergebnisse aus der Verdiensterhebung.')
-        || !html.includes('Stand&nbsp;10. März 2026')) {
+        || !publishedAfterEndYear(html)) {
         fail('Destatis identity, territory, method-break or publication-date marker is missing');
     }
     const observations = new Map();
@@ -227,7 +240,7 @@ function readDestatisObservations(html) {
         if (observations.has(year)) fail('Destatis wage-index year is duplicated', { year });
         observations.set(year, { indexLevel, annualChangePct });
     }
-    for (let year = 1946; year <= END_YEAR; year += 1) {
+    for (let year = 1946; year <= GRUND_END_YEAR; year += 1) {
         const observation = observations.get(year);
         if (!observation) fail('Destatis wage-index year is missing', { year });
         if (year >= OFFICIAL_FIRST_CHANGE_YEAR
@@ -253,7 +266,7 @@ function buildArtifact() {
     const jstWageLevels = readJstWageLevels(jstSourceBuffer);
     const annualGrowthPct = {};
     const observationsByYear = {};
-    for (let year = START_YEAR; year <= END_YEAR; year += 1) {
+    for (let year = START_YEAR; year <= GRUND_END_YEAR; year += 1) {
         if (year < OFFICIAL_FIRST_CHANGE_YEAR) {
             const priorWageLevel = jstWageLevels.get(year - 1);
             const wageLevel = jstWageLevels.get(year);
@@ -282,19 +295,8 @@ function buildArtifact() {
             };
             continue;
         }
-        const sourceObservation = observations.get(year);
-        annualGrowthPct[year] = sourceObservation.annualChangePct;
-        observationsByYear[year] = {
-            valuePct: sourceObservation.annualChangePct,
-            sourceYear: year,
-            evidenceClass: 'official',
-            sourceObservation: {
-                indexLevel: sourceObservation.indexLevel,
-                indexLevelPrecision: 0.1,
-                publishedAnnualChangePct: sourceObservation.annualChangePct,
-                publishedAnnualChangePrecisionPct: 0.1
-            }
-        };
+        observationsByYear[year] = lohnKette.lohnBeobachtung(year, observations.get(year));
+        annualGrowthPct[year] = observationsByYear[year].valuePct;
     }
 
     const method = {
@@ -354,7 +356,7 @@ function buildArtifact() {
         schemaVersion: 'GermanGrossWageGrowthChainV2',
         seriesId: 'german_average_gross_monthly_earnings_growth_proxy',
         label: 'German average gross monthly earnings growth proxy without special payments',
-        coverage: { startYear: START_YEAR, endYear: END_YEAR, yearCount: END_YEAR - START_YEAR + 1 },
+        coverage: { startYear: START_YEAR, endYear: GRUND_END_YEAR, yearCount: GRUND_END_YEAR - START_YEAR + 1 },
         unit: 'percent_per_year',
         region: 'Segmented Germany proxy: JST DEU research series through 1946; former federal territory through 1990; Germany under the territorial definition since 3 October 1990 thereafter',
         variant: 'Index of average gross monthly earnings without special payments',
@@ -377,7 +379,7 @@ function buildArtifact() {
             },
             {
                 startYear: 1991,
-                endYear: END_YEAR,
+                endYear: GRUND_END_YEAR,
                 territory: 'Federal Republic of Germany under the territorial definition since 3 October 1990'
             }
         ],
@@ -443,7 +445,7 @@ function buildArtifact() {
             },
             {
                 startYear: 2022,
-                endYear: END_YEAR,
+                endYear: GRUND_END_YEAR,
                 evidenceClass: 'official',
                 note: 'Published Destatis annual changes from the earnings survey introduced in 2022.'
             }
@@ -479,51 +481,18 @@ function buildArtifact() {
     };
 }
 
+/** Module der Kette als Bytes, Pfade relativ zur Projektwurzel; Text aus der gemeinsamen Ausgabe. */
 function renderModules(artifact) {
-    const { observationsByYear, annualGrowthPct, ...metadata } = artifact;
-    const header = `// @ts-check
-/**
- * Generated by scripts/build-german-gross-wage-growth-chain.mjs.
- * Do not edit by hand.
- */
-"use strict";
-
-`;
-    // Retain the original indentation of both annual tables byte for byte.
-    const table = (name, values) => Buffer.from(`${header}export const ${name} = ${
-        JSON.stringify(values, null, 2).replace(/\n/g, '\n  ')
-    };\n`, 'utf8');
-    const chain = Buffer.from(`${header}import { OBSERVATIONS_BY_YEAR } from './observations.js';
-import { ANNUAL_GROWTH_PCT } from './annual-growth.js';
-
-function deepFreeze(value, seen = new WeakSet()) {
-    if (value === null || typeof value !== 'object' || seen.has(value)) return value;
-    seen.add(value);
-    for (const child of Object.values(value)) deepFreeze(child, seen);
-    return Object.freeze(value);
-}
-
-export const GERMAN_GROSS_WAGE_GROWTH_CHAIN = deepFreeze(${JSON.stringify(metadata, null, 2).slice(0, -2)},
-  "observationsByYear": OBSERVATIONS_BY_YEAR,
-  "annualGrowthPct": ANNUAL_GROWTH_PCT
-});
-
-export const GERMAN_GROSS_WAGE_GROWTH_PCT =
-    GERMAN_GROSS_WAGE_GROWTH_CHAIN.annualGrowthPct;
-`, 'utf8');
-    return new Map([
-        ['chain.js', chain],
-        ['observations.js', table('OBSERVATIONS_BY_YEAR', observationsByYear)],
-        ['annual-growth.js', table('ANNUAL_GROWTH_PCT', annualGrowthPct)]
-    ]);
+    return new Map([...lohnKette.schreiben(artifact)].map(([file, text]) => [file, Buffer.from(text, 'utf8')]));
 }
 
 function main() {
-    const artifact = buildArtifact();
+    // Jahre nach dem Grundbestand hängt dieselbe Fortschreibung an wie `npm run jahresdaten -- <Jahr> --uebernehmen`.
+    const artifact = fortschreibungAnwenden(lohnKette, buildArtifact(), { root: PROJECT_ROOT, endYear: END_YEAR });
     const modules = renderModules(artifact);
     if (VERIFY_ONLY) {
         for (const [fileName, generated] of modules) {
-            const outputPath = path.join(OUTPUT_DIRECTORY, fileName);
+            const outputPath = path.join(PROJECT_ROOT, fileName);
             if (!fs.existsSync(outputPath)) fail('Generated German gross-wage module is missing', { outputPath });
             const existing = fs.readFileSync(outputPath);
             if (!existing.equals(generated)) {
@@ -537,9 +506,9 @@ function main() {
         process.stdout.write(`Verified German gross-wage growth chain ${START_YEAR}-${END_YEAR}; hash ${artifact.hashes.annualGrowthHash}\n`);
         return;
     }
-    fs.mkdirSync(OUTPUT_DIRECTORY, { recursive: true });
     for (const [fileName, generated] of modules) {
-        fs.writeFileSync(path.join(OUTPUT_DIRECTORY, fileName), generated);
+        fs.mkdirSync(path.dirname(path.join(PROJECT_ROOT, fileName)), { recursive: true });
+        fs.writeFileSync(path.join(PROJECT_ROOT, fileName), generated);
     }
     process.stdout.write(`Built German gross-wage growth chain ${START_YEAR}-${END_YEAR}; hash ${artifact.hashes.annualGrowthHash}\n`);
 }

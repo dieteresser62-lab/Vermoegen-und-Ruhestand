@@ -11,6 +11,8 @@
 
 Diese Pflichten gelten für Reviews im Handbetrieb und bei direkter Nutzung. Im orchestrierten Lauf geben Prüfvertrag und Antwortschema des Orchestrators Format und Freigaberegeln vor.
 
+Für die Einordnung von Befunden gilt der [Prüfrahmen in AGENTS.md](AGENTS.md#prüfrahmen).
+
 ### Engine-Modulbetrieb prüfen
 
 - `engine.js` ist aktuell ein reiner generierter Wrapper für `engine/index.mjs`; Fachtests und Worker importieren die Module direkt. Ein unveränderter Wrapper nach Fach-, Versions- oder API-Methodenänderungen hinter demselben Import ist erwartbar. Modulstand, Fachtests und `tests/engine-wrapper-contract.test.mjs` sind maßgeblich; Testpflichten und Zuständigkeiten aus `AGENTS.md` gelten weiter.

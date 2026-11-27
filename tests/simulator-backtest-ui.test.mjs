@@ -256,7 +256,7 @@ for (const shape of ['vollständig', 'ohne dataset', 'ohne optionale Hosts', 'oh
         doc.elements.delete('backtestPeriodStatus');
     }
     if (shape === 'ohne Statusregion') doc.elements.delete('backtestStatus');
-    for (const [kind, label, live] of [['completed', 'Vollständig', 'polite'], ['ruin', 'Ruin', 'assertive'],
+    for (const [kind, label, live] of [['completed', 'Vollständig', 'polite'], ['ruin', 'Vermögen aufgebraucht', 'assertive'],
         ['incomplete', 'Daten unvollständig', 'assertive'], ['technical_error', 'Technischer Fehler', 'assertive'],
         ['completed', 'Vollständig', 'polite']]) {
         renderHistoricalBacktestStatus(doc, describeHistoricalBacktestResult({ outcome: { kind },
@@ -336,7 +336,7 @@ for (const shape of ['vollständig', 'ohne dataset', 'ohne optionale Hosts', 'oh
     const jsonBefore = serializeHistoricalBacktestJson(exportResult, exportOptions);
     const csvBefore = serializeHistoricalBacktestCsv(exportResult, exportOptions);
     const html = buildAccessibleBacktestTableHtml(rows, normal, formatColumnValue);
-    assert(html.includes('backtest-row-cut') && html.includes('backtest-row-ruin') && html.includes('>Ruin</td>'),
+    assert(html.includes('backtest-row-cut') && html.includes('backtest-row-ruin') && html.includes('>Vermögen aufgebraucht</td>'),
         'Kürzung und Ruin besitzen Wortstatus und getrennte Zeilenklassen');
     assert(html.includes('Wiederanlage') && !html.includes('>Reinvest</td>'), 'Handlungen werden nur redaktionell übersetzt');
     assertEqual(formatColumnValue(detailed.find(col => col.header === 'Laufende Entnahme'), rows[0]), '1.235\u00a0€',
@@ -604,6 +604,8 @@ console.log('Test 9: reale Provenienzvorbereitung ist abwartbar kündigbar');
         setEuroMode('nominal', doc);
         renderBacktestEuroResults();
         const summary = doc.getElementById('simulationSummary').innerHTML;
+        assert(summary.includes('Das Jahresprotokoll zählt auch kleinere Kürzungen.'),
+            'Das Backtest-ⓘ erklärt die abweichende Zählung im Jahresprotokoll');
         for (const [field, value] of [['period_start', 2000], ['period_end', 2002], ['requested_years', 3],
             ['completed_years', 3], ['row_count', 0], ['health_bucket_coverage_pct', 0], ['health_bucket_target_gap', '']])
             assert(summary.includes(`data-result-field="${field}" data-canonical-value="${value}"`), `Einzelanker ${field} bleibt erhalten`);
@@ -620,7 +622,7 @@ console.log('Test 9: reale Provenienzvorbereitung ist abwartbar kündigbar');
             ['flex_reduction_longest_streak_gte_10_pct', '0 Jahre', null],
             ['flex_reduction_years_gte_10_pct', '0 von 3', null]
         ]) {
-            const card = summary.match(new RegExp(`data-metric-id="${id}"[^>]*><strong>[^<]+</strong>([\\s\\S]*?)</div>`));
+            const card = summary.match(new RegExp(`data-metric-id="${id}"[^>]*><strong>.*?</strong>([\\s\\S]*?)</div>`));
             assert(card !== null, `Echter Summaryrenderer liefert die Kennzahl ${id}`);
             const primaryMarkup = card[1].replace(/<small class="sim-other-basis">[^<]*<\/small>/, '');
             assertEqual(primaryMarkup, exact === null ? `<span>${visible}</span>`

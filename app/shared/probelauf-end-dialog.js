@@ -50,7 +50,7 @@ function transferDialog({ doc, opener, review, result }) {
         } else {
             appendChanges(doc, content, changes);
             const note = node('div', undefined, 'probelauf-transfer-note');
-            note.append(node('p', 'Vorher legt die App den Wiederherstellungspunkt „Vor Übernahme aus dem Spielbereich“ an. Damit kommst du unter Daten & Sicherung zurück.'),
+            note.append(node('p', 'Vorher legt die App den Wiederherstellungspunkt „Vor Übernahme der Spielkopie“ an. Damit kommst du unter Daten & Sicherung zurück.'),
                 node('p', 'Danach ist der Spielbereich geschlossen. Balance und Übersicht rechnen mit den neuen Werten.'));
             content.append(note);
         }
@@ -174,7 +174,8 @@ function openEndDialog({ doc, opener, review, loadReview }) {
             const liquidityCell = model => cell(model.liquidity === null ? unavailable(model) : percent(model.liquidity), model.liquidity === null ? '' : 'des Ziels vor Umsetzung',
                 [error(model), planInfo(model, 'liquidity')].filter(Boolean).join(' '));
             row('Liquidität (Vorschau heute)', liquidityCell(real), liquidityCell(play));
-            const mcCell = (model, playing) => cell(model.monteCarlo ? percent(model.monteCarlo.successPct) : 'nicht gerechnet',
+            const mcCell = (model, playing) => model.monteCarloStale ? cell('Monte Carlo neu rechnen')
+                : cell(model.monteCarlo ? percent(model.monteCarlo.successPct) : 'nicht gerechnet',
                 model.monteCarlo ? `letzter Lauf vom ${dateTime(model.monteCarlo.completedAt)}` : '',
                 model.monteCarlo ? '' : playing ? 'Im Spielbereich wurde noch kein Monte-Carlo-Lauf für diesen Haushalt gerechnet. Ein aus den echten Daten kopierter Lauf zählt hier nicht.' : 'Für diesen Haushalt ist kein Monte-Carlo-Lauf gespeichert.');
             row('Erfolgsquote Monte Carlo', mcCell(real, false), mcCell(play, true));

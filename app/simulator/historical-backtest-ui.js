@@ -1,8 +1,10 @@
 /** @import * as UiTypes from '../../typcheck/simulator-ui.js' */
-import { PROTOCOL_COLUMNS, protocolRowFlags, readProtocolValue, formatProtocolValue } from './protocol-columns.js';
+import { PROTOCOL_COLUMNS, readProtocolValue, formatProtocolValue } from './protocol-columns.js';
 import { renderProtocolTable } from './protocol-renderer.js';
 import { bindInfoPopovers } from '../shared/designsystem-info-popover.js';
 import { findSimulatorEngineValidationError, formatSimulatorValidationError } from './simulator-input-validation.js';
+import { MONTE_CARLO_PARAMETER_LIMITS } from './monte-carlo-parameters.js';
+import { HISTORICAL_DATA_MANIFEST } from './simulator-data.js';
 "use strict";
 
 const PERIOD_FIELDS = Object.freeze({
@@ -12,21 +14,12 @@ const PERIOD_FIELDS = Object.freeze({
 
 const OUTCOME_LABELS = Object.freeze({
     completed: 'vollständig abgeschlossen',
-    ruin: 'wirtschaftlicher Ruin',
+    ruin: 'Vermögen aufgebraucht',
     incomplete: 'unvollständige historische Daten',
     technical_error: 'technischer Fehler'
 });
 
 const infoBindings = new WeakSet();
-
-/**
- * @param entry - Protokolleintrag.
- * @returns Ergebnis der Operation.
- */
-export function backtestRowState(entry) {
-    const flags = protocolRowFlags(entry, 'backtest');
-    return flags.ruin ? 'ruin' : flags.cut ? 'cut' : 'normal';
-}
 
 function finiteInteger(value) {
     const number = Number(value);
@@ -83,6 +76,38 @@ export function escapeBacktestHtml(value) {
 }
 
 /**
+ * Schieber „Startjahr ab“: erst das Maximum aus den Daten, dann ausdrücklich der Wert als Eigenschaft, gespeichert
+ * oder die Vorgabe 1970. Ohne Maximum kürzt ein Bereichsfeld jeden Wert auf das Minimum 1925 (JD-1, Nutzertest EXE).
+ *
+ * @param element - Schieberfeld.
+ * @param {unknown} [stored] Gespeicherter Wert; leer heißt Vorgabe.
+ * @param {{maximum: number, default: number}} [limits] Grenzen; ohne Angabe die der eingebetteten Daten.
+ */
+export function setStartYearFilter(element, stored = null, limits = MONTE_CARLO_PARAMETER_LIMITS.startYearFilter) {
+    if (element) element.max = String(limits.maximum);
+    if (element) element.value = String(stored === null || stored === undefined || stored === '' ? limits.default : stored);
+}
+
+/**
+ * Schreibt die Jahre aus den Daten in die Seite, bevor gespeicherte Werte zurückkommen: Maximum und Vorgabewert des
+ * Schiebers „Startjahr ab“ und das Backtest-Endjahr, solange das Feld leer ist. Simulator.html trägt dieselben Jahre;
+ * `scripts/historical-data-generate.mjs` schreibt und prüft sie aus dem Datenstand.
+ *
+ * @param documentRef - Dokument der Simulatorseite.
+ * @param {{startYearFilterMaximum?: number, endYear?: number}} [years] Jahre; ohne Angabe die der eingebetteten Daten.
+ * @returns {{startYearFilterMaximum: number, endYear: number}} Geschriebene Jahre.
+ */
+export function applyHistoricalDataYearFields(documentRef, {
+    startYearFilterMaximum = MONTE_CARLO_PARAMETER_LIMITS.startYearFilter.maximum,
+    endYear = HISTORICAL_DATA_MANIFEST.period.endYear
+} = {}) {
+    setStartYearFilter(documentRef?.getElementById('mcStartYearFilter'), null, { ...MONTE_CARLO_PARAMETER_LIMITS.startYearFilter, maximum: startYearFilterMaximum });
+    const end = documentRef?.getElementById('simEndJahr');
+    if (end && !end.value) end.value = String(endYear);
+    return { startYearFilterMaximum, endYear };
+}
+
+/**
  * @param documentRef - Dokument der Simulatorseite.
  * @param provider - Kontext für provider.
  * @returns Ergebnis der Operation.
@@ -111,7 +136,7 @@ export function configureHistoricalBacktestControls(documentRef, provider) {
         const revision = String(provider?.revision || 'unbekannt');
         const lookback = finiteInteger(bounds.lookbackYears);
         details.textContent = `Datensatz ${datasetId}, Revision ${revision}. Simulationszeitraum: ${min}–${max}, einschließlich Start- und Endjahr.`
-            + (lookback && lookback > 0 ? ` ${lookback} Vorjahre für die Startentscheidung (Lookback) sind im Datenvertrag berücksichtigt.` : '');
+            + (lookback && lookback > 0 ? ` ${lookback} Vorjahre für die Startentscheidung sind im Datenvertrag berücksichtigt.` : '');
     }
     const host = documentRef?.getElementById('tab-backtesting');
     if (host?.querySelectorAll && documentRef.addEventListener && !infoBindings.has(documentRef)) {
@@ -214,11 +239,11 @@ export function describeHistoricalBacktestResult(result) {
         return Object.freeze({
             kind: outcome,
             code: 'BACKTEST_RUIN',
-            title: 'Backtest mit wirtschaftlichem Ruin beendet',
+            title: 'Backtest beendet: Vermögen aufgebraucht',
             cause: ruinYear === null
-                ? 'Der vereinbarte Floor konnte in mindestens einem Simulationsjahr nicht vollständig gedeckt werden.'
-                : `Der vereinbarte Floor konnte im Jahr ${ruinYear} nicht vollständig gedeckt werden.`,
-            action: 'Prüfe Entnahmebedarf, Vermögensaufteilung und das Ruin-Jahr im Jahresprotokoll.'
+                ? 'Der vereinbarte Grundbedarf konnte in mindestens einem Simulationsjahr nicht vollständig gedeckt werden.'
+                : `Der vereinbarte Grundbedarf konnte im Jahr ${ruinYear} nicht vollständig gedeckt werden.`,
+            action: 'Prüfe Entnahmebedarf und Vermögensaufteilung. Das Jahresprotokoll zeigt das Jahr, in dem das Vermögen aufgebraucht ist.'
         });
     }
     if (outcome === 'incomplete') {
@@ -265,7 +290,7 @@ export function renderHistoricalBacktestStatus(documentRef, presentation, { focu
     }
     const chip = documentRef?.getElementById('backtestPeriodStatus');
     if (chip) {
-        chip.textContent = ({ idle: 'Bereit', running: 'Wird berechnet', completed: 'Vollständig', ruin: 'Ruin',
+        chip.textContent = ({ idle: 'Bereit', running: 'Wird berechnet', completed: 'Vollständig', ruin: 'Vermögen aufgebraucht',
             incomplete: 'Daten unvollständig', technical_error: 'Technischer Fehler', validation_error: 'Eingaben prüfen' })[kind] || presentation.title;
         setAttribute(chip, 'data-status', kind);
         if (chip.dataset) chip.dataset.status = kind;

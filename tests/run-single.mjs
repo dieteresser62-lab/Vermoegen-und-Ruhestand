@@ -27,8 +27,15 @@ async function run() {
     try {
         const resolvedPath = path.resolve(testFile);
         const policy = getTestExecutionPolicy(path.basename(resolvedPath));
+        if (policy.referenceRuntimeMismatch) {
+            console.log(`Skipping ${testFile}: ${policy.reason}`);
+            return;
+        }
         if (policy.instrumentAssertions) {
             register(pathToFileURL(path.join(__dirname, 'legacy-assertion-loader.mjs')).href);
+        }
+        if (policy.importAdapter === 'grundbestand') {
+            register(pathToFileURL(path.join(__dirname, 'grundbestand-import-adapter.mjs')).href);
         }
         const fileUrl = pathToFileURL(resolvedPath).href;
         console.log(`Running ${testFile}...`);

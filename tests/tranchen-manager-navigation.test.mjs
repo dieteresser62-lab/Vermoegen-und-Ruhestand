@@ -1,3 +1,4 @@
+import { URL as NodeURL } from 'node:url';
 import { respondPageDialog } from './helpers/page-dialog-dom.mjs';
 import { initTranchenManagerPage, saveManagerHistoryStart, manageManagerPerson } from '../app/tranches/tranchen-manager-page.js';
 import { PersistenceFacade, persistenceStorage } from '../app/shared/persistence-facade.js';
@@ -14,6 +15,11 @@ const lot = { schemaVersion: 2, trancheId: 'page-cash-lot', name: 'Synthetische 
     category: 'equity', type: 'aktien_neu', tqf: 0.3, taxExempt: false, notes: '' };
 const profileId = 'page-cash-profile';
 const event = { preventDefault() {} };
+function holdBasisQuotes(requests) {
+    globalThis.fetch = url => /\.(SG|DU|MU)$/.test(new NodeURL(url).searchParams.get('symbol') || '')
+        ? Promise.resolve({ ok: false, status: 404 }) : new Promise(resolve => requests.push({ url, resolve }));
+}
+
 async function setup({ lots = [lot], sale = { ...createCashSale({ cashStatus: 'pending_manual_posting' }), cashBalanceAfterPostingEur: undefined, cashConfirmedAt: undefined } } = {}) {
     const doc = createTranchenPageDom();
     for (const id of ['managerHousehold', 'managerHistoryStart', 'managerHistoryStartConfirm', 'managerHistoryStartStatus']) doc.register(new MockElement(id));
@@ -106,14 +112,14 @@ try {
         registry.profiles['membership-second'] = { meta: { id: 'membership-second', name: 'Synthetische zweite Person', belongsToHousehold: true }, data: {} };
         persistenceStorage.setItem('rs_profiles_v1', JSON.stringify(registry));
         await originalFlush.call(PersistenceFacade);
-        const changing = manageManagerPerson({ kind: 'membership', profileId: 'membership-second', belongs: false });
+        const changing = manageManagerPerson({ kind: 'delete', profileId: 'membership-second' });
         await respondPageDialog(doc);
-        assertEqual(await changing, true, 'Mitgliedschaftswechsel ist vollständig bestätigt');
-        assertEqual(JSON.parse(persistenceStorage.getItem('rs_profiles_v1')).profiles['membership-second'].meta.belongsToHousehold, false, 'Die zweite Person ist dauerhaft aus dem Haushalt entfernt');
-        assertEqual(guard.reasons().length, 0, 'Abgeschlossener Mitgliedschaftswechsel hinterlässt keinen Schutzgrund');
+        assertEqual(await changing, true, 'Personenlöschung ist vollständig bestätigt');
+        assertEqual(JSON.parse(persistenceStorage.getItem('rs_profiles_v1')).profiles['membership-second'], undefined, 'Die zweite Person ist dauerhaft aus dem Haushalt entfernt');
+        assertEqual(guard.reasons().length, 0, 'Abgeschlossene Personenlöschung hinterlässt keinen Schutzgrund');
         let blocked = false;
         guard.beforeUnload({ preventDefault() { blocked = true; } });
-        assertEqual(blocked, false, 'Nach abgeschlossener Mitgliedschaftsänderung bleibt beforeunload frei');
+        assertEqual(blocked, false, 'Nach abgeschlossener Personenlöschung bleibt beforeunload frei');
     }
 
     {
@@ -467,8 +473,8 @@ try {
         const calls = holdFlushes(), requests = [];
         let pending;
         if (kind === 'quotes') {
-            globalThis.fetch = url => new Promise(resolve => requests.push({ url, resolve }));
-            pending = doc.getElementById('updatePricesBtn').click();
+            holdBasisQuotes(requests);
+            pending = doc.getElementById('managerQuoteRefresh').click();
             await waitFor(() => requests.length === 1, 'Kursbatch wartet auf gehaltene Fetch-Promise');
             assert(guard.reasons().some(reason => reason.phase === 'preparing'), 'Kursbatch ist noch in Vorbereitung');
         } else {
@@ -522,8 +528,8 @@ try {
     {
         const lots = Array.from({ length: 6 }, (_, index) => ({ ...lot, trancheId: `lot-${index}`, ticker: `TEST${index}.DE` }));
         const { doc, guard, raw } = await setup({ lots }); const requests = [];
-        globalThis.fetch = url => new Promise(resolve => requests.push({ url, resolve }));
-        const batch = doc.getElementById('updatePricesBtn').click();
+        holdBasisQuotes(requests);
+        const batch = doc.getElementById('managerQuoteRefresh').click();
         await waitFor(() => requests.length === 3, 'Alle drei parallelen Jobs gestartet');
         let finished = false;
         const navigation = guard.prepare({ decide: async () => true }).then(attempt => { finished = true; return attempt; });
@@ -540,14 +546,14 @@ try {
         assertEqual(requests.length, 3, 'Keine Suchanfrage und kein Folgebatch nach Kündigung');
         assertEqual(persistenceStorage.getItem('depot_tranchen'), raw, 'Späte Quoteantworten starten keinen Save');
         guard.end(attempt);
-        assertEqual(doc.getElementById('updatePricesBtn').disabled, false, 'Nach Abbruchende bleibt Kursretry erreichbar');
+        assertEqual(doc.getElementById('managerQuoteRefresh').disabled, false, 'Nach Abbruchende bleibt Kursretry erreichbar');
     }
     console.log('Navigationskündigung überstimmt auch einen vorherigen Batchtimeout');
     {
         const lots = Array.from({ length: 6 }, (_, index) => ({ ...lot, trancheId: `timeout-${index}`, ticker: `TEST${index}.DE` }));
         const { doc, guard, raw } = await setup({ lots });
         const requests = []; let timeout, flushes = 0;
-        globalThis.fetch = url => new Promise(resolve => requests.push({ url, resolve }));
+        holdBasisQuotes(requests);
         PersistenceFacade.flush = async () => { flushes++; return true; };
         const schedule = globalThis.setTimeout;
         globalThis.setTimeout = (callback, ms, ...args) => {
@@ -555,7 +561,7 @@ try {
             return schedule(callback, ms, ...args);
         };
         let batch;
-        try { batch = doc.getElementById('updatePricesBtn').click(); }
+        try { batch = doc.getElementById('managerQuoteRefresh').click(); }
         finally { globalThis.setTimeout = schedule; }
         await waitFor(() => requests.length === 3, 'Timeoutgegenfall startet drei Jobs');
         requests[0].resolve({ ok: true, json: async () => ({ symbol: 'TEST0.DE', price: 150, currency: 'EUR', asOf: Math.floor(Date.now() / 1000) }) });

@@ -2,7 +2,7 @@
 import type * as D from './datenvertraege.js';
 import type * as I from './speicher-integration.js';
 export interface PageDialogOptions {
-    title?: string; description?: string; doc?: Document; signal?: AbortSignal; opener?: EventTarget;
+    title?: string; description?: string; notice?: string; doc?: Document; signal?: AbortSignal; opener?: EventTarget;
     returnFocus?: ()=>void; id?: string; cancelled?: unknown; queue?: boolean; createDialog?: ()=>HTMLDialogElement;
 }
 export interface DialogContext {

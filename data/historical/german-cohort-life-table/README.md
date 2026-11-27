@@ -4,6 +4,9 @@ Die festgeschriebene Destatis-Arbeitsmappe liefert die Zieltafel der
 Lebenserwartung (FR-75): jährliche Sterbewahrscheinlichkeiten (`qx`) je
 Geburtsjahrgang 1926–2026, Geschlecht und Alter, Variante V2 „mittel“.
 
+Wann ein neuer Stand der Tafel fällig ist, zeigt das Register der amtlichen Jahreswerte unter
+[Jahresdaten pflegen](../../../docs/reference/JAHRESDATEN.md#amtliche-jahreswerte).
+
 ## Erzeugen und prüfen
 
 ```text

@@ -3,7 +3,7 @@ import { assertHouseholdPlanRecord } from '../profile/household-plan.js';
 import { projectPerson, personDisplayAge } from '../profile/profile-person-data.js';
 import { parseCalendarDate } from '../shared/app-clock.js';
 import { incomeFromRecord, fixedMonthlyIncome } from '../profile/profile-income.js';
-import { readPartnership, inheritancePercent, inheritancePreview } from '../profile/household-partnership.js';
+import { readPartnership, inheritancePercent, inheritancePreview, PARTNERSHIP_KEY, MISSING_PARTNERSHIP_STATUS } from '../profile/household-partnership.js';
 import { readImmobilien, IMMOBILIEN_KEY } from '../profile/profile-immobilien.js';
 import { PLANNED_EXPENSES_KEY, isFixedExpense, plannedExpensesForYear } from '../profile/household-planned-expenses.js';
 import { readBalancePersonStatus } from '../shared/person-data-status.js';
@@ -21,7 +21,7 @@ const lessons = {
         exercises: pensionStart => {
             const year = pensionStart && Number(pensionStart.slice(0, 4));
             const years = year ? `die Jahre ${year} und ${year + 1}` : 'das Jahr ihres Rentenbeginns und das Folgejahr';
-            return [`Personen & Vermögen → Erika → Einkünfte: Rente, Feld „ab“, von ${pensionStart ? month(pensionStart) : 'ihrem Rentenbeginn'} auf ${shiftMonth(pensionStart, 1)} verschieben. Vergleiche im Simulator → Annahmen → „Einkünfte, Ausgaben und Bedarf“ ${years}, Spalte „Ergebnis“ (aus Vermögen). Ohne Erikas Rente steigt die Entnahme in diesen Jahren.`, 'Personen & Vermögen → Haushalt & Plan → Bedarf pro Jahr: Wunschbedarf um 300 € im Monat erhöhen. Vergleiche Balance → Dein Monatsbudget, Zeile „aus dem Vermögen“. Übersicht: In der Variante „Haus und vermietete Wohnung“ stehen Gesamtvermögen und „davon Geldvermögen“ auf der Vermögenskarte; öffne das ⓘ für die Aufteilung.', 'Personen & Vermögen → Haushalt & Plan → Partnerschaft und Todesfall: Güterstand zwischen „Zugewinngemeinschaft (gesetzlich)“ und „Gütertrennung“ umstellen. Rechne im Simulator mit demselben Seed neu und vergleiche die Erbschaftsteuer in einem Todesjahr mit realem Vermögenszuwachs.',
+            return [`Personen & Vermögen → Erika → Einkünfte: Rente, Feld „ab“, von ${pensionStart ? month(pensionStart) : 'ihrem Rentenbeginn'} auf ${shiftMonth(pensionStart, 1)} verschieben. Vergleiche im Simulator → Annahmen → „Einkünfte, Ausgaben und Bedarf“ ${years}, Spalte „Ergebnis“ (aus Vermögen). Ohne Erikas Rente steigt die Entnahme in diesen Jahren.`, 'Personen & Vermögen → Haushalt & Plan → Bedarf pro Jahr: Wunschbedarf um 300 € im Monat erhöhen. Vergleiche Balance → Dein Monatsbudget, Zeile „aus dem Vermögen“. Übersicht: In der Variante „Haus und vermietete Wohnung“ stehen Gesamtvermögen und „davon Geldvermögen“ auf der Vermögenskarte; öffne das ⓘ für die Aufteilung.', 'Personen & Vermögen → Haushalt & Plan → Partnerschaft und Todesfall: Güterstand zwischen „Zugewinngemeinschaft (gesetzlich)“ und „Gütertrennung“ umstellen. Rechne im Simulator mit demselben Zufallsstartwert neu und vergleiche die Erbschaftsteuer in einem Todesjahr mit realem Vermögenszuwachs.',
                 'Balance → Deine Reserven: Das Ziel steht im Grundfall gerundet bei 165.000 € (gerechnet 162.000 €); Ziele und Verkäufe rundet die App auf, Verfügbares ab. Was zu tun ist → „Details & Drucken“ zeigt den Plan genau mit Cent.',
                 'Balance → Was zu tun ist → „Verkauf starten“: Der Überblick schlägt 66 und 565 Stück vor (Plan brutto plus 1 % Puffer). Trag in „Abrechnung“ für Erika 400 Stück zu 144,38 € mit 9,90 € Gebühren und 478,03 € Steuern ein. Die App fragt „Was passiert mit dem Rest?“; mit „Bleibt im Depot – so entschieden“ steht die Zeile auf „Erledigt · Rest bleibt im Depot“, „Rest doch verkaufen“ in der Karte nimmt es zurück.'];
         },
@@ -69,15 +69,15 @@ const variantLessons = {
         note: 'Bei Unverheirateten können Zahlungen über die gemeinsame Haushaltsführung hinaus Schenkungen sein (Freibetrag 20.000 € in zehn Jahren).'
     },
     testament: {
-        exercises: ['Simulator → Monte Carlo rechnen → Szenarien: einen Pfad mit Martins Tod öffnen. Im Todesjahr zeigt das Erbe-ⓘ Geldanteil, Kapitalwert des Wohnrechts und Steuer. Martins Haus verlässt den Haushalt; Petras eigene Wohnung bleibt, bis sie verkauft wird. Bei bereits verkaufter Wohnung steht „Immobilien 0 €“.', 'Personen & Vermögen → Haushalt & Plan → Partnerschaft und Todesfall: Mindestbetrag, Höchstanteil und Immobilienregel vergleichen. Danach Monte Carlo neu rechnen.', 'Bei Martin die Steuer auf das Wohnrecht von sofort auf jährlich (§ 23 ErbStG) umstellen. Vergleiche die Vorschau und rechne mit demselben Seed neu. Im Todesjahr fällt weniger Steuer an; ab dem Folgejahr steht Steuer Wohnrecht (§ 23) im Protokoll. Prüfe auch 1.500 € ortsübliche Miete pro Monat am Haus. Die Muster-Variante startet weiter mit sofort.'],
+        exercises: ['Simulator → Monte Carlo rechnen → Szenarien: einen Pfad mit Martins Tod öffnen. Im Todesjahr zeigt das Erbe-ⓘ Geldanteil, Kapitalwert des Wohnrechts und Steuer. Martins Haus verlässt den Haushalt; Petras eigene Wohnung bleibt, bis sie verkauft wird. Bei bereits verkaufter Wohnung steht „Immobilien 0 €“.', 'Personen & Vermögen → Haushalt & Plan → Partnerschaft und Todesfall: Mindestbetrag, Höchstanteil und Immobilienregel vergleichen. Danach Monte Carlo neu rechnen.', 'Bei Martin die Steuer auf das Wohnrecht von sofort auf jährlich (§ 23 ErbStG) umstellen. Vergleiche die Vorschau und rechne mit demselben Zufallsstartwert neu. Im Todesjahr fällt weniger Steuer an; ab dem Folgejahr steht Steuer Wohnrecht (§ 23) im Protokoll. Prüfe auch 1.500 € ortsübliche Miete pro Monat am Haus. Die Muster-Variante startet weiter mit sofort.'],
         observe: 'Wohnrecht schafft verfügbares Geld nur durch den Geldanteil. Das Haus kann weder im Notfall noch für Heimpflege verkauft werden; dauerhafte Heimpflege beendet das Wohnrecht und weitere Jahreszahlungen ohne Auszahlung.'
     },
     klein: { note: 'Diese Variante darf schlecht ausgehen: Hier siehst du, wann ein Plan kippt.' },
     kurssturz: {
         question: 'Was zeigt die App, wenn der Markt im Jahr erst stark steigt und dann wieder fällt?',
-        exercises: ['Spielbereichsband → „Datum wählen …“: 02.01.2027 und den Jahresabschluss 2026 öffnen. Im Reiter „Plan 2027“ steht „Bärenmarkt, den die Jahresregel nicht sieht“: Nach Kursen zum Jahresende wäre es kein Bärenmarkt, gemessen am Jahreshoch vom 15.06. schon. Wähle, welcher Plan gilt, und vergleiche danach Monatsbudget und „Was zu tun ist“.',
-            'Vorher Balance → Was zu tun ist: Denselben Block zeigt die Karte nur, solange der Kurs gemessen am Jahreshoch einen Bärenmarkt ergibt. Ein kleiner Abstand zum Hoch bleibt unsichtbar.'],
-        observe: 'Übung 1: Jahresabschluss → Reiter Plan 2027. Übung 2: Balance → Was zu tun ist → Kursverlauf.',
+        exercises: ['Spielbereichsband → „Datum wählen …“: 02.01.2027 und den Jahresabschluss 2026 öffnen. Im Reiter „Marktdaten“ steht unter „Allzeithoch und Marktlage“ das Hoch mit „Tagesschluss vom 15.06.2026“. Nach Kursen zum Jahresende allein wäre Ende 2026 ein neues Hoch; die App misst den Abstand aber am höchsten Tagesschluss und erkennt den Bärenmarkt. Vergleiche im Reiter „Plan 2027“ Monatsbudget und „Was zu tun ist“.',
+            'Vorher Balance → Diagnose → „Marktphase“: Die Kachel nennt dasselbe Allzeithoch mit Datum, den Abstand heute und die Schwelle „Tiefer Bär“. Kürzt die App schon, steht dort „Kürzung aktiv“.'],
+        observe: 'Übung 1: Jahresabschluss → Reiter Marktdaten und Plan 2027. Übung 2: Balance → Diagnose → Marktphase.',
         note: 'Die Aktienkurse dieser Variante steigen 2026 bis zum 15.06. auf das Doppelte des Vorjahresendes und fallen bis Ende 2026 auf das 1,25-Fache. Geldmarkt, Anleihen und Gold verlaufen wie im Grundfall.'
     },
     teilweise: {
@@ -115,7 +115,7 @@ export function musterLesson(householdId, variantId = 'grund', pensionStart = nu
     const lesson = { ...lessons[householdId], ...variantLessons[variantId] };
     const exercises = typeof lesson.exercises === 'function' ? lesson.exercises(pensionStart, firstPensionStart) : lesson.exercises;
     return { ...lesson, exercises: householdId === 'max-erika' ? [...exercises,
-        'Floor über Plan erkennen: Öffne Ausgaben → Haushalt und lies die Karte „Floor und Flex“. Der Grundbedarf liegt im Jahresmittel leicht über Plan, der Flex darunter. Wähle im Spielbereich das Testdatum 02.01.2027. Öffne auf der Übersicht den Jahresabschluss → „Bedarf und Plan“. Wähle beim Grundbedarf „Ist 2026 + Inflation“. Schließe das Jahr ab und sieh dir das neue Monatsbudget an.'] : exercises };
+        'Grundbedarf über Plan erkennen: Öffne Ausgaben → Haushalt und lies die Karte „Grundbedarf und Flex“. Der Grundbedarf liegt im Jahresmittel leicht über Plan, der Flex darunter. Wähle im Spielbereich das Testdatum 02.01.2027. Öffne auf der Übersicht den Jahresabschluss → „Bedarf und Plan“. Wähle beim Grundbedarf „Ist 2026 + Inflation“. Schließe das Jahr ab und sieh dir das neue Monatsbudget an.'] : exercises };
 }
 
 /** Heutige Pflegekosten des Haushalts (€/Jahr, erstes Jahr ohne Flex) aus derselben Bedarfsfunktion wie Balance und
@@ -207,9 +207,10 @@ export function musterSteckbrief(records, householdId, testDate, variantId = 'gr
     }
     if (householdId === 'jan-lena') details.push(people.flatMap(p => incomeFromRecord(p.data).filter(e => !e.art))
         .map(e => `${e.bezeichnung} ${euro(e.betrag)} (${e.monat.slice(0, 4)})`).join(', '));
-    if (householdId === 'max-erika') {
-        const partnership = readPartnership(records.household_partnership_v1);
-        details.push(`Es gilt: ${partnership.status === 'married' ? 'verheiratet' : 'nicht verheiratet'}, Erbanteile ${profiles.map(p => inheritancePercent(partnership, p.meta.id) + ' %').join(' / ')}; siehe Haushalt & Plan`);
+    if (['max-erika', 'jan-lena', 'helga-werner'].includes(householdId)) {
+        const partnership = readPartnership(records[PARTNERSHIP_KEY], { forInheritance: true });
+        const status = partnership.status === 'married' ? 'verheiratet' : partnership.status === 'unmarried' ? 'nicht verheiratet' : MISSING_PARTNERSHIP_STATUS;
+        details.push(`Es gilt: ${status}, Erbanteile ${profiles.map(p => inheritancePercent(partnership, p.meta.id) + ' %').join(' / ')}; siehe Haushalt & Plan`);
     }
     if (householdId === 'martin-petra') for (const person of people) {
         const lots = JSON.parse(person.data.depot_tranchen), properties = readImmobilien(person.data[IMMOBILIEN_KEY]);

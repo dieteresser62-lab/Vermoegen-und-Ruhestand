@@ -1,7 +1,7 @@
 /** @import * as D from "../../../typcheck/datenvertraege.js" */
 /** @import * as I from "../../../typcheck/speicher-integration.js" */
 import { PROFILE_LOAD_STATUS } from '../profile-state.js';
-import { persistenceStorage } from '../../shared/persistence-facade.js';
+import { persistenceStorage, getDirtyState } from '../../shared/persistence-facade.js';
 import { captureProfileData as captureLiveProfileData, hasProfileScopedDataInLocalStorage, loadProfileDataIntoLocalStorage } from '../profile-live-storage.js';
 import { ensureDefaultProfile, loadProfileRegistry, saveProfileRegistry } from '../profile-registry.js';
 import { CONFIG } from '../../balance/balance-config.js';
@@ -16,6 +16,8 @@ import { recoveryRawMatches, assertRecoveryDocumentMatches } from './recovery-do
 
 /** @type {D.BootstrapResult | null} */
 let lastProfileBootstrapResult = null;
+/** Schlüssel, deren Änderung noch nicht dauerhaft gespeichert ist. */
+const pendingKeys = () => { const state = getDirtyState?.(); return new Set([...(state?.dirtyKeys || []), ...(state?.deletedKeys || [])]); };
 
 export function getLastProfileBootstrapResult() {
     return lastProfileBootstrapResult;
@@ -54,11 +56,14 @@ export function bootstrapProfileContext(options = {}) {
             hasLiveProfileData;
 
         if (shouldSaveLiveData) {
-            saveCurrentProfileFromLocalStorage();
-            lastProfileBootstrapResult = { currentId, action: 'saved', importResult, recovery: null };
+            // SP-1: `written` meldet, ob der Start wirklich gespeichert hat; nur dann wartet die Seite vor der Bereitschaft auf den Flush.
+            const written = saveCurrentProfileFromLocalStorage() === true;
+            lastProfileBootstrapResult = { currentId, action: 'saved', written, importResult, recovery: null };
             return lastProfileBootstrapResult;
         }
 
+        // Auch das Laden kann schreiben (z. B. bereinigte Balance-Eigentümerschaft in der Registry); `written` meldet das.
+        const pendingBefore = pendingKeys();
         const loaded = loadProfileIntoLocalStorage(currentId);
         if (!loaded) {
             throw new ProfileRecoveryError({
@@ -73,7 +78,8 @@ export function bootstrapProfileContext(options = {}) {
                 canReset: true
             });
         }
-        lastProfileBootstrapResult = { currentId, action: 'loaded', importResult, recovery: null };
+        const written = [...pendingKeys()].some(key => !pendingBefore.has(key));
+        lastProfileBootstrapResult = { currentId, action: 'loaded', written, importResult, recovery: null };
         return lastProfileBootstrapResult;
     } catch (error) {
         const recovery = getProfileRecoveryFromError(error);

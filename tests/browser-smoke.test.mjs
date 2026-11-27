@@ -20,6 +20,8 @@ import { HANDBOOK_MUSTER_DATE } from '../app/demo/muster-haushalte.js';
 import { PLAN_DEFAULTS, HOUSEHOLD_PLAN_KEY, planScope, buildPlanRecord } from '../app/profile/household-plan.js';
 import { HOUSEHOLD_PLAN_FIELDS } from '../app/shared/household-plan-fields.js';
 import { addDirectHouseholdPlans } from '../app/profile/household-plan-migration.js';
+import { DAILY_PRICES_KEY, emptyHistorySymbol, historyDay } from '../app/tranches/tranchen-history-store.js';
+import { annualTestMarketData } from './helpers/balance-storage-fixtures.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -121,7 +123,7 @@ function createBrowserProfileStorage(profiles, currentProfileId) {
                 name: profile.name,
                 createdAt: '2026-07-14T00:00:00.000Z',
                 updatedAt: '2026-07-14T00:00:00.000Z',
-                belongsToHousehold: profile.belongsToHousehold !== false
+                belongsToHousehold: true
             },
             data: {
                 ...(profile.omitTranches === true
@@ -227,25 +229,21 @@ async function waitForHouseholdPlanStart(page) {
     });
 }
 
-async function setBrowserHouseholdMembership(page, id, belongs, { stayInManager = false } = {}) {
+// AP-1: Eine Person verlässt den Haushalt nur noch durch Löschen in „Personen verwalten“.
+async function deleteBrowserPerson(page, id, { stayInManager = false } = {}) {
     const returnUrl = page.url();
     const inManager = new URL(returnUrl).pathname.endsWith('/depot-tranchen-manager.html');
-    // Standard wie vor BT-6a: Rückkehr startet den Manager mit seiner regulären Personenauswahl.
-    // Nur Historienfälle dürfen ausdrücklich im selben Dokument bleiben.
     if (!inManager || !stayInManager) await page.goto(new URL('depot-tranchen-manager.html', returnUrl).href);
     await waitForPageNavigationRelease(page);
     await page.locator('#managePeopleBtn:enabled').waitFor();
     await page.locator('#managePeopleBtn').click();
-    const member = page.locator(`[data-person-membership="${id}"]`);
-    if (await member.isChecked() !== belongs) {
-        await member.setChecked(belongs);
-        await answerPageDialog(page, { label: 'Haushalt ändern' });
-        await page.locator('#managerPeopleStatus').filter({ hasText: 'dauerhaft gespeichert' }).waitFor();
-    }
+    await page.locator(`#managerPeopleList [data-person-action="delete"][data-person-id="${id}"]:enabled`).click();
+    await page.locator('#pageDialog [data-page-dialog-accept]').click();
+    await page.locator(`#managerPeopleList [data-person-action="delete"][data-person-id="${id}"]`).waitFor({ state: 'detached' });
+    await page.locator('#managerPeopleStatus').filter({ hasText: 'dauerhaft gespeichert' }).waitFor();
     await page.locator('#dismissPeopleModalBtn').click();
     await waitForPageNavigationRelease(page);
     if (!inManager || !stayInManager) await page.goto(returnUrl);
-    // Auch die Rückkehr in den Manager startet Vorbereitungen; der Aufrufer darf danach weiterwechseln.
     if (inManager) await waitForPageNavigationRelease(page);
 }
 
@@ -271,14 +269,6 @@ async function toggleMonteCarloSettings(page) {
 async function openSimulatorProfileList(page) {
     await openSimulatorTab(page, 'annahmen');
     await page.locator('#simProfileList').waitFor({ state: 'visible' });
-}
-
-// Parameter-Sweep und Auto-Optimize sind Werkzeuge im Reiter „Werkstatt“.
-async function openWorkshopTool(page, tool) {
-    await openSimulatorTab(page, 'werkstatt');
-    const card = page.locator(`#workshopToolCards [data-workshop-tool="${tool}"]`);
-    if (await card.getAttribute('aria-expanded') !== 'true') await card.click();
-    await page.locator(`[data-workshop-panel="${tool}"]`).waitFor({ state: 'visible' });
 }
 
 async function openBalanceHouseholdList(page) {
@@ -365,6 +355,8 @@ async function createPage(browser, label, options = {}) {
         locale: 'de-DE',
         ...(options.fixedTime ? { timezoneId: 'Europe/Berlin' } : {})
     });
+    // Ein Testbrowser kann den Speicherdialog nicht bedienen. Ohne showSaveFilePicker übergibt die App die Sicherung wie die Desktop-App.
+    await context.addInitScript(() => { Object.defineProperty(window, 'showSaveFilePicker', { value: undefined, configurable: true, writable: true }); });
     await context.addInitScript(({ storage, startupSessionKey, skipStartupQuotes, expectPlanMigration }) => {
         // about:blank (vollständiger Seitenneustart in Tests) hat keinen Zugriff auf den Origin-Speicher.
         if (location.protocol === 'about:') return;
@@ -464,12 +456,18 @@ async function createPage(browser, label, options = {}) {
                 return;
             }
             if (url.pathname === '/quote') {
+                if (/\.(SG|DU|MU)$/.test(symbol) && typeof options.quoteFixtures === 'object' && !options.quoteFixtures[symbol]) {
+                    await route.fulfill({ json: { status: 'error', code: 'SYMBOL_NOT_FOUND' } });
+                    return;
+                }
                 await route.fulfill({ json: {
                     symbol,
                     price: fixture?.price ?? 105,
                     currency: fixture?.currency ?? 'EUR',
                     asOf: fixture?.asOf ?? Math.floor(Date.now() / 1000),
-                    source: fixture?.source ?? 'yahoo-chart'
+                    source: fixture?.source ?? 'yahoo-chart',
+                    exchangeName: fixture?.exchangeName,
+                    previousClose: fixture?.previousClose
                 } });
                 return;
             }
@@ -577,12 +575,20 @@ async function openTrancheDetailDelete(page, trancheId = null) {
 // VK-2: „Kauf eintragen“ öffnet den geführten Kauf (#buyFlowDialog); der Tranchendialog dient dem Bearbeiten. Dialogfälle des
 // Tranchendialogs öffnen ihn direkt mit dem Kaufknopf als Öffner.
 async function openTrancheCreate(page) {
-    await page.evaluate(async () => {
-        const { openCreateTrancheModal } = await import('./app/tranches/tranchen-manager-modal.js');
-        const { state } = await import('./app/tranches/tranchen-manager-page/state.js');
-        state.editingIndex = -1;
-        openCreateTrancheModal(document, document.getElementById('depotAddTrancheBtn'));
-    });
+    // Der Handle hält das Öffnungs-Promise fest: Chromium kann es sonst während import() einsammeln.
+    const opening = await page.evaluateHandle(() => ({
+        done: (async () => {
+            const { openCreateTrancheModal } = await import('./app/tranches/tranchen-manager-modal.js');
+            const { state } = await import('./app/tranches/tranchen-manager-page/state.js');
+            state.editingIndex = -1;
+            openCreateTrancheModal(document, document.getElementById('depotAddTrancheBtn'));
+        })()
+    }));
+    try {
+        await opening.evaluate(({ done }) => done);
+    } finally {
+        await opening.dispose();
+    }
 }
 
 async function readIndexedDb(page, storeName, key) {
@@ -661,14 +667,15 @@ async function runIndexSmoke(browser, baseUrl) {
     page.on('request', request => {
         const url = new URL(request.url());
         // Der Tageskursjob (/chart) ist ein eigener Abrufweg; gezählt wird hier nur der Startkursabruf.
-        if (url.hostname === '127.0.0.1' && url.port === '8787') { if (url.pathname === '/chart') chartRequests++; else quoteRequests++; }
+        if (url.hostname === '127.0.0.1' && url.port === '8787') { if (url.pathname === '/chart') chartRequests++; else if (!url.searchParams.has('einmal')) quoteRequests++; } // KF-1: Abendbörsen (einmal=1) zählen nicht als eigene Kursrunde
     });
     await page.goto(`${baseUrl}/index.html`, { waitUntil: 'load', timeout: 15000 });
     await page.locator('#overviewTitle').waitFor({ state: 'visible' });
     await page.locator('.suite-navigation a[href="Balance.html"]').waitFor({ state: 'visible' });
     await page.locator('.suite-navigation a[href="Simulator.html"]').waitFor({ state: 'visible' });
     assert(!await page.locator('#kursdetails').evaluate(card => card.open), 'Kursaufklappfeld startet geschlossen an der Kopfpille');
-    await page.locator('#overviewPrices').click();
+    // OP-3 Punkt 3: Die Pille startet jetzt eine Kursrunde; der Startbericht wird über das Sprungziel geöffnet.
+    await page.evaluate(() => { location.hash = '#kursdetails'; });
     const host = page.locator('#startupPriceStatus');
     await host.filter({ hasText: '1 von 2 Kursen aktualisiert · 1 nicht aktualisiert' }).waitFor({ state: 'visible' });
     const firstRows = await host.locator('li').allTextContents();
@@ -686,13 +693,31 @@ async function runIndexSmoke(browser, baseUrl) {
     const toggleRecords = await page.evaluate(() => JSON.stringify(Object.entries(localStorage).sort()));
     await page.locator('#kursdetails > summary').press('Enter');
     assert(!await page.locator('#kursdetails').evaluate(card => card.open), 'Native Tastaturbedienung schließt Kursdetails');
-    await page.locator('#overviewPrices').focus(); await page.locator('#overviewPrices').press('Enter');
-    assert(await host.isVisible() && await host.textContent() === statusBeforeToggle, 'Erneutes Öffnen erhält vorhandenen Kursbericht');
-    await page.locator('#kursdetails > summary').click();
     // Seit dem Spielbereich-Paket löst derselbe Sprungpunkt nicht doppelt aus; zwischen beiden Hashwechseln das Ereignis abwarten.
     await page.evaluate(() => new Promise(resolve => { location.hash = ''; setTimeout(() => { location.hash = '#kursdetails'; resolve(); }, 50); }));
     await host.waitFor({ state: 'visible' });
-    assert(quoteRequests === settledRequestCount && await page.evaluate(() => JSON.stringify(Object.entries(localStorage).sort())) === toggleRecords, 'Pille und direkter Hash öffnen ohne Kursrequest oder Fachwrite');
+    assert(await host.textContent() === statusBeforeToggle, 'Erneutes Öffnen erhält vorhandenen Kursbericht');
+    assert(quoteRequests === settledRequestCount && await page.evaluate(() => JSON.stringify(Object.entries(localStorage).sort())) === toggleRecords, 'Direkter Hash öffnet ohne Kursrequest oder Fachwrite');
+    // OP-3 Punkt 3 und Nachtrag 1: Ein Klick auf die Kurspille startet genau eine neue Kursrunde (früher Knopf „Kurse aktualisieren“),
+    // ohne Sprung und ohne das Kursfenster zu öffnen.
+    await page.locator('#kursdetails > summary').click();
+    assert(await page.locator('#overviewPrices').getAttribute('title') === 'Kurse jetzt aktualisieren', 'Kurspille nennt ihre Aktion');
+    // Die frühere Sprungmarke hat die Seite vom Seitenanfang aus verschoben; deshalb oben beginnen und wie der Nutzer klicken.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const scrollBefore = await page.evaluate(() => window.scrollY);
+    await page.locator('#overviewPrices').click();
+    for (let i = 0; i < 200 && quoteRequests === settledRequestCount; i++) await page.waitForTimeout(25);
+    await waitForPageCondition(page, async () => {
+        const { getPageNavigationGuard } = await import('./app/shared/navigation-guard-dialog.js');
+        const guard = getPageNavigationGuard(document, window);
+        return !guard.isBusy() && guard.reasons().length === 0;
+    });
+    await host.filter({ hasText: '1 von 2 Kursen aktualisiert · 1 nicht aktualisiert' }).waitFor({ state: 'attached' });
+    assert(quoteRequests === settledRequestCount + 1, 'Kurspille startet genau eine neue Kursrunde und zeigt deren Bericht');
+    const scrollAfter = await page.evaluate(() => window.scrollY), priceValue = await page.locator('#overviewPricesValue').textContent();
+    assert(scrollAfter === scrollBefore, `Kurspille springt nicht (${scrollBefore} → ${scrollAfter})`);
+    assert(!await page.locator('#kursdetails').evaluate(card => card.open), 'Kurspille lässt das Kursfenster zu');
+    assert(priceValue.includes('teilweise aktualisiert'), `Kurspille zeigt den neuen Stand selbst (${priceValue})`);
     assert(await host.locator('li a[data-profile-handoff][href="depot-tranchen-manager.html"]').count() === 1 && await host.locator('li script').count() === 0, 'Sonderzeichen bleiben Text; Managerlink nutzt den bestehenden Handoff');
     const sessionBefore = await page.evaluate(key => sessionStorage.getItem(key), STARTUP_PRICE_SESSION_KEY);
     const recordsBefore = await page.evaluate(() => ({ live: localStorage.getItem('depot_tranchen'), registry: localStorage.getItem('rs_profiles_v1') }));
@@ -709,7 +734,7 @@ async function runIndexSmoke(browser, baseUrl) {
     const dailyPrices = JSON.parse((await readIndexedDb(page, 'kv', 'rs_daily_prices_v1')).value);
     assert(historyStart.version === 1 && /^\d{4}-01-01$/.test(historyStart.startDate), 'Übersicht bestätigt gemeinsamen Beginn aus erstem Planungsjahr');
     assert(Object.values(dailyPrices.symbols).some(record => record.days.length === 0 && record.queried.length > 0), 'Leere erfolgreiche Browserchartantwort bestätigt geprüften Zeitraum ohne erfundene Kurse');
-    assert(quoteRequests === 1, 'Startkursfixture erzeugt genau einen kontrollierten Kursrequest');
+    assert(quoteRequests === 2, 'Startkursfixture und der Klick auf die Kurspille erzeugen je genau einen kontrollierten Kursrequest');
     assert(chartRequests > 0, 'Tageskursjob fragt über den eigenen Chartweg ab');
     // Seit Paket A1 steht der Kursbericht im Abschluss-Dialog (Schritt „Kurse“); die Karte zeigt nur Schritt-Chips.
     await page.locator('#overviewFocus [data-overview-month-confirm]').click();
@@ -722,7 +747,7 @@ async function runIndexSmoke(browser, baseUrl) {
     assert(await page.locator('#overviewFocus input[type="checkbox"]').count() === 0, 'Fokusdaten sind keine frei beschreibbaren Checkboxen');
     const requestsBefore = quoteRequests;
     await page.reload({ waitUntil: 'load', timeout: 15000 });
-    await page.locator('#overviewPrices').click();
+    await page.locator('#kursdetails').evaluate(card => { card.open = true; }); // OP-3: Die Pille würde eine neue Kursrunde starten.
     await host.filter({ hasText: '1 von 2 Kursen aktualisiert · 1 nicht aktualisiert' }).waitFor({ state: 'visible' });
     assert(JSON.stringify(await host.locator('li').allTextContents()) === JSON.stringify(firstRows), 'Echter Reload erhält Zuordnung, Gründe und gespeicherten Ortszeitpunkt');
     assert(quoteRequests === requestsBefore, 'Sitzungsrückkehr erzeugt keine zusätzlichen Kursrequests');
@@ -764,7 +789,7 @@ async function runIndexSmoke(browser, baseUrl) {
         assert(await host.locator('script').count() === 0 && await host.locator('li a[data-profile-handoff]').count() === scenario.codes.length,
             'Fehlerberichte bewahren Textsicherheit und Manager-Handoff');
         await page.reload({ waitUntil: 'load', timeout: 15000 });
-        await page.locator('#overviewPrices').click();
+        await page.locator('#kursdetails').evaluate(card => { card.open = true; }); // OP-3: lesend öffnen, die Pille aktualisiert.
         await host.locator('p').filter({ hasText: scenario.summary }).waitFor();
         assert(await host.locator('p').textContent() === summary && JSON.stringify(await host.locator('li').allTextContents()) === JSON.stringify(rows),
             'Echter Sitzungsreload erhält korrigierte Zusammenfassung und eigene Fehlergründe');
@@ -782,7 +807,7 @@ async function runIndexSmoke(browser, baseUrl) {
             createBrowserTranche({ trancheId: 'success-lot', name: 'Erfolgsfonds', ticker: 'SUCCESS.DE' })
         ]) } }, 'success-person') });
     await success.page.goto(`${baseUrl}/index.html`, { waitUntil: 'load' });
-    await success.page.locator('#overviewPrices').click();
+    await success.page.locator('#kursdetails').evaluate(card => { card.open = true; }); // OP-3: lesend öffnen, die Pille aktualisiert.
     await success.page.locator('#startupPriceStatus p').filter({ hasText: 'Kurse aktualisiert · 1 von 1 · heute' }).waitFor();
     assert(await success.page.locator('#startupPriceStatus p').count() === 1 && await success.page.locator('#startupPriceStatus ul').count() === 0, 'Vollerfolg besteht aus genau einer Zusammenfassungszeile ohne Liste');
     assert(/Erfolgsperson \/ Erfolgsfonds: letzte Anfragedauer \d+ ms/.test(await success.page.locator('.startup-price-technical div').textContent()),
@@ -1878,8 +1903,7 @@ async function runOverviewStockUncertainty(browser, baseUrl) {
         const storage = createBrowserProfileStorage({
             'stock-a': { name: 'Bestand A', tagesgeld: '100', tranchesRaw: JSON.stringify(removed ? [valid] : [valid, original]),
                 extraData: { profile_wealth_history_lots_v1: copiesRaw } },
-            'stock-b': { name: 'Bestand B', tagesgeld: '20', tranchesRaw: JSON.stringify([{ ...valid, trancheId: 'second', shares: 1 }]) },
-            'stock-outside': { name: 'Außen', tagesgeld: '9999', tranchesRaw: '[]', belongsToHousehold: false }
+            'stock-b': { name: 'Bestand B', tagesgeld: '20', tranchesRaw: JSON.stringify([{ ...valid, trancheId: 'second', shares: 1 }]) }
         }, 'stock-a');
         const smoke = await createPage(browser, 'index.html Bestandsunsicherheit', { fixedTime: '2026-01-07T12:00:00Z', skipStartupQuotes: true,
             storage: { ...storage, rs_wealth_history_start_v1: JSON.stringify({ version: 1, startDate: '2026-01-01' }),
@@ -1898,8 +1922,9 @@ async function runOverviewStockUncertainty(browser, baseUrl) {
             for (const period of ['all', 'year', '12m']) {
                 await page.locator(`[data-history-period="${period}"]`).click();
                 const text = (await page.locator('#overviewHistoryStatus').textContent()).replace(/\s+/g, ' ');
-                assert(text.includes('Teilabdeckung · bekannter Betrag 150 €') && text.includes('Geldvermögen nicht vollständig bewertbar'), 'Haushalt zeigt bekannte Beiträge beider Personen ohne Außenprofil');
-                assert(text.includes(dated ? 'Bestand unbekannt ab 2026-01-05' : 'ursprünglicher Kaufbeginn nicht gesichert'), 'Sichtbare Diagnose unterscheidet gesicherten Beginn von Altverlust');
+                assert(text.includes('Teilabdeckung · bekannter Betrag 150 €') && text.includes('Geldvermögen nicht vollständig bewertbar'), 'Haushalt zeigt bekannte Beiträge beider Personen');
+                assert(text.includes(dated ? 'Bestand A: Bestand ab 05.01.2026 nicht belegt.' : 'Bestand A: Bestand unbekannt: ursprünglicher Kaufbeginn nicht gesichert'), 'Sichtbare Diagnose unterscheidet gesicherten Beginn von Altverlust, mit Namen und deutschem Datum (OP-2 Punkt 3)');
+                assert(!text.includes('stock-a'), 'Sichtbare Diagnose zeigt keine interne Personenkennung (OP-2 Punkt 3)');
                 assert(await page.locator('#overviewHistoryChart .history-end-value').count() === 0, 'Unbekannter Endwert erhält keine vollständige Summenbeschriftung');
                 assert(await page.locator('#overviewHistoryChart .history-total').count() === (dated ? 1 : 0), 'Nur gesicherte Zeit vor Kauf besitzt Gesamtlinie');
             }
@@ -1914,7 +1939,7 @@ async function runOverviewStockUncertainty(browser, baseUrl) {
             await personHistories.filter({ hasText: 'Teilabdeckung' }).first().waitFor();
             const partialTexts = (await personHistories.allTextContents()).map(text => text.replace(/\s+/g, ' '));
             assert(partialTexts.some(text => text.includes('bekannter Betrag 150 €')) && partialTexts.some(text => text.includes('bekannter Betrag 120 €')), 'Haushalts- und Personenkarte zeigen verschiedene bekannte Summen');
-            assert(partialTexts.filter(text => text.includes('Teilabdeckung')).length === 2, 'Gültige zweite Person und Außenprofil bleiben getrennt vollständig');
+            assert(partialTexts.filter(text => text.includes('Teilabdeckung')).length === 2, 'Gültige zweite Person bleibt getrennt vollständig');
             smoke.assertNoErrors();
         } finally { await smoke.close(); }
     }
@@ -1944,7 +1969,7 @@ export function createOverviewWealthComparisonFixture(membership, retrospective)
         state.annualPeriodMetadata = metadata;
         state.wealthHistory = structuredClone(history);
         return [id, { name: index ? 'Synthetischer früherer Partner B' : 'Synthetische Person A',
-            belongsToHousehold: !index || membership === 'household', tagesgeld: String(cash),
+            tagesgeld: String(cash),
             balanceStateRaw: JSON.stringify(state),
             tranchesRaw: JSON.stringify([createBrowserTranche({ trancheId: id + '-lot', ticker: 'OVERVIEW.DE',
                 shares: 2, purchasePrice: 100, currentPrice: 100 })]),
@@ -1962,7 +1987,7 @@ export function createOverviewWealthComparisonFixture(membership, retrospective)
 async function runOverviewWealthComparisons(browser, baseUrl) {
     const reason = 'Kein eindeutiger Vergleichsstand für diesen Profil-/Haushaltsumfang';
     const cardHint = 'Jahresendvergleich 2026 nicht belegbar';
-    for (const membership of ['household', 'excluded', 'deleted']) {
+    for (const membership of ['household', 'deleted']) {
         for (const retrospective of [false, true]) {
             const { storage, fixedTime, currentAssets, history } = createOverviewWealthComparisonFixture(membership, retrospective);
             const seededRegistry = JSON.parse(storage.rs_profiles_v1);
@@ -2096,16 +2121,12 @@ async function runFullBackupRecoverySmoke(browser, baseUrl) {
     }, { recoverySnapshotId: importResult.recoverySnapshotId });
     assert(recoveryIndexEntry?.kind === SNAPSHOT_KINDS.fullBackupImportRecovery,
         'Browser snapshot index must retain the registered full-backup recovery kind');
-    assert(recoveryIndexEntry?.restoreScope?.profileRegistryMode === 'replace-all-rollback',
-        'Browser snapshot index must retain the full registry restore scope');
-    assert(recoveryIndexEntry?.restoreScope?.profileLiveDataMode === 'replace-all-rollback',
-        'Browser snapshot index must retain the full profile-live-data restore scope');
-
+    // SV-1: Der Punkt vor dem Einspielen holt den ganzen Haushalt zurück.
     const rollbackResult = await page.evaluate(async ({ recoverySnapshotId }) => {
-        const { StorageManager } = await import('./app/balance/balance-storage.js');
-        return StorageManager.rollbackImportReplace({ recoverySnapshotId });
+        const { restoreSnapshotById } = await import('./app/shared/snapshot-restore.js');
+        return restoreSnapshotById(recoverySnapshotId, { reload: () => {} });
     }, { recoverySnapshotId: importResult.recoverySnapshotId });
-    assert(rollbackResult.ok, `Browser full-backup recovery must be restorable: ${JSON.stringify(rollbackResult)}`);
+    assert(['restored', 'reload_required'].includes(rollbackResult.status), `Browser full-backup recovery must be restorable: ${JSON.stringify(rollbackResult)}`);
     const restoredRegistryRaw = (await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value;
     assert(restoredRegistryRaw === previousRegistryRaw,
         'Browser full-backup recovery must restore the previous registry byte-for-byte');
@@ -2124,8 +2145,7 @@ async function runPersonDataReadiness(browser, baseUrl) {
         const missing = { profile_person_schema_version: '1', profile_tagesgeld: '10000', depot_tranchen: '[]' };
         const registry = { version: 1, profiles: {
             a: { meta: { id: 'a', name: 'Muster A', belongsToHousehold: true }, data: scenario === 'missing-primary' ? missing : complete('1958-03-14') },
-            b: { meta: { id: 'b', name: 'Muster B', belongsToHousehold: true }, data: scenario === 'missing-partner' ? missing : complete('1961-03-14') },
-            c: { meta: { id: 'c', name: 'Außenperson', belongsToHousehold: false }, data: missing }
+            b: { meta: { id: 'b', name: 'Muster B', belongsToHousehold: true }, data: scenario === 'missing-partner' ? missing : complete('1961-03-14') }
         } };
         const storage = { rs_profiles_v1: JSON.stringify(registry), rs_current_profile: 'a', rs_active_profile: 'a' };
         const smoke = await createPage(browser, 'Person data readiness ' + scenario, { storage, fixedTime: '2026-10-07T12:00:00Z' });
@@ -2137,7 +2157,7 @@ async function runPersonDataReadiness(browser, baseUrl) {
             assert((await page.locator('#suiteHouseholdContext').textContent()).includes('Muster A, Muster B'), 'Registry-Haushalt bleibt angezeigt');
             if (scenario === 'complete-registry') {
                 assert(await page.locator('#p1StartAlter').inputValue() === '67' && await page.locator('#r2StartAlter').inputValue() === '64', 'Registry-only setzt tatsächliche Wertträger 67/64');
-                assert(await page.locator('#btButton').isEnabled(), 'Nicht beteiligte unvollständige Außenperson sperrt nicht');
+                assert(await page.locator('#btButton').isEnabled(), 'Vollständiger Haushalt lässt Rechnen zu');
             } else {
                 const message = await page.locator('#personDataNotice').textContent();
                 assert(message.includes(scenario === 'missing-primary' ? 'Muster A' : 'Muster B'), 'Fehlend-Hinweis nennt tatsächliche Person');
@@ -2156,90 +2176,6 @@ async function runPersonDataReadiness(browser, baseUrl) {
                 await page.locator('#managerBirthSupplement').waitFor({ state: 'visible' });
             }
             smoke.assertNoErrors();
-        } finally { await smoke.close(); }
-    }
-    for (const scenario of ['complete-outside', 'outside-with-missing-partner', 'missing-outside']) {
-        const base = { ...createBalanceStorage(), depot_tranchen: '[]' };
-        const active = scenario === 'missing-outside'
-            ? { profile_person_schema_version: '1', profile_tagesgeld: '10000', depot_tranchen: '[]' }
-            : { ...base, profile_geburtsdatum: '1961-03-14', profile_rente_monatlich: '1234.567',
-                profile_sonstige_einkuenfte: '100', profile_sparer_pauschbetrag: '0', profile_kirchensteuer_pct: '8' };
-        const other = scenario === 'outside-with-missing-partner'
-            ? { profile_person_schema_version: '1', depot_tranchen: '[]' }
-            : { ...base, profile_geburtsdatum: '1958-03-14', profile_rente_monatlich: '2000',
-                profile_sparer_pauschbetrag: '1500', profile_kirchensteuer_pct: '9' };
-        const storage = { rs_current_profile: 'a', rs_active_profile: 'a', rs_profiles_v1: JSON.stringify({ version: 1, profiles: {
-            a: { meta: { id: 'a', name: 'Außenperson A', belongsToHousehold: false }, data: active },
-            b: { meta: { id: 'b', name: 'Haushaltsperson B', belongsToHousehold: true }, data: other }
-        } }) };
-        if (scenario === 'complete-outside') {
-            const values = { ...structuredClone(PLAN_DEFAULTS), floorBedarf: 10000, flexBedarf: 0, minimumFlexAnnual: 0 };
-            storage[HOUSEHOLD_PLAN_KEY] = buildPlanRecord(null, [
-                { scope: planScope('household', ['b']), values },
-                { scope: planScope('single', ['a']), values: { ...values, floorBedarf: 1234 } }
-            ], { now: () => new Date('2026-10-07T12:00:00Z') }).raw;
-        }
-        const smoke = await createPage(browser, 'Balance person readiness ' + scenario, { storage, observeWealthUpdates: true, fixedTime: '2026-10-07T12:00:00Z' });
-        const { page } = smoke;
-        try {
-            await page.goto(`${baseUrl}/Balance.html`);
-            // Seit Paket 12 Slice 1 bestimmt die Haushaltsauswahl den Balance-Rechenumfang unabhängig von der
-            // geöffneten Person: Das geöffnete Außenprofil A rechnet nicht mehr allein, gerechnet wird das angehakte B.
-            if (scenario === 'outside-with-missing-partner') {
-                await page.locator('#personDataNotice').waitFor({ state: 'visible' });
-                const notice = await page.locator('#personDataNotice').textContent();
-                assert(notice.includes('Haushaltsperson B') && !notice.includes('Außenperson A'), 'Balance benennt fehlende Daten des ausgewählten Mitglieds B, nicht der geöffneten Außenperson');
-                const result = await page.evaluate(async () => {
-                    const { PersistenceFacade, persistenceStorage } = await import('./app/shared/persistence-facade.js');
-                    const { update } = await import('./app/balance/balance-main.js');
-                    const before = JSON.stringify(PersistenceFacade.exportAllSync().records);
-                    const blocked = update({ mode: 'preview' });
-                    return { reason: blocked.reason, unchanged: JSON.stringify(PersistenceFacade.exportAllSync().records) === before,
-                        current: persistenceStorage.getItem('rs_current_profile') };
-                });
-                assert(result.reason === 'person_data_incomplete' && result.unchanged, 'Fehlendes Alter des ausgewählten Mitglieds B sperrt Balance schreibfrei statt Werte von A einzusetzen');
-                assert(result.current === 'a', 'Sperre erhält die geöffnete Profilidentität A');
-            } else {
-                await page.waitForFunction(() => document.getElementById('aktuellesAlter')?.value === '67');
-                const input = await page.evaluate(async () => {
-                    const { UIReader } = await import('./app/balance/balance-reader.js');
-                    const { loadProfilverbundProfiles } = await import('./app/profile/profilverbund-balance.js');
-                    const { persistenceStorage } = await import('./app/shared/persistence-facade.js');
-                    return { ...UIReader.readAllInputs(), householdIds: loadProfilverbundProfiles().map(entry => entry.profileId),
-                        current: persistenceStorage.getItem('rs_current_profile') };
-                });
-                assert(input.aktuellesAlter === 67 && input.renteMonatlich === 2000, 'Balance rechnet mit Alter und Einkünften des ausgewählten Mitglieds B statt der geöffneten Außenperson');
-                assert(input.sparerPauschbetrag === 1500 && input.kirchensteuerSatz === 0.09, 'Balance übernimmt SPB und Kirchensteuer von B');
-                assert(input.householdIds.join() === 'b' && input.current === 'a', 'Rechenumfang ist genau B; geöffnete Profilidentität bleibt A');
-                assert(await page.locator('#suiteHouseholdContext').textContent() === 'Berechnet für: Haushalt · Haushaltsperson B', 'Haushaltskontext nennt das ausgewählte Mitglied B');
-                assert(await page.locator('#personDataNotice').count() === 0,
-                    scenario === 'missing-outside' ? 'Fehlende Daten der ungewählten Außenperson sperren Balance nicht' : 'Vollständige Auswahl zeigt keinen Fehlend-Hinweis');
-                if (scenario === 'complete-outside') {
-                    await waitForWealthBrowserIdle(page);
-                    const writes = await page.evaluate(async balanceStateKey => {
-                        const { PersistenceFacade, persistenceStorage: ps } = await import('./app/shared/persistence-facade.js');
-                        const { UIReader } = await import('./app/balance/balance-reader.js');
-                        const { update } = await import('./app/balance/balance-main.js');
-                        const plan = ps.getItem('household_plan_v1'), input = UIReader.readAllInputs();
-                        // Marktinput ist personenbezogen gespeichert und kein Planfeld.
-                        document.getElementById('endeVJ').value = '101';
-                        const saved = update({ mode: 'persist_inputs' });
-                        await saved.overviewPersistence; await PersistenceFacade.flush();
-                        const state = JSON.parse(JSON.parse(ps.getItem('rs_profiles_v1')).profiles.b.data[balanceStateKey]);
-                        const before = JSON.stringify(PersistenceFacade.exportAllSync().records);
-                        document.getElementById('floorBedarf').value = '11000';
-                        const rejected = update({ mode: 'persist_inputs' });
-                        UIReader.applyHouseholdPlanInputs();
-                        return { saved: saved.ok, market: state.inputs.endeVJ, floor: input.floorBedarf,
-                            planUnchanged: ps.getItem('household_plan_v1') === plan,
-                            rejected: rejected.ok && UIReader.readAllInputs().floorBedarf === input.floorBedarf, unchanged: ps.getItem('household_plan_v1') === plan };
-                    }, BALANCE_STATE_KEY);
-                    assert(writes.saved && writes.market === 101 && writes.floor === 10000, 'Geöffnete Außenperson persistiert Marktinput bei unverändertem Haushaltsrechenbereich');
-                    assert(writes.planUnchanged && writes.rejected && writes.unchanged, 'Lesende Fremdbelegung verändert den bestätigten Haushaltsplan nicht');
-                    assert((await readIndexedDb(page, 'kv', HOUSEHOLD_PLAN_KEY)).value === storage[HOUSEHOLD_PLAN_KEY], 'Browserbackend erhält Haushalts- und Außenpersonenplanbytes');
-                }
-            }
-            smoke.assertNoErrors(scenario === 'complete-outside' ? ['Die geöffnete Außenperson darf den Haushaltsplan nicht ändern.'] : []);
         } finally { await smoke.close(); }
     }
 }
@@ -2313,63 +2249,6 @@ async function runPageChoiceGeometry(browser, baseUrl) {
     }
 }
 
-async function runPersonMigrationFollowup(browser, baseUrl) {
-    for (const entry of ['index.html', 'Simulator.html']) {
-        for (const scenario of ['confirmed', 'current', 'automatic']) {
-            const household = { ...createBalanceStorage(), depot_tranchen: '[]' };
-            const outsideName = 'Synthetische Außenperson ohne Datum';
-            const outside = { depot_tranchen: '[]', ...(scenario === 'current' ? { profile_person_schema_version: '1' }
-                : { profile_rente_monatlich: '1000', ...(scenario === 'confirmed' ? { sim_p1Monatsrente: '1100' } : {}) }) };
-            const storage = { ...household, rs_current_profile: 'a', rs_active_profile: 'a', rs_profiles_v1: JSON.stringify({ version: 1, profiles: {
-                a: { meta: { id: 'a', name: 'Muster A', belongsToHousehold: true }, data: household },
-                b: { meta: { id: 'b', name: outsideName, belongsToHousehold: false }, data: outside }
-            } }) };
-            const smoke = await createPage(browser, `Migrationsfolgehinweis ${entry} ${scenario}`, { storage, fixedTime: '2026-10-07T12:00:00Z' });
-            const { page } = smoke;
-            try {
-                await page.goto(`${baseUrl}/${entry}`);
-                const dialog = page.locator('#pageChoiceDialog');
-                if (scenario === 'confirmed') {
-                    await dialog.waitFor({ state: 'visible' });
-                    assert((await dialog.locator('h2').textContent()).includes(outsideName), 'Echter Konflikt betrifft die Außenperson');
-                    await dialog.locator('input[type=radio][value="1"]').check();
-                    await dialog.locator('[data-page-choice-accept]').click();
-                    await dialog.waitFor({ state: 'detached' });
-                }
-                // Erst nach Profilbereitschaft UND produktiver Bereitschaftsdarstellung prüfen.
-                await page.evaluate(async () => (await import('./app/profile/profile-navigation.js')).whenProfileDisplayReady(document));
-                if (entry === 'Simulator.html') {
-                    await page.waitForFunction(() => window.__simulatorOpeningBacktestDone === true);
-                    assert(await page.locator('#btButton').isEnabled() && await page.locator('#mcButton').isEnabled(), 'Außenhinweis sperrt die vorhandenen Rechencontrols nicht');
-                    assert(!await page.evaluate(() => Boolean(window.__personDataBlocker || window.__profileRecoveryBlocker || window.__simulatorOpeningBacktestError)), 'Vollständiger Haushalt bleibt ohne Personen-/Recoveryblocker und Öffnungsfehler');
-                } else {
-                    await page.waitForFunction(() => document.getElementById('overviewHouseholdNames')?.textContent.includes('Muster A')
-                        && Boolean(document.getElementById('overviewFocusTitle')?.textContent));
-                }
-                assert(await page.evaluate(async () => (await import('./app/shared/person-data-status.js')).readHouseholdPersonStatus().ready), 'Bereitschaft des vollständigen Haushalts bleibt wahr');
-                const migrated = await page.evaluate(async () => JSON.parse((await import('./app/shared/persistence-facade.js')).PersistenceFacade.getItemSync('rs_profiles_v1')).profiles.b);
-                assert(migrated.meta.belongsToHousehold === false && !migrated.data.profile_geburtsdatum && !migrated.data.profile_aktuelles_alter, 'Außenperson bleibt außerhalb und ohne erfundene Datums-/Alterswerte');
-                if (scenario === 'confirmed') {
-                    assert(migrated.data.profile_rente_monatlich === '1100', 'Ausdrücklich gewählte Konfliktquelle wurde übernommen');
-                    const notice = page.locator('#personDataNotice');
-                    assert(await notice.isVisible() && (await notice.textContent()).includes(outsideName), 'Benannter Folgehinweis bleibt nach abgeschlossenem Seitenstart sichtbar');
-                    assert(await notice.locator('a').getAttribute('href') === 'depot-tranchen-manager.html#personendaten', 'Erhaltener Folgehinweis enthält den tatsächlichen Ergänzungslink');
-                    await page.evaluate(async () => {
-                        const { readHouseholdPersonStatus, showPersonDataStatus } = await import('./app/shared/person-data-status.js');
-                        showPersonDataStatus(readHouseholdPersonStatus()); showPersonDataStatus(readHouseholdPersonStatus());
-                    });
-                    assert(await notice.isVisible() && (await notice.textContent()).includes(outsideName), 'Wiederholte Darstellung erhält den Außenhinweis auch am echten DOM');
-                    assert(await notice.locator('a').getAttribute('href') === 'depot-tranchen-manager.html#personendaten', 'Wiederholte Darstellung erhält den Link');
-                } else {
-                    assert(await dialog.count() === 0, 'Keine ausdrückliche Übernahme im Gegenfall');
-                    assert(await page.locator('#personDataNotice').count() === 0, 'Aktuelles Außenprofil und automatische Migration erzeugen keinen bestätigten Folgehinweis');
-                }
-                smoke.assertNoErrors();
-            } finally { await smoke.close(); }
-        }
-    }
-}
-
 async function runPersonDataMigration(browser, baseUrl) {
     const historical = { 'ruhestandsmodell_snapshot_2026-01-20T11:48:21.709Z--Muster A': '{ "alt": true }',
         ui_panel_state: ' { "offen": true } ', layout_person_panel: 'links\nrechts',
@@ -2379,8 +2258,8 @@ async function runPersonDataMigration(browser, baseUrl) {
             profile_tagesgeld: '10000', depot_tranchen: '[]' };
         const registry = { version: 1, profiles: {
             a: { meta: { id: 'a', name: 'Synthetische Person A', belongsToHousehold: true }, data: { ...rawData, ...historical } },
-            b: { meta: { id: 'b', name: 'Synthetische Außenperson B', belongsToHousehold: false },
-                // EK-1a: Die unabhängige Einkünfte-Übernahme ist für die Außenperson bereits erfolgt.
+            b: { meta: { id: 'b', name: 'Synthetische Person B', belongsToHousehold: true },
+                // EK-1a: Die unabhängige Einkünfte-Übernahme ist für Person B bereits erfolgt.
                 data: { profile_person_schema_version: '1', profile_geburtsdatum: '1960-01-01', profile_rente_monatlich: '2222', depot_tranchen: '[]', ...historical,
                     profile_einkuenfte_v1: '{"schemaVersion":1,"entries":[]}', profile_einkuenfte_migration_v1: '1' } }
         } };
@@ -2417,6 +2296,8 @@ async function runPersonDataMigration(browser, baseUrl) {
             assert(await dialog.locator('input[type=radio]:checked').evaluate(el => el === document.activeElement), 'Tab kehrt zur Auswahl zurück');
             await page.keyboard.press('Escape');
             await dialog.waitFor({ state: 'detached' });
+            // SV-1: Nach dem Abbruch löscht die Umstellung noch ihre interne Rücksicherung; danach endet ihr Vorgang.
+            await waitForPageCondition(page, async () => (await import('./app/shared/navigation-guard-dialog.js')).getPageNavigationGuard().reasons().length === 0);
             const cancelled = await records();
             assert(await page.evaluate(async () => {
                 const guard = (await import('./app/shared/navigation-guard-dialog.js')).getPageNavigationGuard();
@@ -2462,9 +2343,10 @@ async function runPersonDataMigration(browser, baseUrl) {
                 && JSON.parse(accepted.rs_profiles_v1).profiles.a.data.profile_person_schema_version === '1', 'Browser bestätigt gewählte Quelle und Version in Registry');
             assertHistoricalLive(accepted);
             assert(!('sim_p1Monatsrente' in accepted), 'Altpersonenkey bleibt dauerhaft entfernt');
-            assert(JSON.stringify(JSON.parse(accepted.rs_profiles_v1).profiles.b) === JSON.stringify(registry.profiles.b), 'Außenperson samt Metadaten bleibt unverändert');
+            assert(JSON.stringify(JSON.parse(accepted.rs_profiles_v1).profiles.b) === JSON.stringify(registry.profiles.b), 'Bereits umgestellte Person B samt Metadaten bleibt unverändert');
             const snapshots = await page.evaluate(async () => (await import('./app/shared/snapshot-archive.js')).SnapshotArchive.listSnapshots());
-            assert(snapshots.some(entry => entry.kind === 'person-data-migration-recovery'), 'Dauerhafter Wiederherstellungspunkt vorhanden');
+            // SV-1: Die Umstellung sichert sich intern und löscht die Rücksicherung nach Erfolg.
+            assert(!snapshots.some(entry => entry.kind === 'internal-recovery' && entry.label === 'Vor Umstellung der Personendaten'), 'Interne Rücksicherung nach Erfolg gelöscht');
             await page.reload();
             await page.waitForFunction(() => document.getElementById('profileGeburtsdatum') && !document.getElementById('profileGeburtsdatum').disabled);
             assert(await dialog.count() === 0, 'Historischer Browserreload benötigt keine erneute Umstellung');
@@ -2513,6 +2395,32 @@ async function runBalanceSmoke(browser, baseUrl) {
         `Balance-Grundbedienung verwendet die freigegebene Inhaltsbreitenskala: ${JSON.stringify(scale)}`);
     assert(!scale.provenance, 'Provenienz ist eine kleine Kartenzeile ohne Hinweisband');
     assert(await page.locator('#balanceActionPreview:not([open]) #openPreviewDetails').count() === 1, 'Vorschau zugeklappt mit Weg zu den Details');
+    // KS-1: Der Seitenkopf bleibt beim Scrollen oben, die Leiste beginnt darunter, ein offenes ⓘ liegt darüber.
+    const infoButton = page.locator('.suite-content .ds-info-button:visible').first();
+    await infoButton.click();
+    const infoAbove = await infoButton.evaluate(button => {
+        const pop = button.closest('.ds-info').querySelector('.ds-info-pop');
+        const header = document.querySelector('.suite-header').getBoundingClientRect();
+        pop.style.top = `${header.top + 4}px`;
+        const rect = pop.getBoundingClientRect(), hit = document.elementFromPoint(rect.left + 8, header.top + 12);
+        return { overlaps: rect.top < header.bottom && rect.left < header.right && rect.right > header.left, onTop: Boolean(hit && pop.contains(hit)) };
+    });
+    assert(infoAbove.overlaps && infoAbove.onTop, `Ein offenes ⓘ liegt über dem festen Seitenkopf: ${JSON.stringify(infoAbove)}`);
+    await page.keyboard.press('Escape');
+    await page.locator('.suite-content').evaluate(node => { node.dataset.ks1MinHeight = node.style.minHeight; node.style.minHeight = '4000px'; });
+    await page.evaluate(() => scrollTo(0, 1200));
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const stickyHead = await page.evaluate(() => {
+        const header = document.querySelector('.suite-header'), rect = header.getBoundingClientRect();
+        const nav = document.querySelector('.suite-navigation').getBoundingClientRect();
+        const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        return { scroll: scrollY, top: rect.top, bottom: rect.bottom, navTop: nav.top, onTop: Boolean(hit && header.contains(hit)),
+            measured: getComputedStyle(document.documentElement).getPropertyValue('--suite-kopf-hoehe').trim() === `${Math.ceil(rect.height)}px` };
+    });
+    assert(stickyHead.scroll >= 1200 && stickyHead.top === 0 && stickyHead.onTop && stickyHead.measured && stickyHead.navTop >= stickyHead.bottom,
+        `Seitenkopf bleibt nach dem Scrollen oben sichtbar, die Leiste beginnt darunter: ${JSON.stringify(stickyHead)}`);
+    await page.locator('.suite-content').evaluate(node => { node.style.minHeight = node.dataset.ks1MinHeight; delete node.dataset.ks1MinHeight; });
+    await page.evaluate(() => scrollTo(0, 0));
 
     await page.locator('#balanceTabStrategy').click();
     await page.locator('#tab-strategy').waitFor({ state: 'visible' });
@@ -2891,33 +2799,6 @@ async function runBalanceSmoke(browser, baseUrl) {
     await smoke.close();
 }
 
-async function runBalanceMembershipReload(browser, baseUrl) {
-    const registry = {
-        version: 1,
-        profiles: {
-            default: { meta: { id: 'default', name: 'Default', belongsToHousehold: true }, data: {} },
-            secondary: { meta: { id: 'secondary', name: 'Sekundaer', belongsToHousehold: true }, data: {} }
-        }
-    };
-    const smoke = await openSmokePage(browser, baseUrl, 'Balance.html', { storage: {
-        rs_profiles_v1: JSON.stringify(registry), rs_current_profile: 'default', rs_active_profile: 'default'
-    }, observeWealthUpdates: true });
-    await openBalanceHouseholdList(smoke.page);
-    await setBrowserHouseholdMembership(smoke.page, 'secondary', false);
-    // Die Rückkehr startet die Balancevorschau samt dauerhafter Ergebnisablage.
-    // Erst deren Ende belegt eine abgeschlossene Aktion ohne Navigationsschutz.
-    await waitForWealthBrowserIdle(smoke.page);
-    await waitForPageNavigationRelease(smoke.page);
-    await smoke.page.reload({ waitUntil: 'load' });
-    await waitBalanceHouseholdList(smoke.page);
-    await waitForWealthBrowserIdle(smoke.page);
-    await waitForPageNavigationRelease(smoke.page);
-    assert(!JSON.parse((await readIndexedDb(smoke.page, 'kv', 'rs_profiles_v1')).value).profiles.secondary.meta.belongsToHousehold,
-        'Haushaltsänderung aus Personen verwalten bleibt nach Reload erhalten');
-    smoke.assertNoErrors();
-    await smoke.close();
-}
-
 async function runBalanceSharedTrancheIds(browser, baseUrl) {
     const sharedTrancheId = 'shared-browser-lot';
     const activeProfileTranches = JSON.stringify([createBrowserTranche({
@@ -2993,13 +2874,17 @@ async function runBalanceAnnualPreflight(browser, baseUrl) {
             const before = await annualSourceFields(page);
             const expensesBefore = JSON.parse((await readIndexedDb(page, 'kv', 'balance_expenses_v1')).value);
             await openOverviewAnnual(page);
-            await prepareBrowserClose(page);
-            await page.waitForFunction(() => { const button = document.getElementById('annualConfirmBtn'); return Boolean(button) && !button.disabled; });
-            await prepareBrowserClose(page);
-            await page.locator('#annualConfirmBtn').click();
+            if (activeYear !== 2028) {
+                await prepareBrowserClose(page);
+                await page.waitForFunction(() => { const button = document.getElementById('annualConfirmBtn'); return Boolean(button) && !button.disabled; });
+                await prepareBrowserClose(page);
+                await page.locator('#annualConfirmBtn').click();
+            }
             if (activeYear === 2028) {
-                await page.locator('#balanceAnnualCloseMessage').filter({ hasText: 'Der Ausgabenstore passt nicht zur Jahresperiode.' }).waitFor();
-                assert(await page.locator('.action-error-entry[data-scope="annual"]').count() === 0, 'Offener Jahresdialog erzeugt keinen verdeckten zweiten Jahresfehler');
+                // JW-1a (Fable P2-4): Das unpassende Auswahljahr meldet die Übersicht vor dem Dialog, nicht nach allen Schritten.
+                await page.locator('#overviewAnnualStatus').filter({ hasText: 'Das Auswahljahr der Ausgaben passt nicht zum Jahresabschluss 2025.' }).waitFor();
+                assert(await page.evaluate(() => !document.getElementById('balanceAnnualClose')?.open), 'Unpassendes Auswahljahr öffnet keinen Abschlussdialog');
+                assert(await page.locator('.action-error-entry[data-scope="annual"]').count() === 0, 'Frühe Meldung erzeugt keinen verdeckten zweiten Jahresfehler');
                 assert(await annualSourceFields(page) === before, 'Fehlgeschlagener Preflight darf das Alter nicht mutieren');
                 assert(await readIndexedDb(page, 'snapshots', null) === 0, 'Fremdes Ansichtsjahr erreicht keinen Snapshot');
                 assert((await readIndexedDb(page, 'kv', 'balance_expenses_v1')).value === JSON.stringify(expensesBefore), 'Abgewiesener Start bewahrt Ausgabenbytes');
@@ -3157,27 +3042,6 @@ async function readBalanceStoredState(page) {
 
 async function readBalanceBrowserState(page) {
     return JSON.parse((await readIndexedDb(page, 'kv', BALANCE_STATE_KEY)).value);
-}
-
-async function captureWealthBrowserStand(page, keyboard = false) {
-    const button = page.getByRole('button', { name: 'Stand jetzt erfassen', exact: true });
-    if (keyboard) {
-        await button.focus();
-        await page.keyboard.press('Enter');
-    } else {
-        await button.click();
-    }
-    await page.locator('#wealthHistoryStatus').filter({ hasText: 'Stand gesichert' }).waitFor();
-}
-
-async function assertWealthBrowserVisibility(page) {
-    assert(await page.locator('#tab-history, #captureWealthBtn').count() === 0, 'Balance besitzt keine Verlaufhosts mehr');
-    assert(await page.locator('#expensesHistoryChart, #expensesHistoryTable, #expensesYearSelect, #tab-expenses, .tab-btn[data-tab="expenses"]').count() === 0,
-        'Balance enthält weder Ausgabenhosts noch Jahreswahl oder alten Ausgabenreiter');
-    for (const name of ['Monatsausgaben', 'Jahresdiagramm', 'Jahreswerte', 'Diagramm der Jahresausgaben', 'Tabelle der Jahresausgaben']) {
-        assert(await page.getByRole('region', { name, exact: true }).count() === 0,
-            'Ausgabenregion fehlt auf Balance aus dem Zugänglichkeitsbaum: ' + name);
-    }
 }
 
 async function waitExpensesBrowser(page, phase = 'Ausgabenseite') {
@@ -3438,7 +3302,7 @@ async function runBalanceExpensesWealthCapture(browser, baseUrl) {
     const importCsv = async (month, expanded, expected, text = 'Kategorie;Betrag\nAusgabe;-250') => {
         await activateSuiteSection(page, 'expenses');
         await page.locator('#expensesYearSegments [data-balance-year="2025"]').click();
-        assert(await page.locator('#expensesYearSelect').inputValue() === '2025', 'Jeder Capture-Import verwendet ausdrücklich 2025');
+        assert(await page.locator('#expensesYearSelect').inputValue() === '2025', 'Jeder Import verwendet ausdrücklich 2025');
         await waitSuiteIdentity(page, profileId);
         const index = await page.evaluate(() => window.__browserSmokeMessages.length);
         // Reale Dateifeldgrenze kontrollieren, damit der Abschluss aktiv/inaktiv gemessen wird.
@@ -3466,7 +3330,7 @@ async function runBalanceExpensesWealthCapture(browser, baseUrl) {
         }
         await page.waitForFunction(({ index, expected }) => window.__browserSmokeMessages.slice(index).some(text => text.includes(expected)), { index, expected });
         await waitExpensesBrowser(page);
-        assert(await page.locator('#tab-history').count() === 0 && await page.locator('#expensesHeading').isVisible(), 'Automatischer Importabschluss bleibt am neuen Ausgabenort');
+        assert(await page.locator('#tab-history').count() === 0 && await page.locator('#expensesHeading').isVisible(), 'Importabschluss bleibt am neuen Ausgabenort');
         const messages = await page.evaluate(index => window.__browserSmokeMessages.slice(index), index);
         if (!expected.includes('CSV-Import abgebrochen')) {
             assert(messages[0] === 'CSV importiert.', 'CSV-Erfolg bleibt vor optionalem Ergebnis nachweisbar');
@@ -3482,87 +3346,20 @@ async function runBalanceExpensesWealthCapture(browser, baseUrl) {
     try {
         await page.goto(`${baseUrl}/Ausgaben.html?year=2025#ausgaben`, { waitUntil: 'load' });
         await waitExpensesBrowser(page);
-        const unknown = await importCsv(1, false, 'Kursdatum unbekannt');
-        assert(unknown.length === 2, 'Undatierter Import erzeugt genau Importbestätigung und Hinweis');
-        assert((await readBalanceBrowserState(page)).wealthHistory.entries.length === 1, 'Undatierte reale ETFs erzeugen keinen Verlaufwrite');
-
-        await page.locator('.suite-navigation a[href="depot-tranchen-manager.html"]').click();
-        // Erst klicken, wenn der Manager initialisiert ist und alle drei Tranchen zeigt (sonst fehlt der Listener).
-        await page.locator('#tranchenTable .tranche-row').first().waitFor({ state: 'attached' });
-        await page.locator('#tranchenTable [data-asset-group]').evaluateAll(groups => groups.forEach(group => { group.open = true; }));
-        await page.locator('.tranche-row').nth(2).waitFor({ state: 'visible' });
-        await page.locator('#updatePricesBtn').click();
-        await page.locator('#priceUpdateStatus').filter({ hasText: 'Kurse erfolgreich aktualisiert.' }).waitFor();
-        const priced = JSON.parse((await readIndexedDb(page, 'kv', 'depot_tranchen')).value);
-        assert(priced.length === 3 && priced.every(tranche => tranche.asOf === quoteAsOf && tranche.currentPrice === 105),
-            'Echter Managerlistener bestätigt Preis und Zeit aller beitragenden ETFs');
-        const registry = JSON.parse((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value);
-        assert(JSON.parse(registry.profiles[profileId].data.depot_tranchen).every(tranche => tranche.asOf === quoteAsOf), 'Registry trägt dieselbe bestätigte Kurszeit');
-        await page.locator('#managerBackLink').click();
-        await page.locator('.suite-navigation a[href="Ausgaben.html"]').click();
-        await waitExpensesBrowser(page);
-        await page.locator('#expensesYearSegments [data-balance-year="2025"]').click();
-        await page.evaluate(async () => {
-            const { UIReader } = await import('./app/balance/balance-reader.js');
-            const original = UIReader.captureStorageDraft;
-            window.__importPreviews = 0;
-            UIReader.captureStorageDraft = function (...args) { window.__importPreviews++; return original.apply(this, args); };
-        });
-        const success = await importCsv(2, true, 'Vermögensstand gesichert (Kurse vom 03.10.2026).');
-        assert(success.length === 2 && await page.evaluate(() => window.__importPreviews) === 0, 'Frischer produktiver Import erzeugt Capture ohne Balance-Formular und Erfolg');
+        // VS-2: Ein bestätigter Ausgabenimport erfasst keinen Vermögensstand mehr, auch nicht mit frischen Kursen.
+        const capturesBefore = await readIndexedDb(page, 'kv', 'rs_household_wealth_captures_v1');
+        const imported = await importCsv(1, false, 'CSV importiert.');
+        assert(imported.length === 1 && imported[0] === 'CSV importiert.', 'VS-2: Import meldet nur den Import, keinen Vermögensstand');
+        assert(!imported.some(text => text.includes('Vermögensstand')), 'VS-2: keine Meldung zur Vermögenserfassung');
         let state = await readBalanceBrowserState(page);
-        const captured = state.wealthHistory.entries.find(entry => entry.reason === 'manual');
-        assert(captured.id === 'manual:2026-10-03' && captured.periodId === null && captured.asOf === '2026-10-03', 'Lokaler Importtag und unveränderter Unterjahresvertrag');
-        assert(captured.aktienEtf === (340 + 450) * 105 && captured.geldmarktEtf === 230 * 105, 'PREVIEW nutzt die tatsächlich gespeicherten Managerpreise');
-        assert(JSON.stringify(state.wealthHistory.entries.find(entry => entry.reason === 'annual_close')) === JSON.stringify(annual), 'Jahresstand bleibt unverändert');
-
-        // AU2: erfasste Standstabelle liegt im Manager; diese Importprüfung kontrolliert den bestätigten Speicher.
-        await withBalancePanel(page, 'expenses', async () => {
-            assert(await page.locator('#expensesHistoryTable tbody tr').count() === 1, 'Aktive Auswertung zeichnet auch Jahresausgaben');
-        });
-        await importCsv(3, false, 'Vermögensstand gesichert (Kurse vom 03.10.2026).');
+        assert(state.wealthHistory.entries.length === 1 && JSON.stringify(state.wealthHistory.entries[0]) === JSON.stringify(annual), 'VS-2: Import schreibt keinen Tagespunkt; Jahresstand bleibt unverändert');
+        assert(JSON.stringify(await readIndexedDb(page, 'kv', 'rs_household_wealth_captures_v1')) === JSON.stringify(capturesBefore), 'VS-2: Import schreibt keine Erfassung');
+        await importCsv(2, true, 'CSV importiert.');
         state = await readBalanceBrowserState(page);
-        assert(state.wealthHistory.entries.length === 2, 'Zweiter Import desselben Tages ersetzt');
-
-        const setQuoteState = async kind => {
-            await page.evaluate(async ({ kind, profileId, quoteAsOf }) => {
-                const { persistenceStorage, PersistenceFacade } = await import('./app/shared/persistence-facade.js');
-                const lots = kind === 'none' ? [] : JSON.parse(persistenceStorage.getItem('depot_tranchen'));
-                for (const lot of lots) { if (kind === 'unknown') delete lot.asOf; else lot.asOf = quoteAsOf - 604801; }
-                const raw = JSON.stringify(lots);
-                const registry = JSON.parse(persistenceStorage.getItem('rs_profiles_v1'));
-                registry.profiles[profileId].data.depot_tranchen = raw;
-                persistenceStorage.setItem('depot_tranchen', raw);
-                persistenceStorage.setItem('rs_profiles_v1', JSON.stringify(registry));
-                await PersistenceFacade.flush();
-            }, { kind, profileId, quoteAsOf });
-            await page.reload({ waitUntil: 'load' });
-            await waitExpensesBrowser(page);
-            await waitExpensesBrowser(page);
-        };
-        await setQuoteState('old');
-        const old = await importCsv(4, true, 'sind älter als 7 Tage.');
-        assert(old.length === 2 && (await readBalanceBrowserState(page)).wealthHistory.entries.length === 2, 'Alter realer Kurs meldet Hinweis ohne Write');
-        await setQuoteState('unknown');
-        await importCsv(5, false, 'Kursdatum unbekannt');
-        assert((await readBalanceBrowserState(page)).wealthHistory.entries.length === 2, 'Fehlende Zeit verhindert Verlaufwrite');
-        await setQuoteState('none');
-        await importCsv(6, true, 'Vermögensstand gesichert (keine kursabhängigen Bestände).');
-        assert((await readBalanceBrowserState(page)).wealthHistory.entries.find(entry => entry.reason === 'manual').aktienEtf === 0, 'Kursfreier produktiver Bestand wird gesichert');
-        const beforeFault = JSON.stringify((await readBalanceBrowserState(page)).wealthHistory);
-        await page.evaluate(async () => {
-            const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
-            const original = PersistenceFacade.replaceRecordsTransactional;
-            PersistenceFacade.replaceRecordsTransactional = async () => { throw new Error('Gezielter Verlauf-Schreibfehler'); };
-            window.__restoreCaptureWrite = () => { PersistenceFacade.replaceRecordsTransactional = original; };
-        });
-        await importCsv(7, false, 'Ausgaben importiert; Vermögensstand nicht bestätigt:');
-        assert((await page.locator('#expensesStatus').textContent()).includes('Vermögensstand nicht bestätigt'), 'Optionaler Fehler bleibt als Ausgabenaktionsfehler stehen');
-        assert(JSON.stringify((await readBalanceBrowserState(page)).wealthHistory) === beforeFault, 'Schreibfehler bestätigt keinen neuen Stand');
-        await page.evaluate(() => window.__restoreCaptureWrite());
-        const beforeReject = JSON.stringify((await readBalanceBrowserState(page)).wealthHistory);
+        assert(state.wealthHistory.entries.length === 1, 'VS-2: auch bei aktivem Abschluss kein Tagespunkt');
+        const beforeReject = JSON.stringify(state.wealthHistory);
         await importCsv(8, false, 'CSV-Import abgebrochen', 'Kategorie;Betrag\nAusgabe;ungueltig');
-        assert(JSON.stringify((await readBalanceBrowserState(page)).wealthHistory) === beforeReject, 'Ungültige CSV startet keine Erfassung');
+        assert(JSON.stringify((await readBalanceBrowserState(page)).wealthHistory) === beforeReject, 'Ungültige CSV ändert den Verlauf nicht');
         smoke.assertNoErrors();
     } finally { await smoke.close(); }
 }
@@ -3652,7 +3449,7 @@ async function runBalanceExpensesHistory(browser, baseUrl) {
         await page.locator('[data-expenses-preview-accept]').click();
         store.years['2026'].months['3'] = { profiles: { [profileId]: { categories: { Ausgabe: -250 } } } };
         await page.waitForFunction(index => window.__browserSmokeMessages.slice(index).includes('CSV importiert.'), messageIndex);
-        await page.waitForFunction(index => window.__browserSmokeMessages.slice(index).some(text => text.includes('Kursdatum unbekannt')), messageIndex);
+        // VS-2: Der Import legt keine Erfassung mehr an, daher keine Meldung „Kursdatum unbekannt.“ aus der früheren Erfassung.
         await waitExpensesBrowser(page, 'Verlauf: eigene Importlease nach Bestätigung entfernt');
         await assertExpensesBrowserTable(page, store);
         assert(await page.locator('#expensesHeading').isVisible(), 'Importabschluss erhält Ausgabenansicht');
@@ -3728,530 +3525,6 @@ async function waitForWealthBrowserIdle(page) {
     // Ausstehende Updates über ihren Abschluss beobachten, nicht über Schlafzeiten.
     await page.waitForFunction(() => window.__wealthPendingUpdates.size === 0);
     await page.evaluate(async () => (await import('./app/shared/persistence-facade.js')).PersistenceFacade.flush());
-}
-
-// page.evaluate serialisiert diese Funktion ebenfalls ohne Modul-Closure.
-function readWealthBrowserStorage() {
-    return Object.fromEntries(['localStorage', 'sessionStorage'].map(name => {
-        const storage = window[name];
-        const keys = Array.from({ length: storage.length }, (_, index) => storage.key(index)).sort();
-        return [name, { keys, entries: keys.map(key => [key, storage.getItem(key)]) }];
-    }));
-}
-
-async function activateWealthBrowserTab(page, expanded, key = null, modern = true) {
-    await waitForWealthBrowserIdle(page);
-    const before = await readBalanceBrowserState(page);
-    const registryBefore = (await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value;
-    const exportBefore = await page.evaluate(async () => {
-        const { createBalanceExportDocument } = await import('./app/balance/balance-binder-imports.js');
-        const { StorageManager } = await import('./app/balance/balance-storage.js');
-        return createBalanceExportDocument(StorageManager.loadState()).payload;
-    });
-    const storageBefore = await page.evaluate(readWealthBrowserStorage);
-    const button = page.locator(`.tab-btn[data-tab="${expanded ? (modern ? 'history' : 'wealth') : (modern ? 'overview' : 'update')}"]`);
-    try {
-        await page.evaluate(async () => {
-            const { UIReader } = await import('./app/balance/balance-reader.js');
-            const { UIRenderer } = await import('./app/balance/balance-renderer.js');
-            const { persistenceStorage } = await import('./app/shared/persistence-facade.js');
-            const calls = window.__wealthTabCalls = { updates: 0, clears: 0, writes: 0,
-                localStorage: { setItem: 0, removeItem: 0, clear: 0 },
-                sessionStorage: { setItem: 0, removeItem: 0, clear: 0 } };
-            const restores = [];
-            window.__restoreWealthTabCalls = () => {
-                restores.reverse().forEach(restore => restore());
-                delete window.__wealthTabCalls;
-                delete window.__restoreWealthTabCalls;
-            };
-            const instrument = (object, method, count) => {
-                const descriptor = Object.getOwnPropertyDescriptor(object, method);
-                const original = object[method];
-                restores.push(() => {
-                    if (descriptor) Object.defineProperty(object, method, descriptor);
-                    else delete object[method];
-                });
-                Object.defineProperty(object, method, { configurable: true, writable: true,
-                    value: function (...args) { count(this); return original.apply(this, args); } });
-            };
-            for (const [object, method, counter] of [[UIReader, 'captureStorageDraft', 'updates'],
-                [UIRenderer, 'clearError', 'clears'], [UIRenderer, 'clearActionError', 'clears'],
-                [persistenceStorage, 'setItem', 'writes']]) {
-                instrument(object, method, () => { calls[counter] += 1; });
-            }
-            // Storage-Instanzen haben benannte Eigenschaften: Methoden am Prototyp
-            // instrumentieren, damit direkte Zugriffe auf beide Speicher erfasst werden.
-            for (const method of ['setItem', 'removeItem', 'clear']) {
-                instrument(Storage.prototype, method, storage => {
-                    if (storage === window.localStorage) calls.localStorage[method] += 1;
-                    if (storage === window.sessionStorage) calls.sessionStorage[method] += 1;
-                });
-            }
-        });
-        if (key) {
-            await button.focus();
-            await page.keyboard.press(key);
-        } else await button.click();
-        await assertWealthBrowserVisibility(page, expanded, null, modern);
-        await waitForWealthBrowserIdle(page);
-        const calls = await page.evaluate(() => window.__wealthTabCalls);
-        assert(calls.updates === 0 && calls.clears === 0 && calls.writes === 0,
-            `Tabwechsel ohne Update/Fehlerbereinigung/Write: ${JSON.stringify(calls)}`);
-        const storageAfter = await page.evaluate(readWealthBrowserStorage);
-        for (const name of ['localStorage', 'sessionStorage']) {
-            assert(Object.values(calls[name]).every(count => count === 0),
-                `Tabwechsel ohne ${name}-Mutationen: ${JSON.stringify(calls[name])}`);
-            assert(JSON.stringify(storageAfter[name].keys) === JSON.stringify(storageBefore[name].keys),
-                `Tabwechsel erhält alle Schlüssel von ${name}`);
-            assert(JSON.stringify(storageAfter[name].entries) === JSON.stringify(storageBefore[name].entries),
-                `Tabwechsel erhält sämtliche Schlüssel/Wert-Paare von ${name}`);
-        }
-    } finally { await page.evaluate(() => window.__restoreWealthTabCalls?.()); }
-    const after = await readBalanceBrowserState(page);
-    assert(JSON.stringify(after) === JSON.stringify(before), 'Tabwechsel erhält gesamten Fachzustand ohne Erfassung/Sichtbarkeitsflag');
-    assert((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value === registryBefore, 'Tabwechsel erhält aktive Registrykopie');
-    const exportAfter = await page.evaluate(async () => {
-        const { createBalanceExportDocument } = await import('./app/balance/balance-binder-imports.js');
-        const { StorageManager } = await import('./app/balance/balance-storage.js');
-        return createBalanceExportDocument(StorageManager.loadState()).payload;
-    });
-    assert(JSON.stringify(exportAfter) === JSON.stringify(exportBefore), 'Balance-Export ohne neues Tabfeld');
-}
-
-async function assertWealthBrowserTable(page, entries) {
-    // Die aktive Registrykopie folgt dem Balance-State über die nächste Neuberechnung
-    // (nach einem Import gemessen 200-420 ms später).
-    await waitForBrowserValue(async () => {
-        const registry = JSON.parse((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value);
-        const current = (await readIndexedDb(page, 'kv', 'rs_current_profile')).value;
-        return JSON.stringify(JSON.parse(registry.profiles[current].data[BALANCE_STATE_KEY]).wealthHistory?.entries);
-    }, registryEntries => registryEntries === JSON.stringify(entries),
-    'Dargestellte Daten entsprechen auch der bestätigten aktiven Registrykopie');
-    // Diagramm chronologisch, Tabelle neueste zuerst; Speicherung bleibt in Schreibreihenfolge.
-    const shown = [...entries].sort((a, b) => a.asOf.localeCompare(b.asOf)
-        || (a.reason === 'annual_close' ? 0 : 1) - (b.reason === 'annual_close' ? 0 : 1)
-        || a.id.localeCompare(b.id));
-    const rows = page.locator('#wealthHistoryTable tbody tr');
-    assert(await rows.count() === shown.length, 'Die Verlaufstabelle zeigt genau die gespeicherten Stände');
-    for (const [index, entry] of [...shown].reverse().entries()) {
-        const cells = await rows.nth(index).locator('th, td').allTextContents();
-        assert(cells[0] === entry.asOf.split('-').reverse().join('.'), 'Die Tabelle zeigt den gespeicherten Stichtag');
-        assert(cells[1].includes(entry.reason === 'manual' ? '◇ Unterjährig' : '■ Jahresabschluss'),
-            'Der Anlass ist als Text und Form zugänglich');
-        const amounts = ['tagesgeld', 'geldmarktEtf', 'aktienEtf', 'depotwertAlt', 'depotwertNeu', 'total'];
-        assert(JSON.stringify(cells.slice(2)) === JSON.stringify(amounts.map(key => UIUtils.formatBalanceCurrency(entry[key]))),
-            'Alle Gruppen, Teildepots und die Summe entsprechen dem persistenten Stand');
-    }
-    const chart = page.getByRole('img', { name: 'Vermögensverlauf in nominalen Euro', exact: true });
-    assert(await chart.count() === 1, 'Der Verlauf besitzt ein benanntes SVG');
-    assert(await chart.getAttribute('aria-labelledby') === 'wealthChartTitle', 'Nur der Titel benennt das SVG');
-    assert(await chart.getAttribute('aria-describedby') === 'wealthChartDesc', 'Die Beschreibung ist separat zugeordnet');
-    const description = chart.locator('desc[id="wealthChartDesc"]');
-    assert(await description.count() === 1, 'Das SVG besitzt genau ein referenziertes Beschreibungselement');
-    assert(await description.textContent() === 'Linie und Fläche zeigen gespeicherte Gesamtsummen aus Tagesgeld, Geldmarkt und Aktien mit tatsächlichen Datumsabständen. Jahresabschluss: Quadrat mit Abschlussjahr. Unterjährig: Raute. Keine Zwischenprognose, Rendite oder Realwertberechnung. Alle Werte und beide Teildepots stehen in der folgenden Tabelle.',
-        'Die vollständige Langbeschreibung ist erhalten');
-    assert(await chart.locator('g').count() === shown.length, 'Jeder Stand besitzt einen eigenen Punkt');
-    for (const [index, entry] of shown.entries()) {
-        const title = await chart.locator('g > title').nth(index).textContent();
-        assert(title.includes(entry.asOf.split('-').reverse().join('.')) && title.includes(UIUtils.formatBalanceCurrency(entry.total)),
-            'Diagramm zeigt Datum und Summe aus derselben bestätigten Datenbasis wie die Tabelle');
-    }
-    assert(!(await chart.innerHTML()).match(/NaN|Infinity/), 'Auch Nullstände haben endliche SVG-Koordinaten');
-}
-
-async function switchWealthBrowserProfile(page, baseUrl, profileId) {
-    // Derselbe echte Profilwechsel und Handoff wie bei der regulären Suite-Bedienung.
-    await page.goto(`${baseUrl}/index.html`, { waitUntil: 'load' });
-    await switchBrowserProfile(page, profileId);
-    await page.evaluate(async () => {
-        const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
-        await PersistenceFacade.flush();
-    });
-    await page.goto(`${baseUrl}/Balance.html`, { waitUntil: 'load' });
-    await waitForWealthBrowserStartup(page);
-}
-
-async function waitForWealthBrowserLayout(page) {
-    await waitForWealthBrowserIdle(page);
-    await page.evaluate(async () => {
-        await document.fonts.ready;
-        await Promise.all(document.getAnimations().map(animation => animation.finished.catch(() => {})));
-        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    });
-}
-
-async function measureWealthBrowserLayout(page) {
-    await waitForWealthBrowserLayout(page);
-    const measured = await page.evaluate(() => {
-        const rect = el => {
-            const { x, y, width, height } = el.getBoundingClientRect();
-            return { x, y, width, height };
-        };
-        return {
-            viewport: document.documentElement.clientWidth, page: document.documentElement.scrollWidth,
-            contentWidth: document.querySelector('.suite-content').getBoundingClientRect().width,
-            direction: getComputedStyle(document.querySelector('.main-layout')).flexDirection,
-            form: rect(document.querySelector('.form-column')),
-            tabContainer: rect(document.querySelector('.tab-buttons')),
-            tabs: [...document.querySelectorAll('.tab-buttons > .tab-btn')].map(button => {
-                const range = document.createRange();
-                range.selectNodeContents(button);
-                return { id: button.id, label: button.textContent.trim(), ...rect(button),
-                    textLines: [...range.getClientRects()].map(line => ({ y: line.y, height: line.height })),
-                    client: button.clientWidth, scroll: button.scrollWidth };
-            }),
-            actions: [...document.querySelector('.wealth-actions').children].filter(el => el.id).map(el => ({ id: el.id, text: el.textContent, ...rect(el) })),
-            regions: [...document.querySelectorAll('#tab-history .wealth-scroll')].filter(el => el.getClientRects().length).map(el => {
-                el.scrollLeft = 0;
-                const start = el.scrollLeft;
-                el.scrollLeft = el.scrollWidth;
-                const region = { id: el.id, name: el.getAttribute('aria-label'), ...rect(el), client: el.clientWidth, scroll: el.scrollWidth,
-                    position: el.scrollLeft, start, overflow: getComputedStyle(el).overflowX };
-                el.scrollLeft = 0;
-                return region;
-            }),
-            diagnosis: { ...rect(document.getElementById('tab-diagnosis')),
-                hidden: document.getElementById('tab-diagnosis').hidden,
-                selected: document.getElementById('openDiagnosisBtn').getAttribute('aria-selected') }
-        };
-    });
-    return measured;
-}
-
-function assertWealthScrollRegions(layout, label, tolerance = 1) {
-    const inventory = [['wealthHistoryChart', 'Vermögensdiagramm'], ['wealthHistoryTable', 'Tabelle der Vermögensstände']];
-    assert(JSON.stringify(layout.regions.map(region => [region.id, region.name])) === JSON.stringify(inventory),
-        `${label}: exakt die beiden wirklichen Vermögensregionen`);
-    assert(layout.regions.every(region => region.scroll > region.client && region.position > region.start && region.position > 0
-        && region.overflow === 'auto' && region.width <= layout.form.width + tolerance),
-        `${label}: lange Historie scrollt tatsächlich intern`);
-}
-
-function assertBalanceTabInventory(tabs, label) {
-    assert(JSON.stringify(tabs.map(tab => [tab.id, tab.label])) === JSON.stringify([
-        ['balanceTabOverview', 'Überblick'], ['balanceTabStrategy', 'Bedarf & Strategie'],
-        ['balanceTabHistory', 'Verlauf'], ['openDiagnosisBtn', 'Diagnose']
-    ]), `${label}: vollständiges heutiges Balance-Tabinventar`);
-}
-
-const WEALTH_TAB_SINGLE_ROW_MIN_WIDTH = 1366;
-
-async function assertWealthBrowserLayoutMatrix(browser, baseUrl) {
-    const storage = createBalanceStorage(2026);
-    const state = JSON.parse(storage[BALANCE_STATE_KEY]);
-    // Synthetische lange Historie: breite Säulenfolge und breite Eurospalten. Die Tabelle führt je Stand eine
-    // Zeile mit acht festen Spalten; ihre Breite entsteht allein aus den Eurobeträgen. Diese sind so lang, dass
-    // sie auch die breiteste gemessene Inhaltsspalte (2560 px) übersteigen.
-    const wide = 1e18;
-    const entries = Array.from({ length: 24 }, (_, index) => {
-        const asOf = `2026-01-${String(index + 1).padStart(2, '0')}`;
-        const tagesgeld = (1_234_567_890_123_000 + index) * wide;
-        const geldmarktEtf = 2_345_678_901_234_000 * wide, depotwertAlt = 3_456_789_012_345_000 * wide, depotwertNeu = 4_567_890_123_456_000 * wide;
-        const aktienEtf = depotwertAlt + depotwertNeu;
-        return { id: `manual:${asOf}`, asOf, reason: 'manual', periodId: null,
-            tagesgeld, geldmarktEtf, depotwertAlt, depotwertNeu, aktienEtf,
-            total: tagesgeld + geldmarktEtf + aktienEtf };
-    });
-    state.wealthHistory = { schemaVersion: 1, entries };
-    storage[EXPENSES_KEY] = JSON.stringify({ version: 1, activeYear: 2027, years: Object.fromEntries(
-        Array.from({ length: 24 }, (_, index) => [String(2003 + index), { months: { '1': { profiles: {
-            A: { categories: { Ausgabe: -1e100 } }
-        } } } }])) });
-    storage[BALANCE_STATE_KEY] = JSON.stringify(state);
-    Object.assign(storage, createBrowserProfileStorage({
-        'wealth-layout': { name: 'Layoutprüfung', balanceStateRaw: storage[BALANCE_STATE_KEY] }
-    }, 'wealth-layout'));
-    const smoke = await createPage(browser, 'Balance.html', { storage, observeWealthUpdates: true });
-    const { page } = smoke;
-    const tolerance = 1;
-    try {
-        await page.goto(`${baseUrl}/Balance.html`, { waitUntil: 'load', timeout: 15000 });
-        await waitForWealthBrowserIdle(page);
-        await assertWealthBrowserVisibility(page, false, entries.length);
-        for (const width of [1280, 1366, 1440, 1600, 1920, 2560]) {
-            await page.setViewportSize({ width, height: 900 });
-            await activateWealthBrowserTab(page, false);
-            const before = await measureWealthBrowserLayout(page);
-            await activateWealthBrowserTab(page, true);
-            await assertWealthBrowserTable(page, entries);
-            const history = await measureWealthBrowserLayout(page);
-            assertBalanceTabInventory(before.tabs, width); assertBalanceTabInventory(history.tabs, width);
-            console.log('Balance wealth layout SOURCE ' + JSON.stringify({ width, before, history }));
-            assert(history.direction === (history.contentWidth <= 1250 ? 'column' : 'row'), `${width}: Spalten messen die verfügbare Inhaltsbreite bei 1250px`);
-            assert(Math.abs(history.form.width - before.form.width) <= tolerance, `${width}: gefüllter Verlauf vergrößert die Formularspalte nicht`);
-            assert(history.page <= history.viewport + tolerance, `${width}: kein seitenweiter Überlauf im Verlauf`);
-            if (history.contentWidth > 1250) {
-                // Die kürzere Beschriftung „Verlauf“ muss die vollständige gemeinsame Tabzeile
-                // bereits bei 1366 CSS-Pixeln ermöglichen; Rechtecke und Textzeilen werden gemessen.
-                const singleRow = history.contentWidth >= WEALTH_TAB_SINGLE_ROW_MIN_WIDTH;
-                for (const layout of [before, history]) {
-                    assert(layout.tabs.length === 4 && layout.tabs.every(tab => tab.textLines.length === 1
-                        && tab.scroll <= tab.client + tolerance
-                        && tab.x >= layout.tabContainer.x - tolerance
-                        && tab.x + tab.width <= layout.tabContainer.x + layout.tabContainer.width + tolerance),
-                    `${width}: vier vollständige, nicht abgeschnittene Tabtitel`);
-                    if (singleRow) assert(layout.tabs.every(tab => Math.abs(tab.y - layout.tabs[0].y) <= tolerance),
-                        `${width}: vier vollständige Titel in einer Tabzeile`);
-                }
-                // Aktuelles Design: Im Verlaufskopf steht nur die Capturetaste (mit Automatikhinweis). Anzahl und
-                // Datum sind visuell verborgen gepflegte Anschlüsse; sichtbar datiert die KPI-Leiste „Zuletzt erfasst“.
-                const inForm = box => box.width > 0 && box.height > 0 && box.x >= -tolerance && box.x + box.width <= history.form.width + history.form.x + tolerance;
-                assert(history.actions.map(action => action.id).join(',') === 'captureWealthBtn' && history.actions.every(inForm),
-                    `${width}: Capture erreichbar im gemeinsamen Verlaufskopf`);
-                const latestAsOf = entries.reduce((max, entry) => entry.asOf > max ? entry.asOf : max, '');
-                const latestLabel = latestAsOf.split('-').reverse().join('.');
-                const head = await page.evaluate(() => {
-                    const card = [...document.querySelectorAll('#wealthHistoryMetrics .wealth-metric')]
-                        .find(metric => metric.querySelector('.expenses-card-label')?.textContent === 'Gesamtvermögen · zuletzt erfasst');
-                    const anchor = id => {
-                        const el = document.getElementById(id), style = getComputedStyle(el);
-                        return { text: el.textContent, inPanel: Boolean(el.closest('#tab-history')), live: el.getAttribute('aria-live'),
-                            exposed: !el.hidden && !el.closest('[aria-hidden="true"]') && style.display !== 'none' && style.visibility === 'visible' };
-                    };
-                    const box = card?.getBoundingClientRect();
-                    return { latest: card ? { x: box.x, y: box.y, width: box.width, height: box.height, date: card.querySelector('.expenses-card-sub')?.textContent } : null,
-                        count: anchor('wealthHistoryCount'), date: anchor('wealthHistoryDate') };
-                });
-                const tree = await page.locator('#tab-history').ariaSnapshot();
-                assert(head.latest && inForm(head.latest) && head.latest.date === latestLabel
-                    && head.count.inPanel && head.count.exposed && head.count.text === `${entries.length} Stände`
-                    && head.date.inPanel && head.date.exposed && head.date.live === 'polite' && head.date.text === `Zuletzt erfasst am ${latestLabel}`
-                    && tree.includes(`${entries.length} Stände`) && tree.includes(`Zuletzt erfasst am ${latestLabel}`),
-                `${width}: Anzahl und Datum zugänglich, Datum sichtbar in der KPI-Leiste „Zuletzt erfasst“`);
-            }
-            assertWealthScrollRegions(history, width, tolerance);
-        }
-        await page.setViewportSize({ width: 1600, height: 900 });
-        for (const contentWidth of [1250, 1251]) {
-            await page.locator('.suite-content').evaluate((node, width) => { node.style.width = `${width}px`; }, contentWidth);
-            const layout = await measureWealthBrowserLayout(page);
-            assert(Math.abs(layout.contentWidth - contentWidth) <= tolerance, 'Containergegenprobe setzt tatsächliche Inhaltsbreite');
-            assert(layout.direction === (contentWidth === 1250 ? 'column' : 'row'), '1250/1251-Umschaltung bei unverändertem Fenster');
-        }
-        await page.locator('.suite-content').evaluate(node => { node.style.width = ''; });
-        await assertWealthBrowserVisibility(page, true, entries.length);
-        smoke.assertNoErrors();
-    } finally { await smoke.close(); }
-}
-
-async function runBalanceWealthHistory(browser, baseUrl) {
-    const markupContext = await browser.newContext({ javaScriptEnabled: false });
-    try {
-        await markupContext.route('**/*', async route => {
-            const host = new URL(route.request().url()).hostname;
-            if (host === '127.0.0.1' || host === 'localhost') await route.continue();
-            else await route.fulfill({ status: 200, body: '' });
-        });
-        const markupPage = await markupContext.newPage();
-        await markupPage.goto(`${baseUrl}/Balance.html`, { waitUntil: 'load' });
-        assert(!(await markupPage.locator('#tab-history').isVisible()), 'Verlaufstab schon vor JavaScript inaktiv');
-        assert(await markupPage.locator('.tab-panel.active').count() === 1 && await markupPage.locator('#tab-overview').isVisible(), 'Nur Jahres-Update vor JavaScript aktiv');
-        assert(await markupPage.getByRole('region', { name: 'Vermögensdiagramm', exact: true }).count() === 0,
-            'Ausgeliefertes Markup verbirgt die Details auch vor Initialisierung aus dem Zugänglichkeitsbaum');
-    } finally { await markupContext.close(); }
-    await assertWealthBrowserLayoutMatrix(browser, baseUrl);
-    const baseline = createBalanceStorage(2026);
-    const profileState = JSON.parse(baseline[BALANCE_STATE_KEY]);
-    profileState.inputs.floorBedarf = 0;
-    profileState.inputs.flexBedarf = 0;
-    Object.assign(profileState.inputs, { tagesgeld: 12000, geldmarktEtf: 23000, depotwertAlt: 34000, depotwertNeu: 45000 });
-    baseline[BALANCE_STATE_KEY] = JSON.stringify(profileState);
-    const zeroEntry = { id: 'manual:2026-01-02', asOf: '2026-01-02', reason: 'manual', periodId: null,
-        tagesgeld: 0, geldmarktEtf: 0, depotwertAlt: 0, depotwertNeu: 0, aktienEtf: 0, total: 0 };
-    const tranchesRaw = createWealthBrowserTranches();
-    const smoke = await openSmokePage(browser, baseUrl, 'Balance.html', {
-        fixedTime: '2026-10-03T00:30:00+02:00',
-        observeWealthUpdates: true,
-        storage: {
-            ...baseline, profile_tagesgeld: '12000', depot_tranchen: tranchesRaw,
-            ...createBrowserProfileStorage({
-                'wealth-a': { name: 'Verlauf A', tagesgeld: '12000', tranchesRaw,
-                    balanceStateRaw: baseline[BALANCE_STATE_KEY] },
-                'wealth-b': { name: 'Verlauf B', tagesgeld: '2000', balanceStateRaw: JSON.stringify({
-                    ...profileState, inputs: { ...profileState.inputs, tagesgeld: 2000,
-                        geldmarktEtf: 0, depotwertAlt: 0, depotwertNeu: 0 },
-                    wealthHistory: { schemaVersion: 1, entries: [zeroEntry] }
-                }) }
-            }, 'wealth-a')
-        }
-    });
-    const { page } = smoke;
-    await waitForWealthBrowserStartup(page);
-    await assertWealthBrowserVisibility(page, false, 0);
-    await activateWealthBrowserTab(page, true, 'Enter');
-    await page.locator('#wealthHistoryHint').filter({ hasText: 'Noch keine Stände erfasst' }).waitFor();
-    await activateWealthBrowserTab(page, false, 'Space');
-    await page.waitForFunction(() => window.__profilverbundProfileSummaries?.length === 2);
-    await activateWealthBrowserTab(page, true, 'Space');
-    await captureWealthBrowserStand(page, true);
-    const first = (await readBalanceBrowserState(page)).wealthHistory.entries;
-    assert(first.length === 1 && first[0].asOf === '2026-10-03' && first[0].id === 'manual:2026-10-03',
-        'Tastaturerfassung nutzt den lokalen Klicktag statt des noch vorherigen UTC-Tags');
-    assert(first[0].tagesgeld === 14000 && first[0].geldmarktEtf === 23000
-        && first[0].depotwertAlt === 34000 && first[0].depotwertNeu === 45000
-        && first[0].aktienEtf === 79000 && first[0].total === 116000,
-    'Der echte Knopf erfasst die Profilverbund- und Tranchenwerte, keine simulierten Bestände');
-    await assertWealthBrowserVisibility(page, true, 1);
-    await assertWealthBrowserTable(page, first);
-    const registryAfterCapture = JSON.parse((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value);
-    assert(JSON.stringify(JSON.parse(registryAfterCapture.profiles['wealth-a'].data[BALANCE_STATE_KEY]).wealthHistory.entries)
-        === JSON.stringify(first), 'Live-State und aktive Registrykopie sind dauerhaft gleich');
-    assert(JSON.stringify(JSON.parse(registryAfterCapture.profiles['wealth-b'].data[BALANCE_STATE_KEY]).wealthHistory.entries)
-        === JSON.stringify([zeroEntry]), 'Der Verbundstand wird nicht in den Verlauf des zweiten Profils kopiert');
-
-    // Die Haushaltsliste liegt im Reiter „Bedarf & Strategie“.
-    await activateSuiteSection(page, 'strategy');
-    await setBrowserHouseholdMembership(page, 'wealth-b', false);
-    await waitForWealthBrowserIdle(page);
-    await activateWealthBrowserTab(page, true);
-    await captureWealthBrowserStand(page);
-    const replaced = (await readBalanceBrowserState(page)).wealthHistory.entries;
-    assert(replaced.length === 1 && replaced[0].tagesgeld === 12000 && replaced[0].total === 114000,
-        'Ein weiterer Klick am selben Tag ersetzt den Stand aus der frischen Profilbasis');
-    await assertWealthBrowserVisibility(page, true, 1);
-    await assertWealthBrowserTable(page, replaced);
-    await page.reload({ waitUntil: 'load' });
-    await waitForWealthBrowserStartup(page);
-    await assertWealthBrowserVisibility(page, false, 1);
-    await activateWealthBrowserTab(page, true);
-    await page.locator('#wealthHistoryTable tbody tr').waitFor();
-    assert(JSON.stringify((await readBalanceBrowserState(page)).wealthHistory.entries) === JSON.stringify(replaced),
-        'Reload erhält die gespeicherten Werte exakt');
-    await assertWealthBrowserTable(page, replaced);
-
-    await page.clock.setFixedTime(new Date('2026-10-04T12:00:00+02:00'));
-    await captureWealthBrowserStand(page);
-    let nextDay = (await readBalanceBrowserState(page)).wealthHistory.entries;
-    assert(nextDay.length === 2 && nextDay[1].asOf === '2026-10-04', 'Ein anderer lokaler Tag ergänzt einen Stand');
-    await assertWealthBrowserVisibility(page, true, 2);
-    await assertWealthBrowserTable(page, nextDay);
-    await activateWealthBrowserTab(page, false);
-    await page.clock.setFixedTime(new Date('2026-10-05T12:00:00+02:00'));
-    await activateWealthBrowserTab(page, true);
-    await captureWealthBrowserStand(page);
-    nextDay = (await readBalanceBrowserState(page)).wealthHistory.entries;
-    await assertWealthBrowserVisibility(page, true, 3);
-    await assertWealthBrowserTable(page, nextDay);
-
-    await switchWealthBrowserProfile(page, baseUrl, 'wealth-b');
-    await assertWealthBrowserVisibility(page, false, 1);
-    await activateWealthBrowserTab(page, true, 'Space');
-    await assertWealthBrowserTable(page, [zeroEntry]);
-    const capture = page.getByRole('button', { name: 'Stand jetzt erfassen', exact: true });
-    await capture.focus();
-    await page.keyboard.press('Tab');
-    assert(await page.getByRole('region', { name: 'Vermögensdiagramm', exact: true }).evaluate(el => el === document.activeElement),
-        'Das Diagramm ist per Tab erreichbar');
-    // Zwischen Diagramm und Tabelle steht in der Legendenzeile die Erläuterungstaste des Verlaufs.
-    await page.keyboard.press('Tab');
-    assert(await page.getByRole('button', { name: 'Erläuterung Vermögensverlauf', exact: true }).evaluate(el => el === document.activeElement),
-        'Die Verlaufserläuterung folgt dem Diagramm in der Tabreihenfolge');
-    await page.keyboard.press('Tab');
-    const table = page.getByRole('region', { name: 'Tabelle der Vermögensstände', exact: true });
-    assert(await table.evaluate(el => el === document.activeElement), 'Die Datentabelle ist per Tab erreichbar');
-    await page.keyboard.press('End');
-    await assertWealthBrowserTable(page, [zeroEntry]);
-    await waitForWealthBrowserLayout(page);
-    await activateWealthBrowserTab(page, false);
-
-    await page.setViewportSize({ width: 1366, height: 900 });
-    await switchWealthBrowserProfile(page, baseUrl, 'wealth-a');
-    await assertWealthBrowserVisibility(page, false, 3);
-    await activateWealthBrowserTab(page, true, 'Enter');
-    await page.waitForFunction(() => document.querySelectorAll('#wealthHistoryTable tbody tr').length === 3);
-    await assertWealthBrowserTable(page, nextDay);
-    // Ein echter v21.1-Export trägt Alter und Rentenfelder noch in inputs; die Fixture hält sie nach der
-    // Personenmigration nur als personInputEvidence. Das Exportdokument stellt die damalige Form wieder her.
-    const { personInputEvidence, ...legacyState } = profileState;
-    const legacyPayload = { ...legacyState, inputs: { ...legacyState.inputs, ...personInputEvidence } };
-    const legacy = {
-        app: await page.evaluate(async () => (await import('./app/balance/balance-config.js')).CONFIG.APP.NAME),
-        version: 'v21.1 Refactored (Engine v31)', payload: legacyPayload
-    };
-    const valid = { ...legacy, payload: { ...legacyPayload, wealthHistory: { schemaVersion: 1, entries: [zeroEntry] } } };
-    for (const active of [true, false]) {
-        await activateWealthBrowserTab(page, active);
-        const runImport = async (name, content, message) => {
-            await openDataBrowser(page);
-            // Der Import auf Daten & Sicherung (balance-file-service) prüft nach dem Replace mit Update und Flush;
-            // ein einmalig scheiternder Flush erzwingt den automatischen Rollback.
-            if (message === 'automatisch wiederhergestellt') await page.evaluate(async () => {
-                const { StorageManager } = await import('./app/balance/balance-storage.js');
-                const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
-                const replace = StorageManager.replaceStateFromImport;
-                StorageManager.replaceStateFromImport = async (...args) => {
-                    const receipt = await replace.apply(StorageManager, args); StorageManager.replaceStateFromImport = replace;
-                    const flush = PersistenceFacade.flush;
-                    PersistenceFacade.flush = async () => { PersistenceFacade.flush = flush; return false; };
-                    return receipt;
-                };
-            });
-            await page.locator('#balance-austausch > summary').click();
-            await page.locator('#dataBalanceFile').setInputFiles({ name, mimeType: 'application/json', buffer: Buffer.from(content) });
-            if (content !== '{kein-json') await answerPageDialog(page, { label: 'Balance importieren' });
-            // Seit p14b steht die technische Ursache unter „Technische Details“; Haupttext und Details gemeinsam prüfen.
-            await waitForPageCondition(page, message => {
-                const text = (document.getElementById('dataExchangeStatus').textContent || '') + ' ' + (document.getElementById('dataExchangeTechnical')?.textContent || '');
-                return document.getElementById('dataBalanceFile').value === ''
-                    && text.includes(message === 'erfolgreich' ? 'Balance eingespielt' : message === 'kein gültiges JSON' ? 'nicht gelesen' : message);
-            }, message);
-            if (message !== 'erfolgreich') {
-                const text = await page.locator('#dataExchangeStatus').textContent();
-                await page.waitForTimeout(2000);
-                assert(await page.locator('#dataExchangeStatus').textContent() === text, name + ': Importfehler bleibt ortsfest sichtbar');
-            }
-            await page.locator('.suite-navigation a[href="Balance.html"]').click(); await page.waitForURL('**/Balance.html');
-            await waitBalanceHouseholdList(page); await waitForWealthBrowserIdle(page); await activateWealthBrowserTab(page, active);
-        };
-        await runImport('synthetischer-verlauf.json', JSON.stringify(valid), 'erfolgreich');
-        await assertWealthBrowserVisibility(page, active, 1);
-        if (active) await assertWealthBrowserTable(page, [zeroEntry]);
-        assert(JSON.stringify((await readBalanceBrowserState(page)).wealthHistory.entries) === JSON.stringify([zeroEntry]), 'Import ersetzt den Verlauf exakt');
-        await waitForBrowserValue(async () => {
-            const registry = JSON.parse((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value);
-            return JSON.parse(registry.profiles['wealth-a'].data[BALANCE_STATE_KEY]).wealthHistory.entries;
-        }, entries => JSON.stringify(entries) === JSON.stringify([zeroEntry]), 'Import in aktiver Registry bestätigt');
-        await runImport('ungueltiger-verlauf.json', '{kein-json', 'kein gültiges JSON');
-        await assertWealthBrowserVisibility(page, active, 1);
-        if (active) await assertWealthBrowserTable(page, [zeroEntry]);
-        const beforeRollback = await readBalanceBrowserState(page);
-        await page.evaluate(async () => {
-            const { StorageManager } = await import('./app/balance/balance-storage.js');
-            const { UIReader } = await import('./app/balance/balance-reader.js');
-            const replace = StorageManager.replaceStateFromImport;
-            StorageManager.replaceStateFromImport = async (...args) => {
-                const receipt = await replace.apply(StorageManager, args);
-                StorageManager.replaceStateFromImport = replace;
-                const read = UIReader.captureStorageDraft;
-                UIReader.captureStorageDraft = () => {
-                    UIReader.captureStorageDraft = read;
-                    throw new Error('Synthetischer UI-Fehler nach Replace');
-                };
-                return receipt;
-            };
-        });
-        await runImport('synthetischer-rollback.json', JSON.stringify(legacy), 'automatisch wiederhergestellt');
-        await assertWealthBrowserVisibility(page, active, 1);
-        assert(JSON.stringify(await readBalanceBrowserState(page)) === JSON.stringify(beforeRollback), 'Rollback bewahrt endgültigen bestätigten State');
-        if (active) await assertWealthBrowserTable(page, [zeroEntry]);
-        await activateWealthBrowserTab(page, !active);
-        await activateWealthBrowserTab(page, active);
-        await runImport('synthetischer-legacy-verlauf.json', JSON.stringify(legacy), 'erfolgreich');
-        await assertWealthBrowserVisibility(page, active, 0);
-        assert(!(await readBalanceBrowserState(page)).wealthHistory, 'Legacy-Replace übernimmt keinen alten Verlauf');
-        if (active) await page.locator('#wealthHistoryHint').filter({ hasText: 'Noch keine Stände erfasst' }).waitFor();
-    }
-    await page.reload({ waitUntil: 'load' });
-    // Nach dem Legacy-Replace ergänzt die App profilverbundHouseholdInputs nicht mehr;
-    // hier folgt kein Zustandsvergleich, der Profilwechsel wartet selbst auf seinen Start.
-    await waitBalanceHouseholdList(page);
-    await assertWealthBrowserVisibility(page, false, 0);
-    await switchWealthBrowserProfile(page, baseUrl, 'wealth-b');
-    await assertWealthBrowserVisibility(page, false, 1);
-    await activateWealthBrowserTab(page, true);
-    await assertWealthBrowserTable(page, [zeroEntry]);
-    smoke.assertNoErrors(['Synthetischer UI-Fehler nach Replace']);
-    await smoke.close();
 }
 
 async function probePlanFieldStyles(page, hostSelector, label) {
@@ -4545,44 +3818,6 @@ async function runBalanceAnnualCommitScenario(browser, baseUrl) {
     } finally { await smoke.close(); }
 }
 
-async function runBalanceImportReject(browser, baseUrl) {
-    const smoke = await openSmokePage(browser, baseUrl, 'Balance.html', { storage: createBalanceStorage(2025) });
-    await waitBalanceHouseholdList(smoke.page);
-    await smoke.page.waitForTimeout(750);
-    const before = await readIndexedDb(smoke.page, 'kv', BALANCE_STATE_KEY);
-    await openDataBrowser(smoke.page);
-    await smoke.page.locator('#balance-austausch > summary').click();
-    await smoke.page.locator('#dataBalanceFile').setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from('{not-json') });
-    await waitForPageCondition(smoke.page, () => document.getElementById('dataBalanceFile').value === ''
-        && document.getElementById('dataExchangeStatus').textContent.includes('nicht abgeschlossen'));
-    const visibleError = smoke.page.locator('#dataExchangeStatus');
-    await visibleError.waitFor({ state: 'visible' });
-    const errorBeforeWait = await visibleError.textContent();
-    await smoke.page.waitForTimeout(2000);
-    assert(await visibleError.isVisible() && await visibleError.textContent() === errorBeforeWait,
-        'Import-Reject bleibt nach abgeschlossener Verarbeitung noch nach 2 s sichtbar');
-    assert(await smoke.page.locator('#dataExchangeTechnical').textContent() === 'Die Datei konnte nicht gelesen werden.',
-        'Import-Reject bewahrt die Einzelursache in geschlossenen Details');
-    assert(!/JSON|IndexedDB|_FAILED/.test(errorBeforeWait), 'Import-Reject verwendet verständlichen Haupttext');
-    const after = await readIndexedDb(smoke.page, 'kv', BALANCE_STATE_KEY);
-    const beforeState = JSON.parse(before.value);
-    const afterState = JSON.parse(after.value);
-    assert(
-        JSON.stringify(afterState.inputs) === JSON.stringify(beforeState.inputs),
-        `Abgelehnter Import darf die persistenten Eingaben nicht veraendern: ${JSON.stringify({
-            before: beforeState.inputs,
-            after: afterState.inputs
-        })}`
-    );
-    assert(
-        JSON.stringify(afterState.annualPeriodMetadata) === JSON.stringify(beforeState.annualPeriodMetadata),
-        'Abgelehnter Import darf die Jahresperioden-Metadaten nicht veraendern'
-    );
-    assert(await readIndexedDb(smoke.page, 'snapshots', null) === 0, 'Abgelehnter Import darf keinen Recovery-Snapshot erzeugen');
-    smoke.assertNoErrors();
-    await smoke.close();
-}
-
 async function runBalanceMessagePresentation(browser, baseUrl) {
     const smoke = await openSmokePage(browser, baseUrl, 'Balance.html', {
         storage: createBalanceStorage(2025), observeWealthUpdates: true
@@ -4753,177 +3988,6 @@ async function runBalanceMessagePresentation(browser, baseUrl) {
     } finally { await smoke.close(); }
 }
 
-async function runBalanceFolderAbort(browser, baseUrl) {
-    const smoke = await openSmokePage(browser, baseUrl, 'Balance.html', { storage: createBalanceStorage(2025), observeWealthUpdates: true });
-    const { page } = smoke;
-    try {
-        await waitBalanceHouseholdList(page); await waitForWealthBrowserIdle(page);
-        // Seit Paket 14-Folge b hat die Balance keine Sicherungskarte mehr; die Ordnerverbindung liegt auf Daten & Sicherung.
-        await page.goto(`${baseUrl}/Daten-Sicherung.html#balance-austausch`);
-        await waitForPageCondition(page, () => document.documentElement.dataset.dataReady === 'true');
-        const before = await page.evaluate(async () => {
-            const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
-            return JSON.stringify(await PersistenceFacade.readPersistedRecords());
-        });
-        await page.evaluate(async () => {
-            const { StorageManager } = await import('./app/balance/balance-storage.js');
-            const picker = window.showDirectoryPicker, set = StorageManager._idbHelper.set;
-            const probe = window.__folderAbort = { opened: false, writes: 0 };
-            probe.restore = () => { window.showDirectoryPicker = picker; StorageManager._idbHelper.set = set; };
-            StorageManager._idbHelper.set = async (...args) => { probe.writes++; return set.apply(StorageManager._idbHelper, args); };
-            window.showDirectoryPicker = () => {
-                probe.opened = true;
-                return new Promise((_, reject) => { probe.abort = () => reject(new DOMException('Ordnerwahl abgebrochen', 'AbortError')); });
-            };
-        });
-        await page.locator('#dataLegacyFolder').click();
-        await page.waitForFunction(() => window.__folderAbort.opened);
-        assert(await page.evaluate(() => window.__folderAbort.writes === 0), 'Offener Legacydialog ändert keinen gespeicherten Handle');
-        await page.evaluate(() => window.__folderAbort.abort());
-        await waitForPageCondition(page, () => document.getElementById('dataExchangeStatus').textContent === 'Austausch abgebrochen.');
-        assert(await page.evaluate(() => window.__folderAbort.writes === 0), 'Legacy-Pickerabbruch erhält gespeicherten Handle');
-        assert(await page.evaluate(async expected => {
-            const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
-            return JSON.stringify(await PersistenceFacade.readPersistedRecords()) === expected;
-        }, before), 'Legacy-Pickerabbruch erhält sämtliche Livebytes');
-        smoke.assertNoErrors();
-    } finally {
-        await page.evaluate(() => window.__folderAbort?.restore()); await smoke.close();
-    }
-}
-
-// Ohne Modul-Closure auch direkt über page.evaluate verwendbar.
-function readBalanceImportResults() {
-    return Object.fromEntries(['balanceReserveValues', 'monatlicheEntnahme', 'balanceReserveRunway', 'handlungContent']
-        .map(id => [id, document.getElementById(id)?.textContent]));
-}
-
-async function runBalanceImportRestoration(browser, baseUrl) {
-    const smoke = await openSmokePage(browser, baseUrl, 'Balance.html', {
-        storage: createBalanceStorage(2025), observeWealthUpdates: true,
-        fixedTime: '2026-10-03T12:00:00+02:00'
-    });
-    const { page } = smoke;
-    try {
-        await waitBalanceHouseholdList(page);
-        await waitForWealthBrowserIdle(page);
-        const valid = await page.evaluate(async () => (await import('./app/balance/balance-main.js')).update({ mode: 'preview' }).ok);
-        assert(valid, 'Importregression startet mit gültiger Baseline');
-
-        // Gesonderte Dateievents: echte Formbindung, kein Importhandlerstart.
-        const protection = await page.evaluate(async debounceMs => {
-            const { UIReader } = await import('./app/balance/balance-reader.js');
-            const { UIRenderer } = await import('./app/balance/balance-renderer.js');
-            const { ValidationError } = await import('./app/balance/balance-config.js');
-            UIRenderer.handleError(new ValidationError([{ fieldId: 'minimumFlexAnnual', message: 'Synthetischer bestehender Berechnungsfehler' }]));
-            const before = document.getElementById('error-container').textContent;
-            const marks = () => [...document.querySelectorAll('.input-error')].map(el => el.id).sort();
-            const markedBefore = marks();
-            const calls = { updates: 0, clears: 0, scheduled: 0 };
-            const read = UIReader.captureStorageDraft;
-            const clear = UIRenderer.clearError;
-            const timerDescriptor = Object.getOwnPropertyDescriptor(window, 'setTimeout');
-            const schedule = window.setTimeout;
-            const temporary = document.createElement('input');
-            temporary.type = 'file';
-            document.querySelector('.form-column').appendChild(temporary);
-            try {
-                UIReader.captureStorageDraft = function (...args) { calls.updates++; return read.apply(this, args); };
-                UIRenderer.clearError = function (...args) { calls.clears++; return clear.apply(this, args); };
-                Object.defineProperty(window, 'setTimeout', { configurable: true, writable: true,
-                    value: (callback, delay, ...args) => {
-                        if (delay === debounceMs) calls.scheduled++;
-                        return schedule(callback, delay, ...args);
-                    } });
-                temporary.dispatchEvent(new Event('input', { bubbles: true }));
-                temporary.dispatchEvent(new Event('change', { bubbles: true }));
-                // Markt-CSV entfiel auf Nutzerentscheid (05.10.2026, Inventar B06/B10/B11/B24); seit Daten & Sicherung
-                // liegt auch der Balance-Import dort, auf Balance bleibt nur das Ausgaben-CSV-Feld.
-                if (document.getElementById('expensesCsvInput')) throw new Error('Ausgaben-Dateieingang verblieb in Balance');
-                await new Promise(resolve => schedule(resolve, debounceMs + 50));
-                return { calls, before, after: document.getElementById('error-container').textContent,
-                    markedBefore, markedAfter: marks() };
-            } finally {
-                temporary.remove();
-                UIReader.captureStorageDraft = read;
-                UIRenderer.clearError = clear;
-                Object.defineProperty(window, 'setTimeout', timerDescriptor);
-            }
-        }, BALANCE_UPDATE_DEBOUNCE_MS);
-        assert(Object.values(protection.calls).every(count => count === 0), `Dateievents: null Updates, clearError und entprellte Vormerkungen: ${JSON.stringify(protection.calls)}`);
-        assert(protection.before === protection.after && protection.markedBefore.includes('minimumFlexAnnual')
-            && JSON.stringify(protection.markedBefore) === JSON.stringify(protection.markedAfter), 'Dateievents erhalten Fehler und Feldmarkierungen exakt');
-        await page.evaluate(async () => (await import('./app/balance/balance-main.js')).update({ mode: 'preview' }));
-
-        // Seit Daten & Sicherung läuft der Balance-Import auf der Sicherungsseite in einem eigenen Rechenkontext ohne
-        // Balance-Anzeige. Geprüft wird dort der Fehler vor und nach dem Replace; ob Balance danach wieder den
-        // Ausgangsstand zeigt, prüft der Rückweg nach Balance. Die frühere Wiederherstellungsvorschau auf Balance
-        // (json-preview) gibt es nicht mehr.
-        for (const failure of ['json-replace', 'json-final']) {
-            await waitForWealthBrowserIdle(page);
-            const baseline = await page.evaluate(readBalanceImportResults);
-            const beforeState = await readBalanceBrowserState(page);
-            const fields = await page.evaluate(() => Object.fromEntries(['floorBedarf', 'endeVJ', 'ath', 'minimumFlexAnnual']
-                .map(id => [id, document.getElementById(id).value])));
-            const provenance = await page.locator('#marketDataProvenance').textContent();
-            const document = await page.evaluate(async () => {
-                const { StorageManager } = await import('./app/balance/balance-storage.js');
-                const { createBalanceExportDocument } = await import('./app/balance/balance-binder-imports.js');
-                const doc = createBalanceExportDocument(StorageManager.loadState());
-                doc.payload.inputs.floorBedarf = 32000;
-                doc.payload.inputs.endeVJ = 500;
-                return doc;
-            });
-            await openDataBrowser(page);
-            const summaryBefore = (await readIndexedDb(page, 'kv', 'overview_balance_summary_v1'))?.value;
-            const snapshotsBefore = await readIndexedDb(page, 'snapshots', null);
-            await page.evaluate(async failure => {
-                const { StorageManager } = await import('./app/balance/balance-storage.js');
-                const { StorageError } = await import('./app/balance/balance-config.js');
-                const { UIReader } = await import('./app/balance/balance-reader.js');
-                const replace = StorageManager.replaceStateFromImport;
-                StorageManager.replaceStateFromImport = async function (...args) {
-                    StorageManager.replaceStateFromImport = replace;
-                    if (failure === 'json-replace') throw new StorageError('Synthetischer Import-Snapshotfehler');
-                    const receipt = await replace.apply(this, args);
-                    // Die abschließende Eingabeprüfung scheitert wie bisher an einem negativen Mindest-Flex.
-                    const read = UIReader.readAllInputs;
-                    UIReader.readAllInputs = function (...readArgs) {
-                        UIReader.readAllInputs = read;
-                        return { ...read.apply(this, readArgs), minimumFlexAnnual: -1 };
-                    };
-                    return receipt;
-                };
-            }, failure);
-            const expectedText = failure === 'json-final' ? 'automatisch wiederhergestellt' : 'Synthetischer Import-Snapshotfehler';
-            await page.locator('#balance-austausch > summary').click();
-            await page.locator('#dataBalanceFile').setInputFiles({ name: 'synthetischer-import.json',
-                mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(document)) });
-            await answerPageDialog(page, { label: 'Balance importieren' });
-            await waitForPageCondition(page, text => document.getElementById('dataBalanceFile').value === ''
-                && document.getElementById('dataExchangeStatus').textContent.includes('nicht abgeschlossen')
-                && document.getElementById('dataExchangeTechnical').textContent.includes(text), expectedText);
-            await waitForPageCondition(page, async () => {
-                const { getPageNavigationGuard } = await import('./app/shared/navigation-guard-dialog.js');
-                return getPageNavigationGuard().reasons().length === 0;
-            });
-            assert(await page.locator('#dataExchangeStatus').isVisible(), `${failure}: Importfehler am Aktionsort sichtbar`);
-            assert(JSON.stringify(await readBalanceBrowserState(page)) === JSON.stringify(beforeState), `${failure}: gespeicherter Ausgangsstand erhalten`);
-            assert((await readIndexedDb(page, 'kv', 'overview_balance_summary_v1'))?.value === summaryBefore, `${failure}: gespeicherte Balance-Summary bytegleich`);
-            const snapshotsAfter = await readIndexedDb(page, 'snapshots', null);
-            assert(snapshotsAfter === snapshotsBefore + (failure === 'json-final' ? 1 : 0),
-                `${failure}: Recoverypunkt genau dann, wenn der Replace begonnen hat`);
-            await page.locator('.suite-navigation a[href="Balance.html"]').click(); await page.waitForURL('**/Balance.html');
-            await waitBalanceHouseholdList(page); await waitForWealthBrowserIdle(page);
-            for (const [id, value] of Object.entries(fields)) assert(await page.locator(`#${id}`).inputValue() === value, `${failure}: ${id} auf Balance unverändert`);
-            assert(await page.locator('#marketDataProvenance').textContent() === provenance, `${failure}: Provenienzanzeige erhalten`);
-            assert(JSON.stringify(await page.evaluate(readBalanceImportResults)) === JSON.stringify(baseline), `${failure}: KPI und Handlung entsprechen dem Ausgangsstand`);
-            assert(await page.locator('.input-error').count() === 0, `${failure}: keine Feldmarkierungen auf Balance`);
-        }
-        smoke.assertNoErrors(['Synthetischer bestehender Berechnungsfehler', 'Update-Fehler: ValidationError', 'Synthetischer Wiederherstellungsvorschaufehler']);
-    } finally { await smoke.close(); }
-}
-
 async function runBalanceCorruptExpenses(browser, baseUrl) {
     const storage = { ...createBalanceStorage(2025), [EXPENSES_KEY]: '{not-json' };
     const smoke = await openSmokePage(browser, baseUrl, 'Ausgaben.html', { storage });
@@ -4951,193 +4015,6 @@ async function runBalanceCorruptExpenses(browser, baseUrl) {
     assert(Object.keys(JSON.parse((await readIndexedDb(smoke.page, 'kv', EXPENSES_KEY)).value).years).length === 0, 'Bestätigter Reset erhält bisherigen Leerumfang');
     smoke.assertNoErrors();
     await smoke.close();
-}
-
-async function closeWorkshopTool(page) {
-    const selected = page.locator('#workshopToolCards [aria-pressed="true"]');
-    if (await selected.count()) await selected.click();
-}
-
-// Bildschirm prüft die Werkzeugwahl und den tatsächlich aktiven Hauptreiter.
-async function assertWorkshopScreenSelection(page, tool, label) {
-    const workshopActive = await page.locator('#tab-werkstatt').evaluate(node => node.classList.contains('active'));
-    for (const [selector, expectedTool] of [['#workshopReplayPanel', 'replay'], ['#tab-sweep', 'sweep'], ['#tab-auto-optimize', 'optimize']]) {
-        const visible = workshopActive && tool === expectedTool;
-        assert(await page.locator(selector).isVisible() === visible,
-            `${label}: ${selector} folgt im Bildschirm der Werkzeugwahl einschließlich aller Ahnen`);
-        if (visible) {
-            const ancestors = await page.locator(selector).evaluate(node => {
-                const rows = [];
-                for (let parent = node; parent; parent = parent.parentElement) {
-                    const style = getComputedStyle(parent);
-                    rows.push({ id: parent.id, hidden: parent.hidden, display: style.display, visibility: style.visibility });
-                }
-                return rows;
-            });
-            assert(ancestors.every(row => !row.hidden && row.display !== 'none' && !['hidden', 'collapse'].includes(row.visibility)),
-                `${label}: gewählter Host und alle Ahnen sichtbar: ${JSON.stringify(ancestors)}`);
-        }
-    }
-    for (const [selector, expectedTool] of [['#sweepHeatmap svg', 'sweep'], ['#paretoResults svg', 'sweep'], ['#ao_result', 'optimize']]) {
-        if ((!workshopActive || tool !== expectedTool) && await page.locator(selector).count()) {
-            assert(await page.locator(selector).isHidden(), `${label}: fremde Ausgabe ${selector} bleibt im Bildschirm verborgen`);
-        }
-    }
-}
-
-// Gemeinsame Druckmatrix: Medienwechsel darf DOM-Auswahl und Fokus nicht ändern.
-async function assertSimulatorWorkshopPrint(page, tool, label, outputs = []) {
-    // Volltexthinweise abgeschnittener Auswahlen (.ds-selection-text, aria-describedby …-fulltext) folgen der
-    // gerenderten Breite; im breiteren Druck entfallen sie. Der Druckvergleich blendet nur diese Breitenannotation aus.
-    const readState = ({ widthAnnotations = true } = {}) => page.evaluate(widthAnnotations => JSON.stringify({
-        panels: [...document.querySelectorAll('[data-workshop-panel], .mc-view-panel, [data-stress-replay-comparison-panel]')]
-            .map(node => [node.id, node.hidden]),
-        controls: [...document.querySelectorAll('[data-workshop-tool], .mc-view-tab, [data-stress-replay-comparison-view]')]
-            .map(node => [node.id, node.getAttribute('aria-pressed'), node.getAttribute('aria-selected'), node.tabIndex]),
-        mainTabs: [...document.querySelectorAll('.tab-panel')].map(node => [node.id, node.className]),
-        cardsHidden: document.getElementById('workshopToolCards').hidden,
-        fields: [...document.querySelectorAll('#tab-werkstatt input, #tab-werkstatt select')].map(node => [node.id, node.value, node.checked]),
-        outputs: ['sweepResults', 'sweepHeatmap', 'paretoResults', 'ao_result', 'stressReplayComparison'].map(id => {
-            const node = document.getElementById(id);
-            if (!node || widthAnnotations) return [id, node?.innerHTML];
-            const copy = node.cloneNode(true);
-            copy.querySelectorAll('.ds-selection-text').forEach(text => text.remove());
-            copy.querySelectorAll('[aria-describedby]').forEach(control => {
-                const rest = control.getAttribute('aria-describedby').split(/\s+/).filter(token => token && !token.endsWith('-fulltext')).join(' ');
-                if (rest) control.setAttribute('aria-describedby', rest); else control.removeAttribute('aria-describedby');
-            });
-            return [id, copy.innerHTML];
-        }),
-        disclosures: [...document.querySelectorAll('#mcSetupDisclosure, .stress-replay-diagnostics')].map(node => node.open)
-    }), widthAnnotations);
-    await assertWorkshopScreenSelection(page, tool, label);
-    const before = await readState();
-    const beforeWithoutWidthAnnotations = await readState({ widthAnnotations: false });
-    const focus = await page.evaluateHandle(() => document.activeElement);
-    const mediaProbe = await page.evaluateHandle(async () => {
-        const { persistenceStorage } = await import('./app/shared/persistence-facade.js');
-        const { initStressReplayUI } = await import('./app/simulator/stress-replay-ui.js');
-        const controller = initStressReplayUI(); // Bereits initialisierter dokumentlokaler Controller.
-        const replayState = controller.getState();
-        const sweep = window.sweepExecution, champion = window.aoChampionResult;
-        let writes = 0, starts = 0;
-        const methods = ['setItem', 'removeItem', 'clear'];
-        const originals = methods.map(name => persistenceStorage[name]);
-        methods.forEach((name, index) => { persistenceStorage[name] = (...args) => { writes++; return originals[index](...args); }; });
-        const WorkerBefore = window.Worker;
-        window.Worker = new Proxy(WorkerBefore, { construct(target, args, newTarget) { starts++; return Reflect.construct(target, args, newTarget); } });
-        return {
-            unchanged: () => writes === 0 && starts === 0 && initStressReplayUI() === controller
-                && controller.getState() === replayState && window.sweepExecution === sweep && window.aoChampionResult === champion,
-            restore: () => { methods.forEach((name, index) => { persistenceStorage[name] = originals[index]; }); window.Worker = WorkerBefore; }
-        };
-    });
-    try {
-        await page.emulateMedia({ media: 'print' });
-        const printedCockpitState = await page.evaluate(() => ({
-            workshopDisplay: getComputedStyle(document.getElementById('tab-werkstatt')).display,
-            replayToolDisplay: getComputedStyle(document.getElementById('workshopReplayPanel')).display,
-            sweepDisplay: getComputedStyle(document.getElementById('tab-sweep')).display,
-            optimizeDisplay: getComputedStyle(document.getElementById('tab-auto-optimize')).display,
-            cardsDisplay: getComputedStyle(document.getElementById('workshopToolCards')).display,
-            mainMcDisplay: getComputedStyle(document.getElementById('tab-montecarlo')).display,
-            setupContentDisplay: getComputedStyle(document.querySelector('#mcSetupDisclosure > .mc-setup-content')).display,
-            setupFieldsetDisplay: getComputedStyle(document.querySelector('#mcSetupDisclosure fieldset')).display,
-            mcPanelDisplays: [...document.querySelectorAll('.mc-view-panel')]
-                .map(panel => getComputedStyle(panel).display),
-            comparisonPanelDisplays: [...document.querySelectorAll('[data-stress-replay-comparison-panel]')]
-                .map(panel => getComputedStyle(panel).display),
-            diagnosticsDisplay: getComputedStyle(document.querySelector('.stress-replay-diagnostics > dl')).display,
-            mainNavigationDisplay: getComputedStyle(document.querySelector('.tab-buttons')).display,
-            mcNavigationDisplay: getComputedStyle(document.querySelector('.mc-view-nav')).display,
-            comparisonNavigationDisplay: getComputedStyle(document.querySelector('.stress-replay-comparison-tabs')).display,
-            setupToggleDisplay: getComputedStyle(document.querySelector('.mc-settings-actions')).display,
-            expertToggleDisplay: getComputedStyle(document.querySelector('.stress-replay-expert-toggle')).display,
-            replayLinkDisplay: getComputedStyle(document.getElementById('mcShowReplayButton')).display,
-            scenarioReturnDisplay: getComputedStyle(document.getElementById('mcShowScenarioLogsButton')).display,
-            scenarioHeaderPosition: getComputedStyle(document.querySelector('[data-print-probe="sticky-header"] th')).position,
-            scenarioLogOverflow: getComputedStyle(document.getElementById('scenarioLogOutput')).overflow,
-            comparisonTableOverflow: getComputedStyle(document.querySelector('.stress-replay-table-scroll')).overflow
-        }));
-        assert(printedCockpitState.workshopDisplay !== 'none' && printedCockpitState.replayToolDisplay !== 'none'
-            && printedCockpitState.mainMcDisplay !== 'none',
-        'Druck öffnet MC- und Replayahnen unabhängig vom aktiven Hauptreiter');
-        assert(printedCockpitState.sweepDisplay !== 'none' && printedCockpitState.optimizeDisplay !== 'none',
-        `${label}: Druck zeigt Sweep und Optimize unabhängig von der Auswahl`);
-        assert(printedCockpitState.cardsDisplay === 'none',
-            `${label}: Werkzeugkarten sind im Druck verborgen`);
-        assert(printedCockpitState.setupContentDisplay !== 'none'
-            && printedCockpitState.setupFieldsetDisplay !== 'none',
-            `Druck zeigt das geschlossene MC-Setup: ${JSON.stringify(printedCockpitState)}`);
-        assert(printedCockpitState.mcPanelDisplays.length === 4
-            && printedCockpitState.mcPanelDisplays.every(display => display !== 'none'),
-        `Druck zeigt alle vier MC-Ansichten in DOM-Reihenfolge: ${JSON.stringify(printedCockpitState)}`);
-        assert(printedCockpitState.comparisonPanelDisplays.length === 3
-            && printedCockpitState.comparisonPanelDisplays.every(display => display !== 'none'),
-        `Druck zeigt alle drei Replayvergleichssektionen in DOM-Reihenfolge: ${JSON.stringify(printedCockpitState)}`);
-        assert(printedCockpitState.diagnosticsDisplay !== 'none',
-            `Druck zeigt geschlossene Replaydiagnostik: ${JSON.stringify(printedCockpitState)}`);
-        assert(printedCockpitState.mainNavigationDisplay === 'none'
-            && printedCockpitState.mcNavigationDisplay === 'none'
-            && printedCockpitState.comparisonNavigationDisplay === 'none'
-            && printedCockpitState.setupToggleDisplay === 'none'
-            && printedCockpitState.expertToggleDisplay === 'none'
-            && printedCockpitState.replayLinkDisplay === 'none'
-            && printedCockpitState.scenarioReturnDisplay === 'none',
-        `Druck verbirgt Navigation und Umschaltknöpfe: ${JSON.stringify(printedCockpitState)}`);
-        assert(printedCockpitState.scenarioHeaderPosition === 'static'
-            && printedCockpitState.scenarioLogOverflow === 'visible'
-            && printedCockpitState.comparisonTableOverflow === 'visible',
-        `Druck löst Sticky- und Overflowbegrenzungen: ${JSON.stringify(printedCockpitState)}`);
-
-        assert(await page.locator('.mc-view-panel [data-print-probe="mc-content"]').count() === 4,
-            `${label}: alle vier MC-Ansichten besitzen sichtbaren Prüfinhalt`);
-        for (const selector of ['#mcSetupDisclosure fieldset',
-            '#workshopReplayPanel', '#sweepRuns', '#ao_metric', '.mc-view-panel [data-print-probe="mc-content"]',
-            '[data-stress-replay-comparison-panel]']) {
-            const nodes = page.locator(selector);
-            for (let index = 0; index < await nodes.count(); index++) {
-                assert(await nodes.nth(index).isVisible(), `${label}: ${selector} ist tatsächlich sichtbar`);
-            }
-        }
-        if (tool) {
-            assert(await page.locator(tool === 'replay' ? '#workshopReplayPanel' : tool === 'sweep' ? '#sweepRuns' : '#ao_metric').isVisible(),
-                `${label}: offener Werkzeuginhalt ist sichtbar`);
-        }
-        for (const selector of outputs) {
-            assert(await page.locator(selector).isVisible(), `${label}: vorhandene Ausgabe ${selector} bleibt sichtbar`);
-        }
-        for (const selector of ['#sweepHeatmap svg', '#paretoResults svg', '#ao_result']) {
-            // Ein leerer ao_result-Host ist noch keine Optimize-Ausgabe.
-            const populated = await page.locator(selector).evaluateAll(nodes => nodes.some(node => node.childElementCount > 0 || node.textContent.trim()));
-            if (populated) assert(await page.locator(selector).isVisible(),
-                `${label}: vorhandener Werkzeuginhalt ${selector} wird unabhängig von der Auswahl gedruckt`);
-        }
-        const graphicStyles = await page.locator('.heatmap-v4-svg, .ds-pareto-svg, .ds-portfolio-svg').evaluateAll(nodes =>
-            nodes.map(node => ({ minWidth: getComputedStyle(node).minWidth, maxWidth: getComputedStyle(node).maxWidth })));
-        assert(graphicStyles.every(style => style.minWidth === '0px' && style.maxWidth === '100%'),
-            `${label}: Grafikdruckregeln lösen native Mindestbreiten`);
-        const graphicOverflow = await page.locator('.ds-chart-scroll, #portfolioCompositionChart').evaluateAll(nodes =>
-            nodes.map(node => getComputedStyle(node).overflowX));
-        assert(graphicOverflow.every(overflow => overflow === 'visible'), `${label}: Grafikdruck wird nicht abgeschnitten`);
-        assert(await readState({ widthAnnotations: false }) === beforeWithoutWidthAnnotations && await page.evaluate(node => document.activeElement === node, focus),
-            `${label}: Druck erhält Werkzeugwahl, Untertabs, Details und Fokus`);
-        assert(await page.evaluate(probe => probe.unchanged(), mediaProbe), `${label}: Druck erhält Controlleridentität und startet weder Writes noch Worker`);
-    } finally {
-        try {
-            await page.emulateMedia({ media: 'screen' });
-            // ResizeObserver stellt die Volltexthinweise im nächsten Renderschritt wieder her; zwei Frames abwarten.
-            await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-            assert(await readState() === before && await page.evaluate(node => document.activeElement === node, focus),
-                `${label}: Rückkehr zum Bildschirm erhält DOM-Zustand und Fokus`);
-            assert(await page.evaluate(probe => probe.unchanged(), mediaProbe), `${label}: Bildschirmrückkehr bleibt schreibfrei ohne neue Worker`);
-            await assertWorkshopScreenSelection(page, tool, label);
-        } finally {
-            await page.evaluate(probe => probe.restore(), mediaProbe);
-            await mediaProbe.dispose();
-            await focus.dispose();
-        }
-    }
 }
 
 // Gehört zum bestehenden Simulatorfall; synthetische Daten lösen keinen MC-Lauf aus.
@@ -5302,7 +4179,7 @@ async function runScenarioWealthBasisSmoke(browser, baseUrl) {
                             sameColor: getComputedStyle(line).stroke === getComputedStyle(swatch).borderTopColor };
                     });
                     assert(!layout.overflow && layout.localScroll === 'auto', `${width}: kein Seitenüberlauf und bedienbare lokale Diagrammfläche`);
-                    assert(layout.groups === 4 && layout.listboxes === 1 && layout.tabEntries === 1, `${width}: vier Gruppen und ein Tab-Einstieg in genau einer Listbox`);
+                    assert(layout.groups === 5 && layout.listboxes === 1 && layout.tabEntries === 1, `${width}: fünf Gruppen und ein Tab-Einstieg in genau einer Listbox`);
                     assert(layout.normalBackground === layout.expected.surface && layout.selectedBackground === layout.expected.accent
                         && layout.normalColor === layout.expected.text && layout.selectedColor === layout.expected.text,
                         `${width}: helle Zeilen, messinghelle Auswahl und lesbare Textfarbe`);
@@ -5391,7 +4268,7 @@ async function runScenarioWealthBasisSmoke(browser, baseUrl) {
                 });
                 assert(sampleLayout.activeSample && sampleLayout.rows === 15, `${withFan}/${width}: R-02 misst die aktive Stichprobengruppe mit 15 Zeilen`);
                 assert(sampleLayout.groupCounts && Math.max(...sampleLayout.groupTops) - Math.min(...sampleLayout.groupTops) < 1,
-                    `${width}: alle vier Segmente stehen mit echten Anzahlen in einer Zeile`);
+                    `${width}: alle fünf Segmente stehen mit echten Anzahlen in einer Zeile`);
                 assert(sampleLayout.scrollable, `${withFan}/${width}: R-02 Stichprobenliste scrollt innerhalb der begrenzten Auswahlfläche`);
                 assert(sampleLayout.hintWithinPane, `${withFan}/${width}: R-02 Scrollhinweis bleibt innerhalb der Auswahlfläche`);
                 assert(!sampleLayout.overlapsBar, `${withFan}/${width}: R-02 Gruppen, Liste und Hinweis überlappen den Auswahlkopf nicht`);
@@ -5471,7 +4348,7 @@ async function runScenarioWealthBasisSmoke(browser, baseUrl) {
         await page.evaluate(async () => {
             const { displayMonteCarloResults } = await import('./app/simulator/simulator-results.js');
             const logs = window.__scenarioBasisProbe.logs;
-            // Die reale Ergebnisanzeige veröffentlicht den MC-Kontext fürs Replay und braucht dafür ein Startalter in den Eingaben.
+            // Die reale Ergebnisanzeige braucht ein Startalter in den Eingaben.
             displayMonteCarloResults({}, 2, 0, null, null, null, 0, { startAlter: 65 }, null, logs);
         });
         await assertSimulatorToggleRow(page, 'toggle-log-detail');
@@ -5506,7 +4383,44 @@ async function runScenarioWealthBasisSmoke(browser, baseUrl) {
     }
 }
 
+// JD-1 Nachtrag 3 (Nutzertest Kandidaten-EXE): Lage nachbilden, in der der Schieber „Startjahr ab“ beim Laden kein Maximum
+// hat und schon einen Wert bekommt. Der Browser kürzt ihn dabei auf 1925 und merkt ihn als geändert. Nach dem Start steht
+// die Vorgabe 1970 bzw. der gespeicherte Wert.
+async function runStartYearFilterClampSmoke(browser, baseUrl) {
+    for (const [stored, expected] of [[null, '1970'], ['1990', '1990']]) {
+        const data = stored ? { sim_mcStartYearMode: 'FILTER', sim_mcStartYearFilter: stored } : {};
+        const storage = { ...data, rs_active_profile: 'default', rs_current_profile: 'default', rs_profiles_v1: JSON.stringify({ version: 1,
+            profiles: { default: { meta: { id: 'default', belongsToHousehold: true }, data } } }) };
+        const smoke = await createPage(browser, 'Simulator.html', { storage });
+        try {
+            await smoke.context.route('**/Simulator.html', async route => {
+                const response = await route.fetch();
+                const html = (await response.text())
+                    .replace(/(id="mcStartYearFilter" min="1925") max="\d{4}"/, '$1')
+                    .replace('<output id="mcStartYearFilterValue">',
+                        '<script>{ const field = document.getElementById("mcStartYearFilter"); field.value = field.value; }</script><output id="mcStartYearFilterValue">');
+                assert(!/id="mcStartYearFilter" min="1925" max=/.test(html), 'Nachbildung entfernt das HTML-Maximum');
+                await route.fulfill({ response, body: html });
+            });
+            await smoke.page.goto(`${baseUrl}/Simulator.html`, { waitUntil: 'load', timeout: 15000 });
+            await waitForSimulatorOpening(smoke.page, 'Simulator.html');
+            const state = await smoke.page.evaluate(async () => {
+                const field = document.getElementById('mcStartYearFilter');
+                const { default: stand } = await import('./app/simulator/historical-datenstand.js');
+                return { value: field.value, max: field.max, endYear: String(stand.endYear),
+                    output: document.getElementById('mcStartYearFilterValue').textContent };
+            });
+            assert(state.max === state.endYear, `JD-1: Schieber erhält das Maximum aus den Daten (${state.max})`);
+            assert(state.value === expected && state.output === expected,
+                `JD-1: Schieber steht nach dem Start auf ${expected} statt ${state.value} (Anzeige ${state.output})`);
+        } finally {
+            await smoke.context.close();
+        }
+    }
+}
+
 async function runSimulatorSmoke(browser, baseUrl) {
+    await runStartYearFilterClampSmoke(browser, baseUrl);
     await runScenarioWealthBasisSmoke(browser, baseUrl);
     const smoke = await openSmokePage(browser, baseUrl, 'Simulator.html');
     const { page } = smoke;
@@ -5544,9 +4458,8 @@ async function runSimulatorSmoke(browser, baseUrl) {
         { id: 'ergebnis', label: 'Ergebnis' },
         { id: 'annahmen', label: 'Annahmen' },
         { id: 'backtesting', label: 'Backtest' },
-        { id: 'montecarlo', label: 'Monte-Carlo' },
-        { id: 'werkstatt', label: 'Werkstatt' }
-    ]), `Simulator muss genau die fuenf Haupttabs in der vorgesehenen Reihenfolge anzeigen: ${JSON.stringify(tabStripLayout)}`);
+        { id: 'montecarlo', label: 'Monte-Carlo' }
+    ]), `Simulator muss genau die vier Haupttabs in der vorgesehenen Reihenfolge anzeigen: ${JSON.stringify(tabStripLayout)}`);
     for (const { id } of tabStripLayout.tabs) {
         assert(await page.locator(`.tab-buttons .tab-btn[data-tab="${id}"]`).isVisible(),
             `Haupttab ${id} muss im Desktop-Viewport sichtbar sein`);
@@ -5621,7 +4534,7 @@ async function runSimulatorSmoke(browser, baseUrl) {
     assert(await mcCancelButton.count() === 1, 'Simulator must expose exactly one Monte-Carlo cancel control');
     assert(await mcCancelButton.isHidden(), 'Monte-Carlo cancel control must stay hidden before a run starts');
     assert(await mcCancelButton.isDisabled(), 'Monte-Carlo cancel control must stay disabled before a run starts');
-    for (const tab of ['ergebnis', 'annahmen', 'backtesting', 'montecarlo', 'werkstatt']) {
+    for (const tab of ['ergebnis', 'annahmen', 'backtesting', 'montecarlo']) {
         const button = page.locator(`.tab-btn[data-tab="${tab}"]`);
         await button.click();
         const style = await button.evaluate(node => {
@@ -5782,55 +4695,6 @@ async function runSimulatorSmoke(browser, baseUrl) {
 
     assert(await page.locator('#mcRecalculateButton').count() === 0
         && await page.locator('.mc-settings-actions #mcButton').count() === 1, 'Ein kanonischer MC-Reiterstart ohne alten Zweitknopf');
-    await page.locator('.tab-btn[data-tab="werkstatt"]').click();
-    assert(await page.locator('#workshopToolCards .sim-tool-card').count() === 3,
-        'Werkstatt offers three tool cards before opening a workspace');
-    const toolNodes = await page.evaluateHandle(() => [...document.querySelectorAll('[data-workshop-panel]')]);
-    try {
-        for (const tool of ['replay', 'sweep', 'optimize']) {
-            const opener = page.locator(`#workshopToolCards [data-workshop-tool="${tool}"]`);
-            await opener.focus(); await opener.press('Enter');
-            await assertWorkshopScreenSelection(page, tool, 'Tastatur ' + tool);
-            await opener.focus(); await opener.press('Space');
-            await assertWorkshopScreenSelection(page, null, 'Schließen ' + tool);
-            assert(await opener.evaluate(node => node === document.activeElement), tool + ': Rückfokus nach Tastaturschließen');
-        }
-        await page.locator('#workshopToolCards [data-workshop-tool="replay"]').focus();
-        await page.keyboard.press('End');
-        await assertWorkshopScreenSelection(page, 'optimize', 'End');
-        await page.keyboard.press('Home');
-        await assertWorkshopScreenSelection(page, 'replay', 'Home');
-        await page.keyboard.press('ArrowRight');
-        await assertWorkshopScreenSelection(page, 'sweep', 'Pfeil rechts');
-        await closeWorkshopTool(page);
-        assert(await page.evaluate(nodes => nodes.every((node, index) => node === document.querySelectorAll('[data-workshop-panel]')[index]), toolNodes),
-            'Tastaturwahl erhält dieselben Werkzeughosts');
-    } finally { await toolNodes.dispose(); }
-    await page.locator('[data-workshop-tool="sweep"]:visible').click();
-    assert(await page.locator('#workshopToolCards .sim-tool-card:visible').count() === 3,
-        'Alle Auswahlkarten bleiben beim geöffneten Werkzeug sichtbar');
-    const sweepCard = page.locator('#workshopToolCards [data-workshop-tool="sweep"]');
-    assert(await sweepCard.textContent() === 'Schließen' && await sweepCard.getAttribute('aria-expanded') === 'true',
-        'Aktive Karte zeigt Schließen und erweiterten Zustand');
-    assert(await page.locator('#workshopToolCards .sim-tool-card.is-active').count() === 1,
-        'Genau eine Auswahlkarte ist messing getönt');
-    await page.locator('#sweepRuns').fill('501');
-    await page.locator('[data-workshop-tool="optimize"]:visible').click();
-    assert(await page.locator('#ao_presets_container [data-preset]').count() === 7,
-        'Optimize keeps seven native preset controls');
-    await closeWorkshopTool(page);
-    assert(await page.locator('#workshopToolCards').isVisible(), 'Closing a tool returns to its cards');
-    assert(await page.locator('[data-workshop-panel]:visible').count() === 0,
-        'Schließen blendet alle Werkzeugflächen aus');
-    assert(await page.locator('#workshopToolCards [data-workshop-tool="optimize"]').evaluate(node => node === document.activeElement),
-        'Schließen gibt den Fokus an den Kartenknopf zurück');
-    await page.locator('[data-workshop-tool="sweep"]:visible').click();
-    assert(await page.locator('#sweepRuns').inputValue() === '501',
-        'Tool changes retain the existing sweep input in the same document');
-    await page.locator('#sweepRuns').fill('500');
-    await page.locator('[data-workshop-tool="replay"]:visible').click();
-    assert(await page.locator('#workshopReplayPanel').isVisible(),
-        'replay remains reachable through the result navigation before a Monte-Carlo run');
     assert(await page.locator('#mcViewPanelLogs #scenarioList').count() === 1
         && await page.locator('#mcViewPanelLogs #scenarioWealthChart').count() === 1
         && await page.locator('#mcViewPanelRisk #wealthDistribution').count() === 1,
@@ -5902,31 +4766,10 @@ async function runSimulatorSmoke(browser, baseUrl) {
         && await page.locator('#mcDauer').inputValue() === durationBeforeReset
         && !await page.locator('#mcRunHint').isVisible(),
         'Hinweisreset ändert nur Laufzahl und startet keine Großrechnung');
-    await page.locator('.tab-btn[data-tab="werkstatt"]').click();
     assert(await page.locator('#mcWealthMode').getAttribute('aria-label') === 'Euro-Basis aller Monte-Carlo-Geldbeträge',
         'gemeinsamer Vermögensmaßstab ist assistiv benannt');
     assert(await page.locator('#mcViewPanelLogs #scenarioSelector').count() === 1,
         'the stable scenario selector container lives exactly once in scenario logs');
-    assert(await page.locator('#stressReplaySelectedScenario').count() === 1
-        && (await page.locator('#stressReplaySelectedScenario').textContent()).includes('Kein Lauf ausgewählt.'),
-    'replay exposes one empty read-only selection projection before a run');
-    assert(await page.locator('.stress-replay-step').count() === 3,
-        'replay exposes three derived workflow cards');
-    assert(await page.locator('#stressReplayStepSelect').getAttribute('data-step-state') === 'active',
-        'run selection is the active step without a workspace');
-    assert(await page.locator('#stressReplayBanner dt').count() === 7,
-        'banner retains all seven source and diagnostic values');
-    await page.locator('.tab-btn[data-tab="montecarlo"]').click();
-    await page.locator('#mcViewTabLogs').click();
-    await page.locator('#mcShowReplayButton').click();
-    assert(await page.locator('#workshopReplayPanel').isVisible(),
-        'scenario-log backlink activates replay without a completed run');
-    assert(await page.evaluate(() => document.activeElement?.id) === 'stressReplaySelectedScenario',
-        'scenario-log backlink focuses the visible replay projection without a scenario select');
-    await page.locator('#mcShowScenarioLogsButton').click();
-    assert(await page.locator('#mcViewPanelLogs').isVisible()
-        && await page.evaluate(() => document.activeElement?.id) === 'mcShowReplayButton',
-    'replay return action exposes logs and focuses its visible fallback before a run');
     assert(await mcRuns.inputValue() === '10000', 'new Simulator profile uses the 10,000-run Monte-Carlo default');
     // Die Ressourcenschätzung steht in den Monte-Carlo-Einstellungen.
     await openSimulatorTab(page, 'montecarlo');
@@ -5936,259 +4779,6 @@ async function runSimulatorSmoke(browser, baseUrl) {
     await openSimulatorTab(page, 'montecarlo');
     assert(await page.locator('#mc-progress-bar-container').getAttribute('role') === 'progressbar', 'Monte-Carlo progress is semantic in a real browser');
     assert(await page.locator('#mc-error-container').getAttribute('role') === 'alert', 'Monte-Carlo errors are not color-only in a real browser');
-    assert(await page.locator('#stressReplayFixButton').count() === 1,
-        'Simulator must expose exactly one stress replay fixation action');
-    assert(await page.locator('#stressReplayFixButton').isDisabled(),
-        'Stress replay fixation stays disabled before a scenario selection');
-    assert(await page.locator('#stressReplayStatus').getAttribute('aria-live') === 'polite',
-        'Stress replay session updates must use a polite live region');
-    assert(await page.locator('#stressReplayWorkspace').getAttribute('aria-busy') === 'false',
-        'Stress replay workspace exposes its initially idle mutation state');
-    assert(await page.locator('#stressReplayBanner').getAttribute('tabindex') === '-1',
-        'Stress replay banner must be programmatically focusable');
-    assert(await page.locator('#stressReplayImportFile').getAttribute('accept') === 'application/json,.json',
-        'Stress replay import must be constrained to JSON files');
-    assert(!(await page.locator('#stressReplayImportFile').isDisabled()),
-        'Stress replay file selection is available while the workspace is idle');
-    const variantFieldsetState = await page.locator('#stressReplayVariantFields').evaluate(fieldset => ({
-        disabledProperty: fieldset.disabled === true,
-        hasDisabledAttribute: fieldset.hasAttribute('disabled')
-    }));
-    assert(variantFieldsetState.disabledProperty,
-        'Variant editor fieldset has its disabled DOM property until an executable fixed path exists');
-    assert(variantFieldsetState.hasDisabledAttribute,
-        'Variant editor fieldset keeps its disabled HTML attribute until an executable fixed path exists');
-    assert(await page.locator('#stressReplayVariantFields #stressReplayVariantLabel').isDisabled(),
-        'Variant editor contains an effectively disabled control until an executable fixed path exists');
-    assert((await page.locator('#stressReplayStatus').textContent()).includes('Starte zuerst einen Monte-Carlo-Lauf.'),
-        'Empty stress replay status requests a Monte-Carlo run before scenario selection');
-    assert(await page.locator('#stressReplayVariantLabel').getAttribute('maxlength') === '60',
-        'Variant labels have a bounded keyboard-editable control');
-    // Der Varianten-Editor liegt in der Replay-Unteransicht; zuletzt waren die Logs aktiv.
-    await page.locator('#mcShowReplayButton').click();
-    assert(await page.locator('#workshopReplayPanel').isVisible(),
-        'variant editor checks run inside the visible replay view');
-    const focusedEditorPaths = await page.locator('#stressReplayVariantFields > .stress-replay-editor-grid').evaluate(grid =>
-        [...grid.querySelectorAll('input, select')].map(control => control.id || control.dataset.stressReplayPath));
-    assert(JSON.stringify(focusedEditorPaths) === JSON.stringify([
-        'stressReplayVariantLabel',
-        'strategy.startFloorBedarf',
-        'strategy.startFlexBedarf',
-        'strategy.minimumFlexAnnual'
-    ]), `Focused editor exposes exactly name, floor need, flex need and minimum flex: ${JSON.stringify(focusedEditorPaths)}`);
-    assert(await page.locator('#stressReplayAddVariantButton').count() === 1,
-        'Variant calculation uses one native button');
-    assert(await page.locator('#stressReplayVariantEditor [data-stress-replay-path="strategy.goldAktiv"]').count() === 0,
-        'Forbidden asset fields are absent from the variant editor');
-    for (const path of ['strategy.startFloorBedarf', 'strategy.startFlexBedarf', 'strategy.minimumFlexAnnual']) {
-        const needControl = page.locator(`#stressReplayVariantEditor [data-stress-replay-path="${path}"]`);
-        assert(await needControl.count() === 1, `Focused editor exposes ${path} exactly once`);
-        assert(await needControl.inputValue() === '', `${path} starts empty and inherits its baseline`);
-        assert(await needControl.getAttribute('min') === '0', `${path} rejects negative values in the browser`);
-        assert(await needControl.isVisible(), `${path} is visible in the focused editor`);
-    }
-    assert(await page.locator('#stressReplayVariantEditor [data-stress-replay-format="currency-eur"]').count() === 3,
-        'Exactly the three focused baseline outputs opt into Euro formatting');
-    const expertToggle = page.locator('#stressReplayExpertToggle');
-    const expertFields = page.locator('#stressReplayExpertFields');
-    assert(await expertToggle.getAttribute('type') === 'button', 'Expert disclosure uses a native non-submit button');
-    assert(await expertToggle.getAttribute('aria-expanded') === 'false', 'Expert disclosure starts collapsed');
-    assert(await expertToggle.getAttribute('aria-controls') === 'stressReplayExpertFields', 'Expert disclosure names its controlled container');
-    assert(await expertFields.isHidden(), 'All expert controls start hidden');
-    assert(await expertFields.locator('[data-stress-replay-path]').count() === 17,
-        'All 17 existing expert controls remain present inside the disclosure');
-    const previewBeforeToggle = await page.locator('#stressReplayPatchPreview').innerHTML();
-    const addDisabledBeforeToggle = await page.locator('#stressReplayAddVariantButton').isDisabled();
-    await page.locator('#stressReplayVariantFields').evaluate(fieldset => { fieldset.disabled = false; });
-    await expertToggle.press('Enter');
-    assert(await expertFields.isVisible() && await expertToggle.getAttribute('aria-expanded') === 'true',
-        'Enter opens the native expert disclosure and synchronizes ARIA');
-    await expertToggle.press('Space');
-    assert(await expertFields.isHidden() && await expertToggle.getAttribute('aria-expanded') === 'false',
-        'Space closes the native expert disclosure and synchronizes ARIA');
-    await expertToggle.press('Enter');
-    assert(await expertFields.isVisible() && await expertToggle.getAttribute('aria-expanded') === 'true',
-        'Enter reopens the native expert disclosure after the keyboard-only toggle cycle');
-    assert(await page.locator('#stressReplayPatchPreview').innerHTML() === previewBeforeToggle,
-        'Opening and closing alone does not change patch preview');
-    assert(await page.locator('#stressReplayAddVariantButton').isDisabled() === addDisabledBeforeToggle,
-        'Opening and closing alone does not change add-button materiality');
-    const retainedExpert = expertFields.locator('[data-stress-replay-path="strategy.liquidityRunwayYears"]');
-    await retainedExpert.fill('7');
-    assert(await retainedExpert.inputValue() === '7', 'Pre-run rerender preserves the entered expert value');
-    const preRunRelockState = await page.locator('#stressReplayVariantFields').evaluate(fieldset => ({
-        fieldsetDisabled: fieldset.disabled === true,
-        expertToggleDisabled: fieldset.querySelector('#stressReplayExpertToggle')?.matches(':disabled') === true
-    }));
-    assert(preRunRelockState.fieldsetDisabled
-        && preRunRelockState.expertToggleDisabled,
-    `A real pre-run editor input rerenders and relocks the unavailable variant workflow: ${JSON.stringify(preRunRelockState)}`);
-    assert(await page.locator('#stressReplayVariantEditor [data-active-when="decumulation:3_bucket_jilge"]').first().isHidden(),
-        'Three-bucket-only controls start hidden when their strategy mode is inactive');
-    const realNeedsError = await page.evaluate(async () => {
-        const { createStressReplayController } = await import('./app/simulator/stress-replay-ui.js');
-        const { getCommonInputs } = await import('./app/simulator/simulator-portfolio.js');
-        const baselineSnapshot = {
-            ...getCommonInputs(),
-            startFloorBedarf: 24000,
-            startFlexBedarf: 12000,
-            minimumFlexAnnual: 0
-        };
-        const documentRef = {
-            getElementById(id) {
-                return id === 'stressReplayBanner' ? null : document.getElementById(id);
-            },
-            querySelectorAll(selector) {
-                return document.querySelectorAll(selector);
-            }
-        };
-        const controller = createStressReplayController({
-            documentRef,
-            loadWorkspace: () => ({
-                status: 'executable',
-                workspace: {
-                    baselineSnapshot,
-                    variants: [{ id: 'baseline', role: 'baseline' }]
-                },
-                compatibility: { readOnly: false },
-                error: null
-            }),
-            renderViews: () => {}
-        });
-        controller.initialize();
-        document.querySelector('[data-stress-replay-path="strategy.startFlexBedarf"]').value = '5000';
-        document.querySelector('[data-stress-replay-path="strategy.minimumFlexAnnual"]').value = '6000';
-        controller.previewEditorPatch();
-        const status = document.getElementById('stressReplayStatus');
-        return { code: status.dataset.patchError, text: status.textContent, status: status.dataset.status,
-            workshopActive: document.getElementById('tab-werkstatt').classList.contains('active'), replayVisible: !document.getElementById('workshopReplayPanel').hidden };
-    });
-    assert(realNeedsError.code === 'STRESS_REPLAY_MINIMUM_FLEX_EXCEEDS_FLEX'
-        && realNeedsError.status === 'error'
-        && realNeedsError.text.includes('Mindest-Flex p. a.')
-        && realNeedsError.text.includes('6.000')
-        && realNeedsError.text.includes('5.000'),
-    `The real contract error must render both effective amounts in the live status region: ${JSON.stringify(realNeedsError)}`);
-    assert(realNeedsError.workshopActive && realNeedsError.replayVisible, 'Der echte Controller mit partiellem Browseradapter öffnet Hauptreiter und Replayhost ohne Selektorfehler');
-    const replayWorkspaceText = (await page.locator('#stressReplayWorkspace').textContent()).replace(/\s+/g, ' ').trim();
-    assert(replayWorkspaceText.includes('Fixiert genau einen ausgewählten Monte-Carlo-Lauf')
-        && replayWorkspaceText.includes('Varianten werden nur auf diesem Pfad verglichen')
-        && replayWorkspaceText.includes('keine allgemeine Strategieempfehlung'),
-    'The browser workflow must explain the paired fixed-path interpretation');
-    assert(!replayWorkspaceText.toLowerCase().includes('optimale strategie'),
-        'The browser workflow must not present replay variants as a general optimum');
-    assert(await readIndexedDb(page, 'kv', 'sim.stressReplay.active.v1') === null,
-        'Opening the Simulator with replay inactive must not create a persisted replay workspace');
-    const replayScrollStyle = await page.evaluate(() => {
-        const probe = document.createElement('div');
-        probe.className = 'stress-replay-table-scroll';
-        document.body.appendChild(probe);
-        const overflowX = getComputedStyle(probe).overflowX;
-        probe.remove();
-        return overflowX;
-    });
-    assert(replayScrollStyle === 'auto',
-        'Stress replay comparison tables contain horizontal overflow locally');
-
-    const replayKpiSemantics = await page.evaluate(async () => {
-        const { renderStressReplayComparisonV1 } = await import('./app/simulator/stress-replay-renderer.js');
-        const summary = {
-            maximumDrawdownNominalPct: 10,
-            ruinYear: 3
-        };
-        const comparison = {
-            overallStatus: 'complete',
-            variants: [
-                { variantId: 'baseline', label: 'Baseline', summary },
-                {
-                    variantId: 'alternative-1',
-                    label: 'Variante',
-                    summary: { ...summary, maximumDrawdownNominalPct: 12.5, ruinYear: 5 }
-                }
-            ],
-            pairwise: [{
-                variantId: 'alternative-1',
-                comparable: true,
-                factorMode: 'single_factor',
-                firstDeltaMarkers: [],
-                kpiDeltas: {
-                    maximumDrawdownNominalPct: {
-                        unit: 'percentage_points', absoluteDelta: 2.5, applicability: 'applicable'
-                    },
-                    ruinYear: {
-                        unit: 'zero_based_year_index', absoluteDelta: 2, applicability: 'applicable'
-                    }
-                }
-            }]
-        };
-        const target = document.getElementById('stressReplayComparison');
-        target.innerHTML = renderStressReplayComparisonV1({ comparison });
-        const rowText = label => [...target.querySelectorAll('tr')]
-            .find(row => row.querySelector('th[scope="row"]')?.textContent.trim() === label)
-            ?.textContent.replace(/\s+/g, ' ').trim();
-        return {
-            ruin: rowText('Jahr des Vermögensaufbrauchs'),
-            drawdown: rowText('Maximaler Drawdown nominal')
-        };
-    });
-    assert(replayKpiSemantics.ruin?.includes('Jahr 4')
-        && replayKpiSemantics.ruin.includes('Jahr 6')
-        && replayKpiSemantics.ruin.includes('Δ 2 Jahre')
-        && !replayKpiSemantics.ruin.includes('Δ Jahr 3'),
-    'Browser KPI row separates absolute ruin years from a year-count delta');
-    assert(replayKpiSemantics.drawdown?.includes('10 %')
-        && replayKpiSemantics.drawdown.includes('12,5 %')
-        && replayKpiSemantics.drawdown.includes('Δ 2,5 Prozentpunkte'),
-    'Browser KPI row maps absolute drawdown percent and delta percentage points semantically');
-
-    assert(await page.locator('#stressReplayKpiTab').getAttribute('aria-selected') === 'true',
-        'Replay comparison rerender starts on Kennzahlen');
-    await page.locator('#stressReplayKpiTab').press('End');
-    assert(await page.locator('#stressReplayYearTab').getAttribute('aria-selected') === 'true'
-        && await page.locator('#stressReplayYearPanel').isVisible(),
-    'Replay comparison End activates and focuses Jahresverlauf');
-    await page.locator('#stressReplayYearTab').press('ArrowRight');
-    assert(await page.locator('#stressReplayKpiTab').getAttribute('aria-selected') === 'true'
-        && await page.locator('#stressReplayKpiPanel').isVisible(),
-    'Replay comparison ArrowRight wraps independently to Kennzahlen');
-    await page.locator('#stressReplayDeltaTab').click();
-    assert(await page.locator('#stressReplayDeltaPanel').isVisible()
-        && await page.locator('#stressReplayKpiPanel').isHidden(),
-    'Replay comparison pointer activation exposes only its selected panel');
-    const rerenderedComparisonState = await page.evaluate(async () => {
-        const { renderStressReplayComparisonV1 } = await import('./app/simulator/stress-replay-renderer.js');
-        const target = document.getElementById('stressReplayComparison');
-        target.innerHTML = renderStressReplayComparisonV1({
-            comparison: {
-                overallStatus: 'complete',
-                variants: [
-                    { variantId: 'baseline', label: 'Baseline', summary: {} },
-                    { variantId: 'alternative-rerender', label: 'Rerender', summary: {} }
-                ],
-                pairwise: [{
-                    variantId: 'alternative-rerender', comparable: true,
-                    factorMode: 'single_factor', firstDeltaMarkers: [], kpiDeltas: {}
-                }]
-            }
-        });
-        const selected = target.querySelector('[data-stress-replay-comparison-view][aria-selected="true"]');
-        selected.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
-        return {
-            selectedAfterRender: selected.dataset.stressReplayComparisonView,
-            selectedAfterDelegatedKey: target.querySelector('[data-stress-replay-comparison-view][aria-selected="true"]')?.dataset.stressReplayComparisonView,
-            focusedAfterDelegatedKey: document.activeElement?.dataset.stressReplayComparisonView || null,
-            tablists: target.querySelectorAll('[role="tablist"]').length,
-            headings: ['stressReplayKpiHeading', 'stressReplayDeltaHeading', 'stressReplayYearHeading']
-                .filter(id => document.getElementById(id)).length
-        };
-    });
-    assert(rerenderedComparisonState.selectedAfterRender === 'kpi'
-        && rerenderedComparisonState.selectedAfterDelegatedKey === 'year'
-        && rerenderedComparisonState.focusedAfterDelegatedKey === 'year',
-    `Delegated comparison controls must survive renderer replacement: ${JSON.stringify(rerenderedComparisonState)}`);
-    assert(rerenderedComparisonState.tablists === 1 && rerenderedComparisonState.headings === 3,
-        'A rerender keeps one comparison tablist and all three established headings');
-
     const cockpitViewportResults = [];
     for (const width of [1280, 1600, 1920]) {
         await page.setViewportSize({ width, height: 900 });
@@ -6198,10 +4788,10 @@ async function runSimulatorSmoke(browser, baseUrl) {
                 return rect.left >= -1 && rect.right <= document.documentElement.clientWidth + 1;
             };
             const localScrollers = [
-                ...document.querySelectorAll('.mc-view-nav > [role="tablist"], .stress-replay-table-scroll')
+                ...document.querySelectorAll('.mc-view-nav > [role="tablist"]')
             ];
             const cockpitCards = [
-                ...document.querySelectorAll('.mc-settings-card, .mc-setup-disclosure, .mc-run-state, .mc-view-panel, .stress-replay-step')
+                ...document.querySelectorAll('.mc-settings-card, .mc-setup-disclosure, .mc-run-state, .mc-view-panel')
             ].filter(element => getComputedStyle(element).display !== 'none');
             return {
                 viewportWidth,
@@ -6222,180 +4812,6 @@ async function runSimulatorSmoke(browser, baseUrl) {
     await page.setViewportSize({ width: 1366, height: 900 });
 
     // Die am geschlossenen MC-Setup scheiternde Druckprüfung entfällt gemäß Entwicklungsgrundsatz 7.
-
-    await page.locator('.tab-btn[data-tab="werkstatt"]').click();
-    await closeWorkshopTool(page);
-    await page.locator('.tab-btn[data-tab="ergebnis"]').click();
-    const replayComparisonProbe = await page.evaluateHandle(async () => {
-        const { createStressReplayController } = await import('./app/simulator/stress-replay-ui.js');
-        const { renderStressReplayViewsV1 } = await import('./app/simulator/stress-replay-renderer.js');
-        const { getCommonInputs } = await import('./app/simulator/simulator-portfolio.js');
-        const { selectWorkshopTool } = await import('./app/simulator/simulator-workshop-ui.js');
-        const { activateSimulatorTab } = await import('./app/simulator/simulator-main-tabs.js');
-        const workspace = {
-            path: {},
-            sourceIdentity: null,
-            baselineSnapshot: getCommonInputs(),
-            variants: [
-                { id: 'baseline', variantId: 'baseline', role: 'baseline', label: 'Baseline', summary: {} },
-                {
-                    id: 'browser-failure', variantId: 'browser-failure', role: 'alternative',
-                    label: 'Browserfehler', materialChangeGroups: ['dynamicFlex'], summary: {}
-                }
-            ]
-        };
-        let comparisonCalls = 0;
-        const events = [];
-        const recordTab = event => events.push(event.detail);
-        document.addEventListener('simulator:tab', recordTab);
-        const previousFocus = document.activeElement;
-        const savedElements = [...document.querySelectorAll('#stressReplayWorkspace, #stressReplayWorkspace *')]
-            .map(node => ({
-                node,
-                attributes: [...node.attributes].map(attribute => [attribute.name, attribute.value]),
-                value: 'value' in node ? node.value : undefined
-            }));
-        const savedContents = ['stressReplayPatchPreview', 'stressReplayVariantList',
-            'stressReplayComparison', 'stressReplayStatus', 'stressReplayExpertToggle']
-            .map(id => {
-                const node = document.getElementById(id);
-                return { node, children: [...node.childNodes] };
-            });
-        const navigationState = () => ({
-            mainPanels: [...document.querySelectorAll('.tab-panel')].map(panel => [panel.id, panel.classList.contains('active')]),
-            mainButtons: [...document.querySelectorAll('.tab-btn')].map(button => [button.dataset.tab, button.classList.contains('active'), button.getAttribute('aria-selected')]),
-            toolPanels: [...document.querySelectorAll('[data-workshop-panel]')].map(panel => [panel.id, panel.hidden]),
-            toolButtons: [...document.querySelectorAll('[data-workshop-tool]')].map(button => [button.dataset.workshopTool, button.getAttribute('aria-pressed')]),
-            cardsHidden: document.getElementById('workshopToolCards').hidden,
-        });
-        const before = navigationState();
-        const readState = () => {
-            const comparison = document.getElementById('stressReplayComparison');
-            const status = document.getElementById('stressReplayStatus');
-            return {
-                comparisonText: comparison.textContent.replace(/\s+/g, ' ').trim(),
-                alertCount: comparison.querySelectorAll('[role="alert"]').length,
-                statusText: status.textContent,
-                statusKind: status.dataset.status,
-                activeElementId: document.activeElement?.id || null,
-                comparisonHtml: comparison.innerHTML,
-                resultActive: document.getElementById('tab-ergebnis').classList.contains('active'),
-                workshopActive: document.getElementById('tab-werkstatt').classList.contains('active'),
-                replayHidden: document.getElementById('workshopReplayPanel').hidden,
-                cardsHidden: document.getElementById('workshopToolCards').hidden,
-                tabEvents: [...events],
-                comparisonCalls
-            };
-        };
-        const documentRef = {
-            getElementById(id) {
-                return id === 'stressReplayBanner' ? null : document.getElementById(id);
-            },
-            querySelector: selector => document.querySelector(selector),
-            querySelectorAll(selector) {
-                return selector === '[data-stress-replay-baseline]' ? [] : document.querySelectorAll(selector);
-            },
-            dispatchEvent: event => document.dispatchEvent(event)
-        };
-        const controller = createStressReplayController({
-            documentRef,
-            loadWorkspace: () => ({
-                status: 'executable', workspace, compatibility: { readOnly: false }, error: null
-            }),
-            runComparison: () => {
-                comparisonCalls += 1;
-                throw Object.assign(new Error('<browser failure>'), {
-                    code: 'STRESS_REPLAY_BROWSER_FAILURE'
-                });
-            },
-            renderViews: options => renderStressReplayViewsV1(options)
-        });
-        const listeners = [];
-        const cleanup = () => {
-            listeners.forEach(({ target, type, listener, options }) => target.removeEventListener(type, listener, options));
-            document.removeEventListener('simulator:tab', recordTab);
-            savedContents.forEach(({ node, children }) => node.replaceChildren(...children));
-            savedElements.forEach(({ node, attributes, value }) => {
-                [...node.attributes].forEach(attribute => node.removeAttribute(attribute.name));
-                attributes.forEach(([name, content]) => node.setAttribute(name, content));
-                if (value !== undefined) node.value = value;
-            });
-            selectWorkshopTool(null);
-            activateSimulatorTab('ergebnis');
-            previousFocus?.focus();
-        };
-        const originalAdd = EventTarget.prototype.addEventListener;
-        const originalFocus = HTMLElement.prototype.focus;
-        const focusCalls = [];
-        try {
-            EventTarget.prototype.addEventListener = function(type, listener, options) {
-                listeners.push({ target: this, type, listener, options });
-                return originalAdd.call(this, type, listener, options);
-            };
-            HTMLElement.prototype.focus = function(...args) {
-                focusCalls.push(this.id || this.tagName);
-                return originalFocus.apply(this, args);
-            };
-            controller.initialize();
-        } catch (error) {
-            cleanup();
-            throw error;
-        } finally {
-            EventTarget.prototype.addEventListener = originalAdd;
-            HTMLElement.prototype.focus = originalFocus;
-        }
-        return {
-            initial: {
-                ...readState(), before, after: navigationState(), focusCalls,
-                focusPreserved: document.activeElement === previousFocus
-            },
-            readState,
-            cleanup
-        };
-    });
-    try {
-        const initializationFailure = await replayComparisonProbe.evaluate(probe => probe.initial);
-        assert(JSON.stringify(initializationFailure.before) === JSON.stringify(initializationFailure.after)
-            && initializationFailure.resultActive && !initializationFailure.workshopActive
-            && initializationFailure.replayHidden && !initializationFailure.cardsHidden,
-        `Ladefehler erhält Ergebnisreiter, verborgenen Replayhost, Karten und sämtliche Werkzeugzustände: ${JSON.stringify(initializationFailure)}`);
-        assert(initializationFailure.focusPreserved && initializationFailure.focusCalls.length === 0
-            && initializationFailure.tabEvents.length === 0 && initializationFailure.comparisonCalls === 1,
-        'Initialisierung setzt keinen Fokus und sendet kein Tabereignis bei einem Vergleichsfehler');
-        assert(initializationFailure.statusKind === 'error'
-            && initializationFailure.statusText.includes('Variantenvergleich fehlgeschlagen')
-            && initializationFailure.statusText.includes('STRESS_REPLAY_BROWSER_FAILURE')
-            && initializationFailure.comparisonText.includes('<browser failure>')
-            && initializationFailure.alertCount === 1,
-        'Stiller Ladefehler behält Status und gerenderte Diagnostik nach dem abschließenden Rendern');
-
-        await page.locator('.tab-btn[data-tab="werkstatt"]').click();
-        await page.locator('#workshopToolCards [data-workshop-tool="replay"]').click();
-        assert(await page.locator('#workshopReplayPanel').isVisible()
-            && await page.evaluate(() => document.activeElement?.id) === 'workshopReplayPanel',
-        'Realer Nutzerzugang öffnet den nach Ladefehler verborgenen Replayhost mit Fokus');
-        await page.locator('[data-stress-replay-action="recompute"][data-variant-id="browser-failure"]').click();
-        const replayComparisonFailure = await replayComparisonProbe.evaluate(probe => probe.readState());
-        assert(replayComparisonFailure.alertCount === 1
-            && replayComparisonFailure.comparisonText.includes('STRESS_REPLAY_BROWSER_FAILURE')
-            && replayComparisonFailure.comparisonText.includes('<browser failure>')
-            && replayComparisonFailure.comparisonCalls === 2,
-        `Realer Recompute-Klick zeigt denselben kontrollierten Fehler als Alert: ${JSON.stringify(replayComparisonFailure)}`);
-        assert(replayComparisonFailure.statusKind === 'error'
-            && replayComparisonFailure.statusText.includes('Variantenvergleich fehlgeschlagen')
-            && !replayComparisonFailure.statusText.includes('neu berechnet'),
-        'Realer Recompute-Klick überschreibt Vergleichsfehler nicht mit Erfolg');
-        assert(replayComparisonFailure.activeElementId === 'stressReplayComparison'
-            && replayComparisonFailure.workshopActive && !replayComparisonFailure.resultActive
-            && !replayComparisonFailure.replayHidden && !replayComparisonFailure.cardsHidden
-            && replayComparisonFailure.tabEvents.includes('werkstatt'),
-        'Nutzeraktion hält Replay sichtbar und fokussiert die fehlerhafte Vergleichsregion über den echten Tabadapter');
-        assert(!replayComparisonFailure.comparisonHtml.includes('<browser failure>'),
-            'Reale Vergleichsdiagnostik bleibt im Browser-DOM HTML-escaped');
-    } finally {
-        await replayComparisonProbe.evaluate(probe => probe.cleanup());
-        await replayComparisonProbe.dispose();
-    }
 
     await openSimulatorTab(page, 'montecarlo');
     await page.locator('#mcSetupDisclosure').evaluate(node => { node.open = true; });
@@ -6621,7 +5037,7 @@ async function runSimulatorSmoke(browser, baseUrl) {
         }
     }));
     assert(await page.locator('#backtestStatus').getAttribute('data-status') === 'ruin', 'Synthetic floor shortfall must render ruin separately');
-    assert((await page.locator('#backtestStatus').textContent()).includes('Backtest mit wirtschaftlichem Ruin beendet'), 'Ruin state must show a readable financial status');
+    assert((await page.locator('#backtestStatus').textContent()).includes('Backtest beendet: Vermögen aufgebraucht'), 'Ruin state must show a readable financial status');
     assert(await page.locator('#simulationResults').isVisible(), 'Ruin remains a financial result with summary and rows');
     assert((await page.evaluate(() => window.__browserSmokeAlerts || [])).length === 0, 'Backtest validation and terminal states must not rely on alert dialogs');
     smoke.assertNoErrors();
@@ -6856,11 +5272,16 @@ async function runTranchesSmoke(browser, baseUrl) {
     const profileB = 'browser-slice09-b';
     const storage = createBrowserProfileStorage({
         [profileA]: { name: 'Browserprofil A', tranchesRaw: '[]', tagesgeld: '0' },
-        [profileB]: { name: 'Browserprofil B', tranchesRaw: '[]', tagesgeld: '0', belongsToHousehold: false }
+        // AP-1: B gehört zum Haushalt; sein Tagesgeld trägt den gemeinsamen Bedarf in der Balance-Empfehlung.
+        [profileB]: { name: 'Browserprofil B', tranchesRaw: '[]', tagesgeld: '100000' }
     }, profileB);
     const quoteAsOf = Math.floor(Date.now() / 1000) - 60;
     const smoke = await openSmokePage(browser, baseUrl, 'index.html', {
-        storage, quoteFixtures: { default: { asOf: quoteAsOf } }
+        storage, quoteFixtures: {
+            default: { asOf: quoteAsOf },
+            'FLOW.DE': { asOf: quoteAsOf - 8 * 86400 },
+            'FLOW.SG': { asOf: quoteAsOf, exchangeName: 'STU' }
+        }
     });
     const { page } = smoke;
     await switchBrowserProfile(page, profileA);
@@ -6871,7 +5292,7 @@ async function runTranchesSmoke(browser, baseUrl) {
     await page.locator('#managerPageTitle').filter({ hasText: 'Personen & Vermögen' }).waitFor({ state: 'visible' });
     await page.locator('#tranchenTable').waitFor({ state: 'visible' });
     assert(!(await page.locator('#tranchenTable').textContent()).includes('FIFO aktiv'), 'Leerer Manager darf FIFO nicht als aktiv melden');
-    await page.locator('#managerCardsToggleAll').click();
+    await openManagerCards(page);
     await page.locator('#profileRenteAktiv[data-field-state="adopted"]').waitFor({ state: 'attached' });
     await assertManagerRenteOrigin(page, 'false');
     assert(await page.locator('#tranchenTable .empty-state.ds-note').count() === 1, 'V11: leerer Bestand hat eigene neutrale Hinweisrolle');
@@ -7085,7 +5506,7 @@ async function runTranchesSmoke(browser, baseUrl) {
     assert(await page.locator('[data-depot-group="equity"]').count() === 1, 'Aktien werden im Depot gruppiert');
     assert(/(^|\D)1 Tranche(\D|$)/.test(await page.locator('.pv-depot-count').textContent()), 'Tatsächliche Anzahl bleibt neben der Bewertung sichtbar');
 
-    await page.locator('#updatePricesBtn').click();
+    await page.locator('#managerQuoteRefresh').click();
     await page.locator('#priceUpdateStatus').filter({ hasText: 'Kurse erfolgreich aktualisiert.' }).waitFor();
     const quoteStatus = await page.locator('#priceUpdateStatus').textContent();
     assert(quoteStatus === 'Kurse erfolgreich aktualisiert.',
@@ -7096,8 +5517,18 @@ async function runTranchesSmoke(browser, baseUrl) {
     assert(quotedTranche.currentPrice === 105 && quotedTranche.marketValue === 210,
         'Validierter Kurs-/Wertpfad muss Kurs und abgeleiteten Marktwert gemeinsam persistieren');
     assert(quotedTranche.asOf === quoteAsOf, 'Kurslistener persistiert exakt quote.asOf');
-    const quoteDay = await page.evaluate(seconds => new Intl.DateTimeFormat('de-DE', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(seconds * 1000)).replace(', ', ' '), quoteAsOf);
-    assert((await row.locator('.pv-quote-date').textContent()) === `Kurs ${quoteDay}`, 'Depotdatum und Kurszeit folgen derselben gespeicherten Quotezeit');
+    const quoteStand = await page.evaluate(seconds => {
+        const date = new Date(seconds * 1000);
+        const day = new Intl.DateTimeFormat('de-DE', { month: '2-digit', day: '2-digit' }).format(date);
+        const time = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit' }).format(date);
+        return `Kurs ${day} · Stuttgart\u00a0${time}`;
+    }, quoteAsOf);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const stand = row.locator('.pv-quote-date');
+    assert(await stand.textContent() === quoteStand, 'HL-3/1105: Stuttgart und Kurszeit sind im Depot durch ein geschütztes Leerzeichen verbunden');
+    assert(await stand.locator('.pv-quote-exchange-time').evaluate(node => node.getClientRects().length === 1),
+        'HL-3/1105: Börse und Kurszeit bleiben bei 1280 px auf derselben Zeile');
+    await page.setViewportSize({ width: 1366, height: 900 });
     const quotedRegistry = JSON.parse((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value);
     assert(JSON.parse(quotedRegistry.profiles[profileA].data.depot_tranchen)[0].asOf === quoteAsOf,
         'Bestätigte Registrykopie erhält dieselbe Kurszeit');
@@ -7426,13 +5857,14 @@ async function runTranchesSmoke(browser, baseUrl) {
     assert(await managePeople.evaluate(node => document.activeElement === node), 'Verwaltung gibt Fokus an den Verwaltungsknopf zurück');
     await page.locator('#managePeopleBtn').click();
     await page.locator('#managerPeopleModal').waitFor({ state: 'visible' });
-    if (await page.locator(`[data-person-membership="${profileB}"]`).isChecked()) {
-        await page.locator(`[data-person-membership="${profileB}"]`).uncheck();
-        await answerPageDialog(page, { label: 'Haushalt ändern' });
-        await page.locator('#managerPeopleStatus').filter({ hasText: 'dauerhaft gespeichert' }).waitFor();
-    }
+    // Zwei Personen füllen den Haushalt; erst nach dem Löschen von B lässt sich eine neue Person anlegen.
+    await page.locator(`[data-person-action="delete"][data-person-id="${profileB}"]`).click();
+    await page.locator('#pageDialog [data-page-dialog-accept]').click();
+    await page.locator(`#managerPeopleList [data-person-action="delete"][data-person-id="${profileB}"]`).waitFor({ state: 'detached' });
     await page.locator('#managerPersonName').fill('Browserperson neu');
     await page.locator('#managerPersonCreateBtn').click();
+    // Die Löschung oben meldet denselben Status; deshalb auf die neu aktivierte Person warten.
+    await page.waitForFunction(() => (document.getElementById('suiteProfileContext')?.dataset.profileName || '').includes('Browserperson neu'));
     await page.locator('#managerPeopleStatus').filter({ hasText: 'dauerhaft gespeichert' }).waitFor();
     assert((await page.locator('#suiteProfileContext').getAttribute('data-profile-name')).includes('Browserperson neu'), 'Personendialog aktiviert die neue Person nach bestätigtem Flush');
     assert((await page.locator('#tranchenTable').textContent()).includes('Keine Tranchen vorhanden'), 'Neue Person übernimmt keinen alten Bestand');
@@ -7441,18 +5873,12 @@ async function runTranchesSmoke(browser, baseUrl) {
     await page.locator('#managerPersonName').fill('Browserperson umbenannt');
     await page.locator('#managerPersonRenameBtn').click();
     await page.locator('#managerPeopleList').filter({ hasText: 'Browserperson umbenannt' }).waitFor();
-    await page.locator(`[data-person-membership="${createdPerson}"]`).uncheck();
-    await answerPageDialog(page, { label: 'Haushalt ändern' });
-    await page.waitForFunction(id => {
-        const checkbox = document.querySelector(`[data-person-membership="${id}"]`);
-        return checkbox && !checkbox.checked && !checkbox.disabled;
-    }, createdPerson);
-    await page.locator(`[data-person-action="delete"][data-person-id="${createdPerson}"]`).click();
+    await page.locator(`[data-person-action="delete"][data-person-id="${createdPerson}"]:enabled`).click();
     await page.locator('#pageDialog [data-page-dialog-accept]').click();
     await page.locator(`#managerPeopleList [data-person-action="delete"][data-person-id="${createdPerson}"]`).waitFor({ state: 'detached' });
     await page.locator('#dismissPeopleModalBtn').click();
-    await page.locator(`#managerSectionNav [data-manager-profile="${profileB}"]`).click();
-    await page.waitForFunction(() => document.getElementById('suiteProfileContext')?.dataset.profileName === 'Browserprofil B');
+    await page.locator(`#managerSectionNav [data-manager-profile="${profileA}"]`).click();
+    await page.waitForFunction(() => document.getElementById('suiteProfileContext')?.dataset.profileName === 'Browserprofil A');
     assert((await page.locator('#tranchenTable').textContent()).includes('Keine Tranchen vorhanden'), 'Reiterwechsel nach Anlegen/Löschen lädt die tatsächliche Zielansicht');
     smoke.assertNoErrors();
     await smoke.close();
@@ -7507,7 +5933,7 @@ async function runManagerHistorySmoke(browser, baseUrl) {
         purchaseDate: '2025-01-02', shares: 10, purchasePrice: 200, currentPrice: 120 });
     const storage = createBrowserProfileStorage({
         [first]: { name: 'Verlauf A', tranchesRaw: JSON.stringify([lot]) },
-        [second]: { name: 'Verlauf B', tranchesRaw: '[]', belongsToHousehold: false }
+        [second]: { name: 'Verlauf B', tranchesRaw: '[]' }
     }, first);
     const day = value => Date.parse(value + 'T00:00:00Z') / 86400000;
     const today = new Date('2026-10-07T12:00:00+02:00');
@@ -7520,7 +5946,7 @@ async function runManagerHistorySmoke(browser, baseUrl) {
     const { page } = smoke;
     try {
         await page.locator('#managerHistoryStart').waitFor({ state: 'attached' });
-        assert(await page.locator('#managerHousehold .pv-person-card').count() === 2, 'P8: Außenprofil behält eigene Personenkarte');
+        assert(await page.locator('#managerHousehold .pv-person-card').count() === 2, 'P8: Zweite Person behält eigene Personenkarte');
         assert(await page.locator('#managerHousehold .history-sparkline').count() === 3, 'P8: Haushalt und beide Personen besitzen Verlaufslinien');
         assert(await page.evaluate(async () => {
             const { whenProfilePageReady } = await import('./app/profile/profile-navigation.js');
@@ -7682,7 +6108,7 @@ async function runManagerHistorySmoke(browser, baseUrl) {
             a: { name: 'Reparatur A', tagesgeld: '100', tranchesRaw: JSON.stringify(current), extraData: {
                 [PROFILE_WEALTH_LOTS_KEY]: JSON.stringify(copies),
                 [PROFILE_CASH_HISTORY_KEY]: JSON.stringify({ version: 1, baselineValue: 100, entries: [{ date: '2026-01-01', value: 100 }] }) } },
-            b: { name: 'Unberührtes Profil B', tagesgeld: '200', tranchesRaw: '[]', belongsToHousehold: false }
+            b: { name: 'Unberührtes Profil B', tagesgeld: '200', tranchesRaw: '[]' }
         }, 'a');
         seed.rs_wealth_history_start_v1 = JSON.stringify({ version: 1, startDate: '2026-01-01' });
         seed.rs_daily_prices_v1 = JSON.stringify({ version: 1, symbols: { 'REPAIR.DE': { currency: 'EUR',
@@ -7769,7 +6195,7 @@ async function runTranchesQuoteFailureSmoke(browser, baseUrl) {
     await page.locator('#tranchenTable .tranche-row').first().waitFor({ state: 'attached' });
     await page.locator('#tranchenTable [data-asset-group]').evaluateAll(groups => groups.forEach(group => { group.open = true; }));
     await page.locator('.tranche-row').nth(1).waitFor({ state: 'visible' });
-    await page.locator('#updatePricesBtn').click();
+    await page.locator('#managerQuoteRefresh').click();
     await page.locator('#priceUpdateStatus').filter({ hasText: 'Kurse teilweise aktualisiert (1 von 2).' }).waitFor();
     const status = await page.locator('#priceUpdateStatus').textContent();
     assert(status.includes('Synthetischer Fremdkurs: Waehrung USD wird nicht unterstuetzt.'),
@@ -7797,7 +6223,7 @@ async function runTranchesQuoteFailureSmoke(browser, baseUrl) {
     await offlineSmoke.page.locator('#tranchenTable .tranche-row').first().waitFor({ state: 'attached' });
     await offlineSmoke.page.locator('#tranchenTable [data-asset-group]').evaluateAll(groups => groups.forEach(group => { group.open = true; }));
     await offlineSmoke.page.locator('.tranche-row').waitFor({ state: 'visible' });
-    await offlineSmoke.page.locator('#updatePricesBtn').click();
+    await offlineSmoke.page.locator('#managerQuoteRefresh').click();
     await offlineSmoke.page.locator('#priceUpdateStatus').filter({ hasText: 'Kurse konnten nicht aktualisiert werden.' }).waitFor();
     const offlineStatus = await offlineSmoke.page.locator('#priceUpdateStatus').textContent();
     assert(offlineStatus.includes('Synthetischer Offline-Kurs: Lokaler Kursproxy nicht erreichbar'),
@@ -7944,93 +6370,28 @@ async function runSlice2PageDialogs(browser, baseUrl) {
                 const { SnapshotArchive: a } = await import('./app/shared/snapshot-archive.js');
                 const { PersistenceFacade: p } = await import('./app/shared/persistence-facade.js');
                 const records = await p.readPersistedRecords(), activeProfileId = records.rs_current_profile;
-                const saved = await a.createSnapshot({ id: 'balance-dialog-snapshot', label: 'Synthetischer alter Stand', createdAt: '2025-01-02T12:00:00Z', kind: 'manual', activeProfileId, records });
-                await a.createSnapshot({ id: 'balance-dialog-cover', label: 'Jüngerer gleicher Umfang', createdAt: '2025-01-03T12:00:00Z', kind: 'manual', activeProfileId, records });
+                // SV-1: Ein Monatspunkt des ganzen Haushalts; Zurückholen fragt einfach nach.
+                const saved = await a.createSnapshot({ id: 'balance-dialog-snapshot', label: 'Monatsabschluss 2024-12', createdAt: '2025-01-02T12:00:00Z', kind: 'monthly-close-pre-mutation', activeProfileId, records });
                 document.dispatchEvent(new Event('overview-backup-changed')); return saved;
             });
-            const restore = page.locator(`[data-restore-preview="${snapshot.id}"]`), remove = page.locator(`[data-delete-point="${snapshot.id}"]`);
-            // Seit Daten & Sicherung liegt „Punkt löschen …“ im aufklappbaren Bereich „Weitere Aktionen“ der Zeile.
-            const deletePoint = async () => {
-                // Restore und Archivrefresh zeichnen die geschlossenen Gruppierungen neu.
-                await revealDataSnapshot(remove);
-                const more = page.locator('.data-point-more').filter({ has: remove });
-                if (!await more.evaluate(node => node.open)) await more.locator('summary').click();
-                await remove.click();
-            };
-            await revealDataSnapshot(restore);
+            const restore = page.locator(`[data-restore-point="${snapshot.id}"]`);
+            await restore.waitFor({ state: 'visible' });
             const records = await readLiveRecordBytes(page), history = await readIndexedDb(page, 'snapshots', null);
             for (const action of ['cancel', 'escape']) {
-                await restore.click(); await page.locator('#dataRestorePreview').waitFor({ state: 'visible' });
-                // Seit Daten & Sicherung nennt die Vorschautabelle die erhaltenen Bereiche zeilenweise.
-                const rows = await page.locator('#dataRestoreChanges tr').evaluateAll(rows => rows.map(row => row.innerText.replace(/\s+/g, ' ').trim()));
-                assert(rows.includes('Andere Personen bleiben erhalten') && rows.includes('Tageskurse bleiben erhalten'), 'Standardvorschau benennt erhaltene Bereiche');
-                if (action === 'cancel') { await capturePageDialogImage(page, `snapshot-wiederherstellen-${width}`); await page.locator('#dataRestoreCancel').click(); }
-                else { await page.locator('#dataRestoreConfirm').focus(); await page.keyboard.press('Escape'); }
+                await restore.click(); await page.locator('#pageDialog[open]').waitFor({ state: 'visible' });
+                if (action === 'cancel') await capturePageDialogImage(page, `snapshot-wiederherstellen-${width}`);
+                const text = await answerPageDialog(page, { action, label: 'Zurückholen' });
+                assert(text.includes('Der heutige Stand wird ersetzt') && text.includes('Vor dem Monatsabschluss Dezember 2024'), 'Rückfrage nennt Anlass und Folge');
                 assert(await readLiveRecordBytes(page) === records && await readIndexedDb(page, 'snapshots', null) === history, 'Restoreabbruch erhält Records und Archiv');
-                await deletePoint(); await answerPageDialog(page, { action, label: 'Punkt löschen' });
-                assert(await readIndexedDb(page, 'snapshots', null) === history, 'Löschabbruch erhält Snapshot');
             }
-            await restore.click(); await page.locator('#dataRestorePreview').waitFor({ state: 'visible' });
-            const loaded = page.waitForEvent('load'); await page.locator('#dataRestoreConfirm').click(); await loaded; await openDataBrowser(page);
-            assert(await readIndexedDb(page, 'snapshots', null) === history + 1, 'Standardrestore erhält Archiv und erzeugt genau einen Rückkehrpunkt');
-            assert(JSON.parse((await readIndexedDb(page, 'kv', BALANCE_STATE_KEY)).value).inputs.floorBedarf === JSON.parse(snapshot.records[BALANCE_STATE_KEY]).inputs.floorBedarf, 'Standardrestore stellt den fachlichen Stand her');
-            await deletePoint(); await answerPageDialog(page, { label: 'Punkt löschen' });
-            await waitForPageCondition(page, async id => !(await (await import('./app/shared/snapshot-archive.js')).SnapshotArchive.listSnapshots()).some(entry => entry.id === id), snapshot.id);
-            assert(await readIndexedDb(page, 'snapshots', null) === history, 'Zustimmung entfernt genau einen zulässigen Snapshot');
+            await restore.click();
+            const loaded = page.waitForEvent('load'); await answerPageDialog(page, { label: 'Zurückholen' }); await loaded; await openDataBrowser(page);
+            assert(await readIndexedDb(page, 'snapshots', null) === history + 1, 'Restore erhält Archiv und erzeugt genau einen Rückkehrpunkt');
+            assert(JSON.parse((await readIndexedDb(page, 'kv', BALANCE_STATE_KEY)).value).inputs.floorBedarf === JSON.parse(snapshot.records[BALANCE_STATE_KEY]).inputs.floorBedarf, 'Restore stellt den fachlichen Stand her');
+            assert(await page.locator('[data-delete-point], #dataRetentionPreview').count() === 0, 'Keine Einzellöschung und kein Aufräumen');
             smoke.assertNoErrors();
         } finally { await smoke.close(); }
     }
-    // Echter Seitendialog mit dem produktiven Legacyentscheider; der Test hält nur spätere Fachwrites an.
-    const smoke = await openSmokePage(browser, baseUrl, 'Balance.html', { storage: createBalanceStorage(2026),
-        fixedTime: '2027-01-15T12:00:00+01:00', observeWealthUpdates: true });
-    try {
-        const { page } = smoke; await waitBalanceHouseholdList(page); await waitForWealthBrowserIdle(page);
-        await page.evaluate(async () => {
-            const { createSnapshotHandlers } = await import('./app/balance/balance-binder-snapshots.js');
-            const { StorageManager } = await import('./app/balance/balance-storage.js');
-            const { PersistenceFacade, persistenceStorage } = await import('./app/shared/persistence-facade.js');
-            const { buildBalanceEngineInputFromStorage } = await import('./app/balance/balance-input-storage.js');
-            const state = StorageManager.loadState(); delete state.annualPeriodMetadata;
-            state.lastState = { ...state.lastState, cumulativeInflationFactor: 1.10, lastInflationAppliedAtAge: 67 };
-            state.lastInflationAppliedAtYear = 2026;
-            StorageManager.saveState(state); await PersistenceFacade.flush();
-            const scope = buildBalanceEngineInputFromStorage({ storage: persistenceStorage, referenceYear: 2026 }).scope;
-            window.__legacyBeforeState = JSON.stringify(StorageManager.loadState()); window.__legacyPreparations = 0;
-            const button = document.createElement('button'); button.id = 'browserLegacyStart'; button.textContent = 'Jahresstand klären'; document.body.appendChild(button);
-            const handlers = createSnapshotHandlers({ dom: { inputs: { profilName: { value: 'Synthetisch' }, aktuellesAlter: { value: '68' } },
-                expenses: { yearSelect: { value: '2026' } } }, appState: {}, getPlanningStatus: () => ({ scope }),
-                wealthHistory: { runAnnual: execute => execute(null) },
-                confirmAnnual: async () => { window.__legacyPreparations++; return {}; }, validateLiveState: () => ({ ok: false }), reportAnnualError: () => {} });
-            button.addEventListener('click', () => { window.__legacyResult = null; handlers.handleJahresabschluss({ opener: button }).then(result => { window.__legacyResult = result.status; }); });
-        });
-        const before = await readLiveRecordBytes(page);
-        for (const action of ['cancel', 'escape']) {
-            await page.locator('#browserLegacyStart').click();
-            await answerPageDialog(page, { action, label: 'Jahresstand übernehmen' });
-            await waitForPageCondition(page, () => window.__legacyResult !== null);
-            assert(await readLiveRecordBytes(page) === before, 'Legacyabbruch schreibt weder Metadaten noch Fachdaten');
-        }
-        await page.locator('#browserLegacyStart').click();
-        await answerPageDialog(page, { value: 'not_committed', label: 'Jahresstand übernehmen' });
-        await waitForPageCondition(page, () => window.__legacyResult === 'invalid');
-        assert(await page.evaluate(() => window.__legacyPreparations === 1), 'Ehrliche Offen-Antwort erreicht normale Vorbereitung vor absichtlich gesperrtem Fachwrite');
-        const openState = await readBalanceBrowserState(page);
-        assert(openState.annualPeriodMetadata.lastCommittedPeriod === null, 'Offenklärung behauptet keinen Jahreserfolg');
-        delete openState.annualPeriodMetadata;
-        assert(JSON.stringify(openState) === await page.evaluate(() => window.__legacyBeforeState), 'Offenklärung erhält alle Finanzfelder einschließlich Vorjahresfaktor');
-        assert(await page.locator('[data-page-dialog-host][open]').count() === 0, 'Offenklärung hinterlässt keinen wiederholten Periodendialog');
-        await page.evaluate(async () => {
-            const { StorageManager } = await import('./app/balance/balance-storage.js');
-            const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
-            StorageManager.saveState(JSON.parse(window.__legacyBeforeState)); await PersistenceFacade.flush();
-        });
-        await page.locator('#browserLegacyStart').click();
-        await answerPageDialog(page, { value: 'already_committed', label: 'Jahresstand übernehmen' });
-        await waitForPageCondition(page, () => window.__legacyResult === 'already_committed');
-        assert((await readBalanceBrowserState(page)).annualPeriodMetadata.lastCommittedPeriod === 'calendar-year:2026', 'Legacyauswahl erhält bereits abgeschlossene Fachentscheidung');
-        assert(await readIndexedDb(page, 'snapshots', null) === 0, 'Legacyklärung startet keinen Jahresabschluss');
-        smoke.assertNoErrors();
-    } finally { await smoke.close(); }
 }
 
 async function runTranchesRecoverySmoke(browser, baseUrl) {
@@ -8187,14 +6548,7 @@ async function runSimulatorCorruptProfileBalanceSmoke(browser, baseUrl) {
         'Simulator balance blocker must not mutate the registry');
     const blockedControls = [
         'mcButton',
-        'btButton',
-        'sweepButton',
-        'sweepSelfTestButton',
-        'findBestButton',
-        'sensitivityButton',
-        'paretoButton',
-        'ao_run_btn',
-        'ao_apply_btn'
+        'btButton'
     ];
     for (const controlId of blockedControls) {
         assert(await page.locator(`#${controlId}`).isDisabled(),
@@ -8214,17 +6568,6 @@ async function runSimulatorCorruptProfileBalanceSmoke(browser, baseUrl) {
     assert(guardState.hasBlocker,
         'Simulator must expose one hard profile recovery blocker for all run paths');
 
-    await page.locator('#ao_presets_container .ao-preset-btn').first().dispatchEvent('click');
-    await page.waitForFunction(() => document.getElementById('ao_run_btn')?.disabled === true);
-    const blockedActionCount = await page.evaluate(() => window.__profileRecoveryBlockedActionCount || 0);
-    await page.locator('#ao_run_btn').dispatchEvent('click');
-    await page.waitForFunction(previousCount => (
-        (window.__profileRecoveryBlockedActionCount || 0) > previousCount
-    ), blockedActionCount);
-    assert(await page.locator('#ao_run_btn').isDisabled(),
-        'Auto-Optimize interactions must not re-enable the run button during profile recovery');
-    assert((await page.locator('#ao_progress').textContent()) !== 'Starting...',
-        'Auto-Optimize local click handler must not run during profile recovery');
     smoke.assertNoErrors();
     await smoke.close();
 }
@@ -8344,459 +6687,23 @@ async function runSimulatorHybridProfileBlocker(browser, baseUrl) {
     const { page } = smoke;
     // Seit Paket S1 sperrt der Blocker alle Reiter sichtbar; die Meldung steht im sichtbaren Startreiter.
     await page.locator('#simProfileRecoveryStatus')
-        .filter({ hasText: 'Hybridhaushalt wurde blockiert' })
+        .filter({ hasText: 'fehlen die Tranchen' })
         .waitFor({ state: 'visible', timeout: 10000 });
-    assert(await page.locator('.tab-btn').evaluateAll(tabs => tabs.length > 0 && tabs.every(tab => tab.disabled && tab.getAttribute('aria-disabled') === 'true')),
+    assert(await page.locator('.tab-btn').evaluateAll(tabs => tabs.length > 0 && tabs.every(tab => tab.disabled
+        && tab.getAttribute('aria-disabled') === 'true' && tab.title.includes('fehlen die Tranchen'))),
         'Hybrid provenance blocker locks every simulator tab visibly');
-    assert((await page.locator('#simProfileStatus').textContent()).includes('Hybridhaushalt wurde blockiert'),
+    assert((await page.locator('#simProfileStatus').textContent()).includes('fehlen die Tranchen'),
         'Hybrid provenance blocker keeps the same message in the assumptions status');
     const statusText = await page.locator('#simProfileRecoveryStatus').textContent();
     assert(
-        statusText.includes('Browser Aggregatprofil') && statusText.includes('Cost Basis'),
+        statusText.includes('Browser Aggregatprofil') && statusText.includes('Personen & Vermögen'),
         'Browser hybrid household must fail closed'
     );
     assert(await page.locator('#mcButton').isDisabled(),
         'Hybrid provenance blocker must disable Monte-Carlo execution');
-    assert(await page.locator('#sweepButton').isDisabled(),
-        'Hybrid provenance blocker must disable Sweep execution');
-    assert(await page.locator('#ao_run_btn').isDisabled(),
-        'Hybrid provenance blocker must disable Auto-Optimize execution');
     assert((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value === registryRaw,
         'Hybrid provenance blocker must not mutate the profile registry');
     smoke.assertNoErrors();
-    await smoke.close();
-}
-
-async function runSimulatorSweepIntegration(browser, baseUrl) {
-    const smoke = await openSmokePage(browser, baseUrl, 'Simulator.html');
-    const { page } = smoke;
-    const setMcDuration = value => page.locator('#mcDauer').evaluate((element, next) => {
-        element.value = next;
-        element.dispatchEvent(new Event('input', { bubbles: true }));
-        element.dispatchEvent(new Event('change', { bubbles: true }));
-    }, value);
-    await openWorkshopTool(page, 'sweep');
-    await page.locator('#sweepButton').waitFor({ state: 'visible' });
-    assert(await page.locator('#sweepRuns').inputValue() === '500',
-        'Frischer Simulator zeigt 500 Sweep-Simulationen');
-    assert(await page.locator('#mcAnzahl').inputValue() === '10000',
-        'Frischer Simulator behaelt 10000 MC-Simulationen');
-    await page.locator('#sweepRuns').fill('2');
-    await page.evaluate(async () => {
-        const { flush } = await import('./app/shared/persistence-facade.js');
-        await flush();
-    });
-    await page.reload();
-    await openWorkshopTool(page, 'sweep');
-    await page.waitForFunction(() => document.getElementById('sweepRuns')?.value === '2');
-    assert(await page.locator('#sweepRuns').inputValue() === '2',
-        'Sweep-Laufzahl ueberlebt das Neuladen');
-    const configureSweep = () => page.evaluate(() => {
-        const setValue = (id, value) => {
-            const element = document.getElementById(id);
-            element.value = String(value);
-            element.dispatchEvent(new Event('input', { bubbles: true }));
-            element.dispatchEvent(new Event('change', { bubbles: true }));
-        };
-        setValue('mcAnzahl', 'ungueltig');
-        setValue('mcDauer', 2);
-        setValue('mcBlockSize', 1);
-        setValue('mcWorkerCount', 1);
-        setValue('mcWorkerBudget', 50);
-        setValue('sweepLiquidityRunwayYears', 3);
-        setValue('sweepGoldRebalancingBand', 25);
-        setValue('sweepMaxSkimPct', 0);
-        setValue('sweepMaxBearRefillPct', 5);
-        setValue('sweepGoldTargetPct', 0);
-        setValue('sweepSurvivalQuantile', 0.85);
-        setValue('sweepGoGoMultiplier', 1.1);
-        document.getElementById('dynamicFlex').checked = false;
-        document.getElementById('dynamicFlex').dispatchEvent(new Event('change', { bubbles: true }));
-        document.getElementById('goGoActive').checked = false;
-        document.getElementById('goGoActive').dispatchEvent(new Event('change', { bubbles: true }));
-    });
-    await configureSweep();
-    assert((await page.locator('#sweepGridSize').textContent()).includes('Grid: 1 Kombis'),
-        'Inaktive VPW-Ranges werden im Grid nicht mitgezaehlt');
-    const workload = page.locator('#sweepWorkload');
-    assert((await workload.textContent()).includes('1 Kombination × 2 Läufe × 2 Jahre = 4 nominelle Laufjahre'),
-        'Sweep-Aufwand zeigt Kombinationen, eigene Laufzahl und nominelle Jahre vor dem Start');
-    await page.locator('#sweepRuns').fill('3');
-    assert((await workload.textContent()).includes('= 6 nominelle Laufjahre'),
-        'Sweep-Aufwand reagiert auf die eigene Laufzahl');
-    await page.locator('#sweepRuns').fill('2');
-    await setMcDuration('3');
-    assert((await workload.textContent()).includes('= 6 nominelle Laufjahre'),
-        'Sweep-Aufwand reagiert auf die Dauer');
-    await setMcDuration('2');
-    await page.locator('#sweepLiquidityRunwayYears').fill('3,4');
-    assert((await workload.textContent()).includes('2 Kombinationen × 2 Läufe × 2 Jahre = 8 nominelle Laufjahre'),
-        'Sweep-Aufwand verwendet die aktiven Ranges');
-    await page.locator('#sweepLiquidityRunwayYears').fill('3');
-    await page.locator('#sweepGoldRebalancingBand').fill('0:1:299');
-    assert((await page.locator('#sweepGridSize').textContent()).includes('Grid: 300 Kombis')
-        && !(await page.locator('#sweepGridSize').textContent()).includes('Max: 300')
-        && (await workload.textContent()).includes('= 1.200 nominelle Laufjahre'),
-    'Genau 300 Kombinationen bleiben innerhalb des Grid-Limits');
-    await page.locator('#sweepGoldRebalancingBand').fill('0:1:300');
-    assert((await page.locator('#sweepGridSize').textContent()).includes('Max: 300')
-        && (await workload.textContent()).includes('?'),
-    '300-Kombinationen-Limit bleibt sichtbar und uebergrosse Grids haben keinen belastbaren Aufwand');
-    await page.locator('#sweepGoldRebalancingBand').fill('25');
-    await page.locator('#sweepLiquidityRunwayYears').fill('');
-    assert((await workload.textContent()).includes('?'), 'Leere aktive Range zeigt keinen Aufwand');
-    await page.locator('#sweepLiquidityRunwayYears').fill('3');
-    await page.locator('#sweepRuns').fill('');
-    assert((await workload.textContent()).includes('?'), 'Leere Laufzahl zeigt keinen Aufwand');
-    await page.locator('#sweepRuns').fill('2');
-    await setMcDuration('0');
-    assert((await workload.textContent()).includes('?'), 'Ungueltige Dauer zeigt keinen Aufwand');
-    await setMcDuration('2');
-    await page.locator('#sweepButton').click();
-    await page.waitForFunction(() => window.sweepExecution?.results?.length === 1
-        && document.querySelector('#sweepHeatmap svg'), null, { timeout: 30000 });
-    const standard = await page.evaluate(() => {
-        const result = window.sweepExecution.results[0];
-        return {
-            requestedRuns: window.sweepExecution.request.monteCarloParameters.anzahl,
-            provenRuns: result.provenance.normalizedParameters.anzahl,
-            metricVersion: result.metrics?.schemaVersion,
-            invalidCombination: result.metrics?.invalidCombination,
-            invalidReason: result.metrics?.invalidReason,
-            value: result.metrics?.successProbFloor,
-            keys: Object.keys(result.params).sort(),
-            cellCount: document.querySelectorAll('#sweepHeatmap svg rect[stroke]').length,
-            text: document.getElementById('sweepHeatmap').textContent
-        };
-    });
-    assert(standard.metricVersion === 'SweepMetricsV4'
-        && standard.invalidCombination !== true && Number.isFinite(standard.value),
-    `Standard-Sweep muss einen kanonischen Metrikwert liefern: ${JSON.stringify(standard)}`);
-    assert(standard.requestedRuns === 2 && standard.provenRuns === 2,
-        'Sweep nutzt seine eigene Laufzahl in Request und gueltiger Provenienz');
-    assert(standard.cellCount > 0 && standard.text.includes(`${standard.value.toFixed(1).replace('.', ',')}\u00a0%`)
-        && !standard.text.includes('Keine gültigen Sweep-Ergebnisse'),
-        'Standard-Sweep zeigt eine SVG-Zelle mit kanonischem Wert');
-    assert(standard.keys.length === 5 && !standard.keys.includes('survivalQuantile')
-        && !standard.keys.includes('goGoMultiplier'),
-        'Inaktive VPW-Felder fehlen in der gestarteten Kombination');
-    await page.locator('#sweepRuns').fill('10000');
-    await page.evaluate(() => {
-        window.__sweepBeforeAbort = window.sweepExecution;
-        window.__sweepHeatmapBeforeAbort = document.getElementById('sweepHeatmap').innerHTML;
-        window.__sweepWorkerBase = window.Worker;
-        window.__sweepTerminations = 0;
-        window.Worker = class extends window.__sweepWorkerBase {
-            terminate() {
-                window.__sweepTerminations++;
-                return super.terminate();
-            }
-        };
-    });
-    await page.locator('#sweepButton').click();
-    await page.waitForFunction(() => parseFloat(document.getElementById('sweep-progress-bar').style.width) > 0
-        && !document.getElementById('sweepCancelButton').disabled, null, { timeout: 30000 });
-    await page.locator('#sweepCancelButton').click();
-    await page.waitForFunction(() => document.getElementById('sweepStatus').textContent === 'Abgebrochen'
-        && !document.getElementById('sweepButton').disabled, null, { timeout: 30000 });
-    const aborted = await page.evaluate(() => ({
-        sameExecution: window.sweepExecution === window.__sweepBeforeAbort,
-        sameHeatmap: document.getElementById('sweepHeatmap').innerHTML === window.__sweepHeatmapBeforeAbort,
-        terminated: window.__sweepTerminations,
-        progress: document.getElementById('sweep-progress-bar').textContent,
-        status: document.getElementById('sweepStatus').textContent
-    }));
-    assert(aborted.sameExecution && aborted.sameHeatmap && aborted.terminated > 0
-        && aborted.progress !== '100%' && aborted.status === 'Abgebrochen',
-    `Abbruch bewahrt vollstaendige Heatmap und beendet Worker: ${JSON.stringify(aborted)}`);
-    await page.evaluate(() => { window.Worker = window.__sweepWorkerBase; });
-    await page.locator('#sweepRuns').fill('2');
-    await page.locator('#sweepButton').click();
-    await page.waitForFunction(() => window.sweepExecution !== window.__sweepBeforeAbort
-        && window.sweepExecution?.request?.monteCarloParameters?.anzahl === 2
-        && document.getElementById('sweepStatus').textContent === 'Abgeschlossen',
-    null, { timeout: 30000 });
-    assert(await page.locator('#sweepHeatmap svg rect[stroke]').count() > 0,
-        'Direkter Neustart veroeffentlicht eine vollstaendige neue Heatmap');
-    await page.locator('#sweepRuns').fill('10000');
-    await page.evaluate(() => {
-        window.__sweepBeforeSerialAbort = window.sweepExecution;
-        window.__sweepHeatmapBeforeSerialAbort = document.getElementById('sweepHeatmap').innerHTML;
-        window.Worker = class {
-            constructor() { throw new Error('serial sweep abort smoke'); }
-        };
-    });
-    await page.locator('#sweepButton').click();
-    await page.waitForFunction(() => parseFloat(document.getElementById('sweep-progress-bar').style.width) > 0
-        && !document.getElementById('sweepCancelButton').disabled, null, { timeout: 30000 });
-    await page.locator('#sweepCancelButton').click();
-    await page.waitForFunction(() => document.getElementById('sweepStatus').textContent === 'Abgebrochen'
-        && !document.getElementById('sweepButton').disabled, null, { timeout: 30000 });
-    const serialAbort = await page.evaluate(() => ({
-        sameExecution: window.sweepExecution === window.__sweepBeforeSerialAbort,
-        sameHeatmap: document.getElementById('sweepHeatmap').innerHTML === window.__sweepHeatmapBeforeSerialAbort,
-        progress: document.getElementById('sweep-progress-bar').textContent
-    }));
-    await page.evaluate(() => { window.Worker = window.__sweepWorkerBase; });
-    assert(serialAbort.sameExecution && serialAbort.sameHeatmap && serialAbort.progress !== '100%',
-        `Serieller Abbruch bewahrt das Altresultat: ${JSON.stringify(serialAbort)}`);
-    // Ein frisches Dokument hat auch keinen registrierten Größenrenderer mit Altresultat.
-    // Das reine Leeren von innerHTML ließ dessen nächste Messung die alte Grafik zurückzeichnen.
-    await nativeNavigationAttempt(page, { kind: 'reload', accept: true, verify: async () => {} });
-    await waitForSimulatorOpening(page, 'Simulator.html');
-    await openWorkshopTool(page, 'sweep');
-    await configureSweep();
-    assert(await page.evaluate(() => window.sweepExecution === undefined
-        && window.sweepResults === document.getElementById('sweepResults')
-        && document.getElementById('sweepHeatmap').innerHTML === ''
-        && document.getElementById('sweepResults').style.display === 'none'),
-    'Frisches Dokument beginnt ohne Sweep-Altresultat');
-    await page.locator('#sweepRuns').fill('10000');
-    await page.locator('#sweepButton').click();
-    await page.waitForFunction(() => parseFloat(document.getElementById('sweep-progress-bar').style.width) > 0
-        && !document.getElementById('sweepCancelButton').disabled, null, { timeout: 30000 });
-    await page.locator('#sweepCancelButton').click();
-    await page.waitForFunction(() => document.getElementById('sweepStatus').textContent === 'Abgebrochen'
-        && !document.getElementById('sweepButton').disabled, null, { timeout: 30000 });
-    assert(await page.evaluate(() => window.sweepExecution === undefined
-        // Ohne Ergebnis liefert der benannte Windowzugriff das gleichnamige HTML-Element.
-        && window.sweepResults === document.getElementById('sweepResults')
-        && document.getElementById('sweepHeatmap').innerHTML === ''
-        && document.getElementById('sweepResults').style.display === 'none'),
-    'Abbruch ohne Altresultat laesst die Ergebnisansicht leer');
-    // Eine Kombination erzwingt einen einzigen Worker-Block. Jede Breite unter
-    // 99 Prozent stammt dann aus einem Lauf innerhalb dieses Blocks.
-    await page.locator('#sweepLiquidityRunwayYears').fill('3');
-    await page.locator('#sweepRuns').fill('30');
-    await page.evaluate(() => {
-        const previous = window.sweepExecution;
-        const bar = document.getElementById('sweep-progress-bar');
-        window.__sweepWorkerProgress = false;
-        window.__sweepWorkerMessage = false;
-        window.__sweepOriginalWorker = window.Worker;
-        window.Worker = class extends window.__sweepOriginalWorker {
-            constructor(...args) {
-                super(...args);
-                this.sweepJobs = new Map();
-                this.addEventListener('message', event => {
-                    const message = event.data;
-                    const generationId = this.sweepJobs.get(message?.jobId);
-                    if (window.sweepExecution === previous && message?.type === 'progress'
-                        && message.phase === 'sweep' && generationId
-                        && message.generationId === generationId
-                        && message.comboRange?.start === 0 && message.comboRange?.count === 1
-                        && message.completedUnits > 0 && message.completedUnits < 1) {
-                        window.__sweepWorkerMessage = true;
-                    }
-                });
-            }
-            postMessage(message, transferables) {
-                if (message?.type === 'sweep') {
-                    this.sweepJobs.set(message.jobId, message.generationId);
-                }
-                return super.postMessage(message, transferables);
-            }
-        };
-        const observer = new MutationObserver(() => {
-            const width = parseFloat(bar.style.width);
-            if (window.sweepExecution === previous && width > 0 && width < 99) {
-                window.__sweepWorkerProgress = true;
-            }
-        });
-        observer.observe(bar, { attributes: true, attributeFilter: ['style'] });
-        window.__sweepWorkerObserver = observer;
-        window.__sweepWorkerPrevious = previous;
-    });
-    await page.locator('#sweepButton').click();
-    await page.waitForFunction(() => window.sweepExecution !== window.__sweepWorkerPrevious,
-        null, { timeout: 30000 });
-    const workerReference = await page.evaluate(() => {
-        window.__sweepWorkerObserver.disconnect();
-        window.Worker = window.__sweepOriginalWorker;
-        return {
-            progress: window.__sweepWorkerProgress,
-            message: window.__sweepWorkerMessage,
-            execution: JSON.stringify(window.sweepExecution)
-        };
-    });
-    assert(workerReference.progress && workerReference.message,
-        'Echte Worker-Nachricht erreicht vor dem Ende des einzigen Blocks den Fortschrittsbalken');
-    await page.evaluate(() => {
-        window.Worker = class {
-            constructor() { throw new Error('serial sweep smoke'); }
-        };
-        const probe = window.__sweepProgressProbe = {
-            previous: window.sweepExecution,
-            partial: false, painted: false, clicked: false
-        };
-        const clickTarget = document.createElement('button');
-        clickTarget.id = 'sweep-progress-click-target';
-        clickTarget.addEventListener('click', () => { probe.clicked = true; });
-        document.body.append(clickTarget);
-        const observe = () => {
-            if (window.sweepExecution !== probe.previous) return;
-            const width = parseFloat(document.getElementById('sweep-progress-bar').style.width);
-            if (width > 0 && width < 100) {
-                probe.partial = true;
-                clickTarget.click();
-                probe.painted = true;
-            }
-            requestAnimationFrame(observe);
-        };
-        requestAnimationFrame(observe);
-    });
-    await page.locator('#sweepButton').click();
-    await page.waitForFunction(() => window.sweepExecution !== window.__sweepProgressProbe.previous,
-        null, { timeout: 30000 });
-    const serialProbe = await page.evaluate(() => {
-        const { partial, painted, clicked } = window.__sweepProgressProbe;
-        const execution = JSON.stringify(window.sweepExecution);
-        window.Worker = window.__sweepOriginalWorker;
-        document.getElementById('sweep-progress-click-target').remove();
-        return { partial, painted, clicked, execution };
-    });
-    assert(serialProbe.partial && serialProbe.painted && serialProbe.clicked,
-        `Serieller Sweep zeigt Zwischenfortschritt und verarbeitet Paint und Klick: ${JSON.stringify({ partial: serialProbe.partial, painted: serialProbe.painted, clicked: serialProbe.clicked })}`);
-    assert(serialProbe.execution === workerReference.execution,
-        'Worker und serieller Sweep liefern identische Resultate, Seeds und Provenienz');
-    await page.locator('#sweepLiquidityRunwayYears').fill('3');
-    await page.locator('#sweepRuns').fill('2');
-    await page.evaluate(() => { window.__sweepMetricExecution = window.sweepExecution; });
-    await page.locator('#sweepMetric').selectOption('p10EndWealth');
-    await waitForPageCondition(page, async () => {
-        const { formatChartEuro } = await import('./app/simulator/results-formatting.js');
-        const value = window.sweepResults[0].metrics.p10EndWealth;
-        return document.getElementById('sweepHeatmap').textContent.includes('P10 End Wealth (€)')
-            && [...document.querySelectorAll('#sweepHeatmap .sweep-cell-text')].some(node => node.textContent === formatChartEuro(value));
-    });
-    assert(await page.evaluate(() => window.sweepExecution === window.__sweepMetricExecution),
-        'Metrikwechsel rendert den vorhandenen kanonischen Euro-Wert ohne Neuberechnung');
-    await page.locator('#sweepAxisX').selectOption('goldTargetPct');
-    assert(await page.locator('#sweepHeatmap svg rect[stroke]').count() > 0,
-        'Achsenwechsel rendert vorhandene Ergebnisse erneut');
-    // Seit Haushalt & Plan sind Dynamic Flex und Go-Go Planfelder; abweichende Werte nur im Simulatorversuch.
-    await openSimulatorPlanTrial(page);
-    await openWorkshopTool(page, 'sweep');
-    await page.evaluate(() => {
-        document.getElementById('dynamicFlex').checked = true;
-        document.getElementById('dynamicFlex').dispatchEvent(new Event('change', { bubbles: true }));
-        document.getElementById('goGoActive').checked = true;
-        document.getElementById('goGoActive').dispatchEvent(new Event('change', { bubbles: true }));
-    });
-    await page.locator('#sweepMetric').selectOption('successProbFloor');
-    await page.locator('#sweepAxisX').selectOption('liquidityRunwayYears');
-    await page.locator('#sweepButton').click();
-    await page.waitForFunction(
-        () => window.sweepExecution?.schemaVersion === 'SweepExecutionV2'
-            && window.sweepExecution?.results?.[0]?.params?.goGoMultiplier === 1.1,
-        null,
-        { timeout: 30000 }
-    );
-    const execution = await page.evaluate(() => ({
-        schemaVersion: window.sweepExecution?.schemaVersion,
-        requestVersion: window.sweepExecution?.request?.schemaVersion,
-        resultCount: window.sweepExecution?.results?.length,
-        metricVersion: window.sweepExecution?.results?.[0]?.metrics?.schemaVersion,
-        invalidCombination: window.sweepExecution?.results?.[0]?.metrics?.invalidCombination,
-        parameterKeys: Object.keys(window.sweepExecution?.results?.[0]?.params || {}).sort(),
-        maxBearRefillPct: window.sweepExecution?.results?.[0]?.params?.maxBearRefillPct,
-        heatmapText: document.getElementById('sweepHeatmap')?.textContent || ''
-    }));
-    assert(
-        execution.schemaVersion === 'SweepExecutionV2'
-        && execution.requestVersion === 'SweepRequestV1'
-        && execution.metricVersion === 'SweepMetricsV4',
-        'Browser sweep must expose versioned execution provenance'
-    );
-    assert(execution.resultCount === 1,
-        'Browser Sweep single-value matrix must execute exactly one combination');
-    assert(execution.invalidCombination !== true,
-        `Browser Sweep integration combination must be valid: ${JSON.stringify(execution)}`);
-    assert(JSON.stringify(execution.parameterKeys) === JSON.stringify([
-        'goGoMultiplier',
-        'goldRebalancingBand',
-        'goldTargetPct',
-        'liquidityRunwayYears',
-        'maxBearRefillPct',
-        'maxSkimPct',
-        'survivalQuantile'
-    ]), 'Browser Sweep result must expose every interactive parameter and no unsupported direct-horizon field');
-    assert(execution.maxBearRefillPct === 5,
-        'Browser Sweep must preserve the visible Bear-Refill assumption instead of forcing zero');
-    await page.locator('#sweepGoldRebalancingBand').fill('999');
-    await page.locator('#sweepButton').click();
-    await page.waitForFunction(() => window.sweepExecution?.results?.[0]?.metrics?.invalidCombination === true);
-    const invalid = await page.evaluate(() => ({
-        runs: window.sweepExecution.request.monteCarloParameters.anzahl,
-        provenRuns: window.sweepExecution.results[0].provenance.normalizedParameters.anzahl,
-        provenMethod: window.sweepExecution.results[0].provenance.requestedSamplingMethod
-    }));
-    assert(invalid.runs === 2 && invalid.provenRuns === 2 && invalid.provenMethod,
-        'Ungueltige Kombination behaelt die validierte Laufzahl und Methode in der Provenienz');
-    await setMcDuration('40');
-    await page.locator('#sweepRuns').fill('125000');
-    assert((await workload.textContent()).includes('125.000 Läufe × 40 Jahre = 5.000.000 nominelle Laufjahre'),
-        'Der Schwellwert wird aus validierten Faktoren im deutschen Zahlenformat angezeigt');
-    await page.locator('#sweepButton').click();
-    await page.waitForFunction(() => window.sweepExecution?.request?.monteCarloParameters?.anzahl === 125000,
-        null, { timeout: 30000 });
-    await page.locator('#sweep-progress-bar-container').waitFor({ state: 'hidden' });
-    assert(await page.locator('#pageDialog[open]').count() === 0,
-        'Genau 5.000.000 nominelle Laufjahre brauchen keine Bestaetigung');
-    await page.locator('#sweepRuns').fill('125001');
-    await page.evaluate(() => {
-        window.__sweepExecutionBeforeRefusal = window.sweepExecution;
-        window.__sweepResultsBeforeRefusal = window.sweepResults;
-        window.__sweepHeatmapBeforeRefusal = document.getElementById('sweepHeatmap').innerHTML;
-        window.__sweepWorkerCount = 0;
-        const NativeWorker = window.Worker;
-        window.Worker = class extends NativeWorker {
-            constructor(...args) {
-                window.__sweepWorkerCount++;
-                super(...args);
-            }
-        };
-    });
-    await page.locator('#sweepButton').click();
-    const refusalText = await answerPageDialog(page, { action: 'cancel', label: 'Sweep starten' });
-    await waitForPageCondition(page, () => !document.getElementById('sweepButton').disabled);
-    const refusal = await page.evaluate(() => ({
-        sameExecution: window.sweepExecution === window.__sweepExecutionBeforeRefusal,
-        sameResults: window.sweepResults === window.__sweepResultsBeforeRefusal,
-        sameHeatmap: document.getElementById('sweepHeatmap').innerHTML === window.__sweepHeatmapBeforeRefusal,
-        workerCount: window.__sweepWorkerCount,
-        progressVisible: document.getElementById('sweep-progress-bar-container').style.display !== 'none'
-    }));
-    assert(refusalText.includes('5.000.040 nominelle Laufjahre')
-        && refusalText.includes('nicht zuverlässig vorhersagbar'),
-    'Ueber dem Schwellwert nennt die Rueckfrage den konkreten Aufwand und unsichere Dauer');
-    assert(refusal.sameExecution && refusal.sameResults && refusal.sameHeatmap && refusal.workerCount === 0
-        && !refusal.progressVisible,
-    'Ablehnung behaelt das vorherige Ergebnis und startet weder Worker noch Fortschritt');
-    await page.locator('#sweepRuns').fill('');
-    await page.evaluate(async () => {
-        const { flush } = await import('./app/shared/persistence-facade.js');
-        await flush();
-    });
-    await page.reload();
-    await openWorkshopTool(page, 'sweep');
-    await page.waitForFunction(() => document.getElementById('sweepRuns')?.value === '');
-    await page.locator('#sweepButton').click();
-    assert((await answerPageDialog(page, { label: 'Verstanden' })).includes('Sweep-Simulationen je Kombination'),
-    'Leere gespeicherte Laufzahl verhindert den Sweep mit verstaendlicher Meldung');
-    assert(await page.evaluate(() => window.sweepExecution === undefined),
-        'Fehleingabe startet keinen Sweep');
-    await page.evaluate(async () => {
-        const { persistenceStorage, flush } = await import('./app/shared/persistence-facade.js');
-        persistenceStorage.setItem('sim.sweep.runs', 'ungueltig');
-        await flush();
-    });
-    await page.reload();
-    await openWorkshopTool(page, 'sweep');
-    await page.locator('#sweepButton').click();
-    assert((await answerPageDialog(page, { label: 'Verstanden' })).includes('Sweep-Simulationen je Kombination'),
-    'Ungueltiger gespeicherter Wert wird nicht auf 500 korrigiert');
-    smoke.assertNoErrors(['Parameter-Sweep Fehler:', '[SWEEP] Worker execution failed, falling back to serial.']);
     await smoke.close();
 }
 
@@ -8940,13 +6847,13 @@ async function measureNativeChartTypography(page, width, selector, previous = []
                 const style = getComputedStyle(text), matrix = text.getScreenCTM();
                 const effective = parseFloat(style.fontSize) * Math.hypot(matrix.c, matrix.d);
                 samples.push({ key: svg.classList[0] + ':' + index + ':' + text.textContent, effective });
-                if (Math.abs(Math.hypot(matrix.c, matrix.d) - 1) > .001) errors.push('Skalierter Text: ' + text.textContent);
-                if (text.matches('.chart-tick-text') && Math.abs(effective - (text.matches('.cell-label-text,.sweep-cell-text') ? 16 : 14)) > .5) errors.push('Tickgröße');
-                if (text.matches('.chart-axis-title') && Math.abs(effective - 14) > .5) errors.push('Achsentitelgröße');
-                if (text.matches('.cell-label-text,.sweep-cell-text') && style.stroke !== 'none') errors.push('Textstroke');
+                if (!(Math.abs(Math.hypot(matrix.c, matrix.d) - 1) <= .001)) errors.push('Skalierter Text: ' + text.textContent);
+                if (text.matches('.chart-tick-text') && !(Math.abs(effective - (text.matches('.cell-label-text') ? 16 : 14)) <= .5)) errors.push('Tickgröße');
+                if (text.matches('.chart-axis-title') && !(Math.abs(effective - 14) <= .5)) errors.push('Achsentitelgröße');
+                if (text.matches('.cell-label-text') && style.stroke !== 'none') errors.push('Textstroke');
             }
             if (svg.classList.contains('chart-native-svg')) {
-                if (Math.abs(svg.viewBox.baseVal.width - parseFloat(svg.getAttribute('width'))) > .01 || Math.abs(svg.viewBox.baseVal.height - parseFloat(svg.getAttribute('height'))) > .01) errors.push('Native Maße');
+                if (!(Math.abs(svg.viewBox.baseVal.width - parseFloat(svg.getAttribute('width'))) <= .01) || !(Math.abs(svg.viewBox.baseVal.height - parseFloat(svg.getAttribute('height'))) <= .01)) errors.push('Native Maße');
             }
             for (const text of svg.querySelectorAll('.legend-text')) {
                 const r = box(text);
@@ -8961,14 +6868,14 @@ async function measureNativeChartTypography(page, width, selector, previous = []
         const headerNodes = [...host.querySelectorAll('.chart-title,.heatmap-subtitle')].filter(n => n.getBoundingClientRect().width > 0);
         for (let i = 1; i < headerNodes.length; i++) if (intersects(box(headerNodes[i - 1]), box(headerNodes[i]))) errors.push('Kopf überlappt');
         for (const title of host.querySelectorAll('.chart-title')) {
-            if (Math.abs(parseFloat(getComputedStyle(title).fontSize) - 18) > .5) errors.push('Titelgröße');
+            if (!(Math.abs(parseFloat(getComputedStyle(title).fontSize) - 18) <= .5)) errors.push('Titelgröße');
         }
         for (const pair of host.querySelectorAll('.heatmap-footer-pair')) {
             const label = pair.querySelector('span'), value = pair.querySelector('strong');
             if (intersects(box(label), box(value))) errors.push('Fußpaar kollidiert');
             if (box(value).right > box(pair).right + .5) errors.push('Fußwert abgeschnitten');
         }
-        if (host.querySelector('.cell-label-bg,.sweep-label-bg')) errors.push('Labelplatte');
+        if (host.querySelector('.cell-label-bg')) errors.push('Labelplatte');
         if (document.documentElement.scrollWidth > innerWidth + 1) errors.push('Seitenüberlauf');
         return { samples, errors };
     });
@@ -9098,7 +7005,7 @@ async function runDesignsystemTools(browser, baseUrl) {
                 && backtestLayout.nativeWidth === backtestLayout.viewBoxWidth, `${width}: native Portfoliobreite entspricht Hostinhalt und viewBox`);
             assert(backtestLayout.logFont === '14px' && backtestLayout.headings.includes('Liquidität reicht')
                 && backtestLayout.headings.includes('Aktien/ETF'), `${width}: lesbares deutsches Normalprotokoll`);
-            assert(['Vollständig', 'Ruin'].includes(backtestLayout.periodStatus), `${width}: Zeitraumchip zeigt den tatsächlichen Endstatus`);
+            assert(['Vollständig', 'Vermögen aufgebraucht'].includes(backtestLayout.periodStatus), `${width}: Zeitraumchip zeigt den tatsächlichen Endstatus`);
         }
         // Tab zunächst verbergen, dann bei anderer Breite zeigen: kein neuer Backtest.
         await page.locator('.tab-btn[data-tab="annahmen"]').click();
@@ -9120,215 +7027,8 @@ async function runDesignsystemTools(browser, baseUrl) {
         await page.locator('.tab-btn[data-tab="annahmen"]').click();
         if (!await page.locator('#simPlanParameters').evaluate(node => node.open)) await page.locator('#simPlanParameters > summary').click();
         await page.locator('[data-select-segment="entnahmeStrategie"] [data-value="standard"]').click();
-
-        // Vier Kombinationen mit zwei Läufen und zwei Jahren, keine große Suche.
-        await page.evaluate(() => {
-            for (const [id, value] of Object.entries({ mcDauer: 2, mcBlockSize: 1, mcWorkerCount: 1, sweepRuns: 2, sweepLiquidityRunwayYears: '3,4', sweepGoldRebalancingBand: '20,25', sweepMaxSkimPct: 0, sweepMaxBearRefillPct: 5, sweepGoldTargetPct: 0, sweepSurvivalQuantile: .85, sweepGoGoMultiplier: 1.1 })) {
-                const node = document.getElementById(id); node.value = String(value);
-                node.dispatchEvent(new Event('input', { bubbles: true }));
-                node.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-            for (const id of ['dynamicFlex', 'goGoActive']) {
-                const node = document.getElementById(id); node.checked = false;
-                node.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-        });
-        await page.locator('.tab-btn[data-tab="werkstatt"]').click();
-        await page.locator('#workshopToolCards [data-workshop-tool="sweep"]').click();
-        await page.locator('#sweepButton').click();
-        await page.waitForFunction(() => window.sweepExecution?.results?.length === 4 && document.querySelector('#sweepHeatmap svg'));
-        await page.locator('#sweepMetric').selectOption('medianEndWealth');
-        await page.locator('#sensitivityButton').click();
-        if (await page.locator('#pageDialog[open]').count()) await answerPageDialog(page, { label: 'Verstanden' });
-        await page.locator('#paretoButton').click();
-        await page.locator('[data-page-choice-field="metric1"]').selectOption('medianEndWealth');
-        await page.locator('[data-page-choice-field="metric2"]').selectOption('worst5Drawdown');
-        await page.locator('#pageChoiceDialog').getByRole('button', { name: 'Diagramm anzeigen', exact: true }).click();
-        await page.locator('#paretoResults svg').waitFor({ state: 'visible' });
-        assert(await page.evaluate(() => window.paretoMetrics.metric1 === 'medianEndWealth' && window.paretoMetrics.metric2 === 'worst5Drawdown'), 'Paretoaktion erhält beide Metriken aus den tatsächlich bedienten Feldern');
-
-        // Der kurze echte Sweep kann eine konstante Metrik liefern. Nur die
-        // Sensitivitätsanzeige erhält dann eine benannte synthetische Varianz;
-        // echte Sweepdaten/Ranking/Übernahme bleiben unverändert.
-        await page.evaluate(async () => {
-            if (document.querySelector('#sensitivityResults .ds-sensitivity-chart')) return;
-            const { aggregateSweepMetrics } = await import('./app/simulator/simulator-results.js');
-            const { calculateSensitivity, renderSensitivityChart } = await import('./app/simulator/simulator-visualization.js');
-            const fixture = [1000, 2000].map((wealth, i) => ({ params: { liquidityRunwayYears: 3 + i },
-                metrics: aggregateSweepMetrics([{ finalVermoegen: wealth, failed: false, maxDrawdown: 20, minRunway: 24 }]) }));
-            const host = document.getElementById('sensitivityResults');
-            host.innerHTML = renderSensitivityChart(calculateSensitivity(fixture, 'medianEndWealth'), 'medianEndWealth');
-            host.style.display = 'block';
-        });
-        assert(await page.locator('#sweepHeatmap .sweep-label-bg').count() === 0, 'Sweep hat keine Labelunterlagen');
-        const labels = await page.locator('#sweepHeatmap svg text[fill]').evaluateAll(nodes => nodes.map(node => ({ fill: getComputedStyle(node).fill, opacity: getComputedStyle(node).opacity })));
-        assert(labels.every(label => ['rgb(0, 0, 0)', 'rgb(255, 255, 255)'].includes(label.fill) && label.opacity === '1'), 'Browser-Sweeplabels haben opake kontrastgewählte Textrollen');
-        await page.evaluate(async () => {
-            const { findBestParameters, displayBestParameters } = await import('./app/simulator/simulator-optimizer.js');
-            const best = findBestParameters(window.sweepResults, 'medianEndWealth');
-            window.__dsToolBest = best;
-            displayBestParameters(best, 'medianEndWealth');
-        });
-        if (await page.locator('#applyOptimalParams').count()) {
-            await page.locator('#applyOptimalParams').click();
-            const appliedText = await answerPageDialog(page, { label: 'Verstanden' });
-            assert(appliedText.includes('Hauptformular'), 'Übernahmehinweis erhält fachliche Information');
-            assert(await page.evaluate(async () => (await import('./app/simulator/simulator-input-dom.js')).readNumber('liquidityRunwayYears', NaN) === window.__dsToolBest.params.liquidityRunwayYears), 'Sweep-Übernahme erhält den ausgewerteten Parameter');
-        } else {
-            assert((await page.locator('#optimizationResults').textContent()).includes('Keine eindeutig führende Kombination'), 'Geteiltes Sweep-Ranking bietet weiterhin keine Übernahme an');
-        }
-        let sweepSamples = [], paretoSamples = [];
-        for (const width of [1920, 2560]) {
-            sweepSamples = await measureNativeChartTypography(page, width, '#sweepHeatmap', sweepSamples);
-            paretoSamples = await measureNativeChartTypography(page, width, '#paretoResults', paretoSamples);
-            await measureSimulatorPresentation(page, width, '#sweepHeatmap', ['#sweepHeatmap .ds-chart-scroll', '#paretoResults .ds-chart-scroll', '#sensitivityResults .ds-chart-scroll']);
-            assert(await page.locator('#sweepHeatmap').evaluate(node => node.scrollWidth <= node.clientWidth + 1), `${width}: Sweep-SVG passt in seinen erhaltenen Host`);
-            assert(await page.locator('#paretoResults svg').evaluate(node => getComputedStyle(node).fill === 'rgb(29, 40, 48)'), `${width}: Pareto-Beschriftung verwendet Haupttext`);
-        }
-
-        await page.locator('#workshopToolCards [data-workshop-tool="optimize"]').click();
-        await page.locator('.ao-preset-btn[data-preset="standard"]').click();
-        while (await page.locator('.ao-parameter-block').count() > 1) await page.locator('#ao_remove_param_btn').click();
-        const block = page.locator('.ao-parameter-block').first();
-        await block.locator('.ao-param-key').selectOption('liquidityRunwayYears');
-        await block.locator('.ao-param-min').fill('5');
-        await block.locator('.ao-param-max').fill('5');
-        await block.locator('.ao-param-step').fill('0.5');
-        await page.locator('#ao_runs_per_candidate').fill('100');
-        await page.locator('#ao_seeds_train').fill('1');
-        await page.locator('#ao_seeds_test').fill('1');
-        for (const id of ['ao_c_sr99', 'ao_c_noex', 'ao_c_ts45', 'ao_c_dd55']) await page.locator(`#${id}`).uncheck();
-        // Reale Built-in-Auswertung über den UI-Handler. Nur die bestehende
-        // readConfig-Injektion verkürzt dessen festes 35-Jahre-Fenster auf zwei.
-        await page.evaluate(async () => {
-            const { handleRunAutoOptimize } = await import('./app/simulator/auto_optimize_ui.js');
-            const { readAutoOptimizeConfigFromUI } = await import('./app/simulator/auto-optimize-config-ui.js');
-            await handleRunAutoOptimize({ readConfig: () => ({ ...readAutoOptimizeConfigFromUI(), maxDauer: 2 }) });
-        });
-        await page.locator('#ao_result [data-auto-optimize-model-warning]').waitFor({ state: 'visible' });
-        assert(await page.locator('#ao_result [data-auto-optimize-model-status]').count() === 1, 'Kurzer Built-in-Optimize erhält Modellstatusanker');
-        const evaluated = await page.evaluate(() => window.aoChampionResult.championCfg.liquidityRunwayYears);
-        assert(evaluated === 5, 'Fixierter kurzer Suchraum liefert denselben Runway');
-        await page.locator('#ao_apply_btn').click();
-        assert(await page.evaluate(async () => (await import('./app/simulator/simulator-input-dom.js')).readNumber('liquidityRunwayYears', NaN)) === 5, 'Echter Championlistener übernimmt den ausgewerteten Runway');
-        assert((await page.locator('#ao_result').textContent()).includes('Experimenteller Szenariokandidat übernommen'), 'Übernahmebestätigung bleibt sichtbar');
-        for (const width of [1920, 2560]) {
-            await page.setViewportSize({ width, height: 900 });
-            await measureSimulatorPresentation(page, width, '#ao_result');
-            const warning = await page.locator('[data-auto-optimize-model-warning]').evaluate(node => ({ color: getComputedStyle(node).color, background: getComputedStyle(node).backgroundColor, opacity: getComputedStyle(node).opacity }));
-            assert(warning.color === 'rgb(156, 59, 51)' && warning.background === 'rgb(245, 220, 216)' && warning.opacity === '1', `${width}: Optimiererwarnung ist opak und kontrastfest`);
-            const keyFulltext = block.locator('.ds-selection-text');
-            assert(await keyFulltext.count() === 1 && await keyFulltext.textContent() === await block.locator('.ao-param-key').evaluate(node => node.selectedOptions[0].textContent), `${width}: dynamische Parameterauswahl zeigt vollständigen Text`);
-            assert(await block.locator('.ao-param-key.ds-select').count() === 1, `${width}: ao-param-Key bleibt mit additiver Rolle erhalten`);
-        }
-        // Druckproben entfallen nach den Entwicklungsgrundsätzen; Farb- und Rohwertprüfungen bleiben.
-        await page.locator('.tab-btn[data-tab="werkstatt"]').click();
-        for (const value of [0, -0, .01, -.01, 1e-12, -1e-12]) {
-            const colors = await page.evaluate(async value => {
-                const { renderAutoOptimizeResult } = await import('./app/simulator/auto-optimize-renderer.js');
-                const host = document.createElement('div'); document.getElementById('tab-auto-optimize').appendChild(host);
-                const result = { ...window.aoChampionResult, deltaVsCurrent: { successRate: value, drawdownP90: value, endWealthP50: value, timeShareWRgt45: value } };
-                const before = JSON.stringify(result);
-                renderAutoOptimizeResult({ resultEl: host, result, objective: {} });
-                const heading = [...host.querySelectorAll('h4')].find(node => node.textContent === 'Delta vs. Current Configuration');
-                const colors = [...heading.nextElementSibling.querySelectorAll('span')].map(node => getComputedStyle(node).color);
-                host.remove(); return { colors, unchanged: JSON.stringify(result) === before };
-            }, value);
-            const normal = value === 0 ? 'rgb(29, 40, 48)' : value > 0 ? 'rgb(43, 110, 80)' : 'rgb(156, 59, 51)';
-            const inverse = value === 0 ? normal : value < 0 ? 'rgb(43, 110, 80)' : 'rgb(156, 59, 51)';
-            assert(colors.unchanged && JSON.stringify(colors.colors) === JSON.stringify([normal, inverse, normal, inverse]), 'Vier Optimize-Differenzen folgen exakt Null und Rohvorzeichen im Browser');
-        }
         smoke.assertNoErrors();
     } finally { await smoke.close(); }
-}
-
-async function runSimulatorOptimizerApplyIntegration(browser, baseUrl) {
-    const smoke = await openSmokePage(browser, baseUrl, 'Simulator.html');
-    const { page } = smoke;
-    // Neue Struktur: fünf Hauptreiter; Sweep und Auto-Optimize sind eigene Werkzeughosts im Reiter „Werkstatt“.
-    const tabLayout = await page.evaluate(() => ({
-        tools: [...document.querySelectorAll('#workshopToolCards [data-workshop-tool]')].map(button => button.dataset.workshopTool),
-        optimizePanel: document.getElementById('ao_run_btn')?.closest('[data-workshop-panel]')?.id,
-        sweepPanel: document.getElementById('sweepButton')?.closest('[data-workshop-panel]')?.id
-    }));
-    assert(JSON.stringify(tabLayout.tools) === JSON.stringify(['replay', 'sweep', 'optimize']),
-        'Simulator tabs must include Auto-Optimize directly after Parameter-Sweep');
-    assert(tabLayout.optimizePanel === 'tab-auto-optimize' && tabLayout.sweepPanel === 'tab-sweep',
-        'Optimizer and sweep controls must belong to separate tab panels');
-    await openWorkshopTool(page, 'optimize');
-    await page.locator('#ao_run_btn').waitFor({ state: 'visible' });
-    assert(await page.locator('#tab-auto-optimize').isVisible() && await page.locator('#tab-sweep').isHidden(),
-    'Auto-Optimize tab must activate its own panel');
-    await page.locator('#ao_parameters_container .ao-parameter-block').first().waitFor({
-        state: 'visible',
-        timeout: 10000
-    });
-    const evaluation = await page.evaluate(async () => {
-        const [{ runAutoOptimize }, { renderAutoOptimizeResult }] = await Promise.all([
-            import('./app/simulator/auto_optimize.js'),
-            import('./app/simulator/auto-optimize-renderer.js')
-        ]);
-        const evaluateCandidateFn = async candidate => ({
-            metricContract: { schemaVersion: 'AutoOptimizeMetricResultV1' },
-            medianEndWealth: 1000000 - Math.pow(Number(candidate.liquidityRunwayYears) - 5, 2),
-            successProbFloor: 1,
-            depletionRate: 0,
-            worst5Drawdown: 0.2,
-            timeShareWRgt45: 0,
-            medianWithdrawalRate: 0.03
-        });
-        const objective = { metric: 'EndWealth_P50', direction: 'max', quantile: 50 };
-        const result = await runAutoOptimize({
-            objective,
-            params: { liquidityRunwayYears: { min: 5, max: 5, step: 0.5 } },
-            runsPerCandidate: 2,
-            seedsTrain: 1,
-            seedsTest: 1,
-            constraints: { sr99: false, noex: false, ts45: false, dd55: false },
-            maxDauer: 2,
-            safetyGuards: false,
-            evaluateCandidateFn
-        });
-        window.aoChampionResult = result;
-        const resultEl = document.getElementById('ao_result');
-        renderAutoOptimizeResult({ resultEl, result, objective });
-        const applyButton = document.getElementById('ao_apply_btn');
-        applyButton.style.display = 'inline-block';
-        return {
-            parameterFingerprint: result.parameterFidelity.parameterFingerprint,
-            requestFingerprint: result.parameterFidelity.requestFingerprint,
-            modelMode: result.modelStatus.evaluationMode,
-            liquidityRunwayYears: result.championCfg.liquidityRunwayYears
-        };
-    });
-    assert(evaluation.modelMode === 'custom_evaluator',
-        'Browser optimizer fixture must not claim built-in MC validation for its synthetic evaluator');
-    await page.locator('#ao_apply_btn').click();
-    const applied = await page.evaluate(async () => {
-        const {
-            createAutoOptimizeParameterFingerprint,
-            createAutoOptimizeRequestFingerprint
-        } = await import('./app/simulator/auto-optimize-param-meta.js');
-        const candidate = { liquidityRunwayYears: (await import('./app/simulator/simulator-input-dom.js')).readNumber('liquidityRunwayYears', NaN) };
-        return {
-            parameterFingerprint: createAutoOptimizeParameterFingerprint(candidate),
-            requestFingerprint: createAutoOptimizeRequestFingerprint(candidate),
-            liquidityRunwayYears: candidate.liquidityRunwayYears,
-            resultText: document.getElementById('ao_result')?.textContent || ''
-        };
-    });
-    assert(
-        applied.parameterFingerprint === evaluation.parameterFingerprint
-        && applied.requestFingerprint === evaluation.requestFingerprint,
-        'Browser optimizer apply must preserve the evaluated canonical fingerprint'
-    );
-    assert(applied.liquidityRunwayYears === evaluation.liquidityRunwayYears,
-        'Browser optimizer apply must write the evaluated canonical runway');
-    assert(applied.resultText.includes('Experimenteller Szenariokandidat')
-        && applied.resultText.includes('keine Finanzempfehlung'),
-    'Browser optimizer result and apply confirmation must preserve the model-status boundary');
-    smoke.assertNoErrors();
-    await smoke.close();
 }
 
 async function runManualSmoke(browser, baseUrl) {
@@ -9763,13 +7463,6 @@ async function runDesignsystemSimulatorFields(browser, baseUrl) {
         const profileSelectIds = ['p1Geschlecht', 'p1KirchensteuerPct', 'rentAdjMode', 'r2Geschlecht'];
         await assertCurrentSelectionText(page, profileSelectIds);
         assert(await page.locator('#p1Geschlecht').inputValue() === 'w' && await page.locator('#rentAdjMode').inputValue() === 'wage', 'Profilstart übernimmt abweichendes Geschlecht und Rentenmodus');
-        await setBrowserHouseholdMembership(page, 'design-field-b', false); await waitForSimulatorOpening(page, 'Simulator.html'); await openSimulatorProfileList(page);
-        await page.waitForFunction(() => document.getElementById('chkPartnerAktiv').checked === false);
-        await assertSimulatorFieldOrigins(page, 1);
-        await assertCurrentSelectionText(page, profileSelectIds);
-        await setBrowserHouseholdMembership(page, 'design-field-b', true); await waitForSimulatorOpening(page, 'Simulator.html'); await openSimulatorProfileList(page);
-        await assertSimulatorFieldOrigins(page);
-        await assertCurrentSelectionText(page, profileSelectIds);
         await page.locator('[data-parameters="personen"]').evaluate(detail => { detail.open = true; });
         await page.locator('[data-parameters="strategie"]').evaluate(detail => { detail.open = true; });
         await assertCurrentSelectionText(page, profileSelectIds, true);
@@ -9858,6 +7551,19 @@ async function runDesignsystemSimulatorFields(browser, baseUrl) {
             assert((await reason.textContent()).includes(method === 'block' || method === 'stationary' ? 'Historische' : 'Bootstrap'), 'S24: kurzer Hinweis passt zur gewählten Methode');
             assert((await page.locator('#mcBlockSize').getAttribute('title')).includes('Bootstrap'), 'S24: vollständiger Bootstrapbegriff bleibt am Feld zugänglich');
         }
+        // JD-1 (Nutzertest EXE): Die Schieber „Startjahr ab“ und „Halbwertszeit“ sind mit der Maus bedienbar; der Wert steht ohne Feldrahmen daneben.
+        for (const width of [1920, 2560]) {
+            await page.setViewportSize({ width, height: 1000 });
+            for (const [mode, id] of [['FILTER', 'mcStartYearFilter'], ['RECENCY', 'mcStartYearHalfLife']]) {
+                await page.locator('#mcStartYearMode').selectOption(mode);
+                const range = await page.locator(`#${id}`).evaluate(input => {
+                    const output = document.getElementById(`${input.id}Value`);
+                    return { input: input.getBoundingClientRect().width, output: output.getBoundingClientRect().width, border: getComputedStyle(output).borderTopWidth };
+                });
+                assert(range.input >= 200 && range.output < range.input && range.border === '0px',
+                    `${width}: Schieber ${id} ist ${Math.round(range.input)} px breit, Wert ohne Feldrahmen (${range.border})`);
+            }
+        }
         assert(await page.locator('#startAlter, #geschlecht, #startSPB, #kirchensteuerSatz, #renteMonatlich, #renteStartOffsetJahre').evaluateAll(fields => fields.every(field => field.type === 'hidden' && !field.hasAttribute('data-field-state'))), 'S15: Legacybrücke bleibt verborgen');
         smoke.assertNoErrors();
     } finally { await smoke.close(); }
@@ -9887,59 +7593,41 @@ async function runDesignsystemBalance(browser, baseUrl) {
         await page.waitForFunction(() => document.getElementById('tagesgeld').dataset.fieldState === 'adopted');
         // Lesende Rendererproben in den echten Diagrammflächen; keine Fixturewrites.
         const chartFixture = createDesignsystemDataLayoutFixture();
-        // Der Verlaufvertrag beginnt am 2026-01-01; der früheste gültige Jahresabschluss ist annual:2026.
-        chartFixture.state.wealthHistory.entries[0] = {
-            ...chartFixture.state.wealthHistory.entries[0], id: 'annual:2026',
-            asOf: '2026-12-31', reason: 'annual_close', periodId: 'calendar-year:2026'
-        };
         for (const width of [1920, 2560]) {
             await page.setViewportSize({ width, height: 900 });
             for (const count of [2, 24]) {
-                for (const kind of ['expenses']) {
-                    await activateSuiteSection(page, kind === 'wealth' ? 'history' : 'expenses');
-                    const measured = await page.evaluate(async ({ kind, count, state, expenses }) => {
-                        const prefix = kind === 'wealth' ? 'wealthHistory' : 'expensesHistory';
-                        const dom = { isVisible: () => true, panel: document.getElementById('tab-history'),
-                            chart: document.getElementById(`${prefix}Chart`), table: document.getElementById(`${prefix}Table`),
-                            hint: document.getElementById(`${prefix}Hint`), status: document.getElementById('wealthHistoryStatus') };
-                        if (kind === 'wealth') {
-                            const { renderBalanceWealthHistory } = await import('./app/balance/balance-wealth-history-renderer.js');
-                            renderBalanceWealthHistory(dom, { ...state,
-                                wealthHistory: { ...state.wealthHistory, entries: state.wealthHistory.entries.slice(0, count) } });
-                        } else {
-                            const { renderBalanceExpensesHistory } = await import('./app/balance/balance-expenses-history-renderer.js');
-                            renderBalanceExpensesHistory(dom, { status: 'ok', store: { ...expenses,
-                                years: Object.fromEntries(Object.entries(expenses.years).slice(-count)) } }, 2026);
-                        }
-                        await document.fonts.ready;
-                        // Die Diagrammfläche zeichnet nach ihrer Größenmessung; auf das tatsächliche SVG warten.
-                        for (let frame = 0; !dom.chart.querySelector('svg') && frame < 120; frame++) await new Promise(resolve => requestAnimationFrame(resolve));
-                        const svg = dom.chart.querySelector('svg'), box = svg.getBoundingClientRect(), viewBox = svg.viewBox.baseVal;
-                        const scales = [...svg.querySelectorAll('text, .wealth-point')].map(node => {
-                            const matrix = node.getScreenCTM();
-                            return [Math.hypot(matrix.a, matrix.b), Math.hypot(matrix.c, matrix.d)];
-                        });
-                        const markers = [...svg.querySelectorAll('.wealth-point')].map(node => {
-                            const box = node.getBoundingClientRect(); return [box.width, box.height];
-                        });
-                        const live = [dom.hint, ...(kind === 'wealth' ? [dom.status] : [])].map(node => {
-                            const css = getComputedStyle(node);
-                            return { empty: node.textContent === '', hidden: node.hidden, display: css.display,
-                                visibility: css.visibility, margin: css.margin };
-                        });
-                        return { scales, markers, live, width: box.width, height: box.height,
-                            ratio: viewBox.width / viewBox.height, minWidth: Number.parseFloat(svg.style.minWidth) };
-                    }, { kind, count, state: chartFixture.state, expenses: JSON.parse(chartFixture.storage[EXPENSES_KEY]) });
-                    assert(measured.scales.length > 0 && measured.scales.every(([x, y]) => x > 0 && Math.abs(x - y) < 1e-6),
-                        `${width}/${count}/${kind}: Schrift und Marker haben gleichen x/y-Maßstab`);
-                    assert(measured.markers.every(([x, y]) => Math.abs(x - y) < 1e-6),
-                        `${width}/${count}/${kind}: Quadrate und Rauten bleiben symmetrisch`);
-                    assert(Math.abs(measured.width / measured.height - measured.ratio) < 0.01 && measured.width >= measured.minWidth - 1,
-                        `${width}/${count}/${kind}: automatische Höhe und datenabhängige Mindestbreite bleiben erhalten`);
-                    assert(measured.live.every(region => region.empty && !region.hidden && region.display !== 'none'
-                        && region.visibility === 'visible' && region.margin === '0px'),
-                    `${width}/${count}/${kind}: leere Live-Regionen bleiben ohne Absatzabstand vorhanden`);
-                }
+                const kind = 'expenses';
+                await activateSuiteSection(page, 'expenses');
+                const measured = await page.evaluate(async ({ count, expenses }) => {
+                    const dom = { isVisible: () => true, chart: document.getElementById('expensesHistoryChart'),
+                        table: document.getElementById('expensesHistoryTable'), hint: document.getElementById('expensesHistoryHint') };
+                    // VS-3a: Der alte Balance-Verlaufsrenderer ist entfernt; gemessen wird der Ausgabenverlauf.
+                    const { renderBalanceExpensesHistory } = await import('./app/balance/balance-expenses-history-renderer.js');
+                    renderBalanceExpensesHistory(dom, { status: 'ok', store: { ...expenses,
+                        years: Object.fromEntries(Object.entries(expenses.years).slice(-count)) } }, 2026);
+                    await document.fonts.ready;
+                    // Die Diagrammfläche zeichnet nach ihrer Größenmessung; auf das tatsächliche SVG warten.
+                    for (let frame = 0; !dom.chart.querySelector('svg') && frame < 120; frame++) await new Promise(resolve => requestAnimationFrame(resolve));
+                    const svg = dom.chart.querySelector('svg'), box = svg.getBoundingClientRect(), viewBox = svg.viewBox.baseVal;
+                    const scales = [...svg.querySelectorAll('text')].map(node => {
+                        const matrix = node.getScreenCTM();
+                        return [Math.hypot(matrix.a, matrix.b), Math.hypot(matrix.c, matrix.d)];
+                    });
+                    const live = [dom.hint].map(node => {
+                        const css = getComputedStyle(node);
+                        return { empty: node.textContent === '', hidden: node.hidden, display: css.display,
+                            visibility: css.visibility, margin: css.margin };
+                    });
+                    return { scales, live, width: box.width, height: box.height,
+                        ratio: viewBox.width / viewBox.height, minWidth: Number.parseFloat(svg.style.minWidth) };
+                }, { kind, count, expenses: JSON.parse(chartFixture.storage[EXPENSES_KEY]) });
+                assert(measured.scales.length > 0 && measured.scales.every(([x, y]) => x > 0 && Math.abs(x - y) < 1e-6),
+                    `${width}/${count}/${kind}: Schrift hat gleichen x/y-Maßstab`);
+                assert(Math.abs(measured.width / measured.height - measured.ratio) < 0.01 && measured.width >= measured.minWidth - 1,
+                    `${width}/${count}/${kind}: automatische Höhe und datenabhängige Mindestbreite bleiben erhalten`);
+                assert(measured.live.every(region => region.empty && !region.hidden && region.display !== 'none'
+                    && region.visibility === 'visible' && region.margin === '0px'),
+                `${width}/${count}/${kind}: leere Live-Regionen bleiben ohne Absatzabstand vorhanden`);
             }
         }
         await activateSuiteSection(page, 'overview');
@@ -9972,7 +7660,8 @@ async function runDesignsystemBalance(browser, baseUrl) {
         }, keys);
         assert(invariant, 'Reine Darstellung erhält Werte, Sperren und alte Inputattribute im echten DOM');
         const before = await page.locator('#tagesgeld').inputValue();
-        await setBrowserHouseholdMembership(page, 'design-b', false);
+        // AP-1: B verlässt den Haushalt durch Löschen; A rechnet danach allein.
+        await deleteBrowserPerson(page, 'design-b');
         await page.waitForFunction(before => document.getElementById('tagesgeld').value !== before, before);
         await checkOrigins();
         await activateSuiteSection(page, 'strategy');
@@ -10019,7 +7708,7 @@ async function runDesignsystemBalance(browser, baseUrl) {
             && await page.locator('#expensesForecast').evaluate(node => !['budget-ok', 'budget-warn', 'budget-bad'].some(name => node.classList.contains(name))), 'Leerjahr nach Jahreswechsel bleibt neutral');
         await activateSuiteSection(page, 'overview');
         await page.evaluate(async () => {
-            const { createAnnualModalHandlers } = await import('./app/balance/balance-annual-modal.js');
+            const { createAnnualCloseDialog: createAnnualModalHandlers } = await import('./app/shared/annual-close-dialog.js');
             createAnnualModalHandlers({ getLastUpdateResults: () => null }).showUpdateResultModal({
                 startTime: 0, endTime: 1000, age: { old: 67, new: 68 },
                 cape: { capeRatio: 25, capeFetchStatus: 'warn_stale_source', sourceLabel: 'Synthetische Quelle' },
@@ -10139,7 +7828,7 @@ async function runDesignsystemDataLayout(browser, baseUrl) {
             await scrollByKeyboard('#tranchenTable .table-scroll');
             assert(await page.locator('#tranchenTable .ds-scroll-hint').isVisible(), 'Manager zeigt die Fortsetzung sichtbar an');
         }
-        await page.locator('#managerCardsToggleAll').click();
+        await openManagerCards(page);
         const managerSelectionFixtures = async () => {
             const ids = ['profileHealthBucketTargetMode', 'profileHealthBucketAssetSource'];
             // Tabellenbereitschaft bestätigt nicht den Adapterwrite des Subpage-Bootstraps.
@@ -10202,7 +7891,7 @@ async function runDesignsystemDataLayout(browser, baseUrl) {
         await page.locator('#tranchenTable table').waitFor();
         await assertCurrentSelectionText(page, await page.locator('select[id]').evaluateAll(nodes => nodes.map(node => node.id)));
         // Karten beginnen nach dem Reload wieder geschlossen.
-        await page.locator('#managerCardsToggleAll').click();
+        await openManagerCards(page);
         await managerSelectionFixtures(); // Nichtpersistente Textfixture bewusst erneut setzen.
 
         // Profilname und Kennung bleiben interne Metadaten.
@@ -10442,12 +8131,19 @@ async function runSuiteFrameFailures(browser, baseUrl) {
 }
 
 function suiteProfileFixture() {
-    return createBrowserProfileStorage({
-        'suite-a': { name: 'Synthetisch A', tagesgeld: '100000', belongsToHousehold: true,
+    const storage = createBrowserProfileStorage({
+        'suite-a': { name: 'Synthetisch A', tagesgeld: '100000',
             tranchesRaw: JSON.stringify([createBrowserTranche({ name: 'Bestand A', trancheId: 'suite-lot-a' })]) },
-        'suite-b': { name: 'Synthetisch B', tagesgeld: '200000', belongsToHousehold: false,
+        'suite-b': { name: 'Synthetisch B', tagesgeld: '200000',
             tranchesRaw: JSON.stringify([createBrowserTranche({ name: 'Bestand B', trancheId: 'suite-lot-b' })]) }
     }, 'suite-a');
+    // AP-1: Beide Personen bilden den Haushalt. Fälle, die A löschen, rechnen danach mit B allein; dafür liegt
+    // derselbe Plan schon als Einzelplan von B bereit, damit der Seitenstart keine Planumstellung braucht.
+    const now = () => new Date('2026-07-14T00:00:00.000Z');
+    const seeded = addDirectHouseholdPlans(storage, { now }).household_plan_v1;
+    const values = Object.values(JSON.parse(seeded).entries)[0].values;
+    storage[HOUSEHOLD_PLAN_KEY] = buildPlanRecord(seeded, [{ scope: planScope('single', ['suite-b']), values }], { now }).raw;
+    return storage;
 }
 
 // H1: Ohne gespeicherte Bedarfe zeigte der Simulator bisher leere Bedarfsfelder (0/0); der gemeinsame Plan liefert
@@ -10457,7 +8153,7 @@ function suiteProfileFixture() {
 function suiteProfileFixtureWithoutNeeds() {
     const storage = suiteProfileFixture();
     const values = { ...structuredClone(PLAN_DEFAULTS), floorBedarf: 0, flexBedarf: 0 };
-    storage[HOUSEHOLD_PLAN_KEY] = buildPlanRecord(null, [{ scope: planScope('household', ['suite-a']), values },
+    storage[HOUSEHOLD_PLAN_KEY] = buildPlanRecord(null, [{ scope: planScope('household', ['suite-a', 'suite-b']), values },
         { scope: planScope('single', ['suite-b']), values }], { now: () => new Date('2026-07-14T00:00:00.000Z') }).raw;
     return storage;
 }
@@ -10550,13 +8246,12 @@ async function runSuiteFrameProfileContext(browser, baseUrl) {
             await page.goto(`${baseUrl}/${calculator ? 'depot-tranchen-manager.html' : source}`);
             await waitSuiteIdentity(page, 'suite-a');
             if (calculator) {
-                await setBrowserHouseholdMembership(page, 'suite-b', true);
-                await setBrowserHouseholdMembership(page, 'suite-a', false);
+                await deleteBrowserPerson(page, 'suite-a');
                 await page.goto(`${baseUrl}/${source}`);
                 await page.waitForFunction(pageName => document.getElementById('suiteHouseholdContext')?.textContent === (pageName === 'Balance.html' ? 'Berechnet für: Haushalt · Synthetisch B' : 'Haushalt: Synthetisch B'), source);
                 // PH-1: Rückkehr in den Manager wählt das erste verbleibende Haushaltsmitglied (tranchen-manager-page.js).
                 await waitSuiteIdentity(page, 'suite-b');
-                assert(JSON.parse((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value).profiles['suite-b'].meta.belongsToHousehold,
+                assert(!JSON.parse((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value).profiles['suite-a'],
                     'Kopf übernimmt den Haushalt aus Personen verwalten');
             } else assert(await page.locator('#suiteHouseholdContext').count() === 0, 'Außerhalb Balance/Simulator bleibt Haushaltsanzeige verborgen');
             if (source === 'index.html') {
@@ -10637,11 +8332,8 @@ async function runSuiteFrameProfileHistory(browser, baseUrl) {
         const storage = source === 'Simulator.html' ? suiteProfileFixtureWithoutNeeds() : suiteProfileFixture();
         const kind = suiteHistoryPageKind(source);
         if (kind === 'expenses') {
-            // Beide Personen sind hier berechtigte Haushaltsmitglieder; Einzelfilter
-            // prüfen eigene Ausgaben, ohne einen echten Handoff nachträglich zu reparieren.
-            const registry = JSON.parse(storage.rs_profiles_v1);
-            registry.profiles['suite-b'].meta.belongsToHousehold = true;
-            storage.rs_profiles_v1 = JSON.stringify(registry);
+            // Beide Personen sind Haushaltsmitglieder; Einzelfilter prüfen eigene Ausgaben,
+            // ohne einen echten Handoff nachträglich zu reparieren.
             storage[EXPENSES_KEY] = JSON.stringify({ version: 1, activeYear: 2026, years: { 2026: { months: { 1: { profiles: {
                 'suite-a': { categories: { 'Ausgabe A': -101 } }, 'suite-b': { categories: { 'Ausgabe B': -202 } }
             } } } } } });
@@ -10678,10 +8370,9 @@ async function runSuiteFrameProfileHistory(browser, baseUrl) {
             if (kind === 'expenses') await switchBrowserProfile(page, 'suite-b');
             else {
                 // Der heutige Manager öffnet ohne Sprungziel das erste Haushaltsmitglied.
-                // Den Haushalt deshalb vor dem B-Seitenstart auf derselben Managerseite wechseln.
+                // A deshalb vor dem B-Seitenstart auf derselben Managerseite löschen; B rechnet danach allein.
                 await switchBrowserProfile(page, 'suite-b', { returnToOverview: false });
-                await setBrowserHouseholdMembership(page, 'suite-b', true, { stayInManager: true });
-                await setBrowserHouseholdMembership(page, 'suite-a', false, { stayInManager: true });
+                await deleteBrowserPerson(page, 'suite-a', { stayInManager: true });
                 await page.locator('.suite-navigation a[href="index.html"]').click();
                 await page.waitForURL('**/index.html');
             }
@@ -10749,8 +8440,7 @@ async function runSuiteFrameBfcache(browser, baseUrl) {
         await page.waitForURL('**/index.html');
         await waitForWealthBrowserIdle(page);
         await switchBrowserProfile(page, 'suite-b', { returnToOverview: false });
-        await setBrowserHouseholdMembership(page, 'suite-b', true, { stayInManager: true });
-        await setBrowserHouseholdMembership(page, 'suite-a', false, { stayInManager: true });
+        await deleteBrowserPerson(page, 'suite-a', { stayInManager: true });
         await page.goBack();
         await page.waitForURL('**/index.html');
         await waitSuiteIdentity(page, 'suite-b');
@@ -10891,6 +8581,13 @@ export async function waitForNavigationDecisionSettled(page, options = {}) {
     }, undefined, options);
 }
 
+async function waitForNavigationGuardManagerReady(page) {
+    await page.waitForURL('**/depot-tranchen-manager.html', { waitUntil: 'load' });
+    // Die Personenkachel wird erst am Ende des Managerstarts eingeblendet.
+    await page.locator('#managerPersonPanel:not([hidden]) #depotAddTrancheBtn:enabled').waitFor();
+    await waitForNavigationDecisionSettled(page);
+}
+
 async function runNavigationGuardWaitCounterprobe(browser, baseUrl) {
     const { errors } = await import('playwright');
     const smoke = await createSuiteProbe(browser, baseUrl, 'index.html');
@@ -10982,9 +8679,7 @@ async function runNavigationGuardCalculations(browser, baseUrl) {
                 einstandAlt: 400000, tagesgeld: 20000, geldmarktEtf: 0, startFloorBedarf: 24000,
                 startFlexBedarf: 6000, minimumFlexAnnual: 0, mcAnzahl: 2, mcDauer: 2,
                 mcBlockSize: 1, mcSeed: 42, mcMethode: 'block', rngMode: 'per-run-seed',
-                mcWorkerCount: 1, mcWorkerBudget: 50, sweepRuns: 2,
-                sweepLiquidityRunwayYears: 3, sweepGoldRebalancingBand: 25,
-                sweepMaxSkimPct: 0, sweepMaxBearRefillPct: 5, sweepGoldTargetPct: 0 };
+                mcWorkerCount: 1, mcWorkerBudget: 50 };
             for (const [id, value] of Object.entries(values)) {
                 const field = document.getElementById(id);
                 if (!field) continue;
@@ -10999,13 +8694,12 @@ async function runNavigationGuardCalculations(browser, baseUrl) {
         });
         await page.evaluate(async () => {
             const mc = await import('./app/simulator/simulator-monte-carlo.js');
-            const sweep = await import('./app/simulator/simulator-sweep.js');
             const { createMonteCarloUI } = await import('./app/simulator/monte-carlo-ui.js');
             const { prepareHistoricalDataOnce } = await import('./app/simulator/simulator-engine-helpers.js');
             const { getPageNavigationGuard } = await import('./app/shared/navigation-guard-dialog.js');
             const guard = getPageNavigationGuard(document);
             // Der Öffnungsbacktest hinterlässt bereits einen eigenen Ergebnisgrund.
-            const calculations = () => guard.reasons().filter(reason => ['simulator-monte-carlo', 'simulator-sweep'].includes(reason.owner));
+            const calculations = () => guard.reasons().filter(reason => reason.owner === 'simulator-monte-carlo');
             window.__calculationProbe = { guard, calculations, releases: {}, ended: [], holdCleanup: false };
             window.__startGuardedCalculations = () => {
                 const probe = window.__calculationProbe;
@@ -11024,49 +8718,35 @@ async function runNavigationGuardCalculations(browser, baseUrl) {
                 };
                 probe.mc = mc.runMonteCarlo({ createUI: () => ui, prepareHistoricalData: prepare('mc') })
                     .then(() => { probe.ended.push('mc'); window.__suiteProbe.steps.push('mc-ended'); });
-                probe.sweep = sweep.runParameterSweep({ prepareHistoricalData: prepare('sweep') })
-                    .then(() => { probe.ended.push('sweep'); window.__suiteProbe.steps.push('sweep-ended'); });
             };
             window.__startGuardedCalculations();
         });
-        await page.waitForFunction(() => Object.keys(window.__calculationProbe.releases).length === 2);
+        await page.waitForFunction(() => Object.keys(window.__calculationProbe.releases).length === 1);
         const link = page.locator('.suite-navigation a[href="Handbuch.html"]');
         await link.focus(); await page.keyboard.press('Enter');
         await page.locator('#navigationGuardDialog[open]').waitFor();
         await page.locator('#navigationGuardStay').click();
         await waitForNavigationDecisionSettled(page);
-        assert(await page.evaluate(() => window.__calculationProbe.calculations().length === 2
-            && window.__calculationProbe.calculations().every(reason => reason.phase === 'preparing')),
-            'Bleiben lässt beide echten Rechnungen ungekündigt');
-        assert(await link.evaluate(node => document.activeElement === node), 'Bleiben stellt Rahmenlinkfokus wieder her');
-        await page.evaluate(() => { const releases = window.__calculationProbe.releases; releases.mc(); releases.sweep(); });
-        await page.waitForFunction(() => window.__calculationProbe.ended.length === 2);
-        // TD-2: Das Monte-Carlo-Ergebnis ist für die Sitzung gemerkt und meldet keinen Verlust mehr.
         assert(await page.evaluate(() => window.__calculationProbe.calculations().length === 1
-            && window.__calculationProbe.calculations().every(reason => reason.owner === 'simulator-sweep' && reason.phase === 'idle' && reason.result)
+            && window.__calculationProbe.calculations().every(reason => reason.phase === 'preparing')),
+            'Bleiben lässt die echte Rechnung ungekündigt');
+        assert(await link.evaluate(node => document.activeElement === node), 'Bleiben stellt Rahmenlinkfokus wieder her');
+        await page.evaluate(() => window.__calculationProbe.releases.mc());
+        await page.waitForFunction(() => window.__calculationProbe.ended.length === 1);
+        // TD-2: Das Monte-Carlo-Ergebnis ist für die Sitzung gemerkt und meldet keinen Verlust mehr.
+        assert(await page.evaluate(() => window.__calculationProbe.calculations().length === 0
             && sessionStorage.getItem('rs_simulator_mc_result_v1') !== null),
-        'Parametervergleich veröffentlicht einen Ergebnisgrund, das gemerkte Monte-Carlo-Ergebnis keinen');
-        // Alle vier Ergebnisbesitzer gemeinsam, nach echten Handlerabschlüssen.
+        'Das gemerkte Monte-Carlo-Ergebnis veröffentlicht keinen Ergebnisgrund');
+        // Alle Ergebnisbesitzer gemeinsam, nach echten Handlerabschlüssen.
         await page.evaluate(async () => {
-            const { handleRunAutoOptimize } = await import('./app/simulator/auto_optimize_ui.js');
-            const { runAutoOptimize } = await import('./app/simulator/auto_optimize.js');
-            await handleRunAutoOptimize({ readConfig: () => ({
-                objective: { metric: 'EndWealth_P50', direction: 'max' },
-                params: { liquidityRunwayYears: { min: 1, max: 10, step: 0.5 } },
-                runsPerCandidate: 2, seedsTrain: 1, seedsTest: 1, constraints: {}, maxDauer: 2
-            }), run: config => runAutoOptimize({ ...config, evaluateCandidateFn: async () => ({
-                metricContract: { schemaVersion: 'AutoOptimizeMetricResultV1' },
-                medianEndWealth: 500000, successProbFloor: 1, worst5Drawdown: 0,
-                depletionRate: 0, timeShareWRgt45: 0, medianWithdrawalRate: 0.03
-            }) }) });
             document.getElementById('simStartJahr').value = '2000';
             document.getElementById('simEndJahr').value = '2001';
             const { runBacktestWithRuntimeProvenance } = await import('./app/simulator/simulator-backtest.js');
             await runBacktestWithRuntimeProvenance();
         });
-        assert(await page.evaluate(() => window.__calculationProbe.guard.reasons().filter(reason => reason.result).length === 3
+        assert(await page.evaluate(() => window.__calculationProbe.guard.reasons().filter(reason => reason.result).length === 1
             && !window.__calculationProbe.guard.reasons().some(reason => reason.owner === 'simulator-monte-carlo')),
-            'Drei Werkzeuge melden ihre Ergebnisse, Monte Carlo ist gemerkt');
+            'Der Backtest meldet sein Ergebnis, Monte Carlo ist gemerkt');
         await page.locator('.tab-btn[data-tab="backtesting"]').click();
         const backtestDownload = page.waitForEvent('download');
         await page.locator('#exportBacktestCsv').click(); await backtestDownload;
@@ -11078,9 +8758,9 @@ async function runNavigationGuardCalculations(browser, baseUrl) {
         assert((await page.locator('#navigationGuardDescription').textContent()).includes('Ergebnis geht verloren – trotzdem wechseln?'),
             'Enter am Rahmenlink fragt nach MC-Export weiter nach dem Verlust der übrigen Ergebnisse');
         const combinedDescription = await page.locator('#navigationGuardDescription').textContent();
-        assert((combinedDescription.match(/Ergebnis geht verloren/g) || []).length === 3
-            && combinedDescription.includes('Auto-Optimize') && combinedDescription.includes('Backtest'),
-            'Eine kombinierte Nachfrage nennt die drei nicht gemerkten Ergebnisgründe auch nach Downloads');
+        assert((combinedDescription.match(/Ergebnis geht verloren/g) || []).length === 1
+            && combinedDescription.includes('Backtest'),
+            'Die Nachfrage nennt den nicht gemerkten Ergebnisgrund auch nach Downloads');
         await page.locator('#navigationGuardStay').click();
         await waitForNavigationDecisionSettled(page);
         assert(await page.evaluate(() => window.__calculationProbe.guard.reasons().every(reason => reason.result)),
@@ -11088,128 +8768,98 @@ async function runNavigationGuardCalculations(browser, baseUrl) {
 
         await page.evaluate(() => {
             window.__suiteProbe.steps = [];
-            window.__calculationProbe.oldSweep = window.sweepResults;
             window.__calculationProbe.oldMcMemory = sessionStorage.getItem('rs_simulator_mc_result_v1');
             window.__calculationProbe.holdCleanup = true;
             window.__startGuardedCalculations();
         });
-        await page.waitForFunction(() => Object.keys(window.__calculationProbe.releases).length === 2);
+        await page.waitForFunction(() => Object.keys(window.__calculationProbe.releases).length === 1);
         await link.focus(); await page.keyboard.press('Enter');
         await page.locator('#navigationGuardDialog[open]').waitFor();
         await page.locator('#navigationGuardLeave').click();
-        await page.waitForFunction(() => window.__calculationProbe.guard.reasons().filter(reason => reason.phase === 'cancelling').length === 2);
+        await page.waitForFunction(() => window.__calculationProbe.guard.reasons().filter(reason => reason.phase === 'cancelling').length === 1);
         assert(await page.evaluate(() => window.__suiteProbe.steps.length) === 0,
             'Akzeptierter Abbruch beginnt noch keinen Export oder Flush');
-        await page.evaluate(() => window.__calculationProbe.releases.sweep());
-        await page.waitForFunction(() => window.__calculationProbe.ended.includes('sweep'));
-        await assertSuitePending(smoke, 'Simulator.html', 'sweep-ended');
         await page.evaluate(() => window.__calculationProbe.releases.mc());
         await page.waitForFunction(() => !!window.__calculationProbe.releases.cleanup);
-        await assertSuitePending(smoke, 'Simulator.html', 'sweep-ended');
-        assert(await page.evaluate(() => window.sweepResults === window.__calculationProbe.oldSweep
-            && window.__calculationProbe.guard.reasons().filter(reason => reason.owner !== 'simulator-monte-carlo').every(reason => reason.result)
+        await assertSuitePending(smoke, 'Simulator.html', '');
+        assert(await page.evaluate(() => window.__calculationProbe.guard.reasons().filter(reason => reason.owner !== 'simulator-monte-carlo').every(reason => reason.result)
             && window.__calculationProbe.oldMcMemory !== null
             && sessionStorage.getItem('rs_simulator_mc_result_v1') === window.__calculationProbe.oldMcMemory),
-            'Abgebrochene Folgeläufe erhalten das Sweep-Ergebnis und das gemerkte Monte-Carlo-Ergebnis');
+            'Abgebrochener Folgelauf erhält das Backtest-Ergebnis und das gemerkte Monte-Carlo-Ergebnis');
         await page.evaluate(() => window.__calculationProbe.releases.cleanup());
         await page.waitForFunction(() => window.__suiteProbe.steps.includes('flush'));
-        await assertSuitePending(smoke, 'Simulator.html', 'sweep-ended,mc-ended,export,flush');
-        await completeSuiteProbe(smoke, 'Handbuch.html', 'sweep-ended,mc-ended,export,flush');
+        await assertSuitePending(smoke, 'Simulator.html', 'mc-ended,export,flush');
+        await completeSuiteProbe(smoke, 'Handbuch.html', 'mc-ended,export,flush');
         smoke.assertNoErrors();
     } finally { await smoke.close(); }
 }
 
-async function runNavigationGuardOptimizerBacktest(browser, baseUrl) {
+async function runNavigationGuardBacktest(browser, baseUrl) {
     for (const rejectLoader of [false, true]) {
         const smoke = await createSuiteProbe(browser, baseUrl, 'Simulator.html');
         const { page } = smoke;
         try {
             await page.evaluate(async () => {
-                const { handleRunAutoOptimize, cancelAutoOptimize } = await import('./app/simulator/auto_optimize_ui.js');
-                const { runAutoOptimize } = await import('./app/simulator/auto_optimize.js');
                 const { runBacktestWithRuntimeProvenance, cancelBacktestPreparation } = await import('./app/simulator/simulator-backtest.js');
                 const { getPageNavigationGuard } = await import('./app/shared/navigation-guard-dialog.js');
-                const values = { liquidityRunwayYears: 5, mcAnzahl: 2, mcDauer: 2, mcSeed: 42,
-                    mcBlockSize: 1, mcMethode: 'block', simStartJahr: 2000, simEndJahr: 2001 };
+                const values = { simStartJahr: 2000, simEndJahr: 2001 };
                 for (const [id, value] of Object.entries(values)) document.getElementById(id).value = String(value);
                 // Das Ergebnis des Öffnungsbacktests ist der Ausgangsstand vor beiden Probeläufen.
-                const probe = window.__optimizerProbe = { guard: getPageNavigationGuard(document), gates: [], ended: [], opening: window.globalBacktestData };
-                const metrics = { metricContract: { schemaVersion: 'AutoOptimizeMetricResultV1' },
-                    medianEndWealth: 500000, successProbFloor: 1, worst5Drawdown: 0,
-                    depletionRate: 0, timeShareWRgt45: 0, medianWithdrawalRate: 0.03 };
+                const probe = window.__backtestProbe = { guard: getPageNavigationGuard(document), ended: [], opening: window.globalBacktestData };
                 probe.start = () => {
-                    probe.gates = []; probe.ended = [];
-                    probe.ao = handleRunAutoOptimize({ readConfig: () => ({
-                        objective: { metric: 'EndWealth_P50', direction: 'max' },
-                        params: { liquidityRunwayYears: { min: 1, max: 10, step: 0.5 } },
-                        runsPerCandidate: 2, seedsTrain: 1, seedsTest: 1, constraints: {}, maxDauer: 2
-                    }), run: config => runAutoOptimize({ ...config, evaluateCandidateFn: async () => {
-                        if (!probe.released) await new Promise(resolve => probe.gates.push(resolve));
-                        return metrics;
-                    } }) }).then(() => { probe.ended.push('ao'); });
+                    probe.ended = []; probe.loaderResolve = null;
                     probe.bt = runBacktestWithRuntimeProvenance({ loadRuntimeBuildProvenance: () => new Promise((resolve, reject) => {
                         probe.loaderResolve = resolve; probe.loaderReject = reject;
                     }) }).then(() => { probe.ended.push('bt'); });
                 };
-                probe.cancel = () => Promise.all([cancelAutoOptimize(), cancelBacktestPreparation()]);
+                probe.cancel = () => cancelBacktestPreparation();
                 probe.start();
             });
-            await page.waitForFunction(() => window.__optimizerProbe.gates.length === 4 && !!window.__optimizerProbe.loaderResolve);
+            await page.waitForFunction(() => !!window.__backtestProbe.loaderResolve);
             const link = page.locator('.suite-navigation a[href="Handbuch.html"]');
             await link.focus(); await page.keyboard.press('Enter');
             await page.locator('#navigationGuardStay').click();
             await waitForNavigationDecisionSettled(page);
-            assert(await page.evaluate(() => window.__optimizerProbe.guard.reasons().filter(reason => ['running', 'preparing'].includes(reason.phase)).length === 2),
-                'Bleiben erhält reale AO-Evaluationen und Backtestvorbereitung');
+            assert(await page.evaluate(() => window.__backtestProbe.guard.reasons().filter(reason => ['running', 'preparing'].includes(reason.phase)).length === 1),
+                'Bleiben erhält die reale Backtestvorbereitung');
             // Eigener Abbruch, danach echter erneuter Start auf demselben Dokument.
             await page.evaluate(() => {
-                const probe = window.__optimizerProbe;
+                const probe = window.__backtestProbe;
                 probe.cancelled = probe.cancel();
-                probe.loaderResolve(null); probe.gates.forEach(resolve => resolve());
+                probe.loaderResolve(null);
             });
-            await page.evaluate(() => window.__optimizerProbe.cancelled);
-            assert(await page.evaluate(() => !window.aoChampionResult && window.globalBacktestData === window.__optimizerProbe.opening),
-                'Abgebrochene Erstläufe erzeugen keine verspäteten Ergebnisse');
-            await page.evaluate(() => { window.__optimizerProbe.released = false; window.__optimizerProbe.start(); });
-            await page.waitForFunction(() => window.__optimizerProbe.gates.length === 4);
+            await page.evaluate(() => window.__backtestProbe.cancelled);
+            assert(await page.evaluate(() => window.globalBacktestData === window.__backtestProbe.opening),
+                'Abgebrochener Erstlauf erzeugt kein verspätetes Ergebnis');
+            await page.evaluate(() => window.__backtestProbe.start());
+            await page.waitForFunction(() => !!window.__backtestProbe.loaderResolve);
+            await page.evaluate(() => window.__backtestProbe.loaderResolve(null));
+            await page.waitForFunction(() => window.__backtestProbe.ended.length === 1);
+            assert(await page.evaluate(() => !!window.globalBacktestData?.result
+                && window.globalBacktestData !== window.__backtestProbe.opening),
+                'Erneuter Start veröffentlicht ein echtes Backtesthandler-Ergebnis');
             await page.evaluate(() => {
-                const probe = window.__optimizerProbe; probe.released = true;
-                probe.gates.forEach(resolve => resolve()); probe.loaderResolve(null);
+                const probe = window.__backtestProbe;
+                probe.oldBT = window.globalBacktestData;
+                probe.start(); window.__suiteProbe.steps = [];
             });
-            await page.waitForFunction(() => window.__optimizerProbe.ended.length === 2);
-            assert(await page.evaluate(() => !!window.aoChampionResult && !!window.globalBacktestData?.result
-                && window.globalBacktestData !== window.__optimizerProbe.opening),
-                'Erneuter Start veröffentlicht echte AO- und Backtesthandler-Ergebnisse');
-            await page.evaluate(() => {
-                const probe = window.__optimizerProbe;
-                probe.oldAO = window.aoChampionResult; probe.oldBT = window.globalBacktestData;
-                probe.released = false; probe.start(); window.__suiteProbe.steps = [];
-            });
-            await page.waitForFunction(() => window.__optimizerProbe.gates.length === 4);
+            await page.waitForFunction(() => !!window.__backtestProbe.loaderResolve);
             await link.focus(); await page.keyboard.press('Enter');
             await page.locator('#navigationGuardDialog[open]').waitFor();
             const description = await page.locator('#navigationGuardDescription').textContent();
-            assert(description.includes('Auto-Optimize') && description.includes('Backtest')
-                && (description.match(/Ergebnis geht verloren/g) || []).length === 2,
-                'Nachfrage kombiniert beide laufenden Gründe mit beiden Altresultaten');
+            assert(description.includes('Backtest') && (description.match(/Ergebnis geht verloren/g) || []).length === 1,
+                'Nachfrage nennt den laufenden Backtest und sein Altresultat');
             await page.locator('#navigationGuardLeave').click();
-            await page.waitForFunction(() => window.__optimizerProbe.guard.reasons().every(reason => reason.phase === 'cancelling'));
+            await page.waitForFunction(() => window.__backtestProbe.guard.reasons().every(reason => reason.phase === 'cancelling'));
             await page.evaluate(rejectLoader => {
-                const probe = window.__optimizerProbe;
+                const probe = window.__backtestProbe;
                 if (rejectLoader) probe.loaderReject(new Error('Kontrollierter später Loaderfehler')); else probe.loaderResolve(null);
-                probe.gates.slice(0, 3).forEach(resolve => resolve());
             }, rejectLoader);
-            await page.waitForFunction(() => window.__optimizerProbe.ended.includes('bt'));
-            await assertSuitePending(smoke, 'Simulator.html', '');
-            assert(await page.evaluate(() => !window.__optimizerProbe.ended.includes('ao')),
-                'Wechsel wartet auf den letzten parallelen AO-Kandidaten');
-            await page.evaluate(() => window.__optimizerProbe.gates[3]());
+            await page.waitForFunction(() => window.__backtestProbe.ended.includes('bt'));
             await page.waitForFunction(() => window.__suiteProbe.steps.includes('flush'));
-            assert(await page.evaluate(() => window.aoChampionResult === window.__optimizerProbe.oldAO
-                && window.globalBacktestData === window.__optimizerProbe.oldBT
-                && window.__optimizerProbe.gates.length === 4
-                && window.__optimizerProbe.guard.reasons().every(reason => reason.phase === 'idle' && reason.result)),
-                'Nach bestätigter Kündigung keine Folgejobs oder späten Ergebnisse; alte Resultate bleiben erhalten');
+            assert(await page.evaluate(() => window.globalBacktestData === window.__backtestProbe.oldBT
+                && window.__backtestProbe.guard.reasons().every(reason => reason.phase === 'idle' && reason.result)),
+                'Nach bestätigter Kündigung kein spätes Ergebnis; das alte Resultat bleibt erhalten');
             await completeSuiteProbe(smoke, 'Handbuch.html', 'export,flush');
             smoke.assertNoErrors();
         } finally { await smoke.close(); }
@@ -11328,7 +8978,7 @@ async function runNavigationGuardPresentation(browser, baseUrl) {
         const smoke = await createSuiteProbe(browser, baseUrl, source, { viewport: { width, height: 900 } });
         try {
             const { page } = smoke, label = `${source} ${width}×900 discard`, input = 'Ungespeicherte synthetische Tranche';
-            await waitForNavigationDecisionSettled(page);
+            await waitForNavigationGuardManagerReady(page);
             await openTrancheCreate(page);
             await page.locator('#name').fill(input);
             await page.locator('#closeTrancheModalBtn').click();
@@ -11460,7 +9110,21 @@ async function runNavigationGuardModal(browser, baseUrl) {
                     window.__modalNavigationPrompts++;
             }).observe(document.getElementById('navigationGuardDialog'), { attributes: true, attributeOldValue: true, attributeFilter: ['open'] });
         });
+        // TD-1h: Der größere Tranchendialog verdeckt die Navigation; ein Klick dort trifft den Dialog und bewirkt nichts.
         await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        assert(page.url().endsWith('/depot-tranchen-manager.html') && await page.locator('#navigationGuardDialog').isHidden()
+            && await page.locator('#trancheModal').getAttribute('aria-hidden') === 'false', 'Klick auf die verdeckte Navigation navigiert nicht und schließt nichts');
+        // Echter Hintergrundpunkt: der Rand des Dialoghintergrunds außerhalb des Dialogfensters.
+        const backdropPoint = await page.evaluate(() => {
+            const modal = document.getElementById('trancheModal');
+            for (const [x, y] of [[4, innerHeight - 4], [innerWidth - 4, innerHeight - 4], [4, 4], [innerWidth - 4, 4]]) {
+                if (document.elementFromPoint(x, y) === modal) return { x, y };
+            }
+            return null;
+        });
+        assert(backdropPoint, 'Dialoghintergrund ist an einem Rand erreichbar');
+        await page.mouse.click(backdropPoint.x, backdropPoint.y);
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         assert(page.url().endsWith('/depot-tranchen-manager.html') && await page.locator('#navigationGuardDialog').isVisible(),
             'Vollständiger Hintergrundklick öffnet bei geänderten Angaben die Schutzfrage');
@@ -11810,13 +9474,13 @@ async function runNavigationGuardManagerPricePreparation(browser, baseUrl) {
             window.fetch = (url, options) => String(url).startsWith('http://127.0.0.1:8787')
                 ? new Promise(resolve => window.__managerQuotes.push({ url: String(url), resolve })) : original(url, options);
         });
-        await page.locator('#updatePricesBtn').click(); await page.waitForFunction(() => window.__managerQuotes.length === 3);
+        await page.locator('#managerQuoteRefresh').click(); await page.waitForFunction(() => window.__managerQuotes.length === 12); // KF-1: je .DE-Ticker Xetra, Stuttgart, Düsseldorf, München
         assert(await page.locator('#profileTagesgeld').isDisabled(), 'Profilautosave-Feld verhindert Nutzereingaben bereits während der Kursvorbereitung');
         const link = page.locator('.suite-navigation a[href="Handbuch.html"]');
         await link.click(); await page.locator('#navigationGuardDialog[open]').waitFor();
         await page.locator('#navigationGuardStay').click();
         await waitForNavigationDecisionSettled(page);
-        assert(await page.evaluate(() => window.__managerQuotes.length) === 3, 'Bleiben erhält den laufenden Batch');
+        assert(await page.evaluate(() => window.__managerQuotes.length) === 12, 'Bleiben erhält den laufenden Batch');
         assert(await page.locator('#profileTagesgeld').isDisabled(), 'Bleiben gibt das Profilfeld bei weiterlaufendem Kursbatch nicht frei');
         await link.click(); await page.locator('#navigationGuardLeave').click();
         await initializeBrowserSmokeNavigationGuard(page);
@@ -11824,7 +9488,7 @@ async function runNavigationGuardManagerPricePreparation(browser, baseUrl) {
         assert(page.url().endsWith('/depot-tranchen-manager.html'), 'Angenommene Kurskündigung wartet Jobenden vor Navigation');
         await page.evaluate(() => window.__managerQuotes[0].resolve(new Response('{}', { status: 404 })));
         assert(page.url().endsWith('/depot-tranchen-manager.html'), 'Ein Jobende reicht nicht für Navigation');
-        await page.evaluate(() => { for (const [index, request] of window.__managerQuotes.entries()) if (index) request.resolve(new Response(JSON.stringify({ symbol: `TEST${index}.DE`, price: 150, currency: 'EUR', asOf: Math.floor(Date.now() / 1000) }))); });
+        await page.evaluate(() => { for (const [index, request] of window.__managerQuotes.entries()) if (index) request.resolve(new Response(JSON.stringify({ symbol: new URL(request.url).searchParams.get('symbol'), price: 150, currency: 'EUR', asOf: Math.floor(Date.now() / 1000) }))); });
         await page.waitForURL('**/Handbuch.html');
         assert((await readIndexedDb(page, 'kv', 'depot_tranchen')).value === before, 'Späte Quotes starten nach Kündigung keine Persistenz');
         smoke.assertNoErrors();
@@ -11832,10 +9496,10 @@ async function runNavigationGuardManagerPricePreparation(browser, baseUrl) {
 }
 
 // Ausschließlich Browser-Testadapter: hält die echte Replace-/Readback-/Rollbackkette.
-async function installHistoryAdapterBarrier(context, { annual = false, stage = 'write' } = {}) {
-    await context.addInitScript(({ annual, stage }) => {
-        window.__historyWriteProbe = { annual, stage, entered: false, held: false, written: false, failed: false, release: null };
-    }, { annual, stage });
+async function installHistoryAdapterBarrier(context, { stage = 'write' } = {}) {
+    await context.addInitScript(({ stage }) => {
+        window.__historyWriteProbe = { stage, entered: false, held: false, written: false, failed: false, release: null };
+    }, { stage });
     await context.route('**/app/shared/persistence-adapter-indexeddb.js', async route => {
         const response = await route.fetch();
         const source = await response.text();
@@ -11846,7 +9510,7 @@ async function installHistoryAdapterBarrier(context, { annual = false, stage = '
         const body = source.replace(writeAnchor, `${writeAnchor}
             const probe = window.__historyWriteProbe;
             const state = JSON.parse(records.ruhestandsmodellValues_v29_guardrails || '{}');
-            const target = state.wealthHistory?.entries?.some(entry => probe.annual ? entry.id === 'annual:2026' : entry.reason === 'manual');
+            const target = state.wealthHistory?.entries?.some(entry => entry.id === 'annual:2026');
             if (!probe.held && (target && probe.stage === 'write' || probe.failed && probe.stage === 'rollback')) { ${pause} }
             if (target) probe.written = true;`)
             .replace(readAnchor, `${readAnchor}
@@ -11854,110 +9518,6 @@ async function installHistoryAdapterBarrier(context, { annual = false, stage = '
             if (probe.written && probe.stage === 'readback' && !probe.held) { ${pause} }`);
         await route.fulfill({ response, body });
     });
-}
-
-async function createWealthNavigationProbe(browser, baseUrl, stage) {
-    const smoke = await createPage(browser, 'Navigation guard wealth writes', {
-        storage: createBalanceStorage(2026), observeWealthUpdates: true, fixedTime: '2027-01-15T12:00:00+01:00'
-    });
-    await installHistoryAdapterBarrier(smoke.context, { stage });
-    await smoke.page.goto(`${baseUrl}/Balance.html`);
-    await waitBalanceHouseholdList(smoke.page);
-    await waitForWealthBrowserIdle(smoke.page);
-    await smoke.page.locator('.tab-btn[data-tab="history"]').click();
-    await smoke.page.evaluate(async stage => {
-        const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
-        const probe = window.__historyWriteProbe;
-        if (stage === 'preflush') {
-            const { getPageNavigationGuard } = await import('./app/shared/navigation-guard-dialog.js');
-            const guard = getPageNavigationGuard(document, window);
-            const flush = PersistenceFacade.flush;
-            // Die Erfassung wartet zuerst auf den Übersichtwriter der Klickvorschau; dessen Flush ist bereits
-            // ein Commit (Guardgrund „commit“, stilles Warten). Gehalten wird erst der eigene Vorflush der
-            // Erfassung: der erste Flush, während sie vorbereitet und kein Commitwriter mehr läuft.
-            PersistenceFacade.flush = async () => {
-                const reasons = guard.reasons();
-                if (!probe.held && reasons.some(reason => reason.phase === 'preparing')
-                    && !reasons.some(reason => reason.phase === 'commit')) {
-                    probe.held = true; probe.entered = true;
-                    await new Promise(resolve => { probe.release = resolve; });
-                }
-                return flush();
-            };
-        }
-        if (stage === 'rollback') {
-            const replace = PersistenceFacade.replaceRecordsTransactional;
-            PersistenceFacade.replaceRecordsTransactional = (records, options) => replace(records, { ...options,
-                postValidate: confirmed => {
-                    if (!probe.failed) { probe.failed = true; throw new Error('SYNTHETIC_HISTORY_POSTVALIDATION'); }
-                    return options.postValidate(confirmed);
-                }
-            });
-        }
-    }, stage);
-    return smoke;
-}
-
-async function runNavigationGuardWealthWrites(browser, baseUrl) {
-    for (const stage of ['preflush', 'write', 'readback', 'rollback']) {
-        const smoke = await createWealthNavigationProbe(browser, baseUrl, stage);
-        try {
-            const { page } = smoke;
-            const before = (await readIndexedDb(page, 'kv', BALANCE_STATE_KEY)).value;
-            await page.locator('#captureWealthBtn').click();
-            await page.waitForFunction(() => window.__historyWriteProbe.entered);
-            const link = page.locator('.suite-navigation a[href="Handbuch.html"]');
-            await link.focus(); await page.keyboard.press('Enter');
-            if (stage === 'preflush') {
-                await page.locator('#navigationGuardDialog[open]').waitFor();
-                await page.locator('#navigationGuardStay').click();
-                await waitForNavigationDecisionSettled(page);
-                assert(await page.locator('#captureWealthBtn').isDisabled(), 'Bleiben erhält reale manuelle Vorbereitung');
-                await link.focus(); await page.keyboard.press('Enter');
-                await page.locator('#navigationGuardLeave').click();
-                await initializeBrowserSmokeNavigationGuard(page);
-                await page.waitForFunction(() => {
-                    return window.__browserSmokeNavigationGuard.reasons().some(reason => reason.phase === 'cancelling');
-                });
-                assert(page.url().endsWith('/Balance.html'), 'App-Enter wartet nach Zustimmung auf Capturehandlerende');
-                await page.evaluate(() => window.__historyWriteProbe.release());
-                await page.waitForURL('**/Handbuch.html');
-                assert((await readIndexedDb(page, 'kv', BALANCE_STATE_KEY)).value === before, 'Vorflushkündigung schreibt keinen späteren Verlaufsrecord');
-            } else {
-                assert(page.url().endsWith('/Balance.html'), `${stage}: App-Enter bleibt während realer Verlaufstransaktion gesperrt`);
-                assert(await page.locator('#navigationGuardDialog').isHidden(), `${stage}: Commit öffnet keine Verlustnachfrage`);
-                await page.evaluate(() => window.__historyWriteProbe.release());
-                await waitForPageCondition(page, async () => !(await import('./app/shared/navigation-guard-dialog.js')).getPageNavigationGuard(document, window).isBusy());
-                if (stage === 'rollback') {
-                    await page.locator('#wealthHistoryStatus').filter({ hasText: 'Stand nicht bestätigt' }).waitFor();
-                    assert((await readIndexedDb(page, 'kv', BALANCE_STATE_KEY)).value === before, 'Verlaufsrollback erhält vorherigen bestätigten Bestand');
-                    await page.locator('#captureWealthBtn').click();
-                }
-                await page.locator('#wealthHistoryStatus').filter({ hasText: 'Stand gesichert' }).waitFor();
-                const after = JSON.parse((await readIndexedDb(page, 'kv', BALANCE_STATE_KEY)).value);
-                assert(after.wealthHistory.entries.filter(entry => entry.reason === 'manual').length === 1, `${stage}: erneut bedienbare Erfassung bestätigt genau einen Tagesrecord`);
-                await link.focus(); await page.keyboard.press('Enter'); await page.waitForURL('**/Handbuch.html');
-            }
-            smoke.assertNoErrors(['SYNTHETIC_HISTORY_POSTVALIDATION']);
-        } finally { await smoke.close(); }
-    }
-    for (const accept of [false, true]) {
-        const smoke = await createWealthNavigationProbe(browser, baseUrl, 'write');
-        try {
-            const { page } = smoke;
-            const before = (await readIndexedDb(page, 'kv', BALANCE_STATE_KEY)).value;
-            await page.locator('#captureWealthBtn').click(); await page.waitForFunction(() => window.__historyWriteProbe.entered);
-            await nativeNavigationAttempt(page, { kind: 'navigate', accept, target: `${baseUrl}/Handbuch.html`, verify: async () => {
-                assert((await readIndexedDb(page, 'kv', BALANCE_STATE_KEY)).value === before, 'Native Entscheidung vor Adapterwrite bewahrt bestätigten Verlauf');
-                if (!accept) {
-                    assert(await page.locator('#captureWealthBtn').isDisabled(), 'Native Ablehnung erhält laufenden Capturehandler');
-                    await page.evaluate(() => window.__historyWriteProbe.release());
-                    await page.locator('#wealthHistoryStatus').filter({ hasText: 'Stand gesichert' }).waitFor();
-                }
-            } });
-            smoke.assertNoErrors();
-        } finally { await smoke.close(); }
-    }
 }
 
 async function runNavigationGuardAnnualFinalization(browser, baseUrl) {
@@ -12008,7 +9568,7 @@ async function createAnnualNavigationProbe(browser, baseUrl, { preparing = false
         storage: withClosingYearExpenseEvidence(createBalanceStorage(2026), 2026), annualFixtures: { targetYear: 2026 },
         observeWealthUpdates: true, fixedTime: '2027-01-15T12:00:00+01:00'
     });
-    if (adapterStage) await installHistoryAdapterBarrier(smoke.context, { annual: true, stage: adapterStage });
+    if (adapterStage) await installHistoryAdapterBarrier(smoke.context, { stage: adapterStage });
     await smoke.context.addInitScript(({ preparing, failFinalize }) => {
         window.__annualNavigationProbe = { preparing, failFinalize, entered: false, release: null };
     }, { preparing, failFinalize });
@@ -12172,10 +9732,8 @@ async function restoreFullImportRecovery(page, snapshots, before) {
         window.__importRecoveryDocument = crypto.randomUUID();
         return window.__importRecoveryDocument;
     });
-    await revealDataSnapshot(page.locator(`[data-restore-preview="${recovery.snapshot.id}"]`));
-    await page.locator(`[data-restore-preview="${recovery.snapshot.id}"]`).click();
-    await page.locator('#dataRestorePreview').waitFor({ state: 'visible' });
-    await page.locator('#dataRestoreConfirm').click();
+    await page.locator(`[data-restore-point="${recovery.snapshot.id}"]`).click();
+    await answerPageDialog(page, { label: 'Zurückholen' });
     await page.waitForFunction(id => window.__importRecoveryDocument !== id, documentId);
     await waitForImportNavigationReady(page, 'json');
     const restoredInputs = JSON.parse((await readIndexedDb(page, 'kv', BALANCE_STATE_KEY)).value).inputs;
@@ -12266,19 +9824,11 @@ async function createImportNavigationProbe(browser, baseUrl, { kind, stage, roll
         // Der Vollimport committet über guard.reload und besitzt deshalb die Navigationsmutation.
         probeKey: '__importNavigationProbe', stage, failRollback: rollbackFails, ownerDescription: kind === 'full' ? 'navigation-mutation' : 'persistence-operation'
     });
-    // Fehler nach dem tatsächlichen JSON-/CSV-Replace, ohne den Handler zu ersetzen.
-    if (stage === 'rollback' && kind !== 'full') await smoke.context.route('**/app/balance/balance-file-service.js', async route => {
-        const response = await route.fetch();
-        const body = (await response.text()).replace('if (!final?.ok)',
-            "if (!final?.ok || window.__importNavigationProbe?.stage === 'rollback')");
-        await route.fulfill({ response, body });
-    });
     await smoke.page.goto(`${baseUrl}/${importNavigationEntry(kind)}`);
     await waitForImportNavigationReady(smoke.page, kind);
     const payload = await smoke.page.evaluate(async ({ kind, stage }) => {
         const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
         const { SnapshotArchive } = await import('./app/shared/snapshot-archive.js');
-        const { createBalanceExportDocument } = await import('./app/balance/balance-binder-imports.js');
         const { buildFullPersistenceBackup } = await import('./app/shared/persistence-backup.js');
         const probe = window.__importNavigationProbe ||= { stage, entered: false, release: null, writes: 0 };
         const pause = async () => {
@@ -12288,9 +9838,8 @@ async function createImportNavigationProbe(browser, baseUrl, { kind, stage, roll
             probe.released = true;
         };
         const state = JSON.parse(PersistenceFacade.getItemSync('ruhestandsmodellValues_v29_guardrails'));
-        const document = createBalanceExportDocument({ ...state, inputs: { ...state.inputs, aktuellesAlter: 68 } });
         const backup = buildFullPersistenceBackup();
-        backup.records.ruhestandsmodellValues_v29_guardrails = JSON.stringify(document.payload);
+        backup.records.ruhestandsmodellValues_v29_guardrails = JSON.stringify({ ...state, inputs: { ...state.inputs, aktuellesAlter: 68 } });
         // Personenschema 1 kennt kein gespeichertes Alter mehr; das Geburtsdatum trägt die Änderung.
         backup.records.profile_geburtsdatum = '1957-03-14';
         const backupRegistry = JSON.parse(backup.records.rs_profiles_v1);
@@ -12344,7 +9893,7 @@ async function createImportNavigationProbe(browser, baseUrl, { kind, stage, roll
                 };
             }
         }
-        return JSON.stringify(kind === 'full' ? backup : document);
+        return JSON.stringify(backup);
     }, { kind, stage });
     const csv = 'Datum;Schluss\n30.12.2023;100\n30.12.2024;110\n30.12.2025;120\n30.12.2026;130';
     smoke.start = async () => {
@@ -12358,13 +9907,7 @@ async function createImportNavigationProbe(browser, baseUrl, { kind, stage, roll
             assert(await input.element().getAttribute('id') === 'fullBackupImportFile', 'Vollimport bedient tatsächliches Dateifeld der Sicherungsseite');
             await input.setFiles(file);
             if (stage !== 'file') await answerPageDialog(smoke.page, { label: 'Backup importieren' });
-        } else {
-            if (kind === 'json') {
-                await smoke.page.locator('#balance-austausch > summary').click();
-                await smoke.page.locator('#dataBalanceFile').setInputFiles(file);
-                if (stage !== 'file') await answerPageDialog(smoke.page, { label: 'Balance importieren' });
-            } else { await smoke.page.locator('.tab-btn[data-tab="strategy"]').click(); await smoke.page.locator('#csvFileInput').setInputFiles(file); }
-        }
+        } else { await smoke.page.locator('.tab-btn[data-tab="strategy"]').click(); await smoke.page.locator('#csvFileInput').setInputFiles(file); }
         await smoke.page.waitForFunction(() => window.__importNavigationProbe.entered);
         if (['write', 'rollback'].includes(stage)) await assertReplaceCommitOwner(smoke.page, '__importNavigationProbe', stage);
     };
@@ -12372,8 +9915,8 @@ async function createImportNavigationProbe(browser, baseUrl, { kind, stage, roll
 }
 
 async function runNavigationGuardImports(browser, baseUrl) {
-    // Markt-CSV-Bedienung entfiel auf Nutzerentscheid (05.10.2026, Inventar B06/B10/B11/B24); Voll- und JSON-Import bleiben geschützt.
-    for (const kind of ['full', 'json']) for (const stage of ['file', 'flush', 'snapshotRead', 'write', 'rollback']) {
+    // Markt-CSV-Bedienung entfiel auf Nutzerentscheid (05.10.2026, Inventar B06/B10/B11/B24); der Balance-Import mit AK-1. Der Vollimport bleibt geschützt.
+    for (const kind of ['full']) for (const stage of ['file', 'flush', 'snapshotRead', 'write', 'rollback']) {
         const smoke = await createImportNavigationProbe(browser, baseUrl, { kind, stage });
         try {
             const { page } = smoke;
@@ -12446,7 +9989,7 @@ async function runNavigationGuardImports(browser, baseUrl) {
                 const countReload = frame => { if (frame === page.mainFrame()) reloads++; };
                 page.on('framenavigated', countReload);
                 await page.evaluate(() => window.__importNavigationProbe.release());
-                if (stage === 'write' && kind === 'full') {
+                if (stage === 'write') {
                     await page.waitForFunction(id => window.__nativeDocumentProbe !== id, documentId);
                     await waitForImportNavigationReady(page, kind);
                     assert(reloads === 1, 'Erfolgreicher Vollimport lädt genau einmal neu');
@@ -12461,48 +10004,22 @@ async function runNavigationGuardImports(browser, baseUrl) {
                     if (stage === 'rollback') {
                         assert((await readIndexedDb(page, 'kv', BALANCE_STATE_KEY)).value === before, 'Echter verzögerter Importrollback stellt Bestandsbytes wieder her');
                         const liveAfter = await readLiveRecordBytes(page);
-                        if (kind === 'full') {
-                            assert(liveAfter === liveBefore, 'Importrollback stellt sämtliche vorherigen Livebytes wieder her');
-                        } else {
-                            // Die Balance-Wiederherstellung frischt danach bewusst die Profilkopie des aktiven Profils
-                            // aus dem Livebestand auf (normalisierte Haushaltsfelder, updatedAt). Alles andere bleibt bytegleich,
-                            // die Profilkopie entspricht inhaltlich dem wiederhergestellten Balance-State.
-                            const rows = raw => Object.fromEntries(JSON.parse(raw));
-                            const [a, b] = [rows(liveBefore), rows(liveAfter)];
-                            // Seit Daten & Sicherung liest der Importkontext Balance erstmals auf dieser Seite; loadState() setzt dabei
-                            // den idempotenten Migrationsmarker wie jeder erste Balance-Start. Er ist keine Importänderung.
-                            if (!Object.hasOwn(a, 'migration_v29_inflation_sanitized') && b.migration_v29_inflation_sanitized === '1') delete b.migration_v29_inflation_sanitized;
-                            const activeId = b.rs_current_profile || b.rs_active_profile;
-                            const withoutActiveCopy = raw => { const r = JSON.parse(raw); delete r.profiles?.[activeId]?.data; delete r.profiles?.[activeId]?.meta?.updatedAt; return JSON.stringify(r); };
-                            assert(JSON.stringify(Object.keys(a)) === JSON.stringify(Object.keys(b))
-                                && Object.keys(a).every(key => key === 'rs_profiles_v1' ? withoutActiveCopy(a[key]) === withoutActiveCopy(b[key]) : a[key] === b[key]),
-                            'Importrollback stellt sämtliche vorherigen Livebytes außer der bewusst aufgefrischten Profilkopie wieder her');
-                            const copy = JSON.parse(JSON.parse(b.rs_profiles_v1).profiles[activeId].data[BALANCE_STATE_KEY]);
-                            assert(JSON.stringify(copy.inputs) === JSON.stringify(JSON.parse(b[BALANCE_STATE_KEY]).inputs),
-                                'Aufgefrischte Profilkopie entspricht dem wiederhergestellten Balance-State');
-                        }
-                        assert(JSON.stringify(await readImportSnapshots(page)) === JSON.stringify(snapshotsBeforeEnd),
-                            'Importrollback erhält sämtliche archivierten Snapshotrecords bytegleich');
-                        const errorHost = kind === 'full' ? '#fullBackupStatus' : '#dataExchangeStatus';
+                        assert(liveAfter === liveBefore, 'Importrollback stellt sämtliche vorherigen Livebytes wieder her');
+                        const errorHost = '#fullBackupStatus';
                         assert(await page.locator(errorHost).isVisible(), 'Importfehler bleibt an seinem Aktionsort erreichbar');
                         assert(await readIndexedDb(page, 'snapshots', null) >= 1, 'Recovery-Snapshot bleibt nach Fehler vorhanden');
-                        if (kind === 'full') {
-                            assert((await page.locator(errorHost).textContent()).includes('Wiederherstellungspunkt')
-                                && (await page.locator(errorHost).textContent()).includes('Daten & Sicherung'),
-                                'Startseite nennt Recoverypunkt und bestehenden Balance-Wiederherstellungsweg');
-                            const importText = await page.locator(errorHost).textContent();
-                            assert(importText.includes('Dein bisheriger Stand ist unverändert.')
-                                && !/snapshot_|\[restore_rolled_back\]|\[rollback_failed\]|SYNTHETIC_IMPORT_POSTVALIDATION/.test(importText),
-                                'Vollrollback bestätigt unveränderten Stand ohne technische Restoredetails');
-                            assert(JSON.stringify(await readImportSnapshots(page)) === JSON.stringify(snapshotsBeforeEnd),
-                                'Vollrollback erhält gesamten archivierten Snapshotbestand bytegleich');
-                            // Bekannt rot (A3): Nach dem fehlgeschlagenen Vollimport aktualisiert die Seite die Punkteliste nicht.
-                            assert(await page.locator('[data-restore-preview]').count() >= 1, 'Recovery ist auf der Sicherungsseite erreichbar');
-                            await restoreFullImportRecovery(page, snapshotsBeforeEnd, before);
-                        } else {
-                            // Ohne künstliches Listenereignis: Der neue Punkt muss ohne Reload erreichbar sein (bekannt rot: A3).
-                            assert(await page.locator('[data-restore-preview]').count() >= 1, 'Neuer Import-Recoverypunkt bleibt ohne Reload erreichbar');
-                        }
+                        assert((await page.locator(errorHost).textContent()).includes('Wiederherstellungspunkt')
+                            && (await page.locator(errorHost).textContent()).includes('Daten & Sicherung'),
+                            'Startseite nennt Recoverypunkt und bestehenden Balance-Wiederherstellungsweg');
+                        const importText = await page.locator(errorHost).textContent();
+                        assert(importText.includes('Dein bisheriger Stand ist unverändert.')
+                            && !/snapshot_|\[restore_rolled_back\]|\[rollback_failed\]|SYNTHETIC_IMPORT_POSTVALIDATION/.test(importText),
+                            'Vollrollback bestätigt unveränderten Stand ohne technische Restoredetails');
+                        assert(JSON.stringify(await readImportSnapshots(page)) === JSON.stringify(snapshotsBeforeEnd),
+                            'Vollrollback erhält gesamten archivierten Snapshotbestand bytegleich');
+                        // Bekannt rot (A3): Nach dem fehlgeschlagenen Vollimport aktualisiert die Seite die Punkteliste nicht.
+                        assert(await page.locator('[data-restore-point]').count() >= 1, 'Recovery ist auf der Sicherungsseite erreichbar');
+                        await restoreFullImportRecovery(page, snapshotsBeforeEnd, before);
                     }
                 }
             }
@@ -12569,8 +10086,8 @@ async function runNavigationGuardImports(browser, baseUrl) {
 }
 
 async function runNavigationGuardImportsNative(browser, baseUrl) {
-    // Markt-CSV-Bedienung entfiel auf Nutzerentscheid (05.10.2026, Inventar B06/B10/B11/B24); Voll- und JSON-Import bleiben geschützt.
-    for (const kind of ['full', 'json']) for (const stage of ['file', 'flush', 'snapshotRead', 'write', 'rollback']) {
+    // Markt-CSV-Bedienung entfiel auf Nutzerentscheid (05.10.2026, Inventar B06/B10/B11/B24); der Balance-Import mit AK-1. Der Vollimport bleibt geschützt.
+    for (const kind of ['full']) for (const stage of ['file', 'flush', 'snapshotRead', 'write', 'rollback']) {
         const smoke = await createImportNavigationProbe(browser, baseUrl, { kind, stage });
         try {
             await smoke.start();
@@ -12606,10 +10123,11 @@ async function runNavigationGuardSnapshotRestore(browser, baseUrl) {
                 const state = JSON.parse(records.ruhestandsmodellValues_v29_guardrails); state.personInputEvidence = { ...state.personInputEvidence, aktuellesAlter: 68 };
                 records.ruhestandsmodellValues_v29_guardrails = JSON.stringify(state);
                 const registry = JSON.parse(records.rs_profiles_v1); registry.profiles[records.rs_current_profile].data.profile_geburtsdatum = records.profile_geburtsdatum; records.rs_profiles_v1 = JSON.stringify(registry);
-                const saved = await a.createSnapshot({ id: 'synthetic-restore', activeProfileId: records.rs_current_profile, kind: full ? 'full-backup-import-recovery' : 'manual', records });
+                const saved = await a.createSnapshot({ id: 'synthetic-restore', activeProfileId: records.rs_current_profile, kind: full ? 'full-backup-import-recovery' : 'monthly-close-pre-mutation', records });
                 document.dispatchEvent(new Event('overview-backup-changed')); return saved;
             }, full);
-            const preview = page.locator(`[data-restore-preview="${saved.id}"]`); await revealDataSnapshot(preview);
+            // SV-1: „Zurückholen …“ liest den Punkt und fragt dann einfach nach.
+            const preview = page.locator(`[data-restore-point="${saved.id}"]`); await preview.waitFor({ state: 'visible' });
             if (stage === 'read') {
                 await page.evaluate(async () => {
                     const { SnapshotArchive: a } = await import('./app/shared/snapshot-archive.js'); const read = a.readSnapshot;
@@ -12620,12 +10138,12 @@ async function runNavigationGuardSnapshotRestore(browser, baseUrl) {
                 await page.locator('.suite-navigation a[href="Handbuch.html"]').click(); await page.waitForURL('**/Handbuch.html');
                 assert(await readLiveRecordBytes(page) === before, 'Navigation während schreibfreier Vorschau startet keinen Restorewrite');
             } else {
-                await preview.click(); await page.locator('#dataRestorePreview').waitFor({ state: 'visible' });
+                await preview.click(); await page.locator('#pageDialog[open]').waitFor({ state: 'visible' });
                 if (stage === 'rollback') await page.evaluate(async () => {
                     const { PersistenceFacade: p } = await import('./app/shared/persistence-facade.js'); const replace = p.replaceRecordsTransactional;
                     p.replaceRecordsTransactional = (records, options) => replace(records, { ...options, postValidate: () => ({ ok: false, message: 'SYNTHETIC_RESTORE_POSTVALIDATION' }) });
                 });
-                await activateReplaceAdapterBarrier(page, '__snapshotNavigationProbe'); await page.locator('#dataRestoreConfirm').click();
+                await activateReplaceAdapterBarrier(page, '__snapshotNavigationProbe'); await page.locator('#pageDialog [data-page-dialog-accept]').click();
                 await waitForPageCondition(page, () => window.__snapshotNavigationProbe.entered); await assertReplaceCommitOwner(page, '__snapshotNavigationProbe', stage);
                 await page.locator('.suite-navigation a[href="Handbuch.html"]').click();
                 assert(new URL(page.url()).pathname.endsWith('/Daten-Sicherung.html'), 'Appnavigation bleibt während Restorewrite und Rollback gesperrt');
@@ -12633,7 +10151,8 @@ async function runNavigationGuardSnapshotRestore(browser, baseUrl) {
                     assert(await page.evaluate(async () => (await import('./app/shared/navigation-guard-dialog.js')).getPageNavigationGuard().reasons().some(reason => reason.phase === 'commit')), 'Native Ablehnung erhält Restorebesitzer');
                 } });
                 let reloads = 0; const count = frame => { if (frame === page.mainFrame()) reloads++; }; page.on('framenavigated', count);
-                if (stage === 'input') await page.locator('#dataPersonSelect').dispatchEvent('input');
+                // AK-1: Die Seite hat kein eigenes Eingabefeld mehr; das Ereignis erreicht den Dokumentbeobachter direkt.
+                if (stage === 'input') await page.locator('body').dispatchEvent('input');
                 const loaded = stage === 'write' ? page.waitForEvent('load') : null;
                 await page.evaluate(() => window.__snapshotNavigationProbe.release());
                 if (stage === 'write') { await loaded; await openDataBrowser(page); assert(reloads === 1, 'Bestätigter Restore lädt genau einmal'); }
@@ -12641,11 +10160,11 @@ async function runNavigationGuardSnapshotRestore(browser, baseUrl) {
                     // Seit Daten & Sicherung steht im Status eine Nutzermeldung; der Restorewortlaut liegt unter „Technische Details“.
                     await page.locator('#dataRestoreStatus[data-kind="error"]').filter({ hasText: 'Bitte lade die Seite neu' }).waitFor();
                     assert((await page.locator('#dataRestoreTechnical').textContent()).includes('nicht neu geladen'), 'Technische Details nennen den gespeicherten, nicht neu geladenen Stand');
-                    assert(reloads === 0 && await page.locator('#dataRestoreConfirm').isDisabled(), 'Neue Eingabe verhindert Reload und sperrt veraltete Restorebedienung');
+                    assert(reloads === 0 && await page.locator(`[data-restore-point="${saved.id}"]`).isDisabled(), 'Neue Eingabe verhindert Reload und sperrt veraltete Restorebedienung');
                 } else {
                     await page.locator('#dataRestoreStatus[data-kind="error"]').waitFor();
                     assert(reloads === 0 && await readLiveRecordBytes(page) === before, 'Fehlgeschlagener Restore bestätigt Rollback ohne Reload');
-                    assert(await page.locator(`[data-restore-preview="${saved.id}"]`).isEnabled(), 'Recoverypunkt bleibt nach bestätigtem Rollback erreichbar');
+                    assert(await page.locator(`[data-restore-point="${saved.id}"]`).isEnabled(), 'Recoverypunkt bleibt nach bestätigtem Rollback erreichbar');
                 }
                 page.off('framenavigated', count);
             }
@@ -12712,10 +10231,10 @@ async function runNavigationGuardAnnual(browser, baseUrl) {
                 assert(new URL(page.url()).pathname.endsWith('/index.html'), 'Enter auf Rahmen-/übrigem App-Link bleibt im langen Jahrescommit');
             }
             const marketBefore = await annualSourceFields(page);
-            for (const key of ['j', 'e', 'i', 'n']) await page.keyboard.press(`Alt+${key}`);
+            for (const key of ['j', 'n']) await page.keyboard.press(`Alt+${key}`);
             assert(await annualSourceFields(page) === marketBefore,
                 'Tastenkürzel verändert im laufenden Commit weder Alter noch Marktdatenfelder');
-            assert(downloads === 0 && choosers === 0, 'Alt+E/I öffnet im Commit weder Export noch Dateiauswahl');
+            assert(downloads === 0 && choosers === 0, 'Tastenkürzel öffnen im Commit weder Download noch Dateiauswahl');
             assert(await readIndexedDb(page, 'snapshots', null) === 1, 'Ein Tastenkürzel startet im Commit keinen zweiten Jahresprozess');
             assert((await readBalanceBrowserState(page)).annualPeriodMetadata.pendingCommit.snapshotId === pending.snapshotId,
                 'Alt+N verändert weder laufende Periode noch Snapshot');
@@ -12741,12 +10260,11 @@ async function runNavigationGuardAnnual(browser, baseUrl) {
             await page.keyboard.press('Escape');
             assert(await page.locator('#balanceAnnualClose').isHidden(), 'Jahresdialog schließt nach Handlerende wieder');
             await openDataBrowser(page);
-            const restore = page.locator(`[data-restore-preview="${pending.snapshotId}"]`);
-            await revealDataSnapshot(restore);
+            const restore = page.locator(`[data-restore-point="${pending.snapshotId}"]`);
+            await restore.waitFor({ state: 'visible' });
             assert(await restore.isEnabled(), 'Recoveryrestore ist über Einstellungen/Archiv sichtbar bedienbar');
             const restored = page.waitForEvent('load');
-            await restore.click(); await page.locator('#dataRestorePreview').waitFor({ state: 'visible' });
-            await page.locator('#dataRestoreConfirm').click(); await restored;
+            await restore.click(); await answerPageDialog(page, { label: 'Zurückholen' }); await restored;
             await page.locator('.suite-navigation a[href="Balance.html"]').click(); await page.waitForURL('**/Balance.html');
             await waitBalanceHouseholdList(page);
             assert(await annualSourceFields(page) === ageBefore, 'Wiederherstellung erhält die ursprünglichen Jahreseingaben');
@@ -12848,7 +10366,7 @@ async function runNavigationGuardAnnualNative(browser, baseUrl) {
                     await openOverviewAnnual(page);
                     await page.waitForURL('**/Daten-Sicherung.html?punkt=*#wiederherstellung');
                     await waitForPageCondition(page, () => document.documentElement.dataset.dataReady === 'true');
-                    assert(await page.locator(`[data-restore-preview="${snapshotId}"]`).count() === 1,
+                    assert(await page.locator(`[data-restore-point="${snapshotId}"]`).count() === 1,
                         'Akzeptierter nativer Reload benötigt Recovery, hält aber keinen aktiven Dauerlock');
                 } else assert(new URL(page.url()).pathname.endsWith('/Handbuch.html'), 'Native Zustimmung darf das Dokument verlassen');
             } });
@@ -13345,9 +10863,11 @@ async function runNavigationGuardNativePaths(browser, baseUrl) {
         const storage = editor === 'tranche'
             ? createBrowserProfileStorage({ 'guard-native': { name: 'Synthetischer nativer Test', tranchesRaw: '[]' } }, 'guard-native')
             : managerNavigationStorage({ pendingCash: editor === 'cash-confirm' });
-        const smoke = await openSmokePage(browser, baseUrl, 'depot-tranchen-manager.html', { storage });
+        const smoke = await createPage(browser, 'depot-tranchen-manager.html', { storage });
         try {
             const { page } = smoke;
+            await page.goto(`${baseUrl}/depot-tranchen-manager.html`);
+            await waitForNavigationGuardManagerReady(page);
             // Echte Aktivierung und echte Dirty-Provider, kein dispatchEvent(beforeunload).
             const draft = await openNativeManagerEditor(page, editor, `Native Verlustprobe ${editor}`);
             await nativeNavigationAttempt(page, { kind, accept, target: `${baseUrl}/Handbuch.html`, verify: async () => {
@@ -13356,7 +10876,7 @@ async function runNavigationGuardNativePaths(browser, baseUrl) {
                     await assertNativeManagerEditorRetained(page, draft);
                 } else if (kind === 'navigate') assert(new URL(page.url()).pathname.endsWith('/Handbuch.html'), 'Native Zustimmung navigiert zum Ziel');
                 else if (kind === 'reload') {
-                    await page.locator('#depotAddTrancheBtn').waitFor();
+                    await waitForNavigationGuardManagerReady(page);
                     assert(await page.locator(draft.modal).getAttribute('aria-hidden') === 'true', 'Akzeptierter nativer Reload ersetzt Dokument und ungespeicherte Eingaben');
                     if (draft.auditBefore) assert(registryWithoutActiveUpdatedAt((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value, draft.auditActiveId)
                         === registryWithoutActiveUpdatedAt(draft.auditBefore, draft.auditActiveId),
@@ -13367,7 +10887,7 @@ async function runNavigationGuardNativePaths(browser, baseUrl) {
         } finally { await smoke.close(); }
     }
     for (const editor of ['cash-confirm', 'cash-correct']) {
-        const smoke = await openSmokePage(browser, baseUrl, 'depot-tranchen-manager.html', {
+        const smoke = await createPage(browser, 'depot-tranchen-manager.html', {
             storage: managerNavigationStorage({ pendingCash: editor === 'cash-confirm' })
         });
         const { page } = smoke;
@@ -13375,6 +10895,8 @@ async function runNavigationGuardNativePaths(browser, baseUrl) {
         const responses = [];
         const listener = dialog => { prompts++; responses.push(dialog.accept()); };
         try {
+            await page.goto(`${baseUrl}/depot-tranchen-manager.html`);
+            await waitForNavigationGuardManagerReady(page);
             const draft = await openNativeManagerEditor(page, editor, '', { dirty: false });
             const documentId = await page.evaluate(() => {
                 window.__cleanCashDocument = crypto.randomUUID();
@@ -13383,7 +10905,7 @@ async function runNavigationGuardNativePaths(browser, baseUrl) {
             page.on('dialog', listener);
             await page.reload();
             await Promise.all(responses);
-            await page.locator('#depotAddTrancheBtn').waitFor();
+            await waitForNavigationGuardManagerReady(page);
             assert(prompts === 0, 'Sauber geöffneter Cashdialog lädt ohne native Nachfrage neu');
             assert(await page.evaluate(() => window.__cleanCashDocument) !== documentId, 'Sauberer Reload ersetzt tatsächlich das Dokument');
             assert(await page.locator(draft.modal).getAttribute('aria-hidden') === 'true', 'Sauberer Reload schließt den Cashdialog');
@@ -13833,6 +11355,14 @@ async function runFuturePensionMigration(browser, baseUrl) {
 }
 
 // P12e: produktive Monatsprojektion und tatsächliche Regionen, externe Ausführung erforderlich.
+/** OP-3 Punkt 4: Öffnet jede geschlossene Personenkarte über ihren eigenen Knopf (früher „Alle Details zeigen“). */
+async function openManagerCards(page) {
+    for (const card of ['Person', 'Income', 'Assets', 'Care']) {
+        const body = page.locator(`#manager${card}Body`);
+        if (await body.count() && await body.isHidden()) await page.locator(`#manager${card}Toggle`).click();
+    }
+}
+
 async function runManagerCurrentIncome(browser, baseUrl) {
     const storage = createBrowserProfileStorage({
         'income-a': { name: 'Einkommen A', extraData: { profile_rente_monatlich: '650', profile_rentenbeginn: '2028-07-15' } },
@@ -13848,12 +11378,10 @@ async function runManagerCurrentIncome(browser, baseUrl) {
                 open: !document.getElementById(`manager${card}Body`).hidden,
                 aria: document.getElementById(`manager${card}Toggle`).getAttribute('aria-expanded')
             }));
-            const all = document.getElementById('managerCardsToggleAll');
-            return { cards, all: all.getAttribute('aria-expanded'), text: all.textContent };
+            return { cards, all: document.getElementById('managerCardsToggleAll') };
         });
-        const all = state.cards.every(card => card.open);
-        assert(state.cards.every(card => card.aria === String(card.open)) && state.all === String(all)
-            && state.text === (all ? '▾ Alle Details ausblenden' : '▸ Alle Details zeigen'), label + ': Regionen, Einzel-/Gesamt-ARIA und Text konsistent');
+        // OP-3 Punkt 4: Kein Gesamtknopf mehr; nur die Einzelknöpfe klappen.
+        assert(state.cards.every(card => card.aria === String(card.open)) && state.all === null, label + ': Regionen und Einzel-ARIA konsistent, kein Gesamtknopf');
     };
     const changeDate = async date => {
         await page.locator('[data-probelauf-action="date"]').click();
@@ -13893,14 +11421,14 @@ async function runManagerCurrentIncome(browser, baseUrl) {
         const baseline = await readRegistry();
         await assertCards('Initialisierung');
         await page.locator('#managerPersonToggle').press('Enter'); await assertCards('Einzelöffnung');
-        await page.locator('#managerCardsToggleAll').press('Space'); await assertCards('Gesamtöffnung per Space');
-        await page.locator('#managerAssetsToggle').click(); await assertCards('Einzelschließen');
-        await page.locator('#managerCardsToggleAll').press('Enter'); await assertCards('Gesamtöffnung per Enter');
-        await page.locator('#managerCardsToggleAll').click(); await assertCards('Gesamtschließen per Klick');
+        await page.locator('#managerIncomeToggle').press('Space'); await assertCards('Einzelöffnung per Space');
+        await page.locator('#managerAssetsToggle').click(); await assertCards('Einzelöffnung per Klick');
+        await page.locator('#managerCareToggle').press('Enter'); await assertCards('Einzelöffnung per Enter');
+        await page.locator('#managerAssetsToggle').click(); await assertCards('Einzelschließen per Klick');
         // Tatsächlicher Gegenfall zu veralteter Sitzungserinnerung.
         await page.evaluate(() => { for (const card of ['Person', 'Income', 'Assets', 'Care']) document.getElementById(`manager${card}Body`).hidden = false; });
-        await page.locator('#managerCardsToggleAll').click(); await assertCards('DOM-Abweichung');
-        assert(await page.locator('#managerPersonBody').isHidden(), 'Erster Klick schließt wirklich offene Regionen');
+        await page.locator('#managerPersonToggle').click(); await assertCards('DOM-Abweichung');
+        assert(await page.locator('#managerPersonBody').isHidden() && await page.locator('#managerAssetsBody').isVisible(), 'Erster Klick schließt wirklich die offene Region');
         assert(await readRegistry() === baseline, 'Reines Klappen verursacht keine Registrywrites');
         for (const id of ['income-b', 'income-a']) {
             await page.locator(`#managerSectionNav [data-manager-profile="${id}"]`).click();
@@ -13940,7 +11468,7 @@ async function runPersonDataCards(browser, baseUrl) {
     for (const single of [false, true]) {
         const storage = createBrowserProfileStorage({
             'cards-a': { name: 'Muster A <Nord> & Zentral', tagesgeld: '61000', extraData: data, tranchesRaw: '[]' },
-            ...(!single ? { 'cards-b': { name: 'Muster B mit besonders langem Profilnamen '.repeat(5), belongsToHousehold: false, missingPersonData: true, extraData: { profile_aktuelles_alter: '64' }, alter: '64', tagesgeld: '38600', tranchesRaw: '[]' } } : {})
+            ...(!single ? { 'cards-b': { name: 'Muster B mit besonders langem Profilnamen '.repeat(5), missingPersonData: true, extraData: { profile_aktuelles_alter: '64' }, alter: '64', tagesgeld: '38600', tranchesRaw: '[]' } } : {})
         }, 'cards-a');
         const smoke = await openSmokePage(browser, baseUrl, 'depot-tranchen-manager.html', { storage, fixedTime: '2026-10-07T12:00:00Z' });
         const { page } = smoke;
@@ -14011,9 +11539,10 @@ async function runPersonDataCards(browser, baseUrl) {
             await toggle.press('Enter');
             const year = await page.evaluate(() => Number(document.getElementById('profilePersonDateStatus').textContent.match(/Planalter (\d{4})/)[1]));
             assert((await page.locator('#profilePersonDateStatus .ds-info-pop').textContent()).includes(`Für die Planung ${year} zählt das Alter am 01.01.`), 'Infofenster benutzt echte Jahresbasis');
-            await page.locator('#managerCardsToggleAll').click();
-            for (const card of ['Person', 'Assets', 'Care']) assert(await expanded(card), '03: Gemischter Gesamtknopf öffnet alle');
-            assert(await page.locator('#managerCardsToggleAll').textContent() === '▾ Alle Details ausblenden', 'Gesamtknopf bietet richtigen Folgezustand');
+            // OP-3 Punkt 4: Kein Gesamtknopf; die Einzelknöpfe öffnen die übrigen Karten.
+            assert(await page.locator('#managerCardsToggleAll').count() === 0, '03: kein Gesamtknopf „Alle Details“');
+            await openManagerCards(page);
+            for (const card of ['Person', 'Assets', 'Care']) assert(await expanded(card), '03: Einzelknöpfe öffnen alle');
             for (const width of [1920, 2560]) {
                 await page.setViewportSize({ width, height: 1000 });
                 assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Persondaten ${width}: kein Seitenüberlauf`);
@@ -14028,7 +11557,7 @@ async function runPersonDataCards(browser, baseUrl) {
                 await page.waitForFunction(() => document.querySelector('#managerSectionNav [data-manager-profile="cards-b"]')?.getAttribute('aria-selected') === 'true');
                 assert(!await expanded('Person'), 'B beginnt unabhängig mit geschlossener Personkarte');
                 await page.locator('#managerPersonToggle').click();
-                assert((await page.locator('#managerHousehold .pv-person-card').filter({ has: page.locator('[data-manager-profile="cards-b"]') }).textContent()).includes('Außerhalb Haushalt'), 'Außenprofil bleibt auf seiner Personenkarte erkennbar');
+                assert((await page.locator('#managerHousehold .pv-person-card').filter({ has: page.locator('[data-manager-profile="cards-b"]') }).textContent()).includes('Partnerprofil'), 'Zweite Person bleibt auf ihrer Personenkarte als Partnerprofil erkennbar');
                 // 04: echter Ergänzungsentwurf, Fehlerfokus, bestätigtes Speichern, Fremdprofilschutz.
                 await page.locator('#managerBirthSupplement').waitFor({ state: 'visible' });
                 await assertPersonTargetStart('managerBirthDate');
@@ -14074,7 +11603,7 @@ async function runPersonDataCards(browser, baseUrl) {
                 assert(await page.locator('#' + id).inputValue() === value, 'Simulator übernimmt zentral bestätigten Wert ' + id);
             }
             if (!single) {
-                await setBrowserHouseholdMembership(page, 'cards-b', true); await openSimulatorProfileList(page);
+                await openSimulatorProfileList(page);
                 await page.locator('#sectionRente2').waitFor({ state: 'visible' });
             }
             const measurePersonCards = async active => {
@@ -14187,6 +11716,46 @@ async function runPersonDataCards(browser, baseUrl) {
             assert(await readPersonBytes() === beforeReset, 'Reset erhält dauerhaft gelesene Profil-/Simulatorpersonenbytes');
             smoke.assertNoErrors();
         } finally { await smoke.context.close(); }
+    }
+}
+
+async function runSimulatorEquityPurchaseChoice(browser, baseUrl) {
+    const smoke = await openSmokePage(browser, baseUrl, 'Simulator.html', { storage: createMusterHaushaltRecords('2026-10-23'), fixedTime: '2026-10-23T12:00:00+02:00' });
+    const { page } = smoke;
+    const choice = page.locator('#simulatedEquityPurchases');
+    const openChoice = async () => {
+        await page.locator('.tab-btn[data-tab="annahmen"]').click();
+        await page.locator('.sim-model-assumptions > summary').click();
+        await choice.waitFor({ state: 'visible' });
+    };
+    try {
+        await waitForSimulatorOpening(page, 'Simulator.html');
+        await openChoice();
+        const [taxRow, pensionCard, needCard] = await Promise.all([
+            choice.locator('..').boundingBox(),
+            page.locator('#widowPensionSection > section').first().boundingBox(),
+            page.locator('#widowPensionSection > section').last().boundingBox()
+        ]);
+        assert(taxRow && pensionCard && needCard && Math.abs(taxRow.x - needCard.x) < 1
+            && Math.abs(taxRow.width - pensionCard.width) < 1, 'HL-3/1050: Zukäufe fluchten mit dem Modellannahmen-Raster');
+        await page.locator('.sim-model-assumptions').scrollIntoViewIfNeeded();
+        await capturePageDialogImage(page, 'HL-3-pruefbild-modellannahmen');
+        assert(await choice.inputValue() === 'same', 'FR-97: Altbestand zeigt „in dasselbe Papier“');
+        await page.getByRole('button', { name: 'Steuer bei simulierten Zukäufen' }).click();
+        await page.locator('#simulatedEquityPurchasesInfo').waitFor({ state: 'visible' });
+        await choice.selectOption({ label: 'in ein eigenes Papier' });
+        await page.reload();
+        await waitForSimulatorOpening(page, 'Simulator.html');
+        await openChoice();
+        assert(await choice.inputValue() === 'separate', 'FR-97: Reload übernimmt die Haushaltswahl');
+        const effectiveMode = await page.evaluate(async () => {
+            const { getCommonInputs } = await import('./app/simulator/simulator-portfolio.js');
+            return getCommonInputs().simulatedEquityPurchases;
+        });
+        assert(effectiveMode === 'separate', 'FR-97: Formularwahl erreicht die Simulationseingaben');
+        smoke.assertNoErrors();
+    } finally {
+        await smoke.context.close();
     }
 }
 
@@ -14394,15 +11963,13 @@ async function runSimulatorProtocolViews(browser, baseUrl) {
     } finally { await smoke.close(); }
 }
 
-async function runMonteCarloReplayReturnSmoke(browser, baseUrl) {
+async function runMonteCarloE2ESmoke(browser, baseUrl) {
     const result = await runMonteCarloBrowserRegression(browser, baseUrl);
-    assert(JSON.stringify(result?.replayReturnWidths) === '[1366]',
-        'Monte-Carlo E2E hat den sichtbaren Replay-Rückweg bei 1366 px vollständig geprüft');
+    assert(result?.completed === true, 'Monte-Carlo E2E hat alle Browserfälle vollständig geprüft');
 }
 
 async function runManagerViewsSmoke(browser, baseUrl) {
     const storage = createBrowserProfileStorage({
-        'views-outside': { name: 'Außen < & >', belongsToHousehold: false },
         'views-a': { name: 'Anna & Änne' }, 'views-b': { name: 'Béla <B>' }, 'views-c': { name: 'Clara „C“' }
     }, 'views-b');
     const smoke = await openSmokePage(browser, baseUrl, 'depot-tranchen-manager.html', { storage });
@@ -14420,8 +11987,8 @@ async function runManagerViewsSmoke(browser, baseUrl) {
         await expectPerson('views-a');
         assert(await page.locator('[role="tablist"]').count() === 1, 'Manager besitzt genau eine Ansichtsreiterliste');
         assert(JSON.stringify(await page.locator('#managerSectionNav [role="tab"] > span:not([class])').allTextContents())
-            === JSON.stringify(['Haushalt & Plan', 'Pflege', 'Anna & Änne', 'Béla <B>', 'Clara „C“', 'Außen < & >', 'Verlauf']), 'Haushaltsreihenfolge und Sonderzeichennamen stimmen mit den Karten überein');
-        assert(await page.locator('#managerHousehold .pv-person-card').count() === 4, 'Alle Karten bleiben in der Planansicht erreichbar');
+            === JSON.stringify(['Haushalt & Plan', 'Pflege', 'Anna & Änne', 'Béla <B>', 'Clara „C“', 'Verlauf']), 'Haushaltsreihenfolge und Sonderzeichennamen stimmen mit den Karten überein');
+        assert(await page.locator('#managerHousehold .pv-person-card').count() === 3, 'Alle Karten bleiben in der Planansicht erreichbar');
         await page.locator('#managerPlanTab').click(); await expectPlan();
         assert(!await page.locator('#depotAddTrancheBtn').isVisible() && !await page.locator('#managerPersonToggle').isVisible(), 'Inaktive Personenfunktionen liefern keine sichtbaren Controls');
         const planFocus = await page.evaluate(() => {
@@ -14469,12 +12036,12 @@ async function runManagerViewsSmoke(browser, baseUrl) {
         smoke.assertNoErrors();
     } finally { await smoke.close(); }
     const single = await openSmokePage(browser, baseUrl, 'depot-tranchen-manager.html', {
-        storage: createBrowserProfileStorage({ 'views-single': { name: 'Solo & Name', belongsToHousehold: false } }, 'views-single')
+        storage: createBrowserProfileStorage({ 'views-single': { name: 'Solo & Name' } }, 'views-single')
     });
     try {
         await waitForPageCondition(single.page, () => document.querySelector('#managerSectionNav [aria-selected="true"]')?.dataset.managerProfile === 'views-single');
         assert(JSON.stringify(await single.page.locator('#managerSectionNav [role="tab"] > span:not([class])').allTextContents())
-            === JSON.stringify(['Plan · Solo & Name', 'Pflege', 'Solo & Name', 'Verlauf']), 'Einzelprofil ohne Haushalt startet mit vier passend beschrifteten Ansichten');
+            === JSON.stringify(['Haushalt & Plan', 'Pflege', 'Solo & Name', 'Verlauf']), 'Haushalt mit einer Person startet mit vier passend beschrifteten Ansichten');
         single.assertNoErrors();
     } finally { await single.close(); }
 }
@@ -14994,7 +12561,7 @@ async function main() {
         browser = await chromium.launch();
         const smokes = [
             ['Personen & Vermögen Ansichten und Sprungziele', runManagerViewsSmoke],
-            ['Simulator Planlesemodus und Championübernahme', runSimulatorPlanChampionSmoke],
+            ['Simulator Planlesemodus', runSimulatorPlanReadModeSmoke],
             ['Haushalt und Plan Manager und Belegvergleich', runManagerHouseholdPlanSmoke],
             ['Dynamic Flex Voreinstellungen seitenübergreifend', runDynamicFlexCrosspageSmoke],
             ['Dynamic Flex Voreinstellungen im Abschlussentwurf', runDynamicFlexAnnualSmoke],
@@ -15013,7 +12580,7 @@ async function main() {
             ['Navigation guard links', runNavigationGuardLinks],
             ['Navigation guard presentation', runNavigationGuardPresentation],
             ['Navigation guard calculations', runNavigationGuardCalculations],
-            ['Navigation guard optimizer and backtest', runNavigationGuardOptimizerBacktest],
+            ['Navigation guard backtest', runNavigationGuardBacktest],
             ['Navigation guard modal', runNavigationGuardModal],
             ['Navigation guard manager commits', runNavigationGuardManagerCommits],
             ['Navigation guard manager dirty inputs', runNavigationGuardManagerDirtyInputs],
@@ -15028,6 +12595,8 @@ async function main() {
             ['Navigation guard native paths', runNavigationGuardNativePaths],
             ['Navigation guard resets and recovery', runNavigationGuardResetsRecovery],
             ['Simulator household backtest invalidation', runSimulatorHouseholdBacktestInvalidation],
+            ['Simulator Pflegereserve aus Haushalt', runSimulatorHouseholdCareReserve],
+            ['Marktkarte Korrektur bei Hoch im Jahr', runMarketCorrectionAtYearHigh],
             ['Navigation guard profile writes', runNavigationGuardProfileWrites],
             ['Navigation guard browser history', runNavigationGuardBrowserHistory],
             ['Navigation guard tauri protocol', runNavigationGuardTauriProtocol],
@@ -15044,6 +12613,7 @@ async function main() {
             ['Stabiler Planungsbeginn nach Balanceöffnung', runStablePlanningStart],
             ['Spielbereich Muster-Haushalt', runProbelaufMuster],
             ['Spielbereich Jahresabschluss ohne Netz', runProbelaufAnnualOffline],
+            ['Jahresabschluss bereits abgeschlossen mit Allzeithoch', runCommittedAnnualMarketSmoke],
             ['Jahresabschluss Jahr und Dezember', (browser, baseUrl) => runAnnualCombinedClose(browser, baseUrl, 'demo')],
             ['Jahresabschluss Altdaten ohne Popup', (browser, baseUrl) => runAnnualCombinedClose(browser, baseUrl, 'copy')],
             ['Jahresabschluss Vorabpunkt nach Kurswrite', (browser, baseUrl) => runAnnualCombinedClose(browser, baseUrl, 'prepoint')],
@@ -15059,7 +12629,7 @@ async function main() {
             ['Designsystem simulator layout', runDesignsystemSimulatorLayout],
             ['Designsystem recovery banner', runDesignsystemRecoveryBanner],
             ['Daten-Sicherung.html', runDataPageSmoke],
-            ['Daten-Sicherung Austausch und alte Verweise', runDataExchangeSmoke],
+            ['Daten-Sicherung alte Verweise', runDataLinksSmoke],
             ['Daten Kurse und Speicher', runDataPricesStorageSmoke],
             ['index.html', runIndexSmoke],
             ['Tagesgeld Monatsabschluss', runTagesgeldMonthSmoke],
@@ -15073,11 +12643,10 @@ async function main() {
             ['Ausgaben Altlinks und Startseite', runExpensesNavigationSmoke],
             ['Ausgaben Monatsaktionen und Kategorien', runExpensesMonthlyGeometry],
             ['Balance.html', runBalanceSmoke],
+            ['Balance Jahresabschluss fällig am 02.01.2027', runHl3BalanceAnnualLink],
             ['Person data migration', runPersonDataMigration],
-            ['Person migration followup', runPersonMigrationFollowup],
             ['Page choice dialog geometry', runPageChoiceGeometry],
             ['Person data readiness', runPersonDataReadiness],
-            ['Balance membership reload', runBalanceMembershipReload],
             // AU2: alte Balance-Verlaufspanelprüfung entfällt; Managerdatenpfad durch Node-/DOM-Fixtures belegt.
             ['Balance expenses history', runBalanceExpensesHistory],
             ['Balance automatic expenses capture', runBalanceExpensesWealthCapture],
@@ -15088,15 +12657,18 @@ async function main() {
             ['Balance five-year runway forced sale', runBalanceFiveYearRunwayForcedSale],
             ['Balance corrupt expenses', runBalanceCorruptExpenses],
             ['Simulator.html', runSimulatorSmoke],
+            ['Simulator Simulierte Zukäufe', runSimulatorEquityPurchaseChoice],
             ['Simulator Kopfaktion', runSimulatorHeadAction],
             ['Simulator Kernantworten', runSimulatorCoreAnswers],
             ['Simulator Protokollansichten', runSimulatorProtocolViews],
             ['Simulator household needs reload', runSimulatorHouseholdNeedsReload],
             ['H1 Simulator shared plan crosspage', runSimulatorSharedPlanCrosspage],
-            ['Simulator Monte-Carlo E2E', runMonteCarloReplayReturnSmoke],
+            ['Simulator Monte-Carlo E2E', runMonteCarloE2ESmoke],
+            ['Monte-Carlo Personenkarte', runMonteCarloPersonOutcomesSmoke],
+            ['Erbe Verkauf mit Miete', runRentBequestSmoke],
+            ['Erbe Verkauf mit Wohnkapital', runHousingCapitalSmoke],
+            ['Monte-Carlo Szenario-Gruppe Todesfall', runDeathScenarioGroupSmoke],
             ['Simulator hybrid profile blocker', runSimulatorHybridProfileBlocker],
-            ['Simulator Sweep integration', runSimulatorSweepIntegration],
-            ['Simulator optimizer apply integration', runSimulatorOptimizerApplyIntegration],
             ['depot-tranchen-manager.html', runTranchesSmoke],
             ['Manager Cash: nur Auditnachweis', runManagerCashEffectSmoke],
             ['Manager Cash: neuer Tagesgeldstand', (browser, baseUrl) => runManagerCashEffectSmoke(browser, baseUrl, true)],
@@ -15115,7 +12687,6 @@ async function main() {
             ['VN-4 Schrittleiste: Namen ohne Umbruch im Wort', runVn4StepBarSmoke],
             ['VN-4 Stückzahl über die Kachel ändern', runVn4SharesEditSmoke],
             ['Slice 2 page dialogs', runSlice2PageDialogs],
-            ['Slice 3 simulator page dialogs', runSlice3SimulatorPageDialogs],
             ['tranche corrupt recovery', runTranchesRecoverySmoke],
             ['profile registry recovery', runProfileRegistryRecoverySmoke],
             ['Balance corrupt profile health', runBalanceCorruptProfileHealthSmoke],
@@ -15123,10 +12694,7 @@ async function main() {
             ['Balance ghost profile context', runBalanceGhostProfileContextSmoke],
             ['Simulator ghost profile context', runSimulatorGhostProfileContextSmoke],
             ['Handbuch.html', runManualSmoke],
-            ['Balance import reject', runBalanceImportReject],
             ['Balance message presentation', runBalanceMessagePresentation],
-            ['Balance folder abort', runBalanceFolderAbort],
-            ['Balance import restoration', runBalanceImportRestoration],
             // 'Balance CSV import roundtrip' entfernt: Markt-CSV-Import per Nutzerentscheidung entfallen (Inventar B06/B10/B11/B24).
             ['Balance annual commit', runBalanceAnnualCommit]
         ];
@@ -15209,7 +12777,7 @@ async function runOverviewResultStorage(browser, baseUrl) {
         await waitForPageCondition(page, async () => !(await import('./app/shared/navigation-guard-dialog.js'))
             .getPageNavigationGuard(document).reasons().some(reason => reason.phase === 'commit'));
         await openSimulatorTab(page, 'backtesting');
-        const oldWorkspaceExport = await page.evaluate(async () => {
+        await page.evaluate(async () => {
             const { runBacktest } = await import('./app/simulator/simulator-backtest.js');
             const { completeSimulationSummary } = await import('./app/simulator/simulator-overview-summary.js');
             let backtestWrite;
@@ -15217,26 +12785,16 @@ async function runOverviewResultStorage(browser, baseUrl) {
             document.getElementById('simStartJahr').value = '2000'; document.getElementById('simEndJahr').value = '2001';
             runBacktest({ focus: false, completeSimulationSummary: (...args) => (backtestWrite = completeSimulationSummary(...args)), runSinglePath: () => ({ schemaVersion: 'BacktestRunResultV1', request: { startYear: 2000, endYear: 2001 },
                 outcome: { kind: 'completed' }, requestedYears: 2, completedYears: 2, rows: [], metrics: { values: { wealth_end_real_eur: 12345 } } }) });
-            if (!backtestWrite || await backtestWrite !== true) throw new Error('Synthetischer Backtest wird vor MC und Werkstatt nicht dauerhaft bestätigt');
+            if (!backtestWrite || await backtestWrite !== true) throw new Error('Synthetischer Backtest wird vor MC nicht dauerhaft bestätigt');
             await PersistenceFacade.flush();
             const { runMonteCarlo } = await import('./app/simulator/simulator-monte-carlo.js');
             document.getElementById('rngMode').value = 'per-run-seed';
             await runMonteCarlo();
             await PersistenceFacade.flush();
-            const { initStressReplayUI } = await import('./app/simulator/stress-replay-ui.js');
-            const controller = initStressReplayUI();
-            controller.selectScenario(window.globalScenarioLogs.characteristic.find(scenario => scenario.sourceIdentity && scenario.logDataRows?.length));
-            const workspace = await controller.fixSelectedScenario();
-            if (!workspace) throw new Error('Belegter Stresspfad konnte nicht fixiert werden');
-            document.getElementById('stressReplayVariantLabel').value = 'Synthetische Alternative';
-            document.querySelector('[data-stress-replay-path="strategy.startFlexBedarf"]').value = String(workspace.baselineSnapshot.startFlexBedarf + 1);
-            if (!await controller.addVariant()) throw new Error('Expliziter Variantenvergleich fehlgeschlagen');
-            const { buildStressReplayComparisonExportV1, serializeStressReplayComparisonExportV1 } = await import('./app/simulator/stress-replay-export.js');
-            return serializeStressReplayComparisonExportV1(buildStressReplayComparisonExportV1({ workspace: controller.getState().workspace, comparison: null }));
         });
         await waitForPageCondition(page, async () => {
             const { persistenceStorage } = await import('./app/shared/persistence-facade.js');
-            return Object.values(JSON.parse(persistenceStorage.getItem('overview_simulation_summary_v1') || '{"entries":{}}').entries).some(entry => entry.kind === 'workshop');
+            return Object.values(JSON.parse(persistenceStorage.getItem('overview_simulation_summary_v1') || '{"entries":{}}').entries).some(entry => entry.kind === 'montecarlo');
         });
         // page.goto ist kein App-Handoff: Der Profilstand (u. a. die beim Simulatorstart geschriebenen sim_*-Werte)
         // landet sonst nur über den unverbindlichen pagehide-Speicher in der Registry. Unter Last fehlt er dann
@@ -15263,7 +12821,7 @@ async function runOverviewResultStorage(browser, baseUrl) {
         const views = await readViews();
         assert(views.backtest.entry.metrics.endWealthReal === 12345 && !views.backtest.stale, 'Gespeicherter Backtest behält seine kanonische reale Kennzahl');
         assert(views.montecarlo.entry.metrics.runs === 2, 'Gespeicherter MC behält die tatsächlich abgeschlossene Anzahl');
-        assert(views.workshop.entry.statement.includes('Synthetische Alternative gegen Baseline'), 'Werkstattbeleg bleibt gespeichert');
+        assert(!Object.hasOwn(views, 'workshop'), 'Ergebnisleser kennt keine Werkstattart mehr');
         const read = () => page.evaluate(async () => (await import('./app/shared/persistence-facade.js')).persistenceStorage.getItem('overview_simulation_summary_v1'));
         const previous = await read();
         await page.reload({ waitUntil: 'load' });
@@ -15298,38 +12856,7 @@ async function runOverviewResultStorage(browser, baseUrl) {
         await page.reload({ waitUntil: 'load' });
         await page.locator('#overviewNormal[data-occasion="play"]').waitFor();
         assert((await readViews()).backtest.stale, 'Wirksame Bestandsänderung lässt den gespeicherten Abschluss veralten');
-        const workshopBeforeOpening = await page.evaluate(async () => {
-            const { persistenceStorage } = await import('./app/shared/persistence-facade.js');
-            return Object.values(JSON.parse(persistenceStorage.getItem('overview_simulation_summary_v1')).entries).find(entry => entry.kind === 'workshop');
-        });
-        assert((await readViews()).workshop.stale, 'Gespeicherter Werkstattbeleg ist nach Quellenänderung veraltet');
-        // Tatsächlicher Seitenstart lädt den gespeicherten ausführbaren Replay-Arbeitsstand.
-        await page.goto(`${baseUrl}/Simulator.html`, { waitUntil: 'load' });
-        await page.waitForFunction(() => window.__simulatorOpeningBacktestDone === true);
-        const afterOpeningPending = page.evaluate(async serialized => {
-            const { initStressReplayUI } = await import('./app/simulator/stress-replay-ui.js');
-            const { persistenceStorage, PersistenceFacade } = await import('./app/shared/persistence-facade.js');
-            const controller = initStressReplayUI();
-            const readWorkshop = () => Object.values(JSON.parse(persistenceStorage.getItem('overview_simulation_summary_v1')).entries).find(entry => entry.kind === 'workshop');
-            await PersistenceFacade.flush();
-            const opened = readWorkshop();
-            const importState = await controller.importSerialized(serialized);
-            const comparison = controller.recomputeComparison();
-            await PersistenceFacade.flush();
-            await new Promise(resolve => setTimeout(resolve, 0));
-            await PersistenceFacade.flush();
-            return { opened, imported: readWorkshop(), importSucceeded: Boolean(importState), comparisonSucceeded: Boolean(comparison) };
-        }, oldWorkspaceExport);
-        await answerPageDialog(page, { label: 'Import ersetzen' });
-        const afterOpening = await afterOpeningPending;
-        assert(JSON.stringify(afterOpening.opened) === JSON.stringify(workshopBeforeOpening), 'Simulatoröffnen nach Quellenänderung erhält den gesamten Workshop-Abschluss');
-        assert(afterOpening.opened.completedAt === workshopBeforeOpening.completedAt && afterOpening.opened.sourceFingerprint === workshopBeforeOpening.sourceFingerprint,
-            'Simulatoröffnen erhält Abschlusszeitpunkt und eingefrorenen Quellenfingerabdruck');
-        assert(afterOpening.importSucceeded && afterOpening.comparisonSucceeded, 'Alter Arbeitsstand wird erfolgreich importiert und neu berechnet');
-        assert(JSON.stringify(afterOpening.imported) === JSON.stringify(workshopBeforeOpening), 'Import und Wiederberechnung erhalten den alten Workshop-Abschluss');
-        await page.goto(`${baseUrl}/index.html`, { waitUntil: 'load' });
-        await page.locator('#overviewNormal[data-occasion="play"]').waitFor();
-        assert((await readViews()).workshop.stale && await page.locator('.overview-play').count() === 0, 'Werkstattbeleg bleibt nach Öffnen, Import und Wiederberechnung veraltet; Übersicht bleibt ohne Kacheln');
+        assert(await page.locator('.overview-play').count() === 0, 'Übersicht bleibt nach Quellenänderung ohne Durchspielen-Karte');
         await page.locator('#overviewPlanComparison a[href="Balance.html#handlungsanweisung"]').click();
         await page.waitForURL('**/Balance.html#handlungsanweisung');
         await page.locator('#balanceActionArea').waitFor({ state: 'visible' });
@@ -15543,7 +13070,10 @@ async function runProbelaufMuster(browser, baseUrl) {
         const restoration = await observeProbelaufRestore(page, () => {
             assert(networks.length === 0, 'Aktiver Browser-Spielbereich verwendet keine Kursnetzanfragen');
         });
-        await page.locator('#probelaufBand [data-probelauf-action="end"]').click();
+        // OP-1 (Punkt 2): Beenden steht rechts im Kopf an der Stelle des Startknopfs, nicht mehr im Band.
+        assert(await page.locator('#probelaufEnd').isVisible() && await page.locator('#probelaufStart').isHidden()
+            && await page.locator('#probelaufBand [data-probelauf-action="end"]').count() === 0, 'Spielbereich beenden steht im Kopf statt im Band');
+        await page.locator('#probelaufEnd').click();
         const returnNavigation = page.waitForNavigation({ waitUntil: 'load' });
         await page.locator('.probelauf-end-dialog[open]').getByRole('button', { name: 'Spielbereich beenden', exact: true }).click();
         const restored = await restoration.readback;
@@ -15696,8 +13226,7 @@ async function runTagesgeldMonthSmoke(browser, baseUrl) {
         } } });
         const storage = createBrowserProfileStorage({
             'cash-a': { name: 'A <Text> mit einem langen synthetischen Personennamen', tagesgeld: '100000', balanceStateRaw: JSON.stringify(state), extraData: { [OVERVIEW_SUMMARY_KEY]: summary, profile_cash_history_v1: cashHistory } },
-            'cash-b': { name: 'B & Haushalt', tagesgeld: '200000', balanceStateRaw: JSON.stringify(state), extraData: { [OVERVIEW_SUMMARY_KEY]: summary } },
-            'cash-c': { name: 'C außen', belongsToHousehold: false, tagesgeld: '999' }
+            'cash-b': { name: 'B & Haushalt', tagesgeld: '200000', balanceStateRaw: JSON.stringify(state), extraData: { [OVERVIEW_SUMMARY_KEY]: summary } }
         }, 'cash-a');
         storage[BALANCE_STATE_KEY] = JSON.stringify(state);
         const smoke = await openSmokePage(browser, baseUrl, 'index.html', { storage, fixedTime: '2026-10-08T12:00:00+02:00', viewport: { width: index % 2 ? 2560 : 1920, height: 900 } });
@@ -15719,7 +13248,7 @@ async function runTagesgeldMonthSmoke(browser, baseUrl) {
             await dialog.locator('[data-close-dialog-activate="cash"]').click();
             const fields = dialog.locator('[data-tagesgeld-person]');
             assert(await fields.count() === 2 && await fields.nth(0).getAttribute('data-tagesgeld-person') === 'cash-a'
-                && await fields.nth(1).getAttribute('data-tagesgeld-person') === 'cash-b', scenario + ': zwei zugeordnete Haushaltsfelder, Außenprofil ausgeschlossen');
+                && await fields.nth(1).getAttribute('data-tagesgeld-person') === 'cash-b', scenario + ': zwei zugeordnete Haushaltsfelder');
             if (scenario === 'unchanged') {
                 const originalViewport = page.viewportSize();
                 for (const width of [1920, 2560]) {
@@ -15764,7 +13293,6 @@ async function runTagesgeldMonthSmoke(browser, baseUrl) {
             assert((await dialog.locator('[data-overview-month-result]').textContent()).includes(`${scenario === 'unchanged' ? '300.000' : '270.000,375'} €`), scenario + ': dezimalexakte bestätigte Cashsumme');
             const after = await read(), profiles = JSON.parse(after.records.rs_profiles_v1).profiles;
             assert(after.snapshots.length === before.snapshots.length + 1, scenario + ': genau ein Wiederherstellungspunkt');
-            assert(JSON.stringify(profiles['cash-c']) === JSON.stringify(JSON.parse(before.records.rs_profiles_v1).profiles['cash-c']), 'Außenprofil bleibt bytegleich');
             assert(after.records.profile_tagesgeld === (scenario === 'unchanged' ? '100000' : '90000.125')
                 && profiles['cash-b'].data.profile_tagesgeld === (scenario === 'unchanged' ? '200000' : '180000.25'), scenario + ': vollständiger dauerhafter Cashsatz');
             assert(scenario === 'unchanged' ? after.records.profile_cash_history_v1 === before.records.profile_cash_history_v1
@@ -15851,6 +13379,8 @@ async function runTagesgeldAnnualSmoke(browser, baseUrl) {
         assert(typeof afterBackup.overview_last_full_backup_v1 === 'string', 'Dialogexport bestätigt bestehenden Sicherungsbeleg');
         delete beforeBackup.overview_last_full_backup_v1; delete afterBackup.overview_last_full_backup_v1;
         assert(typeof afterBackup.rs_data_backup_summary_v1 === 'string', 'Dialogexport legt den Sicherungsvergleich an'); delete beforeBackup.rs_data_backup_summary_v1; delete afterBackup.rs_data_backup_summary_v1;
+        // Dritter Sicherungsrecord: die Art der Sicherung (angestoßen oder bestätigt); er gehört wie Zeit und Vergleich zur Sicherung.
+        assert(typeof afterBackup.overview_last_full_backup_delivery_v1 === 'string', 'Dialogexport hält die Art der Sicherung fest'); delete beforeBackup.overview_last_full_backup_delivery_v1; delete afterBackup.overview_last_full_backup_delivery_v1;
         assert(JSON.stringify(beforeBackup) === JSON.stringify(afterBackup), 'Dialogexport erhält alle Finanz-/Abschlussrecords');
         assert(await page.locator('#balanceAnnualClose').isVisible() && await fields.nth(0).inputValue() === '90.000,125' && await fields.nth(1).inputValue() === '180.000,25', 'Vollbackup erhält offenen Jahresdialog und Cashentwurf');
         assert(await readIndexedDb(page, 'snapshots', null) === 0, 'Vollbackup startet keinen Jahresabschluss');
@@ -16147,7 +13677,7 @@ async function runProbelaufExampleExpenses(browser, baseUrl) {
             // Slice 2: Jahresabschluss finalisiert Dezember automatisch; Beleg statt alter zweiter Pflichtaktion prüfen.
             assert(Object.values(JSON.parse((await read()).overview_month_provision_v1).entries).some(entry => entry.month === '2026-12'), 'Jahreskoordinator speichert Dezember in demselben bestätigten Ablauf');
             const restoration = await observeProbelaufRestore(page);
-            await page.locator('#probelaufBand [data-probelauf-action="end"]').click();
+            await page.locator('#probelaufEnd').click();
             const returnNavigation = page.waitForNavigation({ waitUntil: 'load' });
             await page.locator('.probelauf-end-dialog[open]').getByRole('button', { name: 'Spielbereich beenden', exact: true }).click();
             const restored = await restoration.readback;
@@ -16509,61 +14039,6 @@ async function capturePageDialogImage(page, name) {
     await page.screenshot({ path: path.join(dir, `${name}.png`) });
 }
 
-async function runSlice3SimulatorPageDialogs(browser, baseUrl) {
-    for (const width of [1366, 1920]) {
-        const smoke = await openSmokePage(browser, baseUrl, 'Simulator.html', { storage: suiteProfileFixture(), viewport: { width, height: 900 } });
-        const { page } = smoke;
-        try {
-            await page.evaluate(async () => (await import('./app/profile/profile-navigation.js')).whenProfileDisplayReady(document));
-            await waitForPageCondition(page, () => window.__simulatorOpeningBacktestDone === true);
-            await openWorkshopTool(page, 'sweep');
-            await page.evaluate(async () => {
-                const { getCommonInputs } = await import('./app/simulator/simulator-portfolio.js');
-                const { aggregateSweepMetrics } = await import('./app/simulator/simulator-results.js');
-                const { runParameterSweep } = await import('./app/simulator/simulator-sweep.js');
-                const result = { params: { liquidityRunwayYears: 3, goldRebalancingBand: 25 },
-                    metrics: aggregateSweepMetrics([{ finalVermoegen: 1000, failed: false, maxDrawdown: 20, minRunway: 24 }]) };
-                window.__dialogJobs = 0;
-                window.__dialogOldResults = window.sweepResults = [result];
-                document.getElementById('sweepHeatmap').innerHTML = '<p>Vorheriges Ergebnis</p>';
-                window.__dialogSweepStart = () => {
-                    window.__dialogSweepDone = false;
-                    window.__dialogSweepTask = runParameterSweep({ prepareHistoricalData: () => {},
-                        getInputs: getCommonInputs, readRanges: () => ({ ranges: { liquidityRunwayYears: [3], goldRebalancingBand: [25] } }),
-                        readParameters: () => ({ anzahl: 125001, maxDauer: 40, blockSize: 1, seed: 42, methode: 'block', rngMode: 'per-run-seed' }),
-                        runWorkers: async () => { window.__dialogJobs++; return [result]; }, renderResults: () => '<p>Kurzer bestätigter Job</p>'
-                    }).finally(() => { window.__dialogSweepDone = true; });
-                    return window.__dialogSweepTask;
-                };
-                const button = document.getElementById('sweepButton');
-                button.onclick = null;
-                button.addEventListener('click', () => void window.__dialogSweepStart());
-            });
-            for (const action of ['cancel', 'escape', 'accept']) {
-                await page.locator('#sweepButton').click();
-                const dialog = page.locator('#pageDialog[open]'); await dialog.waitFor();
-                const bounds = await dialog.boundingBox();
-                assert(bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= width && bounds.y + bounds.height <= 900, `${width}: Sweepdialog liegt im Viewport`);
-                await capturePageDialogImage(page, `sweep-grosslast-${width}`);
-                assert((await dialog.textContent()).includes('5.000.040 nominelle Laufjahre'), 'Großlast nennt den konkreten Aufwand');
-                await page.locator('#sweepButton').evaluate(node => node.click());
-                await answerPageDialog(page, { action, label: 'Sweep starten' });
-                await waitForPageCondition(page, () => window.__dialogSweepDone);
-                assert(await page.evaluate(action => window.__dialogJobs === (action === 'accept' ? 1 : 0), action), 'Nur Zustimmung startet genau einen kurzen Job');
-                if (action !== 'accept') assert(await page.evaluate(() => window.sweepResults === window.__dialogOldResults
-                    && document.getElementById('sweepHeatmap').textContent === 'Vorheriges Ergebnis'), 'Abbruch erhält vorherige Ergebnisse');
-            }
-            await page.locator('#paretoButton').click();
-            await page.locator('#pageChoiceDialog[open]').waitFor();
-            await page.locator('[data-page-choice-field="metric1"]').selectOption('medianEndWealth');
-            await page.locator('[data-page-choice-field="metric2"]').selectOption('worst5Drawdown');
-            await page.locator('#pageChoiceDialog').getByRole('button', { name: 'Diagramm anzeigen', exact: true }).click();
-            await waitForPageCondition(page, () => Boolean(document.querySelector('#paretoResults svg')));
-            smoke.assertNoErrors();
-        } finally { await smoke.close(); }
-    }
-}
-
 // P14 SOURCE: echte Links und Initialisierung auf allen sieben Einstiegen.
 async function runDataPageSmoke(browser, baseUrl) {
     for (const source of SUITE_PAGES) {
@@ -16605,26 +14080,30 @@ async function runDataPageSmoke(browser, baseUrl) {
             smoke.assertNoErrors();
         } finally { await smoke.close(); }
     }
-    // Slice 2: echte eingebettete Vorschau, Abbruch, Restore und Rückkehrpunkt.
+    // SV-1: Liste, einfache Rückfrage, Zurückholen des ganzen Haushalts, Rückkehrpunkt und einmaliger Hinweis nach der Archivleerung.
     const restoration = await createPage(browser, 'Daten-Sicherung.html', { storage: suiteProfileFixture() });
     try {
         const { page } = restoration;
+        const readState = () => page.evaluate(async () => {
+            const { PersistenceFacade: p } = await import('./app/shared/persistence-facade.js');
+            const { SnapshotArchive: a } = await import('./app/shared/snapshot-archive.js');
+            return { records: JSON.stringify(Object.entries(await p.readPersistedRecords()).sort()), count: (await a.listSnapshots()).length };
+        });
         await page.goto(`${baseUrl}/Daten-Sicherung.html`);
         await waitForPageCondition(page, async () => document.documentElement.dataset.dataReady === 'true');
-        assert(await page.locator('#dataRestorePreview').isHidden(), 'Seitenstart ohne Punkt-ID öffnet keine automatische Vorschau');
+        assert(await page.locator('#pageDialog[open]').count() === 0, 'Seitenstart ohne Punkt-ID öffnet keine Rückfrage');
+        assert(await page.locator('#dataRestorePointsNotice').isHidden(), 'Leeres Archiv beim ersten Start zeigt keinen Hinweis');
         const before = await page.evaluate(async () => {
             const { PersistenceFacade: p } = await import('./app/shared/persistence-facade.js');
             const { SnapshotArchive: a } = await import('./app/shared/snapshot-archive.js');
             await p.flush(); const records = await p.readPersistedRecords();
-            await a.createSnapshot({ id: 'browser-data-restore', label: '<img src=x> Monatsstand',
+            await a.createSnapshot({ id: 'browser-data-restore', kind: 'monthly-close-pre-mutation', label: 'Monatsabschluss 2026-09',
                 activeProfileId: records.rs_current_profile || records.rs_active_profile,
                 records: { ...a.captureCurrentRecords({ keys: Object.keys(records), getItem: key => records[key] }), profile_tagesgeld: '321' } });
             document.dispatchEvent(new Event('overview-backup-changed'));
-            return { cash: records.profile_tagesgeld, current: records.rs_current_profile,
-                records: JSON.stringify(Object.entries(await p.readPersistedRecords()).sort()), count: (await a.listSnapshots()).length };
+            return { current: records.rs_current_profile, records: JSON.stringify(Object.entries(await p.readPersistedRecords()).sort()), count: (await a.listSnapshots()).length };
         });
-        // Profilbootstrap aktualisiert updatedAt beim Neustart. Nur dieses
-        // Metadatum ist ausgenommen; alle übrigen Backendbytes bleiben geschützt.
+        // Profilbootstrap aktualisiert updatedAt beim Neustart; nur dieses Metadatum ist ausgenommen.
         const recoveryIdentity = raw => {
             const records = Object.fromEntries(JSON.parse(raw));
             const registry = JSON.parse(records.rs_profiles_v1);
@@ -16632,128 +14111,87 @@ async function runDataPageSmoke(browser, baseUrl) {
             records.rs_profiles_v1 = JSON.stringify(registry);
             return JSON.stringify(Object.entries(records).sort());
         };
-        // Recovery-Einstieg im frischen Dokument, danach echte Hashnavigation.
+        // Recovery-Einstieg im frischen Dokument: Punkt markiert und fokussiert, kein automatischer Klick.
         await restoration.context.addInitScript(() => {
-            const probe = window.__dataRecoveryEntryProbe = { clicks: [], flushes: 0, hashes: 0, ready: false };
+            const probe = window.__dataRecoveryEntryProbe = { clicks: [], ready: true };
             document.addEventListener('click', event => {
-                const button = event.target.closest?.('[data-restore-preview]');
-                if (button) probe.clicks.push(button.dataset.restorePreview);
+                const button = event.target.closest?.('[data-restore-point]');
+                if (button) probe.clicks.push(button.dataset.restorePoint);
             }, true);
-            addEventListener('hashchange', () => { probe.hashes++; });
-            void import('./app/shared/persistence-facade.js').then(({ PersistenceFacade: p }) => {
-                const originalFlush = p.flush;
-                p.flush = async (...args) => { probe.flushes++; return originalFlush.apply(p, args); };
-                probe.ready = true;
-            });
         });
         await page.goto(`${baseUrl}/Daten-Sicherung.html?punkt=browser-data-restore#wiederherstellung`);
-        await waitForPageCondition(page, async () => document.documentElement.dataset.dataReady === 'true' && window.__dataRecoveryEntryProbe.ready);
-        await page.locator('#dataRestorePreview').waitFor({ state: 'visible' });
-        const initialRecovery = await page.evaluate(async () => {
-            const { initDataPage } = await import('./app/data/data-page.js');
-            const first = initDataPage(document, window);
-            const second = initDataPage(document, window);
-            await first;
-            return { ...window.__dataRecoveryEntryProbe, sameTask: first === second };
-        });
-        assert(initialRecovery.sameTask && initialRecovery.clicks.join(',') === 'browser-data-restore', 'Konkreter Recovery-Einstieg klickt einmal; wiederholter Start bleibt idempotent');
-        assert(initialRecovery.flushes > 0, 'Messhülle erfasst die echten Start- und Vorschauflushs');
-        assert((await page.locator('#dataRestoreChanges').textContent()).includes('321'), 'Automatische Vorschau ist tatsächlich fertig berechnet');
-        const hashProbe = async (hash, navigate, visible = true) => {
-            const hashes = await page.evaluate(() => window.__dataRecoveryEntryProbe.hashes);
-            await navigate();
-            await waitForPageCondition(page, async ({ hash, hashes }) => location.hash === hash && window.__dataRecoveryEntryProbe.hashes > hashes, { hash, hashes });
-            assert(await page.locator('#dataRestorePreview').isVisible() === visible, hash + ': Hashnavigation erhält den Vorschauzustand');
-            const measured = await page.evaluate(() => ({ ...window.__dataRecoveryEntryProbe, focus: document.activeElement?.id }));
-            assert(measured.clicks.join(',') === 'browser-data-restore' && measured.flushes === initialRecovery.flushes, hash + ': kein neuer Vorschauklick oder Flush');
-            assert(measured.focus === hash.slice(1), hash + ': Fokus gehört dem Hashziel');
-            if (hash.startsWith('#dataBalance') || hash === '#balance-austausch') {
-                assert(await page.locator('#balance-austausch').evaluate(node => node.open), hash + ': Austauschbereich bleibt erreichbar');
-            }
-        };
-        await hashProbe('#suiteMain', async () => {
-            await page.locator('.suite-skip').focus(); await page.locator('.suite-skip').click();
-        });
-        for (const hash of ['#balance-austausch', '#dataBalanceExport', '#dataBalanceImport']) {
-            await hashProbe(hash, () => page.evaluate(hash => { location.hash = hash; }, hash));
-        }
-        await page.locator('#dataRestoreCancel').click();
-        assert(await page.locator('#dataRestorePreview').isHidden(), 'Manuelles Schließen verbirgt die Recovery-Vorschau');
-        await hashProbe('#wiederherstellung', () => page.evaluate(() => { location.hash = '#wiederherstellung'; }), false);
-        const recoveryBytes = await page.evaluate(async () => {
-            const { PersistenceFacade: p } = await import('./app/shared/persistence-facade.js');
-            const { SnapshotArchive: a } = await import('./app/shared/snapshot-archive.js');
-            return { records: JSON.stringify(Object.entries(await p.readPersistedRecords()).sort()), count: (await a.listSnapshots()).length };
-        });
-        assert(recoveryIdentity(recoveryBytes.records) === recoveryIdentity(before.records) && recoveryBytes.count === before.count, 'Recovery-Einstieg, Hashwechsel und Schließen erzeugen weder Zielwrite noch Recoverypunkt');
+        await waitForPageCondition(page, async () => document.documentElement.dataset.dataReady === 'true');
+        const entry = await page.evaluate(() => ({ focused: document.activeElement?.dataset?.restorePoint,
+            selected: document.activeElement?.closest('li')?.dataset.selected, clicks: window.__dataRecoveryEntryProbe.clicks.length }));
+        assert(entry.focused === 'browser-data-restore' && entry.selected === 'true' && entry.clicks === 0, 'Recovery-Einstieg markiert den Punkt ohne automatischen Klick');
+        assert(await page.locator('#pageDialog[open]').count() === 0, 'Recovery-Einstieg öffnet keine Rückfrage');
         for (const search of ['', '?punkt=', '?punkt=unbekannt']) {
             await page.goto(`${baseUrl}/Daten-Sicherung.html${search}#wiederherstellung`);
-            await waitForPageCondition(page, async () => document.documentElement.dataset.dataReady === 'true' && window.__dataRecoveryEntryProbe.ready);
-            assert(await page.locator('#dataRestorePreview').isHidden(), search + ': fehlende, leere oder unbekannte ID öffnet keine Vorschau');
-            assert(await page.evaluate(() => window.__dataRecoveryEntryProbe.clicks.length) === 0, search + ': kein automatischer Punktklick');
-            const unchanged = await page.evaluate(async () => {
-                const { PersistenceFacade: p } = await import('./app/shared/persistence-facade.js');
-                const { SnapshotArchive: a } = await import('./app/shared/snapshot-archive.js');
-                return { records: JSON.stringify(Object.entries(await p.readPersistedRecords()).sort()), count: (await a.listSnapshots()).length };
-            });
+            await waitForPageCondition(page, async () => document.documentElement.dataset.dataReady === 'true');
+            assert(await page.locator('.data-timeline-row[data-selected="true"]').count() === 0, search + ': fehlende, leere oder unbekannte ID markiert keinen Punkt');
+            const unchanged = await readState();
             assert(recoveryIdentity(unchanged.records) === recoveryIdentity(before.records) && unchanged.count === before.count, search + ': keine Zielwrites oder Recoverypunkte');
         }
-        // Aktuelle Bootstrap-Metadaten vor der bestehenden manuellen Vorschau
-        // bestätigen; deren bisheriges vollständiges Byteorakel bleibt erhalten.
         before.records = await page.evaluate(async () => {
             const { PersistenceFacade: p } = await import('./app/shared/persistence-facade.js');
             await p.flush(); return JSON.stringify(Object.entries(await p.readPersistedRecords()).sort());
         });
-        const open = page.locator('[data-restore-preview="browser-data-restore"]'); await revealDataSnapshot(open);
-        await open.click(); await page.locator('#dataRestorePreview').waitFor({ state: 'visible' });
-        assert((await page.locator('#dataRestorePreviewTitle').textContent()).includes('<img src=x>'), 'Vorschau gibt Label als Text aus');
-        assert(await page.locator('#dataRestorePreviewTitle img').count() === 0, 'Label erzeugt kein HTML');
-        assert((await page.locator('#dataRestoreChanges').textContent()).includes('321'), 'Vorschau zeigt tatsächliche Tagesgeldänderung');
-        assert(await open.textContent() === 'Vorschau schließen', 'Gewählte Zeile bietet Schließen an');
+        const open = page.locator('[data-restore-point="browser-data-restore"]');
+        assert((await page.locator('.data-timeline-row').filter({ has: open }).locator('b').textContent()) === 'Vor dem Monatsabschluss September 2026', 'Zeile nennt den Anlass');
+        await open.click(); await page.locator('#pageDialog[open]').waitFor({ state: 'visible' });
         for (const width of [1366, 1920]) {
             await page.setViewportSize({ width, height: 1200 });
             await capturePageDialogImage(page, `daten-sicherung-03-${width}`);
         }
-
-        await page.locator('#dataRestoreCancel').click();
-        const cancelled = await page.evaluate(async () => {
-            const { PersistenceFacade: p } = await import('./app/shared/persistence-facade.js');
-            const { SnapshotArchive: a } = await import('./app/shared/snapshot-archive.js');
-            return { records: JSON.stringify(Object.entries(await p.readPersistedRecords()).sort()), count: (await a.listSnapshots()).length };
-        });
-        assert(cancelled.records === before.records && cancelled.count === before.count, 'Vorschau und Abbruch bleiben vollständig schreibfrei');
+        const question = await answerPageDialog(page, { action: 'cancel', label: 'Zurückholen' });
+        assert(question.includes('Der heutige Stand wird ersetzt') && question.includes('Vor dem Monatsabschluss September 2026'), 'Rückfrage nennt Datum, Anlass und Folge');
+        const cancelled = await readState();
+        assert(cancelled.records === before.records && cancelled.count === before.count, 'Rückfrage und Abbruch bleiben vollständig schreibfrei');
         await page.evaluate(async () => {
             const { PersistenceFacade: p } = await import('./app/shared/persistence-facade.js');
             p.setItemSync('profile_tagesgeld', '98000'); // bewusst ohne expliziten Flush
         });
         await open.click();
-        await page.locator('#dataRestoreChanges').filter({ hasText: '98.000 €' }).waitFor();
-        await Promise.all([page.waitForEvent('load'), page.locator('#dataRestoreConfirm').click()]);
+        await Promise.all([page.waitForEvent('load'), answerPageDialog(page, { label: 'Zurückholen' })]);
         await waitForPageCondition(page, async () => document.documentElement.dataset.dataReady === 'true');
         const restored = await page.evaluate(async () => {
             const { PersistenceFacade: p } = await import('./app/shared/persistence-facade.js');
             const { SnapshotArchive: a } = await import('./app/shared/snapshot-archive.js');
             const points = await a.listSnapshots();
             return { cash: (await p.readPersistedRecords()).profile_tagesgeld,
-                undo: points.filter(point => point.kind === 'before-restore-recovery').map(point => point.id), count: points.length };
+                undo: points.filter(point => point.kind === 'full-backup-import-recovery' && point.label === 'Vor dem Zurückholen').map(point => point.id), count: points.length };
         });
         assert(restored.cash === '321' && restored.count === before.count + 1 && restored.undo.length === 1, 'Bestätigung setzt Ziel und erzeugt genau einen Rückkehrpunkt');
-        await revealDataSnapshot(page.locator(`[data-restore-preview="${restored.undo[0]}"]`));
-        await page.locator(`[data-restore-preview="${restored.undo[0]}"]`).click();
-        await Promise.all([page.waitForEvent('load'), page.locator('#dataRestoreConfirm').click()]);
+        await page.locator(`[data-restore-point="${restored.undo[0]}"]`).click();
+        await Promise.all([page.waitForEvent('load'), answerPageDialog(page, { label: 'Zurückholen' })]);
         await waitForPageCondition(page, async () => document.documentElement.dataset.dataReady === 'true');
         const undone = await page.evaluate(async () => {
             const { PersistenceFacade: p } = await import('./app/shared/persistence-facade.js'); return await p.readPersistedRecords();
         });
         assert(undone.profile_tagesgeld === '98000' && undone.rs_current_profile === before.current, 'Rückkehrpunkt stellt tatsächliche Vorwerte und Auswahl wieder her');
-        await page.locator('#dataSnapshotDisclosure').evaluate(node => { node.open = true; });
-        await page.locator('#dataRetentionPreview').click();
-        await page.locator('#pageDialog').waitFor({ state: 'visible' });
-        assert(await page.locator('#pageDialogTitle').textContent() === 'Nichts aufzuräumen', 'Geschützte Punkte erzeugen einen Null-Aufräumplan');
-        assert(await page.locator('#pageDialog [data-page-dialog-cancel]').count() === 0, 'Nullplan hat keine Löschbestätigung');
-        await page.locator('#pageDialog [data-page-dialog-accept]').click();
-        assert(await page.locator('#pageDialog').count() === 0, 'Null-Aufräumhinweis schließt mit Verstanden');
-        await runDataPointDeleteSmoke(page);
+        assert(await page.locator('[data-delete-point], #dataRetentionPreview, #dataSnapshotTile').count() === 0, 'Keine Einzellöschung, kein Aufräumen, kein Zähler');
+        // Einmalige Archivleerung beim ersten Start der neuen Version: alter Punkt weg, neue Punkte bleiben, Hinweis bis zum Schließen.
+        const newPoints = await page.evaluate(async () => {
+            const { PersistenceFacade: p } = await import('./app/shared/persistence-facade.js');
+            const { SnapshotArchive: a } = await import('./app/shared/snapshot-archive.js');
+            await p.setMetadata('rs_restore_points_reset_v1', null);
+            const records = await p.readPersistedRecords();
+            const kept = (await a.listSnapshots()).map(point => point.id).sort();
+            // Punkt aus der Zeit vor der vereinfachten Sicherung: ohne Herkunft (SV-1b).
+            const { origin, ...legacy } = a.buildSnapshot({ id: 'browser-alter-punkt', kind: 'profile-management-before', label: 'Vor dem Löschen von Erika',
+                records, activeProfileId: records.rs_current_profile, createdAt: '2026-09-01T10:00:00.000Z' });
+            await p.writeSnapshot(legacy);
+            return kept;
+        });
+        await page.reload(); await waitForPageCondition(page, async () => document.documentElement.dataset.dataReady === 'true');
+        assert(await page.locator('#dataRestorePointsNotice').isVisible(), 'Nach der Archivleerung erscheint der Hinweis');
+        assert((await page.locator('#dataRestorePointsNotice').textContent()).includes('Frühere Punkte sind entfernt'), 'Hinweis nennt die Leerung');
+        assert(JSON.stringify(await page.evaluate(async () => (await (await import('./app/shared/snapshot-archive.js')).SnapshotArchive.listSnapshots()).map(point => point.id).sort()))
+            === JSON.stringify(newPoints), 'Erster Start entfernt nur den alten Punkt; Punkte dieser Version bleiben');
+        await page.locator('#dataRestorePointsNoticeClose').click();
+        await page.locator('#dataRestorePointsNotice').waitFor({ state: 'hidden' });
+        await page.reload(); await waitForPageCondition(page, async () => document.documentElement.dataset.dataReady === 'true');
+        assert(await page.locator('#dataRestorePointsNotice').isHidden(), 'Geschlossener Hinweis bleibt geschlossen');
         restoration.assertNoErrors();
     } finally { await restoration.close(); }
     const futureTime = new Date(Date.now() + 86400000).toISOString();
@@ -16789,7 +14227,7 @@ async function runDataPageSmoke(browser, baseUrl) {
             assert(await page.locator('#dataBackupContextChip').getAttribute('data-state') === state, 'Sicherungschip übernimmt den echten Zustand');
             assert((await page.locator('#dataHouseholdContext').textContent()).startsWith('Haushalt: '), 'Zweiter Entwurfschip zeigt den Haushalt');
             assert(await page.locator('#dataStorageOpen').isHidden() && await page.locator('#dataPriceCancel').isHidden(), 'Ordner- und Abbrechenknopf sind im Ruhemodus tatsächlich verborgen');
-            for (const id of ['dataBackupDetails', 'dataStorageDetails', 'dataRestoreDetails', 'dataPriceDetails', 'dataExchangeDetails', 'dataRetentionDetails', 'dataStorageLocationDetails']) {
+            for (const id of ['dataBackupDetails', 'dataStorageDetails', 'dataRestoreDetails', 'dataPriceDetails', 'dataRetentionDetails', 'dataStorageLocationDetails']) {
                 assert(await page.locator('#' + id).getAttribute('open') === null, 'Technische Details sind standardmäßig geschlossen: ' + id);
             }
             const mainText = await page.evaluate(() => {
@@ -16860,8 +14298,9 @@ async function runDataPricesStorageSmoke(browser, baseUrl) {
         await page.locator('#dataPriceCheck').click();
         await waitForPageCondition(page, async () => document.getElementById('dataPriceServiceText').textContent.includes('Dienst erreichbar'));
         await page.locator('#dataPriceFetch').click();
-        await waitForPageCondition(page, async () => document.getElementById('dataPriceCancel').hidden && document.getElementById('dataPriceActionStatus').textContent.includes('Zeitraum bestätigt'));
-        assert(chartRequests === 1, 'Geteiltes Wertpapier wird über tatsächlichen Nachladeknopf einmal geholt');
+        // ATH-1b: Neben dem geteilten Wertpapier holt der Knopf die Referenz VWCE.DE ab Historienstart, also zwei Zeiträume.
+        await waitForPageCondition(page, async () => document.getElementById('dataPriceCancel').hidden && document.getElementById('dataPriceActionStatus').textContent.includes('2 Zeiträume bestätigt'));
+        assert(chartRequests === 2, 'Geteiltes Wertpapier und Referenz VWCE.DE werden über tatsächlichen Nachladeknopf je einmal geholt');
         assert(await page.locator('#dataPriceFetch').isDisabled(), 'Erfolgreich leere Feiertagsantwort bestätigt Abdeckung und sperrt erneuten Abruf');
         const size = await page.evaluate(async () => {
             const { readDataModel } = await import('./app/data/data-model.js');
@@ -16881,128 +14320,20 @@ async function runDataPricesStorageSmoke(browser, baseUrl) {
 }
 
 // Slice 4: tatsächliche Knöpfe, Seitendialoge, Dateien und alte Fundstellen.
-async function revealDataSnapshot(control) {
-    await control.waitFor({ state: 'attached' });
-    await control.evaluate(node => {
-        for (let parent = node.parentElement; parent; parent = parent.parentElement) if (parent.tagName === 'DETAILS') parent.open = true;
-    });
-}
-async function runDataPointDeleteSmoke(page) {
-    await waitForPageCondition(page, async () => {
-        const guard = (await import('./app/shared/navigation-guard-dialog.js')).getPageNavigationGuard();
-        return !guard.isBusy() && !guard.reasons().some(reason => ['preparing', 'commit', 'running'].includes(reason.phase));
-    });
-    const before = await page.evaluate(async () => {
-        const { PersistenceFacade: p } = await import('./app/shared/persistence-facade.js');
-        const { SnapshotArchive: a } = await import('./app/shared/snapshot-archive.js');
-        const { previewSnapshotRetention } = await import('./app/shared/snapshot-retention.js');
-        await p.flush(); const records = await p.readPersistedRecords();
-        for (const [id, day, kind] of [
-            ['browser-delete-old', '01', 'manual'], ['browser-delete-cover', '02', 'manual'],
-            ['browser-delete-permanent', '03', 'annual-close-pre-mutation']
-        ]) await a.createSnapshot({ id, label: id, kind, activeProfileId: records.rs_current_profile,
-            records, createdAt: `2001-01-${day}T12:00:00Z` });
-        const plan = await previewSnapshotRetention();
-        if (!plan.remove.some(point => point.id === 'browser-delete-old')
-            || plan.remove.some(point => ['browser-delete-cover', 'browser-delete-permanent'].includes(point.id))) {
-            throw new Error('Browserfixture besitzt keine eindeutige konservative Einzeldeckung.');
-        }
-        document.dispatchEvent(new Event('overview-backup-changed'));
-        return { records: JSON.stringify(await p.readPersistedRecords()), points: await a.listSnapshots(),
-            exchange: document.getElementById('dataExchangeStatus').textContent,
-            technical: document.getElementById('dataExchangeTechnical').textContent };
-    });
-    const card = page.locator('#wiederherstellung');
-    const remove = id => card.locator(`[data-delete-point="${id}"]`);
-    const permanent = card.locator('[data-point-status="browser-delete-permanent"]').locator('..');
-    await permanent.waitFor({ state: 'attached' });
-    const openMore = async id => {
-        await revealDataSnapshot(remove(id));
-        const more = remove(id).locator('..');
-        if (!await more.evaluate(node => node.open)) await more.locator('summary').click();
-        assert(await remove(id).isVisible(), 'Nachgeordnete Einzelpunktlöschung bleibt erreichbar');
-    };
-    const assertExchangePreserved = async () => {
-        assert(await page.locator('#dataExchangeStatus').textContent() === before.exchange, 'Einzeldelete erhält die Austauschmeldung');
-        assert(await page.locator('#dataExchangeTechnical').textContent() === before.technical, 'Einzeldelete erhält technische Austauschdetails');
-    };
-    const readback = () => page.evaluate(async () => {
-        const { PersistenceFacade: p } = await import('./app/shared/persistence-facade.js');
-        const { SnapshotArchive: a } = await import('./app/shared/snapshot-archive.js');
-        return { records: JSON.stringify(await p.readPersistedRecords()), points: await a.listSnapshots() };
-    });
-    await revealDataSnapshot(permanent);
-    assert(await remove('browser-delete-permanent').count() === 0, 'Dauerpunkt besitzt keinen Löschknopf');
-    assert(await permanent.locator('.data-point-retention').textContent() === 'Bleibt immer erhalten', 'Schutzursache steht sichtbar direkt am Dauerpunkt');
-    assert(await page.locator('#pageDialog').count() === 0, 'Dauerpunkt bietet keine Löschbestätigung');
-    let current = await readback();
-    assert(current.records === before.records && JSON.stringify(current.points) === JSON.stringify(before.points), 'Geschützter Browserdelete bleibt vollständig schreibfrei');
-    await assertExchangePreserved();
-    await openMore('browser-delete-old'); await remove('browser-delete-old').click();
-    await answerPageDialog(page, { action: 'cancel', label: 'Punkt löschen' });
-    await card.locator('#dataRestoreStatus').filter({ hasText: 'Punktlöschen abgebrochen.' }).waitFor();
-    current = await readback();
-    assert(current.records === before.records && JSON.stringify(current.points) === JSON.stringify(before.points), 'Abgelehnte Einzelpunktbestätigung erhält Archiv und Livewerte');
-    await assertExchangePreserved();
-    await remove('browser-delete-old').click(); await answerPageDialog(page, { label: 'Punkt löschen' });
-    await card.locator('#dataRestoreStatus[data-kind="ok"]').filter({ hasText: 'Punkt entfernt.' }).waitFor();
-    await remove('browser-delete-old').waitFor({ state: 'detached' });
-    assert(await card.locator('#dataRestoreTechnical').textContent() === '', 'Erfolg bereinigt die technische Schutzmeldung');
-    current = await readback();
-    assert(current.records === before.records, 'Bestätigter Browserdelete erhält sämtliche fachlichen Livewerte');
-    assert(JSON.stringify(current.points) === JSON.stringify(before.points.filter(point => point.id !== 'browser-delete-old')), 'Nur der bestätigte abgedeckte Punkt fehlt im Archivreadback');
-    await assertExchangePreserved();
-    assert(await remove('browser-delete-cover').count() === 0, 'Letzter Monatsstand besitzt keinen Löschknopf');
-    assert((await card.locator('[data-point-status="browser-delete-cover"]').locator('..').textContent()).includes('Letzter Stand dieses Monats'), 'Erhaltener Deckungspunkt nennt den Monatsgrund');
-}
 
-async function runDataExchangeSmoke(browser, baseUrl) {
+async function runDataLinksSmoke(browser, baseUrl) {
     for (const width of [1366, 1920, 2560]) {
-        // Der Balance-Dateiaustausch braucht einen echten Balance-Bestand; die Suite-Fixture hat keinen.
         const storage = createBrowserProfileStorage({
             'suite-a': { name: 'Synthetisch A', tagesgeld: '100000', belongsToHousehold: true, balanceStateRaw: createBalanceStorage(2026)[BALANCE_STATE_KEY],
-                tranchesRaw: JSON.stringify([createBrowserTranche({ name: 'Bestand A', trancheId: 'suite-lot-a' })]) },
-            'suite-b': { name: 'Synthetisch B', tagesgeld: '200000', belongsToHousehold: false,
-                tranchesRaw: JSON.stringify([createBrowserTranche({ name: 'Bestand B', trancheId: 'suite-lot-b' })]) }
+                tranchesRaw: JSON.stringify([createBrowserTranche({ name: 'Bestand A', trancheId: 'suite-lot-a' })]) }
         }, 'suite-a');
         const smoke = await createPage(browser, 'Daten-Sicherung.html', { storage });
         try {
             const { page } = smoke; await page.setViewportSize({ width, height: 900 });
             await page.goto(`${baseUrl}/Daten-Sicherung.html`);
             await waitForPageCondition(page, () => document.documentElement.dataset.dataReady === 'true');
-            const before = await page.evaluate(async () => (await import('./app/shared/persistence-facade.js')).PersistenceFacade.readPersistedRecords());
-            const personId = Object.keys(JSON.parse(before.rs_profiles_v1).profiles)[0];
-            await page.locator('#dataPersonSelect').selectOption(personId);
-            const download = page.waitForEvent('download'); await page.locator('#dataPersonExport').click();
-            await answerPageDialog(page, { label: 'Person exportieren' });
-            const person = JSON.parse(await readDownloadText(await download));
-            assert(Object.keys(person.registry.profiles).join() === personId && Object.keys(person.globals).length === 0, 'Personendownload enthält genau die bestätigte Person');
-            const file = { name: 'synthetische-person.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(person)) };
-            const choose = async () => { const chooser = page.waitForEvent('filechooser'); await page.locator('#dataPersonImport').click(); await (await chooser).setFiles(file); };
-            await choose(); await answerPageDialog(page, { action: 'cancel', label: 'Neue Person anlegen' });
-            assert(JSON.stringify(await page.evaluate(async () => (await import('./app/shared/persistence-facade.js')).PersistenceFacade.readPersistedRecords())) === JSON.stringify(before), 'Personenimportabbruch erhält sämtliche Records');
-            await choose(); await answerPageDialog(page, { label: 'Neue Person anlegen' });
-            await waitForPageCondition(page, () => document.getElementById('dataExchangeStatus').textContent.includes('dauerhaft angelegt'));
-            const after = await page.evaluate(async () => (await import('./app/shared/persistence-facade.js')).PersistenceFacade.readPersistedRecords());
-            const oldRegistry = JSON.parse(before.rs_profiles_v1), registry = JSON.parse(after.rs_profiles_v1);
-            const ids = Object.keys(registry.profiles).filter(id => !oldRegistry.profiles[id]);
-            assert(ids.length === 1 && registry.profiles[ids[0]].meta.belongsToHousehold === false, 'Realer Import erzeugt genau eine neue Außenperson');
-            assert(Object.keys(before).filter(key => key !== 'rs_profiles_v1').every(key => after[key] === before[key]), 'Personenimport erhält Livewerte, Globals und aktive IDs');
-            assert(Object.keys(oldRegistry.profiles).every(id => JSON.stringify(oldRegistry.profiles[id]) === JSON.stringify(registry.profiles[id])), 'Personenimport erhält alle bisherigen Profile');
-            await page.locator('#balance-austausch > summary').click();
-            const balanceDownload = page.waitForEvent('download'); await page.locator('#dataBalanceExport').click();
-            const balance = await readDownloadText(await balanceDownload);
-            // Der erste Export liest den Altbestand und stößt dessen bestehende Inflationsumstellung an.
-            await page.evaluate(async () => {
-                const { flush } = await import('./app/shared/persistence-facade.js');
-                if (await flush() === false) throw new Error('Exportvorbereitung wurde nicht dauerhaft gespeichert.');
-            });
-            await waitForPageCondition(page, async () => (await import('./app/shared/navigation-guard-dialog.js')).getPageNavigationGuard().reasons().length === 0);
-            const chooser = page.waitForEvent('filechooser'); await page.locator('#dataBalanceImport').click();
-            await (await chooser).setFiles({ name: 'synthetische-balance.json', mimeType: 'application/json', buffer: Buffer.from(balance) });
-            await answerPageDialog(page, { label: 'Balance importieren' });
-            await waitForPageCondition(page, () => document.getElementById('dataExchangeStatus').textContent.includes('Balance eingespielt'));
-            await runDataPointDeleteSmoke(page);
+            // AK-1: Die Karte „Austausch“ ist samt Personen- und Balance-Dateien entfallen.
+            assert(await page.locator('#austausch, #dataPersonExport, #dataBalanceExport, #dataLegacyFolder').count() === 0, 'Daten & Sicherung zeigt keine Karte „Austausch“');
             await page.locator('.data-heading a[href="Handbuch.html#daten-sicherung"]').click();
             await page.waitForURL('**/Handbuch.html#daten-sicherung');
             await waitForPageCondition(page, () => document.activeElement?.id === 'daten-sicherung');
@@ -17013,13 +14344,10 @@ async function runDataExchangeSmoke(browser, baseUrl) {
             await waitForPageCondition(page, () => document.activeElement?.id === 'fullBackupImportBtn');
             await page.goto(`${baseUrl}/Balance.html`); await waitBalanceHouseholdList(page);
             assert(await page.locator('#snapshot-management').count() === 0, 'Balance enthält keine Sicherungskarte');
-            /* Startspeichern der Balance abwarten, sonst weist der Navigationsschutz das Kürzel ab. */ await waitForPageCondition(page, async () => (await import('./app/shared/navigation-guard-dialog.js')).getPageNavigationGuard().reasons().length === 0); await page.keyboard.press('Alt+e');
-            await page.waitForURL('**/Daten-Sicherung.html#dataBalanceExport');
-            assert(await page.locator('#dataBalanceImport').isVisible(), 'Alter Balancezugang öffnet aufgeklappten Dateiaustausch');
-            await page.goto(`${baseUrl}/Balance.html`); await waitBalanceHouseholdList(page);
-            await waitForPageCondition(page, async () => (await import('./app/shared/navigation-guard-dialog.js')).getPageNavigationGuard().reasons().length === 0); await page.keyboard.press('Alt+i'); await page.waitForURL('**/Daten-Sicherung.html#dataBalanceImport');
-            await waitForPageCondition(page, () => document.activeElement?.id === 'dataBalanceImport');
-            await page.goto(`${baseUrl}/Balance.html#snapshot-management`); await page.waitForURL('**/Daten-Sicherung.html#wiederherstellung');
+            // AK-1: Alt+E und Alt+I springen nicht mehr nach Daten & Sicherung.
+            await waitForPageCondition(page, async () => (await import('./app/shared/navigation-guard-dialog.js')).getPageNavigationGuard().reasons().length === 0);
+            await page.keyboard.press('Alt+e'); await page.keyboard.press('Alt+i'); await page.waitForTimeout(300);
+            assert(new URL(page.url()).pathname.endsWith('/Balance.html'), 'Alt+E und Alt+I bleiben in der Balance');
 
             await page.goto(`${baseUrl}/Daten-Sicherung.html`);
             await page.locator('#dataPriceCheck').scrollIntoViewIfNeeded();
@@ -17075,23 +14403,16 @@ function semanticRecord(raw) {
 
 async function runHouseholdPlanCouplingSmoke(browser, baseUrl) { return runHouseholdPlanMigrationSmoke(browser, baseUrl, 'coupled'); }
 
-// Gemeinsame Gegenprobe: dieselbe Browserabnahme ist auch ohne Port-/Browserstart
-// am produktiven UI-Funktionskörper ausführbar.
-export function assertRejectedPlanChampionState(state) {
-    assert(state.successes === 0, 'Echter Übernehmen-Knopf hängt nach Ablehnung keinen neuen Erfolgshinweis an');
+async function runSimulatorPlanReadModeSmoke(browser, baseUrl) {
+    for (const goGoActive of [true, false]) await runSimulatorPlanReadModeCaseSmoke(browser, baseUrl, goGoActive);
 }
 
-async function runSimulatorPlanChampionSmoke(browser, baseUrl) {
-    for (const goGoActive of [true, false]) await runSimulatorPlanChampionCaseSmoke(browser, baseUrl, goGoActive);
-}
-
-async function runSimulatorPlanChampionCaseSmoke(browser, baseUrl, goGoActive) {
+async function runSimulatorPlanReadModeCaseSmoke(browser, baseUrl, goGoActive) {
     const records = createMusterHaushaltRecords('2026-10-09');
     const entries = Object.values(JSON.parse(records[HOUSEHOLD_PLAN_KEY]).entries);
     const values = { ...structuredClone(PLAN_DEFAULTS), dynamicFlex: true, goGoActive, horizonMethod: 'survival_quantile' };
     records[HOUSEHOLD_PLAN_KEY] = buildPlanRecord(null, entries.map(entry => ({ scope: entry.scope, values }))).raw;
-    const champion = goGoActive ? { liquidityRunwayYears: 7, survivalQuantile: .93, goGoMultiplier: 1.3 } : { goGoMultiplier: 1.3 };
-    const smoke = await createPage(browser, `Simulator Planlesemodus und Championübernahme (Go-Go ${goGoActive ? 'an' : 'aus'})`, {
+    const smoke = await createPage(browser, `Simulator Planlesemodus (Go-Go ${goGoActive ? 'an' : 'aus'})`, {
         storage: records, fixedTime: '2026-10-09T12:00:00Z'
     });
     const { page } = smoke;
@@ -17102,17 +14423,6 @@ async function runSimulatorPlanChampionCaseSmoke(browser, baseUrl, goGoActive) {
         return Object.fromEntries(Object.entries(records).filter(([key]) => key.startsWith('sim_')
             || ['household_plan_v1', 'household_simulator_needs_v1', 'rs_profiles_v1', 'rs_current_profile', 'rs_active_profile'].includes(key))
             .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0));
-    });
-    const applicationState = () => page.evaluate(async () => {
-        const { getCommonInputs } = await import('./app/simulator/simulator-portfolio-inputs.js');
-        const { planTrialContextFor } = await import('./app/simulator/simulator-plan-trial.js');
-        const inputs = getCommonInputs();
-        const { readNumber } = await import('./app/simulator/simulator-input-dom.js');
-        return { values: Object.fromEntries(['liquidityRunwayYears', 'survivalQuantile', 'goGoMultiplier'].map(id =>
-            [id, { form: readNumber(id, NaN), run: inputs[id] }])),
-            goGoActive: { form: document.getElementById('goGoActive').checked, run: inputs.goGoActive },
-            deviationApplied: planTrialContextFor(inputs).deviationApplied,
-            successes: window.__planChampionSuccesses };
     });
     try {
         await page.goto(`${baseUrl}/Simulator.html`); await waitForSimulatorOpening(page, 'Simulator.html');
@@ -17142,55 +14452,12 @@ async function runSimulatorPlanChampionCaseSmoke(browser, baseUrl, goGoActive) {
         const expected = { startFlexBedarf: 24000, liquidityRunwayYears: values.liquidityRunwayYears, survivalQuantile: .85, goGoMultiplier: 1.1 };
         assert(restored.results.every(item => item.value === expected[item.id] && item.value === item.run), 'Synthetische Ereignisse restaurieren Formular und Laufeingabe synchron');
         assert(restored.preset === (goGoActive ? 'ausgewogen' : 'custom') && restored.goGo === goGoActive && restored.origins, 'Preset, Checkboxen, Sperren und zugängliche Planherkunft stimmen nach allen Listenern');
-        await openSimulatorTab(page, 'werkstatt');
-        await page.locator('#workshopToolCards [data-workshop-tool="optimize"]').click();
-        await page.evaluate(async championCfg => {
-            const { createAutoOptimizeParameterFingerprint, createAutoOptimizeRequestFingerprint } = await import('./app/simulator/auto-optimize-param-meta.js');
-            // Auswertungsidentität synthetisch, Registryanwendung und Buttonbindung produktiv.
-            Object.defineProperties(championCfg, {
-                __autoOptimizeParameterFingerprint: { value: createAutoOptimizeParameterFingerprint(championCfg) },
-                __autoOptimizeRequestFingerprint: { value: createAutoOptimizeRequestFingerprint(championCfg) }
-            });
-            window.aoChampionResult = { championCfg };
-            document.getElementById('ao_apply_btn').style.display = '';
-            document.getElementById('ao_result').style.display = 'block';
-            // Der Erfolgsanhang verschwindet nach 3,5 Sekunden. Auch bei langsamer
-            // Dialogbedienung muss die Gegenprobe jeden neuen Anhang erkennen.
-            window.__planChampionSuccesses = 0;
-            new MutationObserver(records => {
-                for (const record of records) for (const node of record.addedNodes) {
-                    if (node.nodeType === Node.ELEMENT_NODE && node.matches('.ds-note')
-                        && node.textContent.includes('Szenariokandidat übernommen')) window.__planChampionSuccesses++;
-                }
-            }).observe(document.getElementById('ao_result'), { childList: true });
-        }, champion);
-        await page.locator('#ao_apply_btn').click();
-        const notice = await answerPageDialog(page, { label: 'Verstanden' });
-        const rejected = await applicationState();
-        assert(notice.includes('Nicht übernommen') && notice.includes('Nur hier ausprobieren'), 'Echter Übernehmen-Knopf erklärt Ablehnung und Versuchsstart');
-        assertRejectedPlanChampionState(rejected);
-        assert(Object.entries(rejected.values).every(([id, state]) => state.form === expected[id] && state.form === state.run)
-            && rejected.goGoActive.form === goGoActive && rejected.goGoActive.run === goGoActive
-            && !rejected.deviationApplied, 'Abgewiesener Champion bleibt im Formular und Lauf beim bestätigten Plan');
-        assert(JSON.stringify(await protectedRead()) === JSON.stringify(before), 'Lesemodus und abgewiesener Champion erhalten geschützte Backendrohbytes nach Flush');
-        await openSimulatorPlanTrial(page);
-        await page.evaluate(() => {
-            const field = document.getElementById('goGoActive'); field.checked = false; field.dispatchEvent(new Event('change', { bubbles: true }));
-        });
-        // Die Optimierungskarte ist noch aufgeklappt; ein zweiter Kartenklick klappte das Werkzeug wieder zu.
-        await openWorkshopTool(page, 'optimize');
-        await page.locator('#ao_apply_btn').click();
-        const applied = await applicationState();
-        assert(applied.successes === 1 && applied.deviationApplied && applied.goGoActive.form && applied.goGoActive.run
-            && Object.entries(applied.values).every(([id, state]) => state.form === (champion[id] ?? expected[id]) && state.form === state.run),
-        'Echter Übernehmen-Knopf meldet wirksame lokale Championanwendung einschließlich Go-Go-Kopplung');
-        assert(JSON.stringify(await protectedRead()) === JSON.stringify(before), 'Lokale Versuchsanwendung erhält geschützte Backendrohbytes nach Flush');
-        // Planverlust am selben Dokument: erst entfernen und flushen, dann die
-        // Baseline sichern. Der bisherige Erfolgsreader würde nun absichtlich werfen.
+        assert(JSON.stringify(await protectedRead()) === JSON.stringify(before), 'Lesemodus erhält geschützte Backendrohbytes nach Flush');
+        // Planverlust am selben Dokument: erst entfernen und flushen, dann die Baseline sichern.
         await page.evaluate(async () => {
             const { PersistenceFacade: p, persistenceStorage } = await import('./app/shared/persistence-facade.js');
             const { getSimulatorPlanTrial, renderSimulatorPlanTrial } = await import('./app/simulator/simulator-plan-trial.js');
-            window.__planChampionDocument = document;
+            window.__planReadDocument = document;
             persistenceStorage.removeItem('household_plan_v1'); await p.flush();
             getSimulatorPlanTrial(document).read();
             renderSimulatorPlanTrial(document, { project: true });
@@ -17211,37 +14478,21 @@ async function runSimulatorPlanChampionCaseSmoke(browser, baseUrl, goGoActive) {
             try { getCommonInputs(); } catch (error) { runError = error.message; }
             return { fields, trial: trial.read(), runError, startResult: trial.start(),
                 startDisabled: document.getElementById('simPlanTrialStart').disabled,
-                successes: window.__planChampionSuccesses, sameDocument: document === window.__planChampionDocument };
+                sameDocument: document === window.__planReadDocument };
         });
         const lostFormBaseline = await lostApplicationState();
         assert(lostFormBaseline.sameDocument && Object.entries(lostFormBaseline.fields)
             .filter(([id]) => id !== 'dynamicFlexShowAdvanced').every(([, field]) => field.disabled),
         'Planverlustbaseline erfasst alle gesperrten Planfelder und Preset am selben Dokument');
-        for (const [kind, candidate] of [['identisch', champion], ['abweichend', { ...champion, goGoMultiplier: 1.4 }]]) {
-            await page.evaluate(async championCfg => {
-                const { createAutoOptimizeParameterFingerprint, createAutoOptimizeRequestFingerprint } = await import('./app/simulator/auto-optimize-param-meta.js');
-                Object.defineProperties(championCfg, {
-                    __autoOptimizeParameterFingerprint: { value: createAutoOptimizeParameterFingerprint(championCfg) },
-                    __autoOptimizeRequestFingerprint: { value: createAutoOptimizeRequestFingerprint(championCfg) }
-                });
-                window.aoChampionResult = { championCfg };
-            }, candidate);
-            await page.locator('#ao_apply_btn').click();
-            const lostNotice = await answerPageDialog(page, { label: 'Verstanden' });
-            const lost = await lostApplicationState();
-            assert(lostNotice.includes('Nicht übernommen: Der gemeinsame Plan fehlt oder ist ungültig. Stelle den gemeinsamen Plan wieder her, bevor du den Champion erneut übernimmst.')
-                && !lostNotice.includes('Nur hier ausprobieren') && !lostNotice.includes('Haushalt & Plan ist nicht mehr verfügbar'),
-            `${kind}: echter Übernehmen-Knopf erklärt vollständig die Planwiederherstellung`);
-            assert(lost.sameDocument && lost.trial.confirmed === true && lost.trial.scope === null && lost.trial.active === false,
-                `${kind}: Planverlust ohne Reload erhält die Bestätigungsgrenze mit fehlendem Scope und inaktivem Versuch`);
-            assert(lost.startDisabled && lost.startResult === false, `${kind}: Planverlust hält den echten Versuchsstart gesperrt`);
-            assert(lost.runError === 'Haushalt & Plan ist nicht mehr verfügbar. Bitte neu laden.', `${kind}: produktive Laufeingabe bleibt gesperrt`);
-            assertRejectedPlanChampionState({ successes: lost.successes - lostFormBaseline.successes });
-            assert(JSON.stringify(lost.fields) === JSON.stringify(lostFormBaseline.fields),
-                `${kind}: sämtliche Planwerte, Checkboxen, Preset und Sperren entsprechen der Verlustbaseline`);
-            assert(JSON.stringify(await protectedRead()) === JSON.stringify(lostBaseline),
-                `${kind}: geschützte Backendrohbytes entsprechen der Baseline nach Planentfernung und Flush`);
-        }
+        const lost = await lostApplicationState();
+        assert(lost.sameDocument && lost.trial.confirmed === true && lost.trial.scope === null && lost.trial.active === false,
+            'Planverlust ohne Reload erhält die Bestätigungsgrenze mit fehlendem Scope und inaktivem Versuch');
+        assert(lost.startDisabled && lost.startResult === false, 'Planverlust hält den echten Versuchsstart gesperrt');
+        assert(lost.runError === 'Haushalt & Plan ist nicht mehr verfügbar. Bitte neu laden.', 'Produktive Laufeingabe bleibt gesperrt');
+        assert(JSON.stringify(lost.fields) === JSON.stringify(lostFormBaseline.fields),
+            'Sämtliche Planwerte, Checkboxen, Preset und Sperren entsprechen der Verlustbaseline');
+        assert(JSON.stringify(await protectedRead()) === JSON.stringify(lostBaseline),
+            'Geschützte Backendrohbytes entsprechen der Baseline nach Planentfernung und Flush');
         smoke.assertNoErrors();
     } finally { await smoke.close(); }
 }
@@ -17516,7 +14767,8 @@ async function runSimulatorDeferredPlanSmoke(browser, baseUrl) {
 
 async function runSimulatorUnconfirmedHouseholdSmoke(browser, baseUrl) {
     const records = createMusterHaushaltRecords('2026-10-09');
-    const registry = JSON.parse(records.rs_profiles_v1); registry.profiles.muster_b.meta.belongsToHousehold = false;
+    // AP-1: Der gespeicherte Haushalt ist jetzt nur Max; der bestätigte Plan gehört zum früheren Haushalt Max + Erika.
+    const registry = JSON.parse(records.rs_profiles_v1); delete registry.profiles.muster_b;
     records.rs_profiles_v1 = JSON.stringify(registry);
     const smoke = await createPage(browser, 'Simulator Haushalt aus Personenverwaltung', {
         storage: records, fixedTime: '2026-10-09T12:00:00Z'
@@ -17527,8 +14779,8 @@ async function runSimulatorUnconfirmedHouseholdSmoke(browser, baseUrl) {
         await openSimulatorProfileList(page);
         assert(await page.locator('#simProfileList').textContent() === 'Haushalt: Max', 'Simulator zeigt genau den gespeicherten Haushalt');
         assert(await page.locator('#simProfileList input').count() === 0, 'Unbestätigter Plan erzeugt keine Haushaltsauswahl');
-        assert(JSON.parse((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value).profiles.muster_b.meta.belongsToHousehold === false,
-            'Simulator korrigiert die Mitgliedschaft auch ohne passenden Plan nicht');
+        assert(!JSON.parse((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value).profiles.muster_b,
+            'Simulator ergänzt den Haushalt auch ohne passenden Plan nicht');
         smoke.assertNoErrors();
     } finally { await smoke.close(); }
 }
@@ -17768,7 +15020,8 @@ async function runHouseholdPlanMigrationSmoke(browser, baseUrl, mode) {
                 const { SnapshotArchive } = await import('./app/shared/snapshot-archive.js');
                 return SnapshotArchive.listSnapshots();
             });
-            assert(points.filter(point => point.label === 'Vor Umstellung Haushalt & Plan').length === 1, 'Genau ein bestätigter Rückkehrpunkt für die Übernahme');
+            // SV-1: Die Umstellung sichert sich intern; nach Erfolg bleibt kein Punkt.
+            assert(points.filter(point => point.label === 'Vor Umstellung Haushalt & Plan').length === 0, 'Interne Rücksicherung der Übernahme nach Erfolg gelöscht');
             const raw = confirmed.household_plan_v1;
             await page.reload(); await waitPlan();
             assert((await read()).household_plan_v1 === raw, 'Bestätigter Reload erhält Planrohbytes und Zeitstempel');
@@ -17794,10 +15047,7 @@ async function runManagerHouseholdPlanSmoke(browser, baseUrl) {
         registry.profiles[id].data[BALANCE_STATE_KEY] = JSON.stringify(state);
     }
     records[BALANCE_STATE_KEY] = registry.profiles[records.rs_active_profile || ids[0]].data[BALANCE_STATE_KEY];
-    registry.profiles.h2_outside = { meta: { ...registry.profiles[ids[0]].meta, id: 'h2_outside', name: 'Test außen', belongsToHousehold: false }, data: structuredClone(registry.profiles[ids[0]].data) };
     records.rs_profiles_v1 = JSON.stringify(registry);
-    const outsideScope = planScope('single', ['h2_outside']);
-    records.household_plan_v1 = buildPlanRecord(records.household_plan_v1, [{ scope: outsideScope, values: { ...structuredClone(PLAN_DEFAULTS), floorBedarf: 9000 } }]).raw;
     const scope = planScope('household', ids), plan = JSON.parse(records.household_plan_v1).entries[scope.key].values;
     const action = { type: 'NONE', title: 'Keine Transaktion', quellen: [], verwendungen: {}, steuer: 0 };
     const outcome = { monthlyWithdrawal: 1500, monthlyBudget: 2000, liquidityBefore: 70, liquidityAfter: 80, flexRate: 100,
@@ -17814,7 +15064,7 @@ async function runManagerHouseholdPlanSmoke(browser, baseUrl) {
         assert(await page.locator('#managerPartnership').isVisible() && await page.locator('#managerPartnershipBody').isHidden(), 'Partnerschaft startet im Paarhaushalt eingeklappt');
         assert(await page.evaluate(() => ['managerHouseholdPlan', 'managerPlannedExpenses', 'managerPlanMore'].every(id =>
             Boolean(document.getElementById(id).compareDocumentPosition(document.getElementById('managerPartnership')) & Node.DOCUMENT_POSITION_FOLLOWING))), 'Partnerschaft folgt auf Bedarf samt Ergänzungen');
-        assert((await page.locator('#managerPartnershipSummary').textContent()).includes('Verheiratet oder eingetragene Partnerschaft'), 'Kurzstand bleibt bei geschlossener Partnerschaft sichtbar');
+        assert((await page.locator('#managerPartnershipSummary').textContent()).includes('Verheiratet oder eingetragene Partnerschaft'), 'Kurzstand zeigt die Ehe auch bei geschlossener Partnerschaft');
         await page.locator('#managerPartnershipToggle').press('Enter');
         assert(await page.locator('#managerPartnershipBody').isVisible() && await page.locator('#managerPartnershipAction').textContent() === '▾ ausblenden', 'Enter öffnet die bisherigen Partnerschaftseingaben');
         await page.locator('#managerPartnershipToggle').press('Space');
@@ -17838,7 +15088,7 @@ async function runManagerHouseholdPlanSmoke(browser, baseUrl) {
             const { summaryEntryKey, overviewScope } = await import('./app/overview/overview-storage.js');
             const { loadProfileRegistry } = await import('./app/profile/profile-registry.js');
             const live = await p.readPersistedRecords(), registry = loadProfileRegistry().value, activeId = live.rs_active_profile;
-            const scope = overviewScope('household', Object.keys(registry.profiles).filter(id => registry.profiles[id].meta.belongsToHousehold !== false));
+            const scope = overviewScope('household', Object.keys(registry.profiles));
             const preview = { year: 2026, scope, monthlyWithdrawal: 1600, monthlyBudget: 2100, liquidityBefore: 75, liquidityAfter: 85,
                 marketPhase: 'Synthetisch', status: 'vorläufig', createdAt: '2026-10-09T12:00:00Z',
                 action: { verb: 'Nichts tun', amount: null, amountUnit: '€', note: 'Keine Transaktion empfohlen.' },
@@ -17895,19 +15145,6 @@ async function runManagerHouseholdPlanSmoke(browser, baseUrl) {
         assert((await page.locator('#managerPlanStatus').textContent()).includes('Nicht gespeichert'), 'Ungültige Kopplung zeigt Fehler statt Clamping');
         await page.locator('#managerPlan_minimumFlexAnnual').fill(String(plan.minimumFlexAnnual));
         await page.evaluate(async () => { await (await import('./app/tranches/tranchen-manager-page.js')).flushManagerHouseholdPlan(); });
-        await page.locator('#managerSectionNav [data-manager-profile="h2_outside"]').click();
-        await waitForPageCondition(page, () => document.getElementById('managerPlanScope')?.textContent === 'Test außen (allein gerechnet)');
-        assert(await floor.inputValue() === '9.000 €', 'Außenperson erhält echten Einzelplan');
-        assert((await comparison.textContent()).includes('Noch kein festgeschriebener Plan'), 'Fremder Haushaltsbeleg wird außen nicht übernommen');
-        await page.locator('#managerPlanTab').click();
-        await floor.fill('9500');
-        await page.locator(`#managerSectionNav [data-manager-profile="${ids[0]}"]`).click();
-        await waitForPageCondition(page, () => document.getElementById('managerPlanScope')?.textContent.startsWith('Haushalt:'));
-        assert(await floor.inputValue() === '32.000 €', 'Profilwechsel bestätigt Einzelwrite und erhält Haushaltswert');
-        assert(await page.evaluate(async () => {
-            const raw = (await (await import('./app/shared/persistence-facade.js')).PersistenceFacade.readPersistedRecords()).household_plan_v1;
-            return Object.values(JSON.parse(raw).entries).some(entry => entry.scope.kind === 'single' && entry.values.floorBedarf === 9500);
-        }), 'Außenwrite wird vor Rückwechsel dauerhaft bestätigt');
         const beforeRecord = await page.evaluate(async () => (await import('./app/shared/persistence-facade.js')).PersistenceFacade.getItemSync('annual_plan_record_v1'));
         const finalManager = await comparison.locator('[data-plan-record-status]').evaluate(node => ({
             record: node.dataset.planRecordStatus, preview: node.dataset.previewStatus, text: node.textContent }));
@@ -18089,13 +15326,20 @@ async function runH4StartpageAnnualSmoke(browser, baseUrl) {
             await page.setViewportSize({ width: 1920, height: 1080 });
             assert(!(await page.evaluate(() => performance.getEntriesByType('resource').some(entry => entry.name.includes('/engine/index.mjs')))), 'Startseite lädt vor Jahresstart keine Engine');
             // ES-1: Ein zweiter Tab desselben Browsers zeigt nur den Tabhinweis und schreibt nichts.
-            other = await page.context().newPage(); await other.goto(`${baseUrl}/Balance.html`); await other.locator('#appTabDialog').waitFor();
+            other = await page.context().newPage(); await other.goto(`${baseUrl}/Balance.html`);
+            const tabHint = other.locator('#appTabDialog'); await tabHint.waitFor();
+            const { gap, rowGap } = await tabHint.evaluate(dialog => {
+                const title = dialog.querySelector('#appTabDialogTitle').getBoundingClientRect();
+                const text = dialog.querySelector('#appTabDialogDescription p').getBoundingClientRect();
+                return { gap: text.top - title.bottom, rowGap: parseFloat(getComputedStyle(dialog).rowGap) };
+            });
+            assert(Math.abs(gap - rowGap) < 1, `Tabhinweis: Abstand zwischen Titel und Text ${gap}px statt ${rowGap}px`);
             await page.locator('[data-overview-annual]').click();
             const root = page.locator('#balanceAnnualClose'); await root.waitFor();
             assert(page.url().includes('/index.html'), 'Jahresdialog bleibt auf der Startseite');
             await prepareBrowserClose(page);
             await page.waitForFunction(() => document.getElementById('annualConfirmBtn')?.disabled === false);
-            assert(await other.locator('#appTabDialog').isVisible() && await other.locator('#balanceAnnualClose').count() === 0, 'Zweiter Seiteneinstieg startet keinen parallelen Dialog');
+            assert(await tabHint.isVisible() && await other.locator('#balanceAnnualClose').count() === 0, 'Zweiter Seiteneinstieg startet keinen parallelen Dialog');
             await other.close(); other = undefined;
             await closeAnnualPreparation(page);
             await page.reload(); await page.locator('[data-overview-annual]').click(); await root.waitFor();
@@ -18273,7 +15517,7 @@ async function runExpensesPageSmoke(browser, baseUrl) {
                     return Boolean(grid.compareDocumentPosition(needs) & Node.DOCUMENT_POSITION_FOLLOWING) && Boolean(needs.compareDocumentPosition(years) & Node.DOCUMENT_POSITION_FOLLOWING);
                 }), 'Reihenfolge Kennzahlen, Personenmonate/Wofür, Floor/Flex, Jahresvergleich');
                 await page.locator('#expensesNeedsMonths > summary').click();
-                assert(await page.locator('#expensesNeedsMonths table thead').textContent() === 'MonatFloorgegen PlanFlexgegen Plan', 'Klappe zeigt Monatsaufteilung mit beiden Planabweichungen');
+                assert(await page.locator('#expensesNeedsMonths table thead').textContent() === 'MonatGrundbedarfgegen PlanFlexgegen Plan', 'Klappe zeigt Monatsaufteilung mit beiden Planabweichungen');
                 await page.locator('#expensesNeedsMonths > summary').click();
                 assert(await page.locator('#expensesHistoryLegend .expenses-swatch').count() === 4 && await page.locator('.expenses-year-floor').count() > 0, 'Haushaltsjahre zeigen Aufteilung und Prognoselegende');
                 await page.locator('#expensesTable button[data-action="details"][data-month="1"]').first().click();
@@ -18410,11 +15654,14 @@ async function runExpensesMonthlyGeometry(browser, baseUrl) {
                         })),
                         examples: document.querySelectorAll('[data-expenses-example]').length,
                         overflow: document.documentElement.scrollWidth > innerWidth + 1,
-                        mixed: values.some(text => text.includes('Beispieldaten')) && values.includes('—')
+                        hasExampleLabel: values.some(text => text.includes('Beispieldaten')),
+                        mixed: values.includes('—')
                             && values.includes('fehlt') && values.some(text => /^0(?:[,.]0+)?\s*€/.test(text))
                     };
                 });
                 assert(measured.mixed && measured.columns.length === 2, `${width}/${probelauf}: zwölf gemischte Monatszeilen in beiden Profilspalten`);
+                // SH-1 3.3 (18.11.): „Beispieldaten (Spielbereich)“ nur bei aktivem Spielbereich.
+                assert(measured.hasExampleLabel === probelauf, `${width}/${probelauf}: Beispieldaten-Hinweis ${probelauf ? 'im Spielbereich sichtbar' : 'im echten Bereich verborgen'}`);
                 assert(measured.columns.every(column => column.length === 12 && column.every(r => r.width > 0)
                     && Math.max(...column.map(r => r.left)) - Math.min(...column.map(r => r.left)) <= 1),
                     `${width}/${probelauf}: linke Importknopfkanten bleiben je Profil innerhalb ±1 px`);
@@ -18579,7 +15826,7 @@ async function assertCloseDialogFrame(page) {
 }
 
 /** FR-4/FR-5: Schritte ansehen und Pflegewerte bestätigen; Tagesgeld direkt aus den Feldern. */
-async function prepareBrowserClose(page, marketReading = 'year_end') {
+async function prepareBrowserClose(page) {
     const root = page.locator('[data-close-dialog-host][open]').first();
     await root.waitFor({ state: 'visible' });
     if (!await root.locator('[data-tagesgeld-person]').count()) return;
@@ -18591,6 +15838,15 @@ async function prepareBrowserClose(page, marketReading = 'year_end') {
         await root.locator(`[data-close-dialog-activate="${id}"]`).click();
     }
     await root.locator('[data-close-dialog-activate="cash"]').click();
+    // JA-4: Stände vor dem 31.12. (NG-13) je Person bestätigen; ein großer CAPE-Sprung (S2) wird ebenso bestätigt.
+    // HP-2: Schon bestätigte oder geänderte Personen zeigen keinen Knopf mehr.
+    for (const person of await root.locator('[data-tagesgeld-confirm-person]').evaluateAll(nodes => nodes.filter(node => node.checkVisibility()).map(node => node.dataset.tagesgeldConfirmPerson))) {
+        await root.locator(`[data-tagesgeld-confirm-person="${person}"]`).click();
+    }
+    if (await root.locator('[data-annual-cape-confirm]').count()) {
+        await root.locator('[data-close-dialog-activate="market"]').click();
+        await root.locator('[data-annual-cape-confirm]').click();
+    }
     if (await root.locator('[data-annual-care-confirm]').count()) {
         await root.locator('[data-close-dialog-activate="care"]').click();
         await root.locator('[data-annual-care-confirm]').click();
@@ -18598,8 +15854,6 @@ async function prepareBrowserClose(page, marketReading = 'year_end') {
             const host = document.querySelector('[data-annual-reading-pending]');
             return host?.dataset.annualReadingPending === 'false' && host.dataset.annualMarketLoading === 'false';
         });
-        const choice = marketReading && root.locator(`[data-annual-market-reading="${marketReading}"]`);
-        if (choice && await choice.count()) { await root.locator('[data-close-dialog-activate="preview"]').click(); await choice.check(); }
     }
 }
 
@@ -18722,11 +15976,15 @@ async function runCloseDialogStepsYear(browser, baseUrl) {
             if (id === 'care') assert(await root.locator('[data-close-dialog-status]').textContent() === 'Noch offen: Marktdaten und Marktlage 2026', 'Planhinweis ergänzt kein zweites Verb');
         }
         assert(await accept.isDisabled(), 'Alle sieben Besuche ersetzen die Pflegebestätigung nicht');
-        assert(await root.locator('[data-close-dialog-status]').textContent() === 'Noch offen: Pflegewerte bestätigen oder ändern', 'Gültiges vorbelegtes Tagesgeld braucht keinen weiteren Klick');
+        // JA-4 (NG-13): Die Spielstände liegen vor dem 31.12.2026; jede Person bestätigt ihren Stand einmal.
+        assert((await root.locator('[data-close-dialog-status]').textContent()).startsWith('Noch offen: Tagesgeld von '), 'NG-13: Stand vor dem 31.12. braucht die Bestätigung je Person');
         const before = await closeDialogEvidence(page);
         await root.locator('[data-close-dialog-activate="cash"]').click();
+        for (const person of await root.locator('[data-tagesgeld-confirm-person]').evaluateAll(nodes => nodes.map(node => node.dataset.tagesgeldConfirmPerson))) {
+            await root.locator(`[data-tagesgeld-confirm-person="${person}"]`).click();
+        }
         assert(await accept.isDisabled() && await root.locator('[data-close-dialog-status]').textContent() === 'Noch offen: Pflegewerte bestätigen oder ändern',
-            'Gültiges Tagesgeld ersetzt nicht die Pflegebestätigung');
+            'Bestätigtes Tagesgeld ersetzt nicht die Pflegebestätigung');
         await root.locator('[data-close-dialog-activate="care"]').click();
         await root.locator('[data-annual-care-confirm]').click();
         assert(await accept.isEnabled(), 'Alle sieben Besuche sowie bestätigte Pflegewerte und Tagesgeld geben den Jahresknopf frei');
@@ -18734,6 +15992,36 @@ async function runCloseDialogStepsYear(browser, baseUrl) {
         assert(await closeDialogEvidence(page) === before, 'Bestätigung und Weiter bleiben schreibfrei');
         assert(await root.locator('[data-close-expenses-details]').count() === 1, 'Jahresdialog hat genau einen Ausgabendetailblock');
         await root.locator('[data-close-dialog-close]').click(); smoke.assertNoErrors();
+    } finally { await smoke.close(); }
+}
+
+async function runCommittedAnnualMarketSmoke(browser, baseUrl) {
+    const date = '2027-01-02';
+    const records = createMusterHaushaltRecords(date);
+    const days = ['2025-12-31', '2026-06-15', '2026-12-31'].map(historyDay);
+    records[DAILY_PRICES_KEY] = JSON.stringify({ version: 1, symbols: { 'VWCE.DE': { ...emptyHistorySymbol(), currency: 'EUR',
+        days, closes: [150, 300, 160.2], queried: [[days[0], days[2]]] } } });
+    const smoke = await openSmokePage(browser, baseUrl, 'index.html', {
+        storage: records, fixedTime: `${date}T12:00:00+01:00`, observeWealthUpdates: true
+    });
+    const { page } = smoke;
+    try {
+        await waitForWealthBrowserIdle(page);
+        const status = await page.evaluate(async () => {
+            const { getOverviewAnnualClose } = await import('./app/overview/overview-annual-close.js');
+            return (await getOverviewAnnualClose(document).start()).status;
+        });
+        assert(status === 'already_committed', 'Startseite erkennt den abgeschlossenen Jahresstand');
+        assert(await page.locator('#balanceAnnualClose[open]').count() === 0, 'Wiederholung öffnet keinen Abschlussdialog');
+        // Ein erledigtes Jahr überspringt den Dialog. Allzeithoch und Marktlage mit demselben gespeicherten Stand abrufen (FR-89).
+        const market = await page.evaluate(async marketData => {
+            const { projectAnnualMarketReadings } = await import('./app/balance/balance-annual-market-preview.js');
+            const view = await projectAnnualMarketReadings({ targetYear: 2026, quote: marketData.etf });
+            return { single: Boolean(view?.market?.key) && !('rule' in view), stored: view?.high?.origin === 'stored' && JSON.stringify(view.inputs) === JSON.stringify(view.stored.inputs) };
+        }, annualTestMarketData);
+        assert(market.single, 'Ein Allzeithoch mit Marktlage, keine zweite Lesart');
+        assert(market.stored, 'Der gespeicherte Jahresstand zeigt seine gespeicherten Markteingaben');
+        smoke.assertNoErrors();
     } finally { await smoke.close(); }
 }
 
@@ -18850,7 +16138,8 @@ async function runAnnualCombinedClose(browser, baseUrl, source) {
                 assert(afterQuote.depot_tranchen !== beforeQuote.depot_tranchen && afterQuote.rs_profiles_v1 !== beforeQuote.rs_profiles_v1,
                     'Bestätigter Folge-Kurswrite verändert Tranchen und Registry auf derselben Seite');
                 await page.evaluate(() => document.dispatchEvent(new Event('overview-backup-changed')));
-                await page.locator('[data-overview-annual]').filter({ hasText: 'Jahresstatus klären' }).waitFor();
+                // JW-1a (Fable P2-2): Nach dem metadatenlosen Vorabpunkt des Erstabschlusses bleibt der Abschluss trotz Kurswrite offen.
+                await page.locator('[data-overview-annual]').filter({ hasText: 'Abschluss starten' }).waitFor();
                 assert(await page.locator('#pageDialog[open]').count() === 0, 'Reines Rendern öffnet kein Klärungspopup');
                 assert(JSON.stringify(await read()) === JSON.stringify(afterQuote) && await archiveBytes() === snapshots,
                     'Anzeigeaktualisierung erhält Finanz- und Archivbytes');
@@ -18873,11 +16162,16 @@ async function runAnnualCombinedClose(browser, baseUrl, source) {
                     await P.replaceRecordsTransactional({ depot_tranchen: raw, rs_profiles_v1: JSON.stringify(registry) },
                         { probelaufDomainWrite: true, allowKey: key => ['depot_tranchen', 'rs_profiles_v1'].includes(key) });
                     const records = await P.readPersistedRecords();
+                    // JW-1a (Fable P2-2): Nur ein Vorabpunkt mit Jahresmetadaten, die live fehlen, verlangt noch eine Klärung.
+                    const { CONFIG } = await import('./app/balance/balance-config.js');
+                    const pointRecords = A.captureCurrentRecords({ keys: Object.keys(records), getItem: key => records[key] });
+                    pointRecords[CONFIG.STORAGE.LS_KEY] = JSON.stringify({ ...JSON.parse(pointRecords[CONFIG.STORAGE.LS_KEY]),
+                        annualPeriodMetadata: { schemaVersion: 1, lastCommittedPeriod: 'calendar-year:2025', pendingCommit: null } });
                     await A.createSnapshot({ id: 'browser-isolated-before', label: 'Synthetischer Jahresvorabstand',
                         createdAt: appNow().toISOString(), activeProfileId: records.rs_current_profile,
                         kind: 'annual-close-pre-mutation',
                         restoreScope: { profileRegistryMode: 'replace-all-rollback', profileLiveDataMode: 'replace-all-rollback', liveKeyMode: 'snapshot-full' },
-                        records: A.captureCurrentRecords({ keys: Object.keys(records), getItem: key => records[key] }) });
+                        records: pointRecords });
                 });
                 await page.evaluate(async key => {
                     const { areaSessionStorage } = await import('./app/shared/persistence-area-storage.js');
@@ -18931,17 +16225,31 @@ async function runAnnualCombinedClose(browser, baseUrl, source) {
             await page.locator('[data-expenses-preview-accept]').click();
             await page.locator('#expensesImportPreview').waitFor({ state: 'detached' });
             await waitForPageCondition(page, async old => (await import('./app/shared/persistence-facade.js')).persistenceStorage.getItem('balance_expenses_v1') !== old, before.balance_expenses_v1);
-            await prepareBrowserClose(page, source === 'demo' ? null : 'year_end');
             if (source === 'demo') {
-                // WT-1 (FR-77): Verdeckter Bärenmarkt und Wahl stehen im Schritt „Plan 2027“, ohne Vorauswahl.
+                // HP-2 (JA-4): Ändern bei der ersten Person und „Stand bestätigen“ bei der zweiten blenden Hinweis und Knopf sichtbar aus.
+                await root.locator('[data-close-dialog-activate="cash"]').click();
+                const [changed, confirmed] = await root.locator('[data-tagesgeld-confirm-person]').evaluateAll(nodes => nodes.map(node => node.dataset.tagesgeldConfirmPerson));
+                await root.locator(`input[data-tagesgeld-person="${changed}"]`).fill('20.000');
+                await root.locator(`[data-tagesgeld-confirm-person="${confirmed}"]`).click();
+                for (const person of [changed, confirmed]) {
+                    assert(!await root.locator(`[data-tagesgeld-confirm-hint="${person}"]`).isVisible()
+                        && !await root.locator(`[data-tagesgeld-confirm-person="${person}"]`).isVisible(), `HP-2: Hinweis und Knopf „Stand bestätigen“ verschwinden (${person})`);
+                }
+                // HP-3: Die bestätigte Person zeigt „bestätigt“ in derselben Statuszeile wie „geändert · vorher …“.
+                const status = person => root.locator(`input[data-tagesgeld-person="${person}"]`).evaluate(input => document.getElementById(`${input.id}-hint`).textContent);
+                const [changedStatus, confirmedStatus] = [await status(changed), await status(confirmed)];
+                assert(confirmedStatus.startsWith('bestätigt · Stand vom ') && changedStatus.startsWith('geändert · vorher '),
+                    `HP-3: Statuszeilen „bestätigt“ und „geändert“ (${confirmedStatus} | ${changedStatus})`);
+            }
+            await prepareBrowserClose(page);
+            if (source === 'demo') {
+                // ATH-1 (FR-89): Das Tageshoch gilt automatisch; der Schritt Marktdaten nennt es mit Datum, eine Wahl gibt es nicht.
                 const tab = root.locator('[data-close-dialog-activate="preview"]');
-                assert((await tab.textContent()).includes('Wahl offen'), 'AR-2: Planreiter nennt offene Wahl');
+                assert(!(await tab.textContent()).includes('Wahl'), 'ATH-1: Planreiter ohne Wahl');
                 await tab.click();
-                assert(await root.locator('[data-annual-market-reading]:checked').count() === 0, 'AR-2: keine Vorauswahl');
-                assert(await root.locator('[data-hidden-bear="annual"]').filter({ hasText: 'Bärenmarkt, den die Jahresregel nicht sieht' }).isVisible(), 'AR-2: Block zum verdeckten Bärenmarkt');
-                assert(await root.locator('#annualConfirmBtn').isDisabled(), 'AR-2: Abschluss bis zur Wahl gesperrt');
-                await root.locator('[data-annual-market-reading="year_high"]').check();
-                await root.locator('[data-close-dialog-activate="preview"]').filter({ hasText: 'Jahreshoch' }).waitFor();
+                assert(await root.locator('[data-annual-market-reading]').count() === 0, 'ATH-1: keine Marktwahl');
+                await root.locator('[data-close-dialog-activate="market"]').click();
+                assert(await root.locator('[data-annual-market-readings]').filter({ hasText: '1.000,00 € · Tagesschluss vom 15.06.2026' }).isVisible(), 'ATH-1: Schritt Marktdaten nennt das Allzeithoch mit Datum');
             }
             await waitForPageCondition(page, () => document.getElementById('annualConfirmBtn')?.disabled === false);
             await root.getByRole('button', { name: 'Jahr 2026 abschließen', exact: true }).click();
@@ -18951,8 +16259,8 @@ async function runAnnualCombinedClose(browser, baseUrl, source) {
             const closed = await read();
             if (source === 'demo') {
                 const state = JSON.parse(closed[BALANCE_STATE_KEY]);
-                assert(state.inputs.ath === 1000 && state.annualMarketDataMeta.ath.reading === 'year_high', 'AR-2: Hochwahl im bestätigten Speicher');
-                assert((await root.textContent()).includes('Plan mit dem Jahreshoch vom 15.06.2026 (Wahl im Jahresabschluss)'), 'AR-2: Ergebnis nennt Hochwahl');
+                assert(state.inputs.ath === 1000 && state.annualMarketDataMeta.ath.lastHighAsOf === '2026-06-15' && !('reading' in state.annualMarketDataMeta.ath), 'ATH-1: Tageshoch mit Datum ohne Wahl im bestätigten Speicher');
+                assert(!(await root.textContent()).includes('Wahl im Jahresabschluss'), 'ATH-1: Ergebnis ohne Hochwahl');
             }
             const snapshots = await page.evaluate(async () => {
                 const { SnapshotArchive: archive } = await import('./app/shared/snapshot-archive.js');
@@ -19063,6 +16371,367 @@ async function openVk3dPlayArea(browser, baseUrl, source, date, entry, variant =
     await waitForProbelaufReload(page, () => dialog.getByRole('button', { name: 'Spielbereich starten', exact: true }).click(), date);
     await page.goto(`${baseUrl}/${entry}`, { waitUntil: 'load' });
     return smoke;
+}
+
+async function runHl3BalanceAnnualLink(browser, baseUrl) {
+    const smoke = await openVk3dPlayArea(browser, baseUrl, 'max-erika', '2026-10-23', 'Balance.html');
+    const { page } = smoke;
+    try {
+        const action = page.locator('#balanceAnnualAction');
+        const period = page.locator('#balanceBudgetChips [data-period-chip]');
+        await period.waitFor();
+        assert(await page.locator('#balanceAnnualAction a[href="index.html#overviewFocus"]').count() === 0,
+            'HL-3/1116: Vor Fälligkeit gibt es keinen Abschlusslink');
+        await page.locator('#probelaufBand [data-probelauf-action="date"]').click();
+        const dialog = page.locator('[data-probelauf-dialog]');
+        await dialog.getByLabel('Testdatum').fill('2027-01-02');
+        await waitForProbelaufReload(page, () => dialog.getByRole('button', { name: 'Datum übernehmen' }).click(), '2027-01-02');
+        const link = action.getByRole('link', { name: 'Zur Abschlusskarte auf der Übersicht' });
+        await period.waitFor();
+        const text = await action.textContent();
+        assert(text.includes('Der Jahresabschluss 2026 ist fällig.') && !/bis dahin/i.test(text) && await link.isVisible(),
+            'HL-3/1116: Fälligkeit ersetzt den unterjährigen Hinweis');
+        assert(await page.locator('#balanceBudgetChips').getByRole('link', { name: 'Jahresabschluss 2026' }).isVisible(), 'HL-3/1116: Auch das vorläufige Budget verweist auf den Abschluss');
+        await capturePageDialogImage(page, 'HL-3-pruefbild-balance-0201');
+        await waitForPageNavigationRelease(page);
+        await link.click();
+        await page.waitForURL('**/index.html#overviewFocus');
+        await page.locator('#overviewFocusTitle').filter({ hasText: /Jahr 2026 abschließen/ }).waitFor();
+        await page.locator('#overviewFocus [data-overview-annual]:enabled').click();
+        await page.locator('#balanceAnnualClose').waitFor({ state: 'visible' });
+        smoke.assertNoErrors();
+    } finally {
+        await smoke.close();
+    }
+}
+
+async function runRentBequestSmoke(browser, baseUrl) {
+    const smoke = await openVk3dPlayArea(browser, baseUrl, 'helga-werner', HANDBOOK_MUSTER_DATE, 'depot-tranchen-manager.html', 'haus-pg3');
+    const { page } = smoke;
+    try {
+        await waitSuiteIdentity(page, 'muster_helga');
+        await page.locator('#managerSectionNav [data-manager-view="plan"]').click();
+        if (await page.locator('#managerPartnershipBody').isHidden()) await page.locator('#managerPartnershipToggle').click();
+        const testament = page.locator('[data-testament-person="muster_werner"]');
+        const home = testament.locator('[data-testament="home"]');
+        const monthly = testament.getByLabel('Monatliche Miete für die überlebende Person', { exact: true });
+        const raw = () => page.evaluate(async () => {
+            const { persistenceStorage } = await import('./app/shared/persistence-facade.js');
+            return persistenceStorage.getItem('household_partnership_v1');
+        });
+        await home.waitFor();
+        const before = await raw();
+        assert(await monthly.count() === 0, 'Monatsbetrag steht nur bei Verkauf mit Miete');
+        await home.selectOption({ label: 'Verkauf, Miete auf Lebenszeit' });
+        await testament.getByText('Bitte die monatliche Miete für die überlebende Person eintragen.', { exact: true }).waitFor();
+        assert(await raw() === before, 'Ohne Monatsbetrag speichert die Auswahl nicht');
+        await monthly.fill('1.500');
+        await monthly.press('Tab');
+        await page.locator('#managerPartnershipStatus').filter({ hasText: /^Gespeichert$/ }).waitFor();
+        const rule = JSON.parse(await raw()).testament.muster_werner;
+        assert(rule.home === 'rent-bequest' && rule.monthlyRent === 1500, 'Verkauf und 1.500 Euro sind je Erblasser gesichert');
+        await page.locator('[data-inheritance-preview="muster_werner"]').getByText(/Helga erhält.*1.500.*Rente aus dem Erbe/).waitFor();
+
+        await page.goto(`${baseUrl}/Simulator.html`);
+        await waitForSimulatorOpening(page, 'Simulator.html');
+        await openSimulatorTab(page, 'montecarlo');
+        await toggleMonteCarloSettings(page);
+        await page.locator('#mcAnzahl').fill('120');
+        await page.locator('#mcSeed').fill('12345');
+        await page.locator('#mcButton').click();
+        await page.waitForFunction(() => document.getElementById('exportMonteCarloRunJson')?.disabled === false, null, { timeout: 60000 });
+        await page.locator('#mcViewTabLogs').click();
+        if (!await page.locator('#scenarioSelectionDisclosure').evaluate(node => node.open)) await page.locator('#scenarioSelectionSummary').click();
+        const journal = page.locator('#scenarioLogOutput');
+        const rent = journal.getByText('Miete aus dem Erbe', { exact: true });
+        const scenarios = page.locator('#scenarioList [role="option"]');
+        await scenarios.first().waitFor();
+        for (let index = 0; !await rent.count() && index < await scenarios.count(); index++) await scenarios.nth(index).click();
+        const protocol = page.locator('#scenarioProtocolDisclosure');
+        if (!await protocol.evaluate(node => node.open)) await protocol.locator('summary').click();
+        const row = journal.locator('tbody tr').filter({ hasText: 'Miete aus dem Erbe' }).first();
+        await row.getByRole('button', { name: 'Ausgaben: Aufschlüsselung des Jahres' }).click();
+        assert(await row.getByText('Miete aus dem Erbe', { exact: true }).isVisible(), 'Ausgaben-ⓘ zeigt Miete aus dem Erbe');
+        await row.getByRole('button', { name: 'Einnahmen: Aufschlüsselung des Jahres' }).click();
+        assert(await row.getByText('Rente aus dem Erbe · Helga', { exact: true }).isVisible(), 'Einnahmen-ⓘ zeigt Rente aus dem Erbe mit Profilnamen');
+        smoke.assertNoErrors();
+    } finally { await smoke.close(); }
+}
+
+// ER-2: Verkauf mit Wohnkapital – Auswahl, Pflichtfelder, Vorschau und Szenario-Protokoll (Zufluss im Todesjahr, Miete danach).
+async function runHousingCapitalSmoke(browser, baseUrl) {
+    const smoke = await openVk3dPlayArea(browser, baseUrl, 'helga-werner', HANDBOOK_MUSTER_DATE, 'depot-tranchen-manager.html', 'haus-pg3');
+    const { page } = smoke;
+    try {
+        await waitSuiteIdentity(page, 'muster_helga');
+        await page.locator('#managerSectionNav [data-manager-view="plan"]').click();
+        if (await page.locator('#managerPartnershipBody').isHidden()) await page.locator('#managerPartnershipToggle').click();
+        const testament = page.locator('[data-testament-person="muster_werner"]');
+        const home = testament.locator('[data-testament="home"]');
+        const percent = testament.getByLabel('Wohnkapital in % vom Nettoerlös');
+        const monthly = testament.getByLabel('Monatliche Miete der überlebenden Person', { exact: true });
+        const moveOutYears = testament.getByRole('textbox', { name: /^Auszug nach/ });
+        const raw = () => page.evaluate(async () => {
+            const { persistenceStorage } = await import('./app/shared/persistence-facade.js');
+            return persistenceStorage.getItem('household_partnership_v1');
+        });
+        await home.waitFor();
+        const before = await raw();
+        assert(await percent.count() === 0 && await monthly.count() === 0 && await moveOutYears.count() === 0, 'Wohnkapital, Miete und Auszug stehen nur bei dieser Option');
+        await home.selectOption({ label: 'Verkauf mit Wohnkapital' });
+        await testament.getByText('Bitte das Wohnkapital mit 1 bis 100 Prozent vom Nettoerlös eintragen.', { exact: true }).waitFor();
+        await percent.fill('30');
+        await percent.press('Tab');
+        await testament.getByText('Bitte die monatliche Miete der überlebenden Person eintragen.', { exact: true }).waitFor();
+        assert(await raw() === before, 'Ohne Prozentsatz und Miete speichert die Auswahl nicht');
+        await monthly.fill('1.200');
+        await monthly.press('Tab');
+        await page.locator('#managerPartnershipStatus').filter({ hasText: /^Gespeichert$/ }).waitFor();
+        const rule = JSON.parse(await raw()).testament.muster_werner;
+        assert(rule.home === 'housing-capital' && rule.housingCapitalPercent === 30 && rule.monthlyRent === 1200, 'Option, 30 % und 1.200 Euro sind gesichert');
+        const preview = page.locator('[data-inheritance-preview="muster_werner"]');
+        await preview.getByText(/Helga erhält Wohnkapital 60\.750\s€/).waitFor();
+        assert(await moveOutYears.inputValue() === '0', 'Das Auszugsfeld beginnt bei 0');
+        await moveOutYears.fill('1');
+        await moveOutYears.press('Tab');
+        await page.locator('#managerPartnershipStatus').filter({ hasText: /^Gespeichert$/ }).waitFor();
+        assert(JSON.parse(await raw()).testament.muster_werner.moveOutYears === 1, 'Auszug nach 1 Jahr ist gesichert');
+        await preview.getByText(/Auszug nach 1 Jahr\. Mietfrei bis Ende des 1\. Jahres nach dem Todesjahr/).waitFor();
+
+        await page.goto(`${baseUrl}/Simulator.html`);
+        await waitForSimulatorOpening(page, 'Simulator.html');
+        await openSimulatorTab(page, 'montecarlo');
+        await toggleMonteCarloSettings(page);
+        await page.locator('#mcAnzahl').fill('120');
+        await page.locator('#mcSeed').fill('12345');
+        await page.locator('#mcButton').click();
+        await page.waitForFunction(() => document.getElementById('exportMonteCarloRunJson')?.disabled === false, null, { timeout: 60000 });
+        await page.locator('#mcViewTabLogs').click();
+        if (!await page.locator('#scenarioSelectionDisclosure').evaluate(node => node.open)) await page.locator('#scenarioSelectionSummary').click();
+        const journal = page.locator('#scenarioLogOutput');
+        const rent = journal.getByText('Miete nach Verkauf im Erbfall', { exact: true });
+        const scenarios = page.locator('#scenarioList [role="option"]');
+        await scenarios.first().waitFor();
+        for (let index = 0; !await rent.count() && index < await scenarios.count(); index++) await scenarios.nth(index).click();
+        const protocol = page.locator('#scenarioProtocolDisclosure');
+        if (!await protocol.evaluate(node => node.open)) await protocol.locator('summary').click();
+        const rows = journal.locator('tbody tr');
+        const inflow = /Wohnkapital [\d.]+\s€ aufs Tagesgeld/;
+        const order = await rows.evaluateAll((nodes, source) => [nodes.findIndex(node => node.textContent.includes('Mietfrei bis Ende des 1. Jahres nach dem Todesjahr')),
+            nodes.findIndex(node => node.textContent.includes('Mietfreies Wohnen bis zum Auszug')),
+            nodes.findIndex(node => new RegExp(source).test(node.textContent)),
+            nodes.findIndex(node => node.textContent.includes('Miete nach Verkauf im Erbfall'))], inflow.source);
+        assert(order[0] >= 0 && order[1] === order[0] + 1 && order[2] === order[1] + 1 && order[2] === order[3],
+            `Mietfrei im Todesjahr und ersten Folgejahr, dann Zufluss und Miete in derselben Zeile: ${JSON.stringify(order)}`);
+        const row = rows.nth(order[2]);
+        assert(inflow.test(await row.locator('.protocol-action').innerText()), 'Handlung im Auszugsjahr nennt das Wohnkapital');
+        await row.getByRole('button', { name: 'Ausgaben: Aufschlüsselung des Jahres' }).click();
+        assert(await row.getByText('Miete nach Verkauf im Erbfall', { exact: true }).isVisible(), 'Ausgaben-ⓘ zeigt die Miete nach dem Verkauf');
+
+        await page.goto(`${baseUrl}/depot-tranchen-manager.html#profileCareGradeToday`);
+        await waitSuiteIdentity(page, 'muster_helga');
+        await page.locator('#profileCareGradeToday').selectOption('4');
+        await page.locator('#profileCareFormToday').selectOption('residential');
+        // ER-2e (Befund 1825): Helga lebt heute dauerhaft im Heim; bei Auszug nach 0 entfällt das Wohnkapital.
+        await waitForPageCondition(page, async () => {
+            const { persistenceStorage } = await import('./app/shared/persistence-facade.js');
+            return persistenceStorage.getItem('profile_care_grade_today') === '4'
+                && persistenceStorage.getItem('profile_care_form_today') === 'residential';
+        }, undefined, { description: 'Heimpflege heute gespeichert' });
+        await page.locator('#managerSectionNav [data-manager-view="plan"]').click();
+        if (await page.locator('#managerPartnershipBody').isHidden()) await page.locator('#managerPartnershipToggle').click();
+        await moveOutYears.fill('0');
+        await moveOutYears.press('Tab');
+        await page.locator('#managerPartnershipStatus').filter({ hasText: /^Gespeichert$/ }).waitFor();
+        await preview.getByText(/Auszug nach 0 Jahren\. Wohnkapital entfällt bei dauerhafter Heimpflege/).waitFor();
+        smoke.assertNoErrors();
+    } finally { await smoke.close(); }
+}
+
+async function runDeathScenarioGroupSmoke(browser, baseUrl) {
+    // ER-2e (Befund 1810): Die Gruppe „Todesfall“ führt ohne Suche zu einem Pfad mit Erbfall und zwei Folgejahren.
+    const smoke = await openVk3dPlayArea(browser, baseUrl, 'helga-werner', HANDBOOK_MUSTER_DATE, 'Simulator.html', 'haus-pg3');
+    const { page } = smoke;
+    try {
+        await waitForSimulatorOpening(page, 'Simulator.html');
+        await openSimulatorTab(page, 'montecarlo');
+        await toggleMonteCarloSettings(page);
+        await page.locator('#mcAnzahl').fill('120');
+        await page.locator('#mcSeed').fill('12346');
+        await page.locator('#mcButton').click();
+        await page.waitForFunction(() => document.getElementById('exportMonteCarloRunJson')?.disabled === false, null, { timeout: 60000 });
+        await page.locator('#mcViewTabLogs').click();
+        if (!await page.locator('#scenarioSelectionDisclosure').evaluate(node => node.open)) await page.locator('#scenarioSelectionSummary').click();
+        await page.locator('#scenarioGroups [data-scenario-group="death"]').click();
+        const options = page.getByRole('listbox', { name: 'Szenarien: Todesfall' }).getByRole('option');
+        await options.first().waitFor();
+        assert(/†/.test(await options.first().innerText()), 'Der erste Todesfall-Pfad zeigt die Todesmarke');
+        await options.first().click();
+        const protocol = page.locator('#scenarioProtocolDisclosure');
+        if (!await protocol.evaluate(node => node.open)) await protocol.locator('summary').click();
+        const rows = page.locator('#scenarioLogOutput tbody tr');
+        await rows.first().waitFor();
+        const years = await rows.evaluateAll(nodes => nodes.map(node => ({ year: Number(node.id.split('-').at(-1)),
+            death: Boolean(node.querySelector('.protocol-inheritance-info')) })));
+        const death = years.findIndex(row => row.death);
+        assert(death >= 0 && years[death + 1]?.year === years[death].year + 1 && years[death + 2]?.year === years[death].year + 2,
+            `Todesfall-Gruppe zeigt das Todesjahr und zwei Folgejahre im Protokoll: ${JSON.stringify(years.slice(Math.max(0, death - 1), death + 3))}`);
+        smoke.assertNoErrors();
+    } finally { await smoke.close(); }
+}
+
+async function runMonteCarloPersonOutcomesSmoke(browser, baseUrl) {
+    const runCount = 300;
+    for (const [source, names, columnCount] of [['max-erika', ['Max', 'Erika'], 6], ['renate', ['Renate'], 2]]) {
+        const smoke = await openVk3dPlayArea(browser, baseUrl, source, HANDBOOK_MUSTER_DATE, 'Simulator.html');
+        const { page } = smoke;
+        try {
+            await waitForSimulatorOpening(page, 'Simulator.html');
+            await openSimulatorTab(page, 'montecarlo');
+            await toggleMonteCarloSettings(page);
+            await page.locator('#mcAnzahl').fill(String(runCount));
+            await page.locator('#mcSeed').fill('12345');
+            const card = page.locator('#mcPersonOutcomes');
+            assert(await card.isHidden(), 'Personenkarte bleibt bis zum ersten Ergebnis verborgen');
+            await page.locator('#mcButton').click();
+            await card.waitFor({ state: 'visible', timeout: 60000 });
+            const rows = card.locator('tbody tr');
+            assert(JSON.stringify(await rows.locator('th').allTextContents()) === JSON.stringify(names), 'Personenkarte zeigt die Profilnamen');
+            assert(await card.locator('thead th').count() === columnCount, 'Personenkarte zeigt zum Haushalt passende Spalten');
+            for (const row of await rows.all()) {
+                const cells = (await row.locator('td').allInnerTexts()).map(value => value.replace(/\u00a0/g, ' '));
+                assert(new RegExp(`^\\d+(,\\d+)? % \\(\\d+ von ${runCount}\\)$`).test(cells[0]), 'Deckung zu Lebzeiten nennt Anteil und Laufzahlen');
+                if (columnCount === 6) {
+                    assert(cells[4].includes('Gleichzeitig') && cells[4].split(`von ${runCount}`).length === 3,
+                        'Vergleich nennt Laufzahlen für ersten und gleichzeitigen Tod');
+                }
+                console.log(`Personenkarte · ${await row.locator('th').textContent()} · ${cells.map(value => value.replace(/\n/g, ' / ')).join(' · ')}`);
+            }
+            await card.getByRole('button', { name: 'Personenauswertung erklären' }).click();
+            assert(await card.getByRole('link', { name: 'Mehr im Handbuch' }).isVisible(), 'ⓘ öffnet die Erklärung');
+            smoke.assertNoErrors();
+        } finally { await smoke.close(); }
+    }
+}
+
+async function runMarketCorrectionAtYearHigh(browser, baseUrl) {
+    const smoke = await openVk3dPlayArea(browser, baseUrl, 'max-erika', HANDBOOK_MUSTER_DATE, 'Balance.html');
+    const { page } = smoke;
+    try {
+        // Ohne VWCE-Abrufkurs verwendet die Karte die Marktdaten-Korrektur direkt.
+        await page.evaluate(async () => {
+            const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
+            const { DAILY_PRICES_KEY, readDailyPrices } = await import('./app/tranches/tranchen-history-store.js');
+            const prices = readDailyPrices().value;
+            if (!prices?.symbols['VWCE.DE']) return;
+            delete prices.symbols['VWCE.DE'];
+            PersistenceFacade.setItemSync(DAILY_PRICES_KEY, JSON.stringify(prices));
+            await PersistenceFacade.flush();
+        });
+        await page.reload();
+        await page.locator('#balanceTabStrategy').click();
+        await openBalanceParameters(page);
+        // Schlusskurse: 2023 = 94, 2024 = 96, 2025 = 100, 23.10.2026 = 112.
+        // Das Hoch (131,76) liegt zuerst am 15.03.2026, danach am 15.09.2025.
+        const yearsSince = date => ((Date.parse(HANDBOOK_MUSTER_DATE) - Date.parse(date)) / 86400000 / 365.2425).toFixed(2);
+        for (const [id, value] of Object.entries({ endeVJ: '112', endeVJ_1: '100', endeVJ_2: '96', endeVJ_3: '94',
+            ath: '131.76', jahreSeitAth: yearsSince('2026-03-15') })) {
+            await page.locator(`#${id}`).fill(value);
+        }
+        await page.locator('#openDiagnosisBtn').click();
+        const facts = page.locator('#balanceMarketFacts');
+        await facts.getByText('0,6 Jahre', { exact: true }).waitFor();
+        await facts.getByText('15,0 %', { exact: true }).waitFor();
+        const status = page.locator('#marktstatusText .status-indicator');
+        const phase = await status.textContent();
+        assert(phase === 'Junge Korrektur', `Hoch am 15.03.2026: Marktkarte zeigt „${phase}“, erwartet „Junge Korrektur“`);
+        assert((await status.getAttribute('title')).includes('Hoch im laufenden Jahr, seitdem gefallen'), 'Die Marktkarte nennt den Grund der jungen Korrektur');
+
+        await page.locator('#balanceTabStrategy').click();
+        await openBalanceParameters(page);
+        await page.locator('#jahreSeitAth').fill(yearsSince('2025-09-15'));
+        await page.locator('#openDiagnosisBtn').click();
+        await status.getByText('Best. Erholung', { exact: true }).waitFor();
+        smoke.assertNoErrors();
+    } finally { await smoke.close(); }
+}
+
+async function runSimulatorHouseholdCareReserve(browser, baseUrl) {
+    const smoke = await openVk3dPlayArea(browser, baseUrl, 'helga-werner', '2026-10-23', 'Simulator.html');
+    const { page } = smoke;
+    const careHeaders = () => page.locator('#simulationLog table').evaluate(table => {
+        let offset = 0;
+        for (const group of table.rows[0].cells) {
+            if (group.textContent === 'Pflege') {
+                return Array.from(table.rows[1].cells).slice(offset, offset + group.colSpan).map(cell => cell.textContent);
+            }
+            offset += group.colSpan;
+        }
+        return [];
+    });
+    const run = async () => {
+        await waitForSimulatorOpening(page, 'Simulator.html');
+        await toggleMonteCarloSettings(page);
+        await page.locator('#mcAnzahl').fill('10');
+        await page.locator('#mcDauer').fill('2');
+        await page.locator('#mcSeed').fill('42');
+        await openSimulatorTab(page, 'backtesting');
+        await page.locator('#btButton').click();
+        await page.waitForFunction(() => window.globalBacktestData?.automatic === false
+            && document.getElementById('btButton')?.disabled === false);
+        const backtest = await page.evaluate(() => {
+            const { result, rows } = window.globalBacktestData;
+            const row = rows.find(entry => entry.jahr === 2000).row;
+            return { input: result.request.inputs.healthBucket?.enabled ?? false,
+                enabled: result.summary.healthBucket.enabled, start: row.health_bucket_start, tax: row.steuern_gesamt };
+        });
+        await page.locator('#backtestProtocolDisclosure > summary').click();
+        await setDsToggle(page, 'toggle-backtest-detail', false);
+        const normal = await careHeaders();
+        await setDsToggle(page, 'toggle-backtest-detail', true);
+        const detailed = await careHeaders();
+
+        await openSimulatorTab(page, 'montecarlo');
+        await page.locator('#mcButton').click();
+        await page.waitForFunction(() => document.getElementById('exportMonteCarloRunJson')?.disabled === false);
+        const download = page.waitForEvent('download');
+        await page.locator('#exportMonteCarloRunJson').click();
+        const { result } = JSON.parse(await readDownloadText(await download));
+        assert(result.batchStatus === 'completed', 'Der Monte-Carlo-Lauf wird abgeschlossen');
+        return { backtest, normal, detailed, mcEnabledRatePct: result.kpis.healthBucketNominalEur.enabledRatePct };
+    };
+
+    try {
+        const active = await run();
+        // Kontrolllauf im selben Spielbereich. Nur die beiden Profil-Schalter ändern.
+        await page.evaluate(async () => {
+            const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
+            const { PROFILE_HEALTH_BUCKET_KEY: key } = await import('./app/profile/profile-state.js');
+            const registry = JSON.parse(PersistenceFacade.getItemSync('rs_profiles_v1'));
+            const activeId = PersistenceFacade.getItemSync('rs_current_profile');
+            for (const { data } of Object.values(registry.profiles)) {
+                data[key] = JSON.stringify({ ...JSON.parse(data[key]), enabled: false });
+            }
+            PersistenceFacade.setItemSync('rs_profiles_v1', JSON.stringify(registry));
+            PersistenceFacade.setItemSync(key, registry.profiles[activeId].data[key]);
+            await PersistenceFacade.flush();
+        });
+        await page.reload();
+        const disabled = await run();
+        const evidence = JSON.stringify({ active, disabled });
+        console.log(`Pflegereserve Helga und Werner: ${evidence}`);
+        assert(active.backtest.input && active.backtest.enabled && active.backtest.start === 60000,
+            'Backtest 2000 übernimmt 60.000 € Pflegereserve aus dem Haushalt');
+        assert(active.backtest.tax > disabled.backtest.tax, 'Die Jahressteuer 2000 steigt mit aktiver Reserve');
+        assert(active.mcEnabledRatePct === 100, 'In allen Monte-Carlo-Pfaden ist die Reserve aktiv');
+        assert(!disabled.backtest.input && !disabled.backtest.enabled && disabled.backtest.start === 0
+            && disabled.mcEnabledRatePct === 0, 'Mit deaktivierter Reserve wird in beiden Simulationen keine Reserve angelegt');
+        assert(active.normal.length === 0 && disabled.normal.length === 0 && disabled.detailed.length === 0,
+            'Pflegespalten erscheinen nur bei aktiver Reserve und in den Details');
+        assert(JSON.stringify(active.detailed) === JSON.stringify(['Pflegereserve Beginn', 'Pflegebucket Zinsen', 'Pflegereserve Ende']),
+            'Details zeigen genau die drei Spalten zur Pflegereserve');
+        smoke.assertNoErrors();
+    } finally { await smoke.close(); }
 }
 
 // VK-3d P1: „Eine Person trägt“ lässt sich in Haushalt & Plan wählen (Klick und Tastatur), bleibt nach dem Neuladen und die Kaufkarte
@@ -19274,6 +16943,11 @@ async function runVn1FlowFocusSmoke(browser, baseUrl) {
         await sale.locator('[data-sale-flow-secondary]').click().catch(() => {});
         if (await sale.count()) await sale.locator('[data-close-dialog-close]').click();
         await page.locator('#balanceAnnualAction [data-todo-flow-steps]').waitFor();
+        // Die Karte zeichnet die Liste nach dem Schließen neu; erst lesen, wenn Listenstil und aktueller Schritt zugleich stehen.
+        await page.waitForFunction(() => {
+            const list = document.querySelector('#balanceAnnualAction [data-todo-flow-steps]');
+            return !!list && getComputedStyle(list).listStyleType === 'none' && list.querySelector('[aria-current="step"]')?.textContent === '3Abrechnung';
+        }, null, { timeout: 5000 }).catch(() => {});
         const steps = await page.locator('#balanceAnnualAction [data-todo-flow-steps]').evaluate(list => ({ style: getComputedStyle(list).listStyleType,
             items: [...list.children].map(item => item.textContent), current: list.querySelector('[aria-current="step"]')?.textContent }));
         assert(steps.style === 'none' && steps.items[0] === '✓Überblick' && steps.current === '3Abrechnung', `Schrittchips: ${JSON.stringify(steps)}`);

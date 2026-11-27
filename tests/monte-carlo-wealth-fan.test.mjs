@@ -118,7 +118,7 @@ export async function load(url, context, nextLoad) {
     if (!url.endsWith('/app/simulator/simulator-utils.js') && !url.endsWith('/app/simulator/simulator-engine-wrapper.js')) return result;
     let source = String(result.source);
     if (url.endsWith('/simulator-utils.js')) source = source.replace('const generator = () => (', 'const generator = () => (globalThis.__p7ProbeCounts && globalThis.__p7ProbeCounts.rng++, ');
-    else source = source.replace('    const performanceMonitoring =', '    if (globalThis.__p7ProbeCounts) globalThis.__p7ProbeCounts.years++;\\n    if (globalThis.__p7ForceAccumulationRuin && inputs.accumulationPhase?.enabled && yearIndex === 0) return { kind: "ruin", isRuin: true };\\n    const performanceMonitoring =');
+    else source = source.replace('    const engine = engineAPI ||', '    if (globalThis.__p7ProbeCounts) globalThis.__p7ProbeCounts.years++;\\n    if (globalThis.__p7ForceAccumulationRuin && inputs.accumulationPhase?.enabled && yearIndex === 0) return { kind: "ruin", isRuin: true };\\n    const engine = engineAPI ||');
     return { ...result, source };
 }`;
 register(`data:text/javascript,${encodeURIComponent(loader)}`);
@@ -127,7 +127,6 @@ const { prepareHistoricalDataOnce } = await import('../app/simulator/simulator-e
 const { runMonteCarloChunk } = await import('../app/simulator/monte-carlo-runner.js?p7probe=1');
 const { EngineAPI } = await import('../engine/index.mjs');
 const { projectScenarioLogV2, serializeScenarioLogExportV2, serializeScenarioLogCsvV2 } = await import('../app/simulator/monte-carlo-export.js');
-const { createStressReplayCaptureRequest } = await import('../app/simulator/stress-replay-path-materializer.js');
 prepareHistoricalDataOnce();
 const baseOptions = { inputs: { ...benchmarkInputs, startAlter: 20 }, widowOptions: benchmarkWidowOptions,
     monteCarloParams: { anzahl: 4, maxDauer: 5, seed: 42, methode: 'block', blockSize: 1, rngMode: 'per-run-seed' },
@@ -160,8 +159,6 @@ try {
         if (inputs.startVermoegen === 1) {
             assertEqual(after.wealthFan.ruined[1], 4, 'Ruinjahr zählt Nullvermögen');
             assertEqual(after.wealthFan.ruined[5], 4, 'Weitere lebende Ruinjahre zählen ausschließlich aus bestehender Fortsetzung');
-            const replay = await runMonteCarloChunk({ ...options, collectWealthFan: true, stressReplayCapture: createStressReplayCaptureRequest([0]) });
-            assertEqual(bytes(replay.wealthFan), bytes(after.wealthFan), 'Replay-Schattenfortsetzung zählt nicht doppelt');
         }
     }
     const technical = await runMonteCarloChunk({ ...baseOptions, collectWealthFan: true,

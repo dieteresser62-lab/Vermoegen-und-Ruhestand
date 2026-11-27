@@ -85,6 +85,25 @@ function closable(options) {
     assertEqual(JSON.stringify(store.records), before, 'Der Dialog schreibt keinen Fachrecord');
 }
 
+// JA-1: Ein vergangenes Bis-Jahr bleibt beim Bearbeiten anderer Werte erhalten.
+{
+    const { records } = pfa2Records({});
+    records[KEY] = JSON.stringify(careValuesWithPrices(records[KEY],
+        { driftPercent: 5, driftUntilYear: 2026, driftAfterPercent: 2 }, { priceYear: 2026 }));
+    const store = annualRecordStorage(records), { doc } = createDialogFixture();
+    const care = createAnnualCareEditor({ doc, targetYear: 2026, storage: store, listen });
+    doc.body.append(care.root);
+    assertEqual(care.read().values.prices.driftUntilYear, 2026, 'JA-1: Bis-Jahr bleibt im Dialog erhalten, auch bevor die Inflation vorliegt');
+    care.setInflation(2);
+    assertEqual(care.read().values.prices.costs[3], 18727, 'JA-1: Planjahr 2027 verwendet die zweite Rate von 2 %');
+    await care.root.querySelector('[data-annual-care-edit]').fire('click');
+    const field = doc.getElementById('annualCare_cost3'); field.value = '20.000'; await field.fire('input');
+    await care.root.querySelector('[data-annual-care-confirm]').fire('click');
+    assert(care.read().confirmed, 'JA-1: Vergangenes Bis-Jahr hindert die Bestätigung nicht');
+    assertEqual(care.accept().prices.driftUntilYear, 2026, 'JA-1: Änderung der Staffel erhält das Bis-Jahr');
+    assertEqual(store.getItem(KEY), records[KEY], 'JA-1: Der Dialog schreibt keine Daten');
+}
+
 // Y und Vorschau = Abschluss: Deckel-Fortschreibung ergibt im Folgejahr 128.520 € Floor; der Abschluss ohne Dialog rechnet gleich.
 {
     const { records, scope, marketData } = closable({ care: [{ grade: 5, form: 'home-support' }], single: true, plan: { floorBedarf: 90000 } });

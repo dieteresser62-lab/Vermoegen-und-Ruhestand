@@ -65,7 +65,9 @@ const registry0 = JSON.parse(records.rs_profiles_v1);
     assertEqual(plan.lines.length, 2, 'steueroptimiert: zwei Kaufzeilen');
     const carried = buyFlowPlanFromConfirmed({ year: 2026, committedAt: entry.committedAt, action: entry.adopted.action }, [MARTIN, PETRA], registry0, oneCarriesMode(MARTIN));
     assertEqual(carried.lines.map(line => `${line.profileId}:${line.amount}`).join(), `${MARTIN}:122000`, 'Eine Person trägt (Nachtrag 2): nur Martin, alter Beleg zusammengefasst');
-    const old = { ...entry.adopted.action, quellen: entry.adopted.action.quellen.map(source => ({ ...source, sourceProfileId: undefined })) };
+    // Ein Altbeleg hat weder Personen an den Quellen noch persönliche Verwendungen.
+    const { personalUses: _personal, ...oldAction } = entry.adopted.action;
+    const old = { ...oldAction, quellen: entry.adopted.action.quellen.map(source => ({ ...source, sourceProfileId: undefined })) };
     assertEqual(annualBuyLines(old, [MARTIN, PETRA]).map(line => line.profileId).join(), MARTIN, 'Altbeleg ohne Person: Rückfall beim Lesen auf die erste Person');
     const security = suggestedSecurity(registry0, plan.people, 'equity');
     assertEqual(`${security.name} · ${security.isin} · ${security.ticker}`, 'Muster Aktien-ETF · IE00BK5BQT80 · VWCE.DE', 'Vorschlag: Wertpapier derselben Klasse, das der Haushalt hat');

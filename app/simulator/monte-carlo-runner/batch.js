@@ -3,6 +3,7 @@
 import { GERMAN_DEMOGRAPHY_CARE_SURVIVOR_CONTRACT } from '../german-demography-care-survivor-contract.js';
 import { buildMonteCarloOutcomeInventoryV1 } from '../monte-carlo-chunk-result.js';
 import { findSimulatorEngineValidationError, formatSimulatorValidationError } from '../simulator-input-validation.js';
+import { finalizePersonOutcomeRows } from '../mc-person-outcomes.js';
 export const MAX_TECHNICAL_ERROR_SAMPLES = 20;
 
 export const MONTE_CARLO_HOUSEHOLD_LIFE_CONTRACT_VERSION = 'MonteCarloHouseholdLifeContractV2';
@@ -92,7 +93,7 @@ export function mergeMonteCarloTechnicalInventory(target, source) {
 /** @template {object} T
  * @param {T & {outcomeCounts?:Partial<Record<string,number>>;wealthFan?:unknown}} aggregatedResults
  * @param {TechnicalInventory} technicalInventory */
-export function attachMonteCarloBatchOutcome(aggregatedResults, technicalInventory) {
+export function attachMonteCarloBatchOutcome(aggregatedResults, technicalInventory, personOutcomeCounts = /** @type {import('../mc-person-outcomes.js').PersonOutcomeCounts|null} */ (null)) {
     const inventory = technicalInventory || createMonteCarloTechnicalInventory(0);
     const batchStatus = inventory.technicalError > 0 ? 'technical_error' : 'completed';
     const outcomeCounts = aggregatedResults?.outcomeCounts || {};
@@ -105,16 +106,18 @@ export function attachMonteCarloBatchOutcome(aggregatedResults, technicalInvento
     });
     if (batchStatus === 'technical_error' && inventory.errors?.[0]) {
         const firstError = inventory.errors[0];
-        if (!String(firstError.message || '').includes('Terminale Outcomes:')) {
+        if (!String(firstError.message || '').includes('Endzustände:')) {
             firstError.message = `${firstError.message || 'Die Monte-Carlo-Simulation wurde technisch abgebrochen.'} `
-                + `Floor-Deckung im gewaehlten Horizont: nicht ausgewiesen. Terminale Outcomes: `
-                + `Ruin ${outcomeInventory.ruin}, Tod ${outcomeInventory.all_dead}, `
+                + `Grundbedarf gedeckt im gewählten Horizont: nicht ausgewiesen. Endzustände: `
+                + `Vermögen aufgebraucht ${outcomeInventory.ruin}, Tod ${outcomeInventory.all_dead}, `
                 + `Horizont ${outcomeInventory.horizon_exhausted}, Technik ${outcomeInventory.technical_error}.`;
         }
     }
     const { outcomeCounts: _outcomeCounts, ...financialResults } = aggregatedResults || {};
     return Object.defineProperty({
         ...financialResults,
+        ...(batchStatus === 'completed' && personOutcomeCounts?.runs === inventory.requested
+            ? { personOutcomeRows: finalizePersonOutcomeRows(personOutcomeCounts) } : {}),
         batchStatus,
         financialMetricsValid: batchStatus === 'completed',
         technicalInventory: inventory,

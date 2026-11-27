@@ -5,14 +5,16 @@ import { migrateStoredCareForms } from '../../profile/profile-care-migration.js'
 import { createNavigationOperationLifecycle } from '../navigation-guard.js';
 import { getPageNavigationGuard } from '../navigation-guard-dialog.js';
 import { PersistenceFacade } from '../persistence-facade.js';
-import { SnapshotArchive } from '../snapshot-archive.js';
+import { SnapshotArchive, SNAPSHOT_SCOPES } from '../snapshot-archive.js';
+import { pruneRestorePoints } from '../snapshot-retention.js';
 import { isAllowedPersistenceImportKey } from '../persistence-key-policy.js';
 import { PROFILE_STORAGE_KEYS } from '../../profile/profile-state.js';
-import { FULL_BACKUP_RECOVERY_KIND, PROBELAUF_BACKUP_MESSAGE, PROBELAUF_BACKUP_STATE_UNAVAILABLE_MESSAGE, FullBackupLiveChangedError } from './schema.js';
+import { FULL_BACKUP_RECOVERY_KIND, FULL_BACKUP_RELOAD_MESSAGE, PROBELAUF_BACKUP_MESSAGE, PROBELAUF_BACKUP_STATE_UNAVAILABLE_MESSAGE, FullBackupLiveChangedError } from './schema.js';
 import { recordsMatch, collectAllowedFacadeRecords } from './records.js';
 import { validatePersistenceDomainRecords } from './domain-validation.js';
 import { normalizeFullPersistenceBackup } from './format.js';
 import { assertFullBackupAllowed } from './guard.js';
+import { BACKUP_DELIVERY_KEY, backupImportRecord } from '../../data/data-backup-summary.js';
 
 /**
  * @param {I.Facade} persistence
@@ -33,12 +35,10 @@ export async function prepareFullBackupRecovery(persistence, snapshotStorage, na
     const recovery = await SnapshotArchive.createSnapshot({
         label: `Vollbackup-Import Recovery ${new Date().toISOString()}`,
         kind: FULL_BACKUP_RECOVERY_KIND,
+        // SV-1b: Der Punkt umfasst alles, was der Vollimport ersetzt, auch Tageskurse, Verlaufsbeginn und Sicherungszeit.
+        scope: SNAPSHOT_SCOPES.import,
         records: previousRecords,
-        activeProfileId,
-        restoreScope: {
-            profileRegistryMode: 'replace-all-rollback',
-            profileLiveDataMode: 'replace-all-rollback'
-        }
+        activeProfileId
     }, /** @type {Parameters<typeof SnapshotArchive.createSnapshot>[1]} */ ({ storage: snapshotStorage, navigationOperation }));
     const confirmedRecovery = await SnapshotArchive.readSnapshot(recovery.id, {
         storage: snapshotStorage
@@ -95,7 +95,7 @@ export async function importFullPersistenceBackup(payload, options = {}) {
     }
     const persistence = options.persistence || PersistenceFacade;
     const snapshotStorage = options.snapshotStorage || persistence;
-    let recoverySnapshotId = '';
+    let recoverySnapshotId = '', written = false, /** @type {(() => unknown) | undefined} */ release;
     const lifecycle = /** @type {I.CreateLifecycle} */ (createNavigationOperationLifecycle)({ guard: options.guard ?? (globalThis.document ? getPageNavigationGuard() : null) });
     try {
         return await lifecycle.run(options, async navigationOperation => {
@@ -110,7 +110,13 @@ export async function importFullPersistenceBackup(payload, options = {}) {
                 throw new FullBackupLiveChangedError();
             }
 
+            // ST7-FIX (Gutachten ST7 P2-1): Die Datei behält ihre eigene Sicherungszeit. Eine Übergabe- oder Wiederherstellungsdatei
+            // zählt nicht als Vollsicherung; der Kopf von Daten & Sicherung nennt, was eingespielt wurde.
+            migratedRecords.set(BACKUP_DELIVERY_KEY, backupImportRecord(backup.exportedAt, new Date().toISOString()));
             navigationOperation.commit();
+            // HL-1 (H-04): Wie beim Zurückholen eines Punkts darf die einspielende Seite den neuen Stand nicht überschreiben.
+            // Die Sperre gilt ab dem Ersetzen bis zum Neuladen; nur eine bestätigte Rücknahme gibt sie wieder frei.
+            if (options.lockUntilReload) release = /** @type {(() => unknown) | undefined} */ (persistence.blockSyncWrites?.([], FULL_BACKUP_RELOAD_MESSAGE, { predicate: isAllowedPersistenceImportKey }));
             const result = await persistence.replaceRecordsTransactional(Object.fromEntries(migratedRecords), {
                 allowKey: isAllowedPersistenceImportKey, navigationOperation,
                 postValidate(records) {
@@ -122,23 +128,30 @@ export async function importFullPersistenceBackup(payload, options = {}) {
                     return domainValidation;
                 }
         });
+        written = true;
+        // SV-1: Erst nach dem bestätigten Einspielen kürzen; es bleiben die letzten drei Punkte vor dem Einspielen.
+        await pruneRestorePoints(FULL_BACKUP_RECOVERY_KIND, { storage: snapshotStorage, protectedIds: [recoverySnapshotId],
+            records: Object.fromEntries(migratedRecords), navigationOperation });
         return {
             ok: true,
-            message: `Komplettes Backup importiert (${backup.recordCount} Eintraege${backup.migrated ? ', Schema 1 migriert' : ''}).`,
+            message: `Komplettes Backup importiert (${backup.recordCount} Einträge${backup.migrated ? ', Schema 1 migriert' : ''}).`,
             backup,
             recoverySnapshotId,
             restore: result
         };
         });
     } catch (error) {
+        if (!written) release?.();
         if (/** @type {I.AppError} */ (error)?.name === 'AbortError') throw error;
         recoverySnapshotId ||= /** @type {I.AppError} */ (error)?.recoverySnapshotId || '';
         const code = /** @type {I.AppError} */ (error)?.code || 'full_backup_import_failed';
         const message = fullBackupImportErrorMessage(error, code);
         const recoveryHint = recoverySnapshotId
             ? ' Ein Wiederherstellungspunkt wurde angelegt. Du findest ihn in Daten & Sicherung › Wiederherstellungspunkte.'
-                + (code === 'rollback_failed' ? ' Bitte deinen bisherigen Stand von dort wiederherstellen.' : '')
+                + (code === 'rollback_failed' ? ' Bitte deinen bisherigen Stand von dort wiederherstellen: Seite neu laden und den Punkt „Vor dem Einspielen einer Sicherung“ zurückholen.' : '')
             : code === 'rollback_failed' ? ' Bitte deinen bisherigen Stand aus einer vorhandenen Sicherung wiederherstellen.' : '';
+        // SV-1b: Ist auch die Rücknahme unbestätigt, sperrt die Seite bis zum Neuladen; der Punkt davor bleibt zum Zurückholen.
+        if (code === 'rollback_failed') persistence.blockSyncWrites?.([], `${message}${recoveryHint}`, { predicate: isAllowedPersistenceImportKey });
         return {
             ok: false,
             code,

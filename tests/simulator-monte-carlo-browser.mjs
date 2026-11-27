@@ -416,46 +416,6 @@ async function inspectSyntheticRiskLayout(page, width) {
     });
 }
 
-// Ausschließlich passive Messung: keine Fokus- oder Scrollhilfe nach dem Rückweg.
-function measureReplayReturn({ selectedId, requireVisible = false }) {
-    const list = document.getElementById('scenarioList');
-    const option = Array.from(list?.querySelectorAll('[role="option"]') || [])
-        .find(node => node.getAttribute('data-scenario-id') === selectedId);
-    const rect = node => {
-        const bounds = node?.getBoundingClientRect();
-        return bounds ? { top: bounds.top, bottom: bounds.bottom, height: bounds.height } : null;
-    };
-    const row = rect(option), area = rect(list);
-    const state = {
-        width: window.innerWidth, selectedId, windowHeight: window.innerHeight, scrollY: window.scrollY,
-        row, area,
-        mcActive: document.getElementById('tab-montecarlo')?.classList.contains('active'),
-        logsVisible: document.getElementById('mcViewPanelLogs')?.hidden === false
-            && document.getElementById('mcViewPanelLogs')?.getBoundingClientRect().height > 0,
-        open: document.getElementById('scenarioSelectionDisclosure')?.open === true,
-        focused: !!option && document.activeElement === option,
-        selected: option?.getAttribute('aria-selected') === 'true'
-            && list?.getAttribute('data-selected-id') === selectedId
-    };
-    state.passed = state.mcActive && state.logsVisible && state.open && state.focused && state.selected
-        && row?.height > 0 && area?.height > 0
-        && row.top >= 0 && row.bottom <= window.innerHeight
-        && row.top >= area.top + list.clientTop
-        && row.bottom <= area.top + list.clientTop + list.clientHeight;
-    return requireVisible && !state.passed ? false : state;
-}
-
-async function assertReplayReturnVisible(page, selectedId) {
-    try {
-        const handle = await page.waitForFunction(measureReplayReturn,
-            { selectedId, requireVisible: true }, { timeout: 5000, polling: 'raf' });
-        await handle.dispose();
-    } catch (error) {
-        const state = await page.evaluate(measureReplayReturn, { selectedId });
-        throw new Error(`Replay-Rückweg erreicht keine vollständig sichtbare Option: ${JSON.stringify(state)}`, { cause: error });
-    }
-}
-
 async function runWorkerSuccessCase(browser, baseUrl) {
     const test = await createMonteCarloPage(browser, baseUrl);
     try {
@@ -497,7 +457,7 @@ async function runWorkerSuccessCase(browser, baseUrl) {
         const beforeMode = await page.evaluate(async () => {
             const { projectScenarioLogV2, serializeScenarioLogExportV2, serializeScenarioLogCsvV2 } = await import('./app/simulator/monte-carlo-export.js');
             const projected = projectScenarioLogV2(window.globalCurrentScenarioData.rows, { personDataContext: window.globalCurrentScenarioData.personDataContext });
-            return { json: serializeScenarioLogExportV2(projected), csv: serializeScenarioLogCsvV2(projected), label: document.getElementById('stressReplaySelectedScenarioLabel').textContent };
+            return { json: serializeScenarioLogExportV2(projected), csv: serializeScenarioLogCsvV2(projected) };
         });
         await assertScenarioDownloadBytes(page, beforeMode, 'Listenwahl');
         for (const mode of ['real', 'nominal']) {
@@ -509,14 +469,13 @@ async function runWorkerSuccessCase(browser, baseUrl) {
             assert(await page.evaluate(async expected => {
                 const { projectScenarioLogV2, serializeScenarioLogExportV2, serializeScenarioLogCsvV2 } = await import('./app/simulator/monte-carlo-export.js');
                 const projected = projectScenarioLogV2(window.globalCurrentScenarioData.rows, { personDataContext: window.globalCurrentScenarioData.personDataContext });
-                return serializeScenarioLogExportV2(projected) === expected.json && serializeScenarioLogCsvV2(projected) === expected.csv
-                    && document.getElementById('stressReplaySelectedScenarioLabel').textContent === expected.label;
-            }, beforeMode), `${mode}: Maßstabwechsel erhält vollständige Exportprojektion und Replayquelle`);
+                return serializeScenarioLogExportV2(projected) === expected.json && serializeScenarioLogCsvV2(projected) === expected.csv;
+            }, beforeMode), `${mode}: Maßstabwechsel erhält vollständige Exportprojektion`);
         }
         await page.locator('#mcViewTabRisk').click();
         assert(await page.locator('#wealthDistribution svg').isVisible()
             && await page.locator('#wealthDistribution [data-wealth-mark]:visible').count() === 3
-            && (await page.locator('#wealthDistribution .wealth-reading').textContent()).includes('Perzentile über alle auswertbaren Läufe, einschließlich Ruin.')
+            && (await page.locator('#wealthDistribution .wealth-reading').textContent()).includes('Perzentile über alle auswertbaren Läufe, einschließlich der Läufe mit aufgebrauchtem Vermögen.')
             && (await page.locator('#wealthDistribution .wealth-reading').textContent()).includes('Ausgewählte Szenarien mit Jahresprotokoll'),
             'echter Lauf liefert Histogramm mit Median, mittlerer Streuung und ehrlicher Lesart');
         assert(await page.locator('#wealthFanChart svg').isVisible()
@@ -549,38 +508,6 @@ async function runWorkerSuccessCase(browser, baseUrl) {
         assert(await page.locator('#scenario-controls #exportScenarioLogJson').count() === 1 && await page.locator('#scenario-controls #exportScenarioLogCsv').count() === 1, 'MC-Downloads sind eindeutige Knoten im Protokollkopf');
         assert(await page.locator('#scenarioLogOutput table').isVisible(),
             'changing the scenario updates a visible log without leaving the logs panel');
-        const replayReturnWidths = [];
-        for (const width of [1366]) {
-            await page.setViewportSize({ width, height: 900 });
-            assert(await page.locator('#scenarioList').getAttribute('data-selected-id') === scenarioValues[1], `${width}: Rückweg verwendet dieselbe gewählte Szenariokennung`);
-            await page.locator('#mcShowReplayButton').click();
-            assert(await page.locator('#workshopReplayPanel').isVisible(),
-                'scenario-log backlink activates replay after a run');
-            assert(await page.evaluate(() => document.activeElement?.id) === 'stressReplayFixButton',
-                'scenario-log backlink focuses the enabled fixation action in replay');
-            const replayProjection = await page.locator('#stressReplaySelectedScenarioDetails').evaluate(details => ({
-                hidden: details.hidden,
-                label: details.querySelector('#stressReplaySelectedScenarioLabel')?.textContent,
-                wealth: details.querySelector('#stressReplaySelectedScenarioWealth')?.textContent,
-                care: details.querySelector('#stressReplaySelectedScenarioCare')?.textContent
-            }));
-            assert(!replayProjection.hidden && replayProjection.label
-                && replayProjection.wealth !== '—' && replayProjection.care !== '—',
-            `replay projects label, terminal wealth and care marker from the selected log: ${JSON.stringify(replayProjection)}`);
-            if (width === 1366) {
-                await page.locator('#stressReplayFixButton').click();
-                await page.locator('#stressReplayStatus').filter({ hasText: 'Stresspfad fixiert' }).waitFor({ timeout: 30000 });
-            }
-            const workshopScroll = await page.evaluate(() => {
-                document.getElementById('scenarioSelectionDisclosure').open = false;
-                window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
-                return { scrollY: window.scrollY, height: window.innerHeight, width: window.innerWidth };
-            });
-            assert(workshopScroll.scrollY > 0, `${width}: Werkstatt ist vor dem Rückweg nach unten gescrollt: ${JSON.stringify(workshopScroll)}`);
-            await page.locator('#mcShowScenarioLogsButton').click();
-            await assertReplayReturnVisible(page, scenarioValues[1]);
-            replayReturnWidths.push(width);
-        }
         await page.setViewportSize({ width: 1366, height: 900 });
         await page.locator('#mcViewTabOverview').click();
 
@@ -588,16 +515,12 @@ async function runWorkerSuccessCase(browser, baseUrl) {
         await page.locator('#mcCancelButton').waitFor({ state: 'visible' });
         await waitForCompletedRun(page);
         assert(await page.locator('#scenarioSelector').count() === 1
-            && await page.locator('#scenarioList[role="listbox"]').count() === 1 && await page.locator('#scenarioGroups button').count() === 4,
+            && await page.locator('#scenarioList[role="listbox"]').count() === 1 && await page.locator('#scenarioGroups button').count() === 5,
         'a second run rerenders eine aktuelle Listbox in the stable container');
-        assert(await page.locator('#stressReplaySelectedScenarioDetails').evaluate(details => !details.hidden),
-            'a second run refreshes the read-only replay projection');
-        assert(!(await page.locator('#stressReplayFixButton').isDisabled()),
-            'the current worst-run selection remains connected to fixation after rerender');
 
         const visibleResult = await page.locator('#monteCarloResults').textContent();
         for (const label of [
-            'Floor-Deckung im gewählten Horizont',
+            'Grundbedarf gedeckt im gewählten Horizont',
             'Endzustände',
             'mehr als 10 % unter Wunsch-Flex',
             'Entnahme aus dem Vermögen in schwachen Jahren'
@@ -675,7 +598,7 @@ async function runWorkerSuccessCase(browser, baseUrl) {
         const costValue = (await page.locator('#monteCarloSummary .summary-item').filter({ hasText: 'Median Steuern' }).locator('.value-line').getAttribute('title')).replace(/\u00a0/g, ' ');
         assert(benefitValue === '9.876.543 €' && costValue === '12.345.679 €',
             'fixture benefit 9876543.21 rounds down and cost 12345678.90 rounds up to whole euros');
-        assert(fixtureText.includes('Max. Drawdown nominal (Median)') && fixtureText.includes('Max. Drawdown real (Median)'), 'synthetic browser fixture renders both price bases');
+        assert(fixtureText.includes('Max. Rückgang nominal (Median)') && fixtureText.includes('Max. Rückgang real (Median)'), 'synthetic browser fixture renders both price bases');
         assert(fixtureText.includes('34,25 %') && fixtureText.includes('35,50 %'), 'synthetic browser fixture renders both drawdowns exactly');
         assert(fixtureText.includes('Gruppenmedian-Differenz (nicht kausal)'), 'synthetic browser fixture renders the care non-causality marker in the DOM');
 
@@ -687,7 +610,6 @@ async function runWorkerSuccessCase(browser, baseUrl) {
         assert(desktopLayout.documentWidth <= desktopLayout.viewportWidth, `desktop result should not overflow horizontally: ${JSON.stringify(desktopLayout)}`);
 
         test.assertNoUnexpectedErrors(['Szenario-Export fehlgeschlagen']);
-        return replayReturnWidths;
     } finally {
         await test.context.close();
     }
@@ -711,7 +633,7 @@ async function runForcedFallbackCase(browser, baseUrl) {
     }
 }
 
-async function runFailedReplayProjectionCase(browser, baseUrl) {
+async function runFailedScenarioCase(browser, baseUrl) {
     const test = await createMonteCarloPage(browser, baseUrl);
     try {
         const { page } = test;
@@ -742,14 +664,10 @@ async function runFailedReplayProjectionCase(browser, baseUrl) {
         });
         assert(failedScenarioValue, 'failing withdrawal profile produces a failed characteristic scenario');
         await page.locator(`#scenarioWealthChart g[data-scenario-id="${failedScenarioValue}"]`).dispatchEvent('click');
-        assert(await page.locator('#stressReplaySelectedScenarioWealth').textContent() === 'Ruin',
-            'selecting a failed characteristic scenario projects Ruin before fixation');
-
-        await page.locator('#mcShowReplayButton').click();
-        await page.locator('#stressReplayFixButton').click();
-        await page.locator('#stressReplayStatus').filter({ hasText: 'Stresspfad fixiert' }).waitFor({ timeout: 30000 });
-        assert(await page.locator('#stressReplaySelectedScenarioWealth').textContent() === 'Ruin',
-            'the failed scenario projection remains Ruin after fixation');
+        assert(await page.locator('#scenarioList').getAttribute('data-selected-id') === failedScenarioValue,
+            'selecting a failed characteristic scenario selects it in the list');
+        assert((await page.locator('#scenarioProtocolLine').textContent()).includes('Vermögen aufgebraucht'),
+            'the failed scenario protocol head shows Ruin');
         test.assertNoUnexpectedErrors();
     } finally {
         await test.context.close();
@@ -769,7 +687,7 @@ async function runTechnicalErrorCase(browser, baseUrl) {
         await page.waitForFunction(() => document.getElementById('mcButton')?.disabled === false);
         const errorText = await page.locator('#mc-error-message').textContent();
         assert(errorText.includes('ENGINE_METHOD_UNAVAILABLE'), 'technical browser path exposes the stable engine error code');
-        assert(errorText.includes('Terminale Outcomes:'), 'technical browser path preserves the outcome inventory');
+        assert(errorText.includes('Endzustände:'), 'technical browser path preserves the outcome inventory');
         assert(await page.evaluate(() => document.activeElement?.id) === 'mc-error-container', 'technical run focuses the alert region');
         const exported = await downloadRunExport(page);
         assert(exported.result.batchStatus === 'technical_error', 'technical browser export is fail-closed');
@@ -814,10 +732,10 @@ async function runCancelRestartCase(browser, baseUrl) {
 }
 
 export async function runMonteCarloBrowserRegression(browser, baseUrl) {
-    const replayReturnWidths = await runWorkerSuccessCase(browser, baseUrl);
+    await runWorkerSuccessCase(browser, baseUrl);
     await runForcedFallbackCase(browser, baseUrl);
-    await runFailedReplayProjectionCase(browser, baseUrl);
+    await runFailedScenarioCase(browser, baseUrl);
     await runTechnicalErrorCase(browser, baseUrl);
     await runCancelRestartCase(browser, baseUrl);
-    return { replayReturnWidths };
+    return { completed: true };
 }

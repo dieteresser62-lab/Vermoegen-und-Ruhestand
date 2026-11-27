@@ -29,8 +29,8 @@ const balanceRaw = JSON.stringify({
     annualPeriodMetadata: { lastCommittedPeriod: 'calendar-year:2025' }
 });
 
-function profile(id, selected, bucket = JSON.stringify(validBucket), overrides = {}) {
-    return { meta: { id, name: `Synthetisch ${id.toUpperCase()}`, belongsToHousehold: selected }, data: {
+function profile(id, explicitFlag, bucket = JSON.stringify(validBucket), overrides = {}) {
+    return { meta: { id, name: `Synthetisch ${id.toUpperCase()}`, ...(explicitFlag ? { belongsToHousehold: true } : {}) }, data: {
         profile_person_schema_version: '1', profile_geburtsdatum: '1958-03-14',
         profile_rente_monatlich: '2000', profile_sonstige_einkuenfte: '100',
         profile_sparer_pauschbetrag: '1500', profile_kirchensteuer_pct: '9', profile_tagesgeld: '50000',
@@ -126,7 +126,7 @@ async function assertBlockedUpdates({ dom, before }, id) {
         handleError(error) { rendered.push(error); UIRenderer.handleError(error); }
     };
     const dependencies = {
-        refreshBalanceWealthHistory() {}, refreshBalanceExpensesHistory() {}, dom, getBalancePlanTrial,
+        refreshBalanceExpensesHistory() {}, dom, getBalancePlanTrial,
         readBalancePersonStatus, showPersonDataStatus, createBlockedUpdateResult,
         getCurrentProfileId: () => persistenceStorage.getItem(PROFILE_STORAGE_KEYS.current),
         BALANCE_UPDATE_MODE, resolveBalanceUpdateRequest, assertActiveEngineHandshake, appState, UIRenderer: renderer,
@@ -184,31 +184,6 @@ await withFixture({ a: healthy, b: damagedPartner }, 'a', async fixture => {
     await assertBlockedUpdates(fixture, 'b');
 });
 
-// Derselbe Partner wird nur abgewählt; der beschädigte Bucket bleibt unverändert.
-await withFixture({ a: healthy, b: { ...damagedPartner, meta: { ...damagedPartner.meta, belongsToHousehold: false } } }, 'a', () => {
-    assertEqual(readBalancePersonStatus().entries.map(entry => entry.profileId).join(), 'a', 'Abgewählter Partner liegt außerhalb des Rechenumfangs');
-    const inputs = UIReader.readAllInputs();
-    assertEqual(inputs.tagesgeld, 50000, 'Gesundes Rechenprofil behält Tagesgeld');
-    assertEqual(inputs.renteMonatlich, 2100, 'Gesundes Rechenprofil behält Einkommen');
-    assertEqual(inputs.sparerPauschbetrag, 1500, 'Gesundes Rechenprofil behält SPB');
-    assertEqual(JSON.stringify(inputs.healthBucket), JSON.stringify(validBucket), 'Gültiger aktivierter Bucket behält sämtliche Werte');
-    assertEqual(JSON.parse(persistenceStorage.getItem(PROFILE_STORAGE_KEYS.registry)).profiles.b.data[PROFILE_HEALTH_BUCKET_KEY],
-        damagedRaw, 'Abgewählter Schaden wird nicht repariert');
-});
-
-// Geöffnete Außenperson A und ausgewählte Basisperson B haben bewusst andere Werte.
-await withFixture({ a: profile('a', false, JSON.stringify(validBucket), {
-    profile_geburtsdatum: '1970-03-14', profile_tagesgeld: '9999', profile_rente_monatlich: '999', profile_sparer_pauschbetrag: '0'
-}), b: profile('b', true) }, 'a', () => {
-    assertEqual(readBalancePersonStatus().calculationProfileId, 'b', 'Auswahl bestimmt Basisperson unabhängig von geöffneter Person');
-    const inputs = UIReader.readAllInputs();
-    assertEqual(inputs.aktuellesAlter, 67, 'Reader projiziert das Alter der ausgewählten Person B');
-    assertEqual(inputs.tagesgeld, 50000, 'Reader verwendet Bs Vermögen');
-    assertEqual(inputs.renteMonatlich, 2100, 'Reader verwendet Bs Einkommen');
-    assertEqual(inputs.sparerPauschbetrag, 1500, 'Reader verwendet Bs SPB');
-    assertEqual(persistenceStorage.getItem(PROFILE_STORAGE_KEYS.current), 'a', 'Geöffnete Person bleibt A');
-});
-
 for (const [label, raw, expected] of [
     ['deaktiviert', JSON.stringify({ ...validBucket, enabled: false }), { ...validBucket, enabled: false }],
     ['fehlend', null, DEFAULT_PROFILE_HEALTH_BUCKET], ['leer', '', DEFAULT_PROFILE_HEALTH_BUCKET]
@@ -219,7 +194,7 @@ for (const [label, raw, expected] of [
         assertEqual(JSON.stringify(UIReader.readAllInputs().healthBucket), JSON.stringify(expected), `${label}: bestehender Bucketvertrag erhalten`);
     });
 }
-await withFixture({ default: { meta: { id: 'default', name: 'Default', belongsToHousehold: false }, data: {} } }, 'default', () => {
+await withFixture({ default: { meta: { id: 'default', name: 'Default' }, data: {} } }, 'default', () => {
     assertEqual(readBalancePersonStatus().status, 'demo', 'Leeres Erstprofil bleibt Demo');
     const inputs = UIReader.readAllInputs();
     assertEqual(inputs.aktuellesAlter, 66, 'Demo verwendet weiterhin DOM-Alter');
@@ -227,7 +202,7 @@ await withFixture({ default: { meta: { id: 'default', name: 'Default', belongsTo
     assertEqual(JSON.stringify(inputs.healthBucket), JSON.stringify(DEFAULT_PROFILE_HEALTH_BUCKET), 'Demo behält den Defaultbucket');
 });
 // DP-1: Hat die erste Person den Platzhalter ersetzt, wird sie gewöhnlich geprüft.
-await withFixture({ default: { meta: { id: 'default', name: 'Synthetische Person', belongsToHousehold: false },
+await withFixture({ default: { meta: { id: 'default', name: 'Synthetische Person' },
     data: { profile_person_schema_version: '1' } } }, 'default', () => {
     assertEqual(readBalancePersonStatus().status, 'missing', 'Umbenannte leere Erstperson fragt nach Personendaten');
 });

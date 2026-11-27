@@ -1,14 +1,14 @@
 import { remainingAnnualAction, annualActionPlanLines } from './annual-action-progress.js';
-import { resolveTargetTagesgeld, withProfileLiquidityTargets } from './balance-play-execution.js';
-import { displayUp, displayDown, displayRoundingStep, displayActionAmount, displayedBuyTotal } from '../shared/display-rounding.js';
+import { resolveTargetTagesgeld, withProfileLiquidityTargets, annualLiquidityInflowRouting } from './balance-play-execution.js';
+import { displayUp, displayDown, displayRoundingStep, displayActionAmount, displayedBuyTotal, displayedSaleTotal } from '../shared/display-rounding.js';
 import { confirmedCarrier } from './balance-action-origin.js';
 /** @import { projectAnnualActionProgress } from './annual-action-progress.js' */
 /** Lesende Bestandsprojektion der fertig vorbereiteten Buchungszeilen, vor Auszahlung. */
 /** @param {import('../../typcheck/balance-ui.js').Ui} ui @param {import('../../typcheck/balance-ui.js').ActionEntry[]} [entries]
- * @param {{targetEntries?: {profileId?: string, name?: string, tagesgeldTarget?: number}[]|null, settled?: boolean}} [options] `targetEntries` liefert die
+ * @param {{targetEntries?: {profileId?: string, name?: string, tagesgeldTarget?: number, cashToday?: number}[]|null, settled?: boolean, action?: any}} [options] `targetEntries` liefert die
  * persönlichen Tagesgeldziele, wenn die Aktion aus dem Jahresbeleg kommt; `settled` heißt: Der Beleg ist vollständig umgesetzt.
  * @returns {import('../../typcheck/balance-ui.js').Reserves} */
-export function projectBalanceReserves(ui, entries = [], { targetEntries = null, settled = false } = {}) {
+export function projectBalanceReserves(ui, entries = [], { targetEntries = null, settled = false, action = ui.action } = {}) {
     const input = ui.input || {}, finite = Number.isFinite;
     const sum = (items, read) => items.reduce((total, item) => total + read(item), 0);
     const before = { tagesgeld: input.tagesgeld, geldmarkt: input.geldmarktEtf };
@@ -48,10 +48,21 @@ export function projectBalanceReserves(ui, entries = [], { targetEntries = null,
     }
     // Ist der Beleg ganz umgesetzt, entspricht „nach Umsetzung“ dem heutigen Stand.
     if (!after && settled && finite(before.tagesgeld) && finite(before.geldmarkt)) after = { ...before, liquidity };
-    const mark = (/** @type {any} */ entry) => heldKeys.has(key(entry)) ? { held: true } : {};
-    return { before: { ...before, liquidity }, after, targets: targetEntries ? targetEntries.map(entry => ({ name: entry.name, target: entry.tagesgeldTarget, ...mark(entry) }))
+    const mark = (/** @type {any} */ entry) => ({ profileId: entry.profileId, ...(heldKeys.has(key(entry)) ? { held: true } : {}) });
+    const saleLines = annualActionPlanLines(action);
+    let routing = null;
+    if (after && action?.verwendungen?.liquiditaet > 0 && saleLines.length) {
+        try {
+            routing = annualLiquidityInflowRouting(action, { input, spending: ui.spending, targetLiquidity: ui.zielLiquiditaet,
+                entries: ui.profileActionResults });
+        } catch { /* Alte Belege ohne anwendbaren Liquiditätskontext behalten die Bestandsprojektion. */ }
+    }
+    const sweep = sum(entries, entry => entry.action?.internalCashRebalance?.to === 'Geldmarkt-ETF' ? entry.action.internalCashRebalance.amount : 0);
+    return { before: { ...before, liquidity }, after, targets: targetEntries ? targetEntries.map(entry => ({ name: entry.name, target: entry.tagesgeldTarget,
+        ...(settled ? { cashToday: entry.cashToday } : {}), ...mark(entry) }))
         : entries.map(entry => ({ name: entry.name, target: entry.tagesgeldTarget ?? entry.cashSplit?.zielTagesgeld ?? entry.input?.personalTagesgeldTarget, ...mark(entry) })),
-    target: ui.zielLiquiditaet, ...(held ? { held } : {}) };
+    target: ui.zielLiquiditaet, ...(held ? { held } : {}), ...(sweep ? { sweep } : {}), ...(settled ? { settled } : {}),
+    ...(routing ? { sale: { routing, action, lines: saleLines } } : {}) };
 }
 
 /** Ergänzung 2 FR-78 und RD-1c: angezeigte Reservewerte, die in sich aufgehen. Heute bleibt genau (Kontostand). Nach Umsetzung
@@ -126,11 +137,36 @@ export function displayedCoverage(shown, shownTarget, exact, target) {
  * Planzeilen fließt mit dem angezeigten (abgerundeten) Betrag ab. Tagesgeldziel = Summe der angezeigten Personenziele.
  * @param {import('../../typcheck/balance-ui.js').Reserves} view
  * @param {any} [todoPlan] Plan aus `projectAnnualTodoPlan`
- * @returns {{shown: ReturnType<typeof displayedReserves>, targets: {name?: string, target: number}[], shownTarget: number|null,
+ * @returns {{shown: ReturnType<typeof displayedReserves>, targets: {name?: string, target: number, shown?: number}[], shownTarget: number|null,
  *   coverage: {today: number|null, after: number|null}}} */
 export function displayedReserveView(view, todoPlan = null) {
     const finite = Number.isFinite;
-    const targets = /** @type {{name?: string, target: number, held?: boolean}[]} */ (view.targets.filter(row => finite(row.target)));
+    const targets = view.targets.filter(row => finite(row.target));
+    const shownTarget = finite(view.target) ? displayUp(view.target) : null;
+    const coverage = (/** @type {number|null|undefined} */ shownAfter, /** @type {number|null|undefined} */ exactAfter) => ({
+        today: displayedCoverage(view.before.liquidity, shownTarget, view.before.liquidity, view.target),
+        after: displayedCoverage(shownAfter, shownTarget, exactAfter, view.target) });
+    if (view.sale && finite(view.before.tagesgeld) && finite(view.before.geldmarkt)) {
+        const { routing, action, lines } = view.sale;
+        const head = todoPlan?.status === 'teilweise' ? Math.round(lines.reduce((sum, row) => sum + row.planNet, 0)) : displayedSaleTotal(lines);
+        const parts = annualInflowParts(action, routing, head);
+        const shownMoneyMarket = parts.geldmarkt + displayUp(action.verwendungen?.geldmarkt || 0);
+        const after = { tagesgeld: view.before.tagesgeld + parts.tagesgeld, geldmarkt: view.before.geldmarkt + shownMoneyMarket,
+            liquidity: (view.before.liquidity ?? view.before.tagesgeld + view.before.geldmarkt) + parts.tagesgeld + shownMoneyMarket };
+        const shownTargets = targets.map(row => {
+            const person = routing.people.find(person => person.profileId === row.profileId);
+            if (!person) return { ...row, shown: displayUp(row.target) };
+            const shownInflow = routing.tagesgeld > 0 ? person.tagesgeld / routing.tagesgeld * parts.tagesgeld : 0;
+            return { ...row, shown: displayedPersonalTarget(row.target, person.cashToday + person.tagesgeld, person.cashToday + shownInflow, person.cashTarget) };
+        });
+        return { shown: { before: view.before, after, cashTarget: null }, targets: shownTargets, shownTarget,
+            coverage: coverage(after.liquidity, view.after?.liquidity) };
+    }
+    if (view.sweep && view.after) {
+        const tagesgeld = view.after.tagesgeld + view.sweep, geldmarkt = view.after.geldmarkt - view.sweep;
+        const unchanged = Math.abs(tagesgeld - view.before.tagesgeld) < 0.005 && Math.abs(geldmarkt - view.before.geldmarkt) < 0.005;
+        view = { ...view, after: unchanged && !view.settled ? null : { ...view.after, tagesgeld, geldmarkt } };
+    }
     // RK-4 (Ergänzung 1 FR-80): Bleibt das Tagesgeld der nicht tragenden Person unverändert, rundet „nach Umsetzung“ nur den Teil der
     // tragenden Person, gemessen an ihrem eigenen Ziel. Sonst hinge ihr angezeigtes Ergebnis am Stand der anderen Person.
     const heldCash = view.held && Math.abs(view.held.after - view.held.before) < 0.5 ? view.held.before : null;
@@ -144,7 +180,8 @@ export function displayedReserveView(view, todoPlan = null) {
         && Math.abs(delta + todoPlan.amount) < 1 ? -(buyLines?.length ? displayedBuyTotal(buyLines) : displayActionAmount(todoPlan.verb, todoPlan.amount)) : null;
     const rowsExact = openRows.reduce((/** @type {number} */ sum, /** @type {any} */ row) => sum + row.restNet, 0);
     // VK-3d P4: Teilweise erledigt nennt die Karte den offenen Rest auf den Euro; offen den aufgerundeten Plan.
-    const rowsShown = todoPlan?.status === 'teilweise' ? rowsExact : openRows.reduce((/** @type {number} */ sum, /** @type {any} */ row) => sum + displayUp(row.restNet), 0);
+    // HP-3 (Ergänzung 6 FR-78): wie der Kopf der Karte die Summe der Zeilen auf den Euro, einmal aufgerundet.
+    const rowsShown = todoPlan?.status === 'teilweise' ? rowsExact : displayedSaleTotal(openRows.map(row => ({ planNet: row.restNet })));
     // GN-1 (N3): Bezahlt der Plan aus dem Verkauf auch Käufe, fließen sie mit ihrem angezeigten (abgerundeten) Betrag ab,
     // damit „nach Umsetzung“ = heute + angezeigte Verkäufe − angezeigte Käufe aufgeht.
     const bought = (todoPlan?.purchases || []).filter((/** @type {any} */ item) => item.purchase && finite(item.amount) && item.amount > 0);
@@ -154,11 +191,31 @@ export function displayedReserveView(view, todoPlan = null) {
         : bought.length && Math.abs(delta - rowsExact + boughtExact) < 1 ? rowsShown - boughtShown : purchase;
     const shown = displayedReserves(view, { cashTarget: exactTarget, shownCashTarget: own.length ? own.reduce((sum, row) => sum + displayUp(row.target), 0) : null,
         inflow, liquidityTarget: view.target, heldCash });
-    const shownTarget = finite(view.target) ? displayUp(view.target) : null;
-    return { shown, targets, shownTarget, coverage: {
-        today: displayedCoverage(view.before.liquidity, shownTarget, view.before.liquidity, view.target),
-        after: view.after ? displayedCoverage(shown.after?.liquidity, shownTarget, view.after.liquidity, view.target) : null } };
+    const shownTargets = view.settled ? targets.map(row => ({ ...row, shown: displayedPersonalTarget(row.target, row.cashToday, row.cashToday) })) : targets;
+    return { shown, targets: shownTargets, shownTarget, coverage: coverage(shown.after?.liquidity, view.after?.liquidity) };
 }
+
+/** FR-78 Regel 4: Bei genau erreichtem Ziel bleibt ein Schein-Fehlbetrag durch Aufrunden aus.
+ * @param {number} target @param {number|undefined} exactBalance @param {number|undefined} shownBalance @param {number} [exactTarget] */
+function displayedPersonalTarget(target, exactBalance, shownBalance, exactTarget = target) {
+    const roundedTarget = displayUp(target);
+    return exactBalance >= exactTarget - 0.005 && Math.round(shownBalance) < roundedTarget ? Math.round(target) : roundedTarget;
+}
+
+/** FR-78 Ergänzung 7: Tagesgeldzufluss aus der Verteilung je Person, Geldmarkt als Rest der angezeigten Verkaufsverwendung.
+ * @param {any} action Handlung des Belegs
+ * @param {NonNullable<ReturnType<typeof annualLiquidityInflowRouting>>} routing
+ * @param {number} head angezeigter Verkauf */
+export function annualInflowParts(action, routing, head) {
+    const other = Object.entries(action.verwendungen || {}).reduce((sum, [key, amount]) => key === 'liquiditaet' || !(Number(amount) > 0)
+        ? sum : sum + displayedAnnualUse(key, Number(amount)), 0);
+    const available = Math.max(0, head - other);
+    const tagesgeld = routing.geldmarkt <= 0.5 ? available : Math.min(available, displayUp(routing.tagesgeld));
+    return { tagesgeld, geldmarkt: available - tagesgeld };
+}
+
+/** @param {string} key @param {number} amount */
+export const displayedAnnualUse = (key, amount) => displayActionAmount(['aktien', 'gold', 'bonds'].includes(key) ? 'Anlage kaufen' : null, amount);
 
 /** S6 und GU-1b: Aktion für Reserven „nach Umsetzung“ und Diagnose im laufenden Jahr. Eine festgeschriebene Handlungsanweisung
  * des Jahres hat Vorrang, weil die Seite genau sie zeigt, aber nur mit ihrem offenen Rest (FR-77 Punkt 2): Was schon verkauft
@@ -166,7 +223,7 @@ export function displayedReserveView(view, todoPlan = null) {
  * @param {{action?: any, input?: any, spending?: any, zielLiquiditaet?: number, profileActionResults?: any[]|null}} currentYear
  * @param {{action?: any, progress?: ReturnType<typeof projectAnnualActionProgress>|null}|null} [confirmed] Beleg aus `projectBalanceActionOrigin`
  * samt Umsetzungsstand.
- * @returns {{action: any, entries: any[], targetEntries: {name?: string, tagesgeldTarget?: number}[]|null, settled: boolean, creditPendingNet: number}} */
+ * @returns {{action: any, entries: any[], targetEntries: ReturnType<typeof personalCashTargetEntries>, settled: boolean, creditPendingNet: number}} */
 export function currentYearActionSource(currentYear, confirmed = null) {
     // WT-1 (Gutachten GU1B-FABLE Befund 1): Ein Beleg ohne Verkaufszeile (nur Käufe aus der Liquidität) hat keinen ableitbaren
     // Umsetzungsstand; er rechnet wie vor GU-1 mit der Neuberechnung zu heutigen Beständen, damit kein Kauf doppelt zählt.
@@ -221,7 +278,7 @@ export function recalculatedActionSource(currentYear) {
 export function personalCashTargetEntries(entries, householdTarget) {
     if (!Array.isArray(entries) || entries.length < 2 || entries.some(entry => !entry?.input)) return null;
     try {
-        return withProfileLiquidityTargets(entries, householdTarget).map(entry => ({ profileId: entry.profileId, name: entry.name,
+        return withProfileLiquidityTargets(entries, householdTarget).map(entry => ({ profileId: entry.profileId, name: entry.name, cashToday: entry.input.tagesgeld,
             tagesgeldTarget: resolveTargetTagesgeld(entry.spending, entry.targetLiquidity, entry.input) }));
     } catch { return null; }
 }

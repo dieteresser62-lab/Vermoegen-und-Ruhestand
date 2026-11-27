@@ -140,7 +140,7 @@ try {
     for (const [name, rule, expected] of [
         ['Budget-Floor Deckung', 'min', 'Deckungsziel nicht erreicht'],
         ['Runway (vs. Min)', 'min', 'Mindestgrenze unterschritten'],
-        ['Runway (vs. Ziel)', 'min', 'Mindestgrenze unterschritten'],
+        ['Runway (vs. Ziel)', 'min', 'Unter Ziel'],
         ['Entnahmequote', 'max', 'Grenze überschritten'],
         ['Realer Drawdown (Gesamt)', 'max', 'Grenze überschritten']
     ]) {
@@ -149,6 +149,22 @@ try {
         const payload = withGuardrailCardValues(formatDiagnosisPayload(raw), raw);
         assertEqual(buildGuardrails(payload.guardrails).children[0].children.at(-1).textContent, expected, `${name}: Verletzung folgt der Grenzrichtung`);
         assertEqual(JSON.stringify(raw), before, 'Leitplankenwortlaut verändert keine Rohwerte');
+    }
+    // HL-1 (H-GT2-1): „Unter Ziel“ ist keine verletzte Mindestgrenze; die Karte warnt nur, die Rohwerte bleiben.
+    {
+        const raw = { guardrails: [{ name: 'Runway (vs. Ziel)', rule: 'min', value: 30, threshold: 36, type: 'months' }] };
+        const card = buildGuardrails(withGuardrailCardValues(formatDiagnosisPayload(raw), raw).guardrails).children[0];
+        assert(card.className.includes('status-warn') && card.children.at(-1).className.includes('ds-chip-warning'), 'H-GT2-1: Unter Ziel in Warnfarbe');
+        assertEqual(formatDiagnosisPayload(raw).guardrails[0].status, 'danger', 'H-GT2-1: Formatierung der Rechnung bleibt unverändert');
+    }
+    // HL-1 (H-GT2-1): Status und Notiz nutzen dieselbe Toleranz; „Exakt auf …“ steht nie neben einem roten Chip.
+    for (const [rule, value] of [['min', 0.1 + 0.2 - 1e-12], ['max', 0.3 + 1e-12]]) {
+        const raw = { guardrails: [{ name: rule === 'min' ? 'Runway (vs. Min)' : 'Entnahmequote', rule, value, threshold: 0.3, type: 'percent' }] };
+        const formatted = formatDiagnosisPayload(raw).guardrails[0];
+        assertEqual(formatted.note, rule === 'min' ? 'Exakt auf Mindestniveau.' : 'Exakt auf Obergrenze.', `H-GT2-1 ${rule}: Notiz erkennt die Schwelle`);
+        assertEqual(formatted.status, 'ok', `H-GT2-1 ${rule}: Status folgt derselben Toleranz wie bei exakter Gleichheit`);
+        const chip = buildGuardrails(withGuardrailCardValues(formatDiagnosisPayload(raw), raw).guardrails).children[0].children.at(-1);
+        assert(!chip.className.includes('ds-chip-error'), `H-GT2-1 ${rule}: kein roter Chip auf der Schwelle`);
     }
     for (const [value, status] of [[.0449, 'ok'], [.045, 'warn'], [.0451, 'warn']]) {
         const raw = { guardrails: [{ name: 'Vorsicht beim Budget-Floor', value, threshold: .045, type: 'percent', details: { budgetFloorBlocked: false } }] };

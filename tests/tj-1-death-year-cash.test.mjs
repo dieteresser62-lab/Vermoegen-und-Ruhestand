@@ -158,6 +158,7 @@ for (const legacy of [false, true]) {
     assertEqual(log.kaufAkt, 0, `${label}: auch im Ansparjahr kein Kauf aus fremder Liquidität`);
     assertEqual(survivorCash, 300000, `${label}: Person 1 behält ihre Liquidität`);
     assertEqual(log.abgang_erben, 350000, `${label}: Liquidität von Person 2 verlässt den Haushalt`);
+    assertEqual(log.liqEnd, 300000, `${label}: Jahresendliquidität nach dem Nachlass`);
 }
 // TJ-2-Sollfall: Person 1 hat 50.000 €, Person 2 600.000 €. Für Person 1 zählen 50.000 €; die bestehende
 // Runway-Notfüllung hebt auf 75 % des Ziels an und ist auf 10 % des Aktienbestands begrenzt (200.000 €).
@@ -245,7 +246,8 @@ for (const [status, threeBucket, sale, cash] of [['unmarried', false, 230077.75,
 // der überlebenden Person; Verheiratete wie Unverheiratete verkaufen und versteuern gleich.
 for (const [status, percent, sale, tax, bonds, cash] of [
     ['unmarried', 0, 743219.58, 97748.33, 480000, 379792], ['married', 0, 743219.58, 97748.33, 480000, 369471.25],
-    ['unmarried', 50, 597563.84, 72611.95, 435048.11, 384160.38], ['married', 50, 552611.95, 72611.95, 480000, 379000]]) {
+    // HP-4: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb, 11,89 € weniger; vorher Verkauf 597.563,84 €, Anleihen 435.048,11 €.
+    ['unmarried', 50, 597551.95, 72611.95, 435060, 384160.38], ['married', 50, 552611.95, 72611.95, 480000, 379000]]) {
     const { log, label, survivorCash, bonds: bondsEnd } = deathYear(status, percent, { threeBucket: true, costBasis: 1000000 });
     assertEqual(log.kaufAkt, 0, `${label}: kein Kauf aus Liquidität`);
     assertClose(bondsEnd, bonds, .01, `${label}: Anleihenbestand nach Auffüllung${percent ? ' und Erbschaftsteuer' : ''}`);

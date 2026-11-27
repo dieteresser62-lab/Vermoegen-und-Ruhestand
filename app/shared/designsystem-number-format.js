@@ -25,6 +25,15 @@ export function formatDisplayDate(value) {
         ? value.split('-').reverse().join('.') : '— (Datum fehlt)';
 }
 
+const berlinerKurszeit = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit' });
+
+/** @param {string|null|undefined} exchange @param {number} asOf UTC-Unixsekunden */
+export function formatQuoteExchangeTime(exchange, asOf) {
+    const date = new Date(asOf * 1000);
+    return exchange && Number.isInteger(asOf) && asOf > 0 && Number.isFinite(date.getTime())
+        ? `${exchange}\u00a0${berlinerKurszeit.format(date)}` : '';
+}
+
 // Bestehende toFixed-Rundung einschließlich binärer Grenzfälle beibehalten.
 // Nur sichtbare Texte, niemals Koordinaten, Inputwerte oder Exportprojektionen.
 /**
@@ -45,15 +54,3 @@ export function formatDisplayScalar(value) {
     return typeof value === 'number' ? String(value).replace('.', ',') : value;
 }
 
-// Nur bereits formatierte Logzellen; die Exportspalten benutzen weiter Legacy.
-/**
- * @param value Zu verarbeitender Wert.
- * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
- */
-export function formatDisplayLogValue(value) {
-    if (typeof value !== 'string') return value;
-    if (/^[+-]?\d+(?:\.\d+)?(?:%|M)?$/.test(value)) {
-        return value.replace('.', ',').replace(/([%M])$/, '\u00a0$1');
-    }
-    return value.replace(/ (?=€)/g, '\u00a0');
-}

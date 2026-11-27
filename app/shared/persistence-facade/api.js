@@ -1,7 +1,7 @@
 /** @import * as D from "../../../typcheck/datenvertraege.js" */
 /** @import * as I from "../../../typcheck/speicher-integration.js" */
 
-import { readRealRecords, readRealSnapshots, activatePlayArea, discardPlayArea, adoptPlayArea } from './play-area.js';
+import { readRealRecords, activatePlayArea, discardPlayArea, adoptPlayArea } from './play-area.js';
 import { createHousehold, switchHousehold, getHouseholds, renameHousehold, deleteHousehold, rebuildHousehold, createHouseholdFromRecords, readHouseholdRecords } from './households.js';
 import { setProbelaufProtection, blockSyncWrites, blockDocumentWrites, holdWritesUntil, hasSyncWriteBlocks, hooks } from './state.js';
 import { withProbelaufOperation, flush } from './writes.js';
@@ -9,12 +9,11 @@ import { readPersistedRecords, exportAllSync, importAll, replaceRecordsTransacti
 import { observeInputChanges, bindLifecycleFlush, bindTauriClose, unbindLifecycleFlush } from './lifecycle.js';
 import { configurePersistence, init, isInitialized } from './initialization.js';
 import { getItemSync, setItemSync, removeItemSync, clearAllowedSync, keysSync, keySync, clearSync } from './cache.js';
-import { listSnapshots, readSnapshot, readSnapshots, writeSnapshot, deleteSnapshot, migrateLegacySnapshotsIfNeeded } from './snapshots.js';
-import { getDirtyState, getPersistenceStatus, getMetadata, captureNewBeginningPreferences, resetNewBeginningBrowserStorage, resetPersistenceForTests, resetPersistenceRuntimeForTests } from './maintenance.js';
+import { listSnapshots, readSnapshot, readSnapshots, writeSnapshot, deleteSnapshot } from './snapshots.js';
+import { getDirtyState, getPersistenceStatus, getMetadata, setMetadata, updateMetadata, resetNewBeginningBrowserStorage, resetPersistenceForTests, resetPersistenceRuntimeForTests } from './maintenance.js';
 
 export const PersistenceFacade = {
     readRealRecords,
-    readRealSnapshots,
     activatePlayArea,
     createHousehold,
     switchHousehold,
@@ -52,13 +51,13 @@ export const PersistenceFacade = {
     readSnapshots,
     writeSnapshot,
     deleteSnapshot,
-    migrateLegacySnapshotsIfNeeded,
     replaceLiveRecords,
     flush,
     getDirtyState,
     getPersistenceStatus,
     getMetadata,
-    captureNewBeginningPreferences,
+    setMetadata,
+    updateMetadata,
     resetNewBeginningBrowserStorage,
     bindLifecycleFlush,
     bindTauriClose,

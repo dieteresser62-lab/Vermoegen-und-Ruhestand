@@ -7,6 +7,9 @@ import { EXPENSE_MONTHS, refreshExpensesTableValues, renderExpensesDetails, rend
 import { context, state } from './context.js';
 import { notifyExpensesChange, readExpensesStoreForUi, formatCurrency, getProfiles } from './helpers.js';
 
+// Die Herkunft „Beispieldaten (Spielbereich)“ steht nur im aktiven Spielbereich; übernommene Beispielmonate gelten danach als eigene Daten.
+const playAreaActive = () => PersistenceFacade.isInitialized() && PersistenceFacade.getPersistenceStatus().activeArea === 'spiel';
+
 export function createExpensesView({ renderCorruptExpensesState }) {
     function renderYearSelect() {
         if (!context.dom?.expenses?.yearSelect) return;
@@ -67,7 +70,8 @@ export function createExpensesView({ renderCorruptExpensesState }) {
             profileIds: state.profileIds,
             monthlyBudget: state.monthlyBudget,
             formatCurrency, missingLabel: context.adapters.missingLabel,
-            dueMonth: context.adapters.dueMonth?.(state.year)
+            dueMonth: context.adapters.dueMonth?.(state.year),
+            playArea: playAreaActive()
         });
         updateSummary(store);
     }
@@ -144,9 +148,11 @@ export function createExpensesView({ renderCorruptExpensesState }) {
             monthName: EXPENSE_MONTHS[month - 1],
             profileName,
             categories,
+            yearData, profileId,
             categoryNeeds: profileData?.categoryNeeds,
             source: profileData?.source,
-            plannedExpenses: profileData?.plannedExpenses
+            plannedExpenses: profileData?.plannedExpenses,
+            playArea: playAreaActive()
         });
     }
 

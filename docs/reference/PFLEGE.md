@@ -1,66 +1,58 @@
 # Pflege
 
-Wie heutige Pflege und mögliche spätere Kosten den Haushalt verändern. Für Nutzer und fachlich Interessierte. Codeprüfung: 08.11.2026; Quellenprüfung: 27.10.2026.
+Wie die App heutige und künftige Pflege für Bedarf, Einkommen und Finanzierung rechnet. Für Nutzer und fachlich Interessierte. Codeprüfung 21.11.2026, Quellenprüfung 27.10.2026.
 
 ## Auf einen Blick
 
-- Im Simulator gelten Grundbedarf und Flex ohne Pflege; die App ergänzt heutige Pflege ab Jahr 1 selbst.
-- Pflegegrad und Pflegeform sind zwei getrennte Angaben.
-- Wer heute oder später im Heim lebt, fällt im Simulator aus dem Grundbedarf heraus. Statt seines Anteils zählen Heimkosten und eigene Ausgaben im Heim.
-- Fällt bei Paaren der pflegende Partner aus, kann die App bereits im selben Jahr Pflegegeld streichen und Zusatzkosten ansetzen.
-- Die Pflegewahrscheinlichkeiten sind intern abgestimmt, aber nicht extern validiert.
+- Grundbedarf und Flex gelten für den Haushalt ohne Pflege. Heutige Pflege kommt ab Jahr 1 hinzu.
+- Der Pflegegrad bestimmt die Kostenstufe. Die Pflegeform bestimmt, welche Kosten und Einkünfte die App ansetzt.
+- Im Heim ersetzen Heimkosten und eigene Ausgaben den Anteil am Grundbedarf zu Hause.
+- Reichen Geldvermögen und verwertbare Immobilien für die Pflege nicht aus, übernimmt der Staat im Modell den Rest als Hilfe zur Pflege. Der Lauf geht weiter, solange der Grundbedarf gedeckt ist.
+- Die Pflegewahrscheinlichkeiten sind intern abgestimmt. Eine externe Validierung fehlt.
 
-## Heute
+## Pflege heute
 
-### Grad und Form
+### Grad und Pflegeform
 
-Ein heutiger Pflegegrad gilt auch unter 65 Jahren und bei ausgeschaltetem Zufallsmodell. Die App zieht dafür keinen neuen Eintritt. Ohne heutigen Grad beginnt die Person ohne Pflege. Die „Pflegeform“ im Band „Pflege heute“ gilt bis zum ersten Gradwechsel; danach wirkt die Form aus der Kostenstaffel des erreichten Grads.
+Ein eingetragener Pflegegrad gilt ab dem ersten Jahr, auch unter 65 Jahren und bei ausgeschaltetem Zufallsmodell. Die App übernimmt den Grad. Ohne Eintrag startet die Person gesund. Die heutige „Pflegeform“ gilt bis zum ersten Gradwechsel. Danach greift die Form der neuen Stufe oder die Regel für den [amtlichen Durchschnitt](#amtlicher-durchschnitt).
 
-| Pflegeform | Bedeutung im Modell | Pflegegeld als Einkunft |
+| Pflegeform | Kosten im Modell | Vorgabe der eigenen Staffel |
 |---|---|---|
-| „zu Hause durch Angehörige“ | Eigene Mehrausgaben ohne Abzug des Pflegegelds eintragen. | Ab Grad 2 |
-| „zu Hause mit externer Unterstützung“ | Eigenanteil nach Kassenleistungen eintragen. | Keines |
-| „im Heim“ | Simulator und Backtest: Heimkosten aus den Pflegewerten nach Heimjahr. | Keines |
+| „zu Hause durch Angehörige“ | Eigene Mehrausgaben vor Abzug des Pflegegelds | Grad 1–2 |
+| „zu Hause mit externer Unterstützung“ | Eigenanteil nach Leistungen der Pflegekasse | Grad 3 |
+| „im Heim“ | Heimkosten aus den Pflegewerten nach Heimjahr | Grad 4–5 |
 
-Vorgaben der eigenen Staffel sind Angehörige in Grad 1–2, externe Unterstützung zu Hause in Grad 3 und Heim in Grad 4–5. Externe Unterstützung zu Hause bedeutet keinen Heimaufenthalt. Trägst du bei Grad 4–5 keine eigene Form ein, gilt „im Heim“ als heutige Form, auch beim amtlichen Durchschnitt. Bei „Amtlicher Durchschnitt (Destatis/vdek)“ gibt es keine wählbare Pflegeform in der Staffel und kein zusätzliches Pflegegeld.
+Fehlt bei Grad 4 oder 5 die heutige Form, setzt die App „im Heim“ an. Das gilt auch bei „Amtlicher Durchschnitt (Destatis/vdek)“. In dessen Staffel gibt es keine wählbare Pflegeform.
 
-### Pflegegeld
+### Pflegegeld als Einkunft
 
-Mitgeliefert sind monatlich 0 / 347 / 599 / 800 / 990 € für Grad 1–5. Die [BMG-Leistungsübersicht 2026](https://www.bundesgesundheitsministerium.de/fileadmin/Dateien/3_Downloads/P/Pflegeversicherung_Leistungsbeitraege/Uebersicht_Leistungsbetraege_2026_VA.pdf), Stand 11.12.2025, belegt die Beträge. Gemeinsame Haushaltswerte kannst du pflegen und beim Jahresabschluss bestätigen.
+Mitgeliefert sind monatlich 0 / 347 / 599 / 800 / 990 € für Grad 1–5. Du kannst die Beträge für den Haushalt ändern und im Jahresabschluss bestätigen. Quelle der Vorgaben ist die [BMG-Leistungsübersicht 2026 vom 11.12.2025](https://www.bundesgesundheitsministerium.de/fileadmin/Dateien/3_Downloads/P/Pflegeversicherung_Leistungsbeitraege/Uebersicht_Leistungsbetraege_2026_VA.pdf).
 
-Die App rechnet das Pflegegeld automatisch als persönliche feste Einkunft. Es wächst im Simulator nur mit Inflation, deckt den Bedarf und wird bei Überschuss gespart. Im Sterbejahr der empfangenden Person zählt die Hälfte; danach endet es. Die Inflationsfortschreibung ist keine gesetzliche Leistungszusage.
+Pflegegeld zählt als persönliche feste Einkunft. Es deckt den Bedarf, ein Überschuss wird gespart. Im Simulator folgt es der Inflation als Modellannahme. Im Sterbejahr zählt es halb und endet danach. Für den gesetzlichen Anspruch nennt das BMG mindestens Grad 2 und gesicherte häusliche Pflege. Das Modell setzt Pflegegeld ab Grad 2 bei Angehörigenpflege an. Bei externer Unterstützung, im Heim und beim amtlichen Durchschnitt setzt es 0 € an. Rechtlich mögliche Kombinationen mit Sachleistungen bleiben außerhalb des Modells. Andere Kassenleistungen erscheinen nicht zusätzlich als Einkommen. [Pflegegeld beim BMG](https://www.bundesgesundheitsministerium.de/pflegegeld).
 
-Die [BMG-Erklärung](https://www.bundesgesundheitsministerium.de/pflegegeld) nennt gesicherte häusliche Pflege und mindestens Grad 2 als Voraussetzungen. Rechtlich sind Kombinationen mit ambulanten Sachleistungen möglich. Die App bildet diese Kombination nicht ab; „externe Unterstützung“ erhält im Modell kein Pflegegeld. Andere Kassenleistungen in der Übersicht werden nicht nochmals als frei verfügbares Einkommen addiert.
+### Pflege im Bedarf
 
-### Kosten im Bedarf
+Trage Grundbedarf und Flex so ein, als lebten alle zu Hause und hätten keine Pflegekosten. Die App lässt den gespeicherten Grundbedarf stehen. Sie ergänzt bei heutiger Pflege zu Hause den Staffelbetrag bis zum Deckel sofort. Ein eigener Monatswert unter „Kosten über die Kasse hinaus“ ersetzt die Staffel im heutigen Grad, auch mit 0 €. Er folgt Inflation und Kostenanstieg ohne Regionalzuschlag. Nach einem Gradwechsel gilt die neue Stufe. Beim amtlichen Durchschnitt bleibt der eigene Wert ohne Wirkung.
 
-Im Simulator beschreiben Grundbedarf und Flex den gesamten Haushalt ohne Pflege, so als lebten alle zu Hause (FR-73). Bei heutiger Pflege zu Hause gilt ab Jahr 1 der volle Staffelbetrag des heutigen Grads, unter dem Deckel und ohne Rampe. Trägst du in der Personenkarte „Kosten über die Kasse hinaus“ ein, gilt dieser Betrag statt der Staffel, auch 0 €; er wächst wie die Staffel mit Inflation und Kostenanstieg, aber ohne Regionalzuschlag. Nach einem Gradwechsel gilt wieder die Staffel des neuen Grads. Bei „Amtlicher Durchschnitt“ wirkt das Feld nicht. Das Pflegegeld zählt getrennt als Einkunft. Die App verändert deinen gespeicherten Grundbedarf nicht.
+Im Heim zählen die Heimkosten und eigenen Ausgaben anstelle des Grundbedarfsanteils. Unter „Im Heim seit“ kannst du Monat und Jahr bis zum heutigen Monat wählen. Die App zählt volle Jahre bis zum Stichtag plus eins. Bei Werner ergeben sich am Testdatum 23.10.2026 seit Januar 2023 45 Monate und damit Heimjahr 4. Ohne Datum setzt die App Heimjahr 1 an. Beim Abschluss merkt sie sich das erste Planjahr und zählt von dort weiter. Historische Marktjahre ändern den Stichtag nicht.
 
-Heutige Heimpflege ersetzt den Anteil am Grundbedarf wie ein späterer Heimaufenthalt. Dazu kommen Heimkosten und eigene Ausgaben. In der Personenkarte kannst du bei „im Heim“ freiwillig „Im Heim seit“ als Monat und Jahr eintragen. Der Monat darf nicht nach heute liegen. Leer beginnt die Rechnung vorsichtig mit Heimjahr 1; der erste Jahresabschluss merkt sich dieses Planjahr an der Person (`profile_care_residential_first_year`), damit Vorschau, Abschluss und Folgejahr das Heimjahr weiterzählen (1 → 2 → …). Beispiel: am 23.10.2026 ergeben 45 Monate seit Januar 2023 Heimjahr 4. November 2025 ergibt noch Heimjahr 1, Oktober 2025 bereits Heimjahr 2. Balance und Simulator samt Backtest und Monte Carlo zählen gleich: „seit“ immer bis heute, den gemerkten Anker nach dem Planjahr (Planjahr − Anker + 1). Wer 2026 schon am 1.12.2026 abschließt, rechnet für 2027 mit Anker 2026 in Heimjahr 2. Oktober 2025 ergibt an diesem Tag 14 Monate, also ebenfalls Heimjahr 2, und erst ab Oktober 2027 Heimjahr 3.
+Simulator, Backtest und Balance nutzen dieselbe Bedarfsrechnung. Balance nimmt den heutigen Haushalt und den bestätigten Plan, ersatzweise die gespeicherte Bedarfsbasis. Sie prüft den Angehörigenausfall vor der Anrechnung des Pflegegelds. Die [Jahresbudget-Referenz](JAHRESBUDGET.md#a1) erklärt, wie die App Einkünfte ins Folgejahr fortschreibt.
 
-Die hier beschriebene automatische Bedarfsrechnung gilt für Simulator, Backtest und Balance. Balance rechnet mit dem heutigen Haushaltszustand ohne Todesfälle und zeigt im Monatsbudget den Grundbedarf zu Hause und je Person eine Zeile „Pflege“ oder „Heim“; das ⓘ der Heimzeile nennt Heimkosten, eigene Ausgaben und das Heimjahr aus „Im Heim seit“. Pflegegeld zählt erst nach dem Angehörigenausfall des Haushalts. Jahresbudget, Liquiditätsziel und Folgejahresvorschau rechnen mit Heimjahr + 1, Folgejahrespreisen und den Einkünften des Folgejahrs wie im Simulator: Kalendergrenzen (Rentenbeginn, befristete Einkünfte) und Fortschreibung (Rentenanpassung des Haushalts, also die des Hauptprofils für beide Renten wie im Simulator, inflations- oder lohngebundene Einkünfte, Pflegegeld mit der Inflation). Die Inflation ist die der Balance, die Lohnrate die Annahme der Planübersicht (eingetragener Wert, sonst Mittel der Lohnreihe). Grundlage ist der bestätigte Haushaltsplan, ohne Plan die gespeicherte Bedarfsbasis von Balance; gerechnet wird in beiden Fällen, und der Pflegehinweis in Personenkarte und Haushalt & Plan nennt dieselben Beträge. Bei unverheirateten Paaren ordnet Balance erst den gemeinsamen Bedarf und die persönlichen Pflegekosten zu und zieht dann die eigenen Einkünfte der Person ab.
+## Verlauf und Ausfall
 
-## Verlauf
+### Eintritt, Fortschritt und Verlaufswahl
 
-### Eintritt und Fortschritt
+Monte Carlo zieht Pflege vor Tod. Ein neuer Pflegefall beginnt in Grad 1 oder 2. Fortschritt führt jeweils einen Grad weiter. Chronische Pflege läuft bis zum Tod. Bei akuter Pflege zieht die App aus deinem Bereich eine Dauer in ganzen Jahren. Ein heutiger Grad gilt dauerhaft. Im ersten Jahr zieht die App dafür noch keinen Fortschritt.
 
-Monte Carlo zieht Pflege vor dem möglichen Tod. Neue Pflege beginnt modellhaft in Grad 1 oder 2; Fortschritt führt um einen Grad weiter. Chronische Pflege läuft bis zum Tod. Akute Pflege verwendet eine gezogene ganzzahlige Dauer aus deinem Bereich. Ein heutiger Pflegegrad bleibt unabhängig davon dauerhaft.
+„Langsamer“ und „Deutlich langsamer“ setzen die Fortschrittswahrscheinlichkeit auf die Hälfte beziehungsweise ein Viertel, auch nach einem Gradwechsel. Die zusätzliche Sterblichkeit sinkt nur im heutigen Grad entsprechend. Danach gilt der Faktor des neuen Grads. Bei beiden langsameren Verläufen bleibt die Sterbewahrscheinlichkeit mindestens so hoch wie in der Jahrgangstafel. Die Auswahl dient dem Vergleich von Modellverläufen.
 
-„Langsamer“ und „deutlich langsamer“ multiplizieren die Fortschrittswahrscheinlichkeit mit 0,5 beziehungsweise 0,25, auch nach einem Gradwechsel. Die zusätzliche Sterblichkeit wird nur im heutigen Grad entsprechend vermindert; danach gilt der Faktor des neuen Grads. Mit diesen beiden Verläufen stirbt die Person jedes Jahr mindestens so wahrscheinlich wie die Zieltafel ihres Jahrgangs: Ein Pflegegrad heute verkürzt das Leben, er verlängert es nie. Ohne diese Untergrenze lebte etwa eine Frau mit 85, Grad 2 und „deutlich langsamer“ 7,9 Jahre statt der 7,0 Jahre der Tafel; jetzt sind es 6,6 Jahre. Im ersten Jahr eines heutigen Pflegegrads wird noch kein Fortschritt gezogen. Diese Auswahl ist eine Vergleichsannahme, keine medizinische Einstufung.
-
-Der Backtest hält heutige Grade fest, zieht weder Tod noch Fortschritt und führt die Preise fort. Ein bereits ausgefallener Pflegepartner kann dort trotzdem den Formwechsel auslösen.
+Der Backtest hält heutige Grade fest und führt Preise und Heimjahre fort. Er zieht weder Tod noch Fortschritt. Ein bereits ausgefallener Pflegepartner kann trotzdem einen Formwechsel auslösen. Die Planübersicht zeigt von der Pflege nur das heutige Pflegegeld als Einkunft je Person. Sie prüft den Partnergrad ab Jahr 1 und schreibt das Pflegegeld mit Inflation fort.
 
 ### Ausfall der Angehörigen
 
-Bei Paaren nimmt die App an, dass der Partner pflegt. Stirbt er oder erreicht selbst mindestens Pflegegrad 3, wechselt Angehörigenpflege der betroffenen Person in Grad 1–3 ab demselben Jahr dauerhaft zu externer Unterstützung zu Hause. Ihr Pflegegeld entfällt für dieses ganze Jahr; für ihre Kosten gilt weiterhin derselbe Staffelbetrag, bei heutiger Pflege ohne Rampe. Ein späteres Ende akuter Partnerpflege setzt den Wechsel nicht zurück.
+Für Paare nimmt die App an, dass der Partner pflegt. Stirbt er oder erreicht er mindestens Grad 3, wechselt Angehörigenpflege in Grad 1–3 im selben Jahr dauerhaft zu externer Unterstützung zu Hause. Das Pflegegeld entfällt für das ganze Jahr. Der Kostenbetrag bleibt gleich, bei heutiger Pflege weiterhin ohne Rampe. Der Wechsel bleibt auch nach Ende einer akuten Partnerpflege bestehen.
 
-Alleinstehende, Grad 4–5 und der amtliche Durchschnitt erhalten diesen zusätzlichen Wechsel nicht. Das Protokoll-ⓘ nennt den aktuellen Grund; Tod hat Vorrang vor einem Pflegegrad.
-
-### Planübersicht und Backtest
-
-Die Planübersicht zeigt heutiges Pflegegeld als eigene Einkunft je Person und schreibt es mit Inflation fort. Bei Angehörigenpflege in Grad 1–3 und heutigem Partnergrad ab 3 entfällt es ab Jahr 1. Die Planübersicht stellt nur das Pflegegeld dar. Der Backtest berücksichtigt Pflegekosten und denselben Partnerausfall mit der gemeinsamen Bedarfsrechnung. Balance prüft den Ausfall im heutigen Haushalt ebenso, bevor sie Pflegegeld ansetzt.
-
-### Grad und Form im Verlauf
+Für Alleinstehende, Grad 4–5 und den amtlichen Durchschnitt entfällt diese Zusatzregel. Das Protokoll-ⓘ nennt den Grund. Tod hat Vorrang vor einem Pflegegrad.
 
 ```mermaid
 flowchart TD
@@ -75,15 +67,15 @@ flowchart TD
     C -->|"Form der neuen Stufe"| D
 ```
 
-## Finanzierung
+Beim Heimwechsel nennen die Spalte „Pflege“ und das ⓘ bei „Ausgaben“ den Grund. Dort steht „Heim laut Staffel“, „Heim (ausgelost nach amtlichem Heimanteil … %)“ oder „Heim (wie heute)“.
 
-### Kostenstaffel
+## Kosten und Pflegereserve
 
-Die eigene Staffel gilt für Pflege zu Hause. Staffel, Deckel, Kostenanstieg, eigene Ausgaben im Heim, regionaler Zuschlag und Flex-Level je Grad gehören zu den Pflegewerten des Haushalts. Du pflegst sie in „Personen & Vermögen › Pflege“; Simulator und Balance lesen dieselben Beträge, der Jahresabschluss schreibt sie fort. Eigene Jahreszusätze und „Maximaler Pflege-Floor“ sind Beträge in heutigen Preisen. Beide wachsen ab Simulationsstart mit kumulierter Inflation und zusätzlichem Kostenanstieg. Jahr 1 hat noch keinen zusätzlichen Driftanstieg; Jahr 9 verwendet acht Jahre. Ein Gradwechsel startet die Preisrechnung nicht neu. Der Regionalzuschlag erhöht den Kostenbetrag. Steht eine Zeile auf „im Heim“, ruht ihr Betragsfeld und zeigt „Heimkosten“. Nutzt eine Person diesen Grad heute zu Hause, bleibt der Betrag sichtbar und änderbar.
+### Kostenstaffel und Kostenanstieg
 
-Die Vorgaben für Grad 1–5 sind 3.600 / 6.000 / 18.000 / 32.000 / 60.000 € im Jahr; der zusätzliche Kostenanstieg über der Inflation beträgt 5 % bis einschließlich 2035 und 2 % ab 2036. Er hängt am Kalenderjahr: Der Preisschritt in ein Jahr nimmt dessen Rate, im Simulator ab dem Bezugsjahr der Personendaten (Index 0), im Backtest mit heutiger Pflege ebenso ab heute, nie nach den historischen Marktjahren. Ab 2026 ist der Preisfaktor ohne Inflation 2030 1,2155, 2035 1,5513, 2036 1,5824 und 2045 1,8911. In „Personen & Vermögen › Pflege“ und im Simulator stehen dafür drei Felder: die erste Rate, „Zusätzl. Kostenanstieg bis“ (letztes Jahr der ersten Rate) und „danach“. Gespeicherte alte Vorgaben von 6.000 € in Grad 1 und 12.000 € in Grad 2 werden beim Lesen durch die neuen Vorgaben ersetzt. Ändert man eine der drei Angaben, speichert die App alle drei mit dem gerade wirksamen Verlauf; aus der Vorgabe wird mit erster Rate 4 % also 4 % bis 2035, danach 2 %. Das Jahr muss ein ganzes Jahr von 2026 bis 2100 sein; ein leeres, negatives oder anderes Jahr wird nicht gespeichert. Für Werte von vor dieser Änderung gilt beim Lesen: 5 % oder alte 3,5 % ohne Rate danach werden zur neuen Vorgabe, ein anderer eigener Wert gilt dauerhaft, etwa 3 % in jedem Jahr. Eigene Beträge und bewusst eingetragene Nullen bleiben erhalten. Lesen schreibt keine Werte zurück.
+Die eigene Staffel für Pflege zu Hause setzt für Grad 1–5 jährlich 3.600 / 6.000 / 18.000 / 32.000 / 60.000 € an. Steht eine Stufe auf „im Heim“, zeigt ihr Betragsfeld „Heimkosten“. Lebt jemand mit diesem Grad heute zu Hause, bleibt der Betrag sichtbar und änderbar. Simulator und Balance lesen die Pflegewerte des Haushalts.
 
-Die Vergleichswerte aus der freigegebenen Recherche vom 08.11.2026 sind Planungsansätze, keine amtliche Kostenstaffel. Die oben verlinkte BMG-Übersicht belegt Kassenleistungen; Heimwerte und Heimanteile stammen aus vdek und Destatis. Die häuslichen Vergleichsbeträge sind keine zugesagten Preise eines Pflegediensts.
+Die Vergleichswerte stammen aus der freigegebenen Recherche vom 08.11.2026. Sie dienen der Planung. Die Preise eines Pflegediensts können abweichen.
 
 | Grad | Angehörige €/Monat | Pflegedienst €/Monat | 24-Stunden-Betreuung €/Monat |
 |---|---:|---:|---:|
@@ -93,17 +85,23 @@ Die Vergleichswerte aus der freigegebenen Recherche vom 08.11.2026 sind Planungs
 | 4 | 1.200 | 2.667 | 4.200 |
 | 5 | 1.800 | 4.000 | 4.500 |
 
-Der Deckel gilt je Person und nur für den Zusatz zu Hause. Vom fortgeschriebenen maximalen Pflege-Floor wird der laufende Grundbedarf abgezogen, mindestens null. Liegt der rohe Zusatz darunter, gilt er sofort vollständig. Nur bei künftigem Eintritt oberhalb eines positiven Deckels wirkt die Rampe nach Pflegejahren: höchstens der Deckel und höchstens der rohe Zusatz mal bereits erreichter Rampenanteil. Ein Deckel von null erlaubt keinen Zusatz. Zwei Personen zu Hause kommen zusammen also bis zu zweimal Deckel minus Grundbedarf. Heimkosten und eigene Ausgaben im Heim sind weder gedeckelt noch durch die Rampe verzögert.
+Staffel und Deckel stehen in heutigen Preisen. Ab dem zweiten Simulationsjahr steigen sie mit Inflation und zusätzlichem Kostenanstieg. Vorgabe sind 5 % bis einschließlich 2035 und 2 % ab 2036. Jeder Preisschritt nimmt die Rate des erreichten Kalenderjahrs. Auch im Backtest läuft die Preisrechnung ab dem Bezugsjahr der Personendaten. Ein Gradwechsel setzt den Preisstand nicht zurück. Ohne Inflation ergeben sich ab Bezugsjahr 2026 Preisfaktoren von 1,2155 für 2030, 1,5513 für 2035, 1,5824 für 2036 und 1,8911 für 2045.
 
-„Amtlicher Durchschnitt (Destatis/vdek)“ zieht in Monte Carlo für jede Person einmal, ob sie bei Pflege ins Heim kommt. Bei Grad 1–5 liegt der Heimanteil nach Destatis 2023 bei 0,6 / 5,8 / 17,7 / 37,1 / 46,8 %. Weil der Anteil mit dem Grad steigt, bleibt ein erreichtes Heim bei weiteren Gradwechseln. Eine bekannte heutige Form hat Vorrang. Im Heim gelten die Heimkosten aus den Pflegewerten; zu Hause setzt die App keinen Zusatz und kein Pflegegeld an. Hausverkauf, Miete und Wohnrecht folgen der gezogenen Form.
+Unter „Pflege“ kannst du beide Raten und das Bis-Jahr ändern. Eine neue Eingabe in „Zusätzl. Kostenanstieg bis“ beginnt im laufenden Jahr, im Spielbereich im Jahr des Testdatums. Ein früher gespeichertes Jahr bleibt gültig. Danach gilt die zweite Rate. Die [Datenverträge](DATENVERTRAEGE.md#pflegedaten-im-altbestand-und-jahresabschluss) erklären Felder und Altwerte.
 
-Der Backtest zieht keine Form: Die bekannte heutige Form gilt, im Heim nach Heimjahr, zu Hause netto 0 € ohne Pflegegeld. Balance rechnet die heutige Pflege unter „Amtlicher Durchschnitt“ genauso (Sollfälle M und N). Die Mittelwertstaffel dieses Presets, bei mitgelieferten Werten jährlich 200 / 2.300 / 7.100 / 15.000 / 18.900 € Zusatz für Grad 1–5 (Heimanteil mal erstes Heimjahr, auf 100 € gerundet), gilt nur für künftige Eintritte und ist keine individuelle Heimkostenprognose. Andere gespeicherte Heimwerte ändern die Staffel.
+Der regionale Zuschlag erhöht den Staffelbetrag. Für den Deckel je Person zieht die App den laufenden Grundbedarf vom fortgeschriebenen „Maximaler Grundbedarf mit Pflege je Person“ ab. Ist das Ergebnis null oder negativ, bleibt kein Pflegezusatz. Bis zum Deckel zählt der ganze Betrag sofort. Überschreitet der rohe Zusatz nach einem neuen Eintritt oder Gradwechsel einen positiven Deckel, begrenzt ihn die Rampe auf den nach Pflegejahren erreichten Anteil des rohen Betrags und höchstens auf den Deckel. Bei zwei Personen kann jede ihren Deckel ausschöpfen. Für Heimkosten und eigene Ausgaben im Heim gelten volle Beträge.
 
-### Heim
+### Amtlicher Durchschnitt
 
-Wer im Heim gepflegt wird, fällt aus dem Grundbedarf heraus. Leben alle im Heim, auch Alleinstehende, bleibt kein Grundbedarf zu Hause. Lebt einer im Heim und einer zu Hause, bleibt der Hinterbliebenenanteil, Vorgabe 75 %. Dazu kommen je Person im Heim die Heimkosten und die eigenen Ausgaben im Heim. Ein Pflegezusatz entsteht nur bei Pflege zu Hause.
+Monte Carlo zieht je Person einmal eine Zahl und vergleicht sie in jedem Pflegegrad mit dessen Heimanteil. Laut Destatis 2023 beträgt er für Grad 1–5 gerundet 0,6 / 5,8 / 17,7 / 37,1 / 46,8 %. Die heutige Form hat Vorrang. Wer bei einem Grad im Heim ist, bleibt beim Anstieg dort. Zu Hause setzt die App 0 € Zusatz und kein Pflegegeld an. Hausverkauf, Miete und Wohnrecht folgen der verwendeten Form.
 
-Die Heimkosten kommen aus den Pflegewerten des Haushalts und gelten gleich für Grad 2–5. Mitgeliefert sind drei Bestandteile laut [vdek-Auswertung zum 01.07.2026](https://www.vdek.com/presse/pressemitteilungen/2026/stationaere-pflege-eigenanteile-juli-2026.html): 2.088 € Pflegeanteil, 1.068 € Unterkunft und Verpflegung, 521 € Investitionskosten im Monat. Die Kasse bezuschusst nur den Pflegeanteil, gestaffelt nach Heimjahren (§ 43c SGB XI):
+Backtest und Balance rechnen ohne Ziehung mit der heutigen Form. Im Heim zählt das Heimjahr, zu Hause gilt ebenfalls der Zusatz von 0 €. Die angezeigte Mittelwertstaffel für künftige Eintritte beträgt mit den mitgelieferten Heimwerten jährlich 200 / 2.300 / 7.100 / 15.000 / 18.900 €. Sie multipliziert den Heimanteil mit den Kosten des ersten Heimjahrs und rundet auf 100 €. Andere Heimwerte ändern diese Modellstaffel. In Monte Carlo zählt der Aufwand der tatsächlich gezogenen Form. [Datenquellen](DATA_SOURCES.md#pflege).
+
+### Heimkosten und Jahresabschluss
+
+Leben alle Personen im Heim, fällt der Grundbedarf zu Hause weg. Bleibt bei einem Paar jemand zu Hause, gilt dort der Hinterbliebenenanteil, als Vorgabe 75 %. Dazu kommen die Heimkosten und eigenen Ausgaben jeder Person im Heim.
+
+Mitgeliefert sind monatlich 2.088 € Pflegeanteil, 1.068 € für Unterkunft und Verpflegung und 521 € Investitionskosten. Die App wendet den Zuschuss nach § 43c SGB XI nur auf den Pflegeanteil an. Die Tabelle gilt für Grad 2–5. Bei Grad 1 rechnet sie ohne Zuschuss mit 3.677 € im Monat. Quelle der Bestandteile ist die [vdek-Auswertung zum 01.07.2026](https://www.vdek.com/presse/pressemitteilungen/2026/stationaere-pflege-eigenanteile-juli-2026.html).
 
 | Heimjahr | Zuschuss auf den Pflegeanteil | Eigenanteil im Monat | Im Jahr |
 |---|---:|---:|---:|
@@ -112,64 +110,118 @@ Die Heimkosten kommen aus den Pflegewerten des Haushalts und gelten gleich für 
 | 3 | 50 % | 2.633 € | 31.596 € |
 | ab 4 | 75 % | 2.111 € | 25.332 € |
 
-Bei künftigem Heimeintritt beginnt Heimjahr 1. Für heutige Heimpflege zählen volle Jahre bis zum Simulationsbeginn plus eins; danach steigt das Heimjahr jährlich um eins. Auch im Backtest gilt der Simulationsbeginn, nie der historische Marktjahrgang. Ein Gradwechsel setzt den Zähler nicht zurück. Inflation, Pflege-Kostenanstieg ab Simulationsstart und Regionalzuschlag wirken auf alle drei Bestandteile. Für Grad 1 im Heim rechnet die App vorsichtig ohne Zuschuss, also mit 3.677 € im Monat. Ein teureres Heim trägst du im Jahresabschluss bei den Pflegewerten ein.
+Die drei Bestandteile folgen Inflation, Kostenanstieg und Regionalzuschlag. Eigene Ausgaben im Heim decken etwa persönlichen Bedarf, weiterlaufende Versicherungen wie die private Krankenversicherung und freiwillige Extras. Vorgabe sind 500 € im Monat je Person, fortgeschrieben nur mit Inflation. Beim Heimeintritt startet der Zähler bei 1 und läuft bei Gradwechseln im Heim weiter. Nach Ende akuter Heimpflege gilt wieder der Bedarf zu Hause. Ein späterer Heimeintritt beginnt erneut mit Heimjahr 1.
 
-Beim Jahreswechsel schreibt der Schritt „Pflegewerte“ die drei Heim-Bestandteile, die Staffel zu Hause und den Deckel „Maximaler Pflege-Floor“ mit der Inflation des abgelaufenen Jahres und dem Kostenanstieg des neuen Planjahrs fort (Abschluss 2034: 10.000 × 1,02 × 1,05 = 10.710 €; Abschluss 2035: 10.000 × 1,02 × 1,02 = 10.404 €), die eigenen Ausgaben im Heim nur mit der Inflation; alles auf ganze Euro, Herkunft „fortgeschrieben“. Beispiel mit 2 % und 5 %: Staffel Grad 3 18.000 → 19.278 € im Jahr, Bestandteile 2.088 / 1.068 / 521 → 2.236 / 1.144 / 558 € im Monat, Heimjahr 1 3.603 €, eigene Ausgaben 500 → 510 €. Gerundet wird kaufmännisch ohne Gleitkommarest (3.600 × 1,025 × 1,05 = 3.874,50 → 3.875 €). Ein eigener Wert „Pflegekosten heute über die Kasse hinaus“ wird je Person genauso fortgeschrieben (200 → 214 €/Monat); unter „Werte ändern …“ steht er je Person als Feld, ein dort eingegebener Betrag wird gespeichert und nicht nochmals erhöht. Das gilt nur, solange der Wert wirkt: bei Pflege zu Hause und nicht beim amtlichen Durchschnitt. Ein nach dem Umzug ins Heim stehen gebliebener Wert bleibt gespeichert, erscheint aber nicht und wird nicht fortgeschrieben. Ein bewusst eingegebener Kostenanstieg (auch 3,5 %) steht im Preisblock des Haushalts, bei Außenpersonen in ihrem eigenen Preisblock, und wird nicht mehr umgedeutet. Der Abschluss schreibt immer die Preise des Haushalts fort, auch wenn zuletzt eine Außenperson geöffnet war; nur im Einzelprofil einer Außenperson schreibt er ihren eigenen Preisblock fort. Pflegegeld bleibt. Die Werte werden aus der eingefrorenen Ausgangsbasis genau einmal gerechnet; eine geänderte Inflation rechnet neu und hebt die Bestätigung auf. Eigene oder amtliche Eingaben im Dialog ersetzen den Vorschlag und werden nicht nochmals erhöht. Die Folgejahresvorschau in Balance nutzt denselben Stand. Die Rundung auf ganze Euro erklärt kleine Unterschiede zum fortlaufenden Simulator, etwa 7,45 € im Jahr bei Heimjahr 2.
+Im Schritt „Pflegewerte“ schreibt der Jahresabschluss Heim-Bestandteile, Staffel, Deckel und wirksame persönliche Pflegekosten mit der Inflation des alten Jahres und dem Kostenanstieg des neuen Planjahrs fort, die eigenen Ausgaben im Heim nur mit der Inflation. Er rundet auf ganze Euro. Pflegegeld bleibt in diesem Schritt gleich. Ein teureres Heim kannst du dort eintragen. [Bedienung im Handbuch](../../Handbuch.html#pflege).
 
-„Eigene Ausgaben im Heim“ stehen in „Personen & Vermögen › Pflege“, Vorgabe 500 € im Monat je Person. Gemeint sind persönlicher Bedarf, weiterlaufende Versicherungen, auch eine private Krankenversicherung, und freiwillige Extras für bessere Pflege. Sie steigen nur mit der Inflation.
+Im Todesjahr zählt der Grundbedarf zu Hause je ein halbes Jahr vor und nach dem Tod. Heimkosten und eigene Ausgaben der verstorbenen Person zählen halb, die der lebenden Person ganz. Für das Liquiditätsziel nimmt die Vorschau den vollen Bedarf des Folgejahrs mit dessen Preisen, Deckel und Heimjahr. Sie verändert weder Zähler noch Zufallszustand.
 
-Im Todesjahr rechnet die App den Grundbedarf zu Hause je ein halbes Jahr vor und nach dem Tod. Heimkosten und eigene Ausgaben der verstorbenen Person zählen halb, die einer überlebenden ganz. Endet akute Pflege, enden auch Heimkosten und eigene Ausgaben; der Grundbedarf zu Hause gilt wieder. Das Liquiditätsziel verwendet den vollen Bedarf des Folgejahrs mit Folgejahrespreisen, fortgeschriebenem Deckel und nächster Zuschussstufe. Die Vorschau verändert keine Zähler oder Zufallszustände. Der Backtest hält die heutige Pflege fest und erhöht Heimjahr und Preise jährlich.
+### Pflegereserve und Flex
 
-### Reserve und Flex
+Die Pflegereserve bindet vorhandenes Geld. Die App addiert die aktivierten Beträge beider Personen. Hat nur eine Person eine Reserve angelegt, füllt der Simulator sie aus ihrem zuordenbaren Geldmarkt und ihrem Tagesgeld. Reicht ihr Geld dafür nicht, bleibt eine Ziellücke. Haben beide ein persönliches Ziel, trägt jede Person ihren Anteil zuerst aus zuordenbarem Geldmarkt und eigenem Tagesgeld. Den übrigen Betrag teilt die App nach verfügbarem Tagesgeld auf. Das gilt auch für den ganzen Baranteil in alten Plänen ohne persönliche Zuordnung. Bei unterschiedlichen Einstellungen gelten die Regeln der ersten aktivierten Reserve. Zur Freigabe müssen Mindestgrad und „Haushalts-Trigger“ erfüllt sein, im Todesjahr nach dem Zustand vor dem Tod. „P1 oder P2“ braucht eine passende Person, „P1 und P2“ zwei lebende Personen mit passendem Grad.
 
-Die Pflege-Rücklage hält Geld für die gewählte Zweckbindung zurück; sie ist keine Versicherung und kein zusätzliches Vermögen. Aktivierte Beträge beider Personen werden addiert. Bei abweichenden Einstellungen gibt die erste aktivierte Rücklage die Regeln vor. Die gesperrte Reserve steht dem normalen Budget nicht frei zur Verfügung; die [Handlungsanweisung](HANDLUNGSANWEISUNG.md) erklärt die Geldquellen.
+Bei „Nur Pflege-Mehrkosten“ deckt die Pflegereserve offene Zahlungen bis zur Summe aus Pflegezusatz zu Hause und Heimkosten. Eigene Ausgaben im Heim bleiben bei dieser Grenze außen vor. Die Grenze gilt auch bei eingespartem Grundbedarf in voller Höhe. Im Todesjahr setzt die App die Pflegekosten der verstorbenen Person zur Hälfte an.
 
-Der gewählte Mindestgrad und „Haushalts-Trigger“ lösen ihre Nutzung aus, im Todesjahr nach dem Zustand vor dem Tod. „P1 oder P2“ verlangt eine passende Person, „P1 und P2“ zwei lebende Personen mit entsprechendem Grad. „Nur Pflege-Mehrkosten“ deckt eine offene Finanzierungslücke höchstens bis zur Summe aus Pflegezusätzen zu Hause und Heimkosten. Eigene Ausgaben im Heim zählen dabei nicht, der eingesparte Grundbedarf wird nicht abgezogen, Beträge einer verstorbenen Person zählen halb. „Floor-Shortfall bei Pflege“ erlaubt auch den übrigen offenen Grundbedarf. Die Reserve wirkt vor zusätzlichen Deckungsverkäufen und wird nicht automatisch aufgefüllt.
+„Offener Grundbedarf bei Pflege“ gibt die Reserve zusätzlich für den übrigen offenen Grundbedarf frei.
 
-Negative Rücklagenzinsen mindern den Bestand, höchstens bis null. Nutzung und Erschöpfung zählen auch im Ruinjahr. Die [Ergebnisreferenz](SIMULATION_LESEN.md#pflege) erklärt Bezugsgruppen, Euro-Basis und Rücklagenzusammenfassung.
+Die App greift auf die Pflegereserve zu, bevor sie zusätzlich Wertpapiere verkauft, um den Bedarf zu decken. Sie füllt die Reserve nach einer Entnahme nicht automatisch auf. Negative Zinsen können sie bis auf null senken. Die Statistik zählt Nutzung und Erschöpfung auch in dem Jahr, in dem der Lauf abbricht. [Statistik zur Pflegereserve](SIMULATION_LESEN.md#pflege) und [Geldquellen](HANDLUNGSANWEISUNG.md#quellen-und-verwendung).
 
-Die Flex-Vorgaben je Grad sind 100 / 100 / 50 / 0 / 0 %; du änderst sie in „Personen & Vermögen › Pflege“. Eine gespeicherte frühere Vorgabe 75 / 25 / 10 / 0 / 0 % zeigen Pflegebereich und Simulator als 100 / 100 / 50 / 0 / 0 % an. Erst eine Änderung im Pflegebereich oder der Simulatorstart speichert die neue Staffel. Auch heutige Pflege verwendet das absolute Level des Grads für Wunsch-Flex und Mindest-Flex. Dieselbe Kürzung begrenzt Dynamic Flex: gesund plus Grad 3 ergibt im Paar Faktor 0,875; gesund plus Grad 4 ergibt 0,75; beide ab Grad 4 ergibt 0.
+Für Grad 1–5 sind 100 / 100 / 50 / 0 / 0 % des Flex voreingestellt. Du kannst sie im Reiter „Pflege“ ändern. Das absolute Level begrenzt ab Jahr 1 Wunsch-Flex, Mindest-Flex und Dynamic Flex. Bei einem Paar zählt der höhere Personenwert zur Hälfte und jeder Personenwert zu einem Viertel. Pflegekosten können Flex über das Budget weiter senken.
 
-Bei Paaren wirkt eine Mischung aus gemeinsamem und persönlichem Anteil, nicht einfach der niedrigere Personenwert. Höhere Pflegekosten können Flex zusätzlich über das Jahresbudget mindern. Im Todesjahr zählt für das erste Halbjahr der Pflege-Flex des Paars, danach der eingestellte Hinterbliebenenanteil mal Pflegefaktor der lebenden Person. Ab dem Folgejahr gilt nur dieses Produkt; ein zusätzlicher Deckel aus der früheren Pflege der verstorbenen Person greift nicht. Pflegekosten der verstorbenen Person zählen im Todesjahr halb und entfallen danach; mit Heim gilt die Halbjahresrechnung unter [Heim](#heim). Die [Hinterbliebenenregeln](TOD_UND_ERBE.md#einkommen-und-bedarf) definieren die getrennten Bedarfsanteile.
+Im Todesjahr zählt ein halbes Jahr der Pflege-Flex des Paars und ein halbes Jahr der eingestellte Hinterbliebenenanteil mal Pflegefaktor der lebenden Person. Danach gilt allein dieses Produkt. [Hinterbliebenenbedarf](TOD_UND_ERBE.md#einkommen-und-bedarf).
 
-### Heim und Immobilie
+## Wenn das Geld nicht reicht
 
-Der reguläre [Immobilienverkauf](IMMOBILIEN.md#heimverkauf) setzt voraus, dass alle Lebenden mindestens Grad 4 haben und im Heim gepflegt werden. Ein Ausfall der Angehörigen allein erfüllt das nicht. Lebt einer im Heim und einer zu Hause, verkauft die App nicht regulär; ein Notverkauf bleibt möglich. Die [Miete nach einem Notverkauf](IMMOBILIEN.md#wohnmiete) endet, sobald alle Lebenden tatsächlich im Heim wohnen, bei jedem Grad. Ein Wohnrecht kann bereits bei Heimpflege unter Grad 4 enden; seine [Steuerfolgen](STEUERN.md#wohnrecht-und-jährliche-zahlung) haben eine eigene Grenze.
+### Grundbedarf, Pflege und Erfolg
 
-## Annahmen und Beispiel
+Jede Kasse deckt zuerst den Grundbedarf einschließlich fester geplanter Ausgaben, dann die Pflege. Danach folgen fällige Steuerschulden, geplante Einmalausgaben und zuletzt Flex. Zu diesen Schulden zählen offene Steuern aus dem Vorjahr und die zu Jahresbeginn ungedeckte Wohnrechtsteuer. Die App prüft Einmalausgaben nach Datum und bei gleichem Datum in Eingabereihenfolge. Jeder Posten wird ganz bezahlt oder entfällt. Ein späterer, kleinerer Posten kann noch bezahlt werden. Das gilt auch bei persönlichen Anteilen.
 
-### Interne Abstimmung und Grenzen
+Die App kürzt Flex, bevor der Staat einspringt. „Vermögen aufgebraucht“ meldet sie, wenn Tagesgeld, Geldmarkt und Wertpapiere des Haushalts den offenen Grundbedarf ohne Pflege samt festen geplanten Ausgaben nach Renten und Einkünften nicht mehr decken. Die Pflegereserve zählt nur im freigegebenen Umfang. Die Rechnung lässt einen Rundungsrest bis zu 1 € zu. Hilfe zur Pflege und entfallene Einmalausgaben zählen weiter als Erfolg, solange der Grundbedarf gedeckt ist. Der Haushalt lebt bei Hilfe zur Pflege im Modell auf Sozialhilfeniveau. [Kennzahlen und Protokoll](SIMULATION_LESEN.md#deckung-und-aufgebrauchtes-vermögen).
 
-Eintritt nach Alter und Geschlecht und Fortschritt sind intern auf Destatis 2023 abgestimmt (FR-41). Seit FR-75 rechnet `scripts/retune-care-model.mjs` die Abstimmkohorte exakt als Markov-Kette: Eintritt je Altersband skaliert, bis die Pflegequote der Statistik entspricht (Faktor 0,56–0,98 gegenüber vorher), fallende Summen auf das vorige Band angehoben, Fortschritt × 0,75. Die Prüfung mit 200.000 Personen je Geschlecht (`scripts/calibrate-care-model.mjs`) besteht; nur Männer ab 95 liegen mit 86,7 % über 84,7 %, innerhalb der Toleranz. Ziel der Abstimmung ist die Periodentafel 2023/25, weil die Pflegestatistik ein Querschnitt ist. Die amtliche Prävalenz ist ein Bestandsanteil, keine jährliche Eintrittswahrscheinlichkeit. Nur die Abstimmkohorte startet mit statistischem Pflegebestand; Simulatorpersonen übernehmen ausschließlich ihren eingetragenen Grad.
+### Verwertbare Immobilien vor der Hilfe
 
-Die Sterblichkeitsfaktoren wirken auf eine abgesenkte Grundsterblichkeit. Sie wird je Person so gewählt, dass die Gesamtsterblichkeit jedes Alters der Zieltafel entspricht (FR-75): Wer zum Start ohne Pflegegrad ist, lebt im Mittel wie die Tafel, auch mit Zufallseintritt; nur ein eingetragener Grad verkürzt zusätzlich. Das gilt für „chronisch“ und „akut“, bei „akut“ mit der Dauer aus deinem Bereich. Weil Menschen in Pflege damit länger leben als vorher, dauert ein Pflegefall länger. In der Abstimmung mit der Periodentafel sind es ab 65 Männer rund 6,4 statt 5,1 Jahre, Frauen rund 8,2 statt 6,1 Jahre. Gezogen wird aber mit der Kohortentafel des Jahrgangs, und der lebt länger in den Altern mit hoher Pflegequote. Für eine Person, die heute ohne Pflegegrad ist, exakt gerechnet (chronisch, Vorgabefaktoren, 12.11.2026):
+Bevor Hilfe zur Pflege fließt, verkauft der Simulator bei Bedarf die vermieteten Immobilien der pflegebedürftigen Person. Die selbst genutzte Immobilie kommt hinzu, sobald niemand mehr darin wohnt. Wohnt der Partner noch darin, bleibt sie geschützt. 90 % des Werts gehen aufs Tagesgeld der Person. Die Mieteinnahmen entfallen. Bei mehreren Betroffenen kommen in der gemeinsamen Kasse die höheren Pflegekosten zuerst, bei Unverheirateten der höhere Hilfebetrag. Es gibt keinen Schonbetrag. Der Simulator wiederholt das Jahr mit jeweils einem weiteren Verkauf, bis die Hilfe entfällt oder keine geeignete Immobilie bleibt.
 
-| Person | wird pflegebedürftig | Jahre je Pflegefall | Pflegejahre je Person |
+Der reguläre Heimverkauf greift, wenn alle Lebenden im Heim sind und mindestens Grad 4 haben. Der Notverkauf dient offenem Grundbedarf ohne Pflege oder einer fälligen Steuerschuld. Für die Pflege gilt der Verkauf vor der Hilfe. Wohnmiete aus einem Notverkauf endet, sobald alle Lebenden im Heim wohnen. Heimpflege beendet ein Wohnrecht unabhängig vom Pflegegrad. [Verkaufsarten](IMMOBILIEN.md#verkauf) und [Wohnrechtsteuer](STEUERN.md#wohnrecht-und-jährliche-zahlung).
+
+### Wer zahlt was
+
+| Zahlung | Verheiratete und Alleinstehende | Unverheiratete zu Hause | Unverheiratete mit einer Person im Heim |
 |---|---|---|---|
+| Grundbedarf | Gemeinsame Kasse oder eigene Kasse bei Alleinstehenden | Persönliche Anteile, Partner deckt die Lücke | Person zu Hause trägt ihn, übriges Geld der Person im Heim deckt eine Lücke |
+| Pflege | Aus derselben Kasse | Jede Person aus ihrem Geld | Einkünfte im Heim zuerst fürs Heim, Pflege getrennt |
+| Einmalausgaben | Aus derselben Kasse | Persönliche Anteile, ganze Posten | Für die Person zu Hause nur aus ihrer Kasse |
+| Steuerschuld | Aus derselben Kasse, Schuld bleibt bei der Person | Partner kann aus Haushaltsgeld mitzahlen | Partner kann aus Haushaltsgeld mitzahlen |
+| Staatliche Hilfe | Für den Rest der Pflege nach Einsatz der Kasse und verwertbarer Immobilien | Für ungedeckte Pflege je Person | Für ungedeckte Pflege je Person |
+
+Deckt der Partner offenen Grundbedarf, kann ihm danach Geld für die eigene Pflege fehlen. Das Protokoll nennt „Partner deckt Grundbedarf“. Die Pflege bleibt auch im Modus „Eine Person trägt“ getrennt. Die App behandelt den Heimeintritt als Ende der eheähnlichen Gemeinschaft und zieht den unverheirateten Partner im Modell für die Pflege nicht heran (§ 20 SGB XII).
+
+Auch im Todesjahr trägt die Person zu Hause den Grundbedarf zunächst allein. Übrige Einkünfte und Geldvermögen der Person im Heim decken nur eine Lücke im Grundbedarf zu Hause. Die Person zu Hause zahlt Flex und Einmalausgaben aus der eigenen Kasse. Für die Verkaufssteuer greift sie zuerst auf eigenes Geld und Depot zurück. Leben beide im Heim, zahlt jede Person nach ihrer Pflege höchstens den eigenen Anteil an einer Einmalausgabe. Reicht es für einen geplanten Posten nicht, entfallen die Anteile beider Personen.
+
+### Steuerschuld und Tod
+
+Der Simulator schreibt Zinsen auf Tagesgeld, Geldmarkt und Pflegereserve vor der Jahresentscheidung gut. Er versteuert auch die Zinsen auf den bar gehaltenen Teil der Reserve. Fließt Geld samt Zins ins Heim, zählt auch die darauf entfallende offene Zinssteuer zur Hilfe. Die App folgt damit der Annahme, dass Steuern das einzusetzende Einkommen mindern (§ 82 Abs. 2 Nr. 1 SGB XII). Für „Steuer aus Verkäufen oder Zinsen für die Pflege“ übernimmt der Staat höchstens den Pflegeanteil der neuen Jahressteuer. Bei Unverheirateten zählt die persönliche Pflegequote. Das Ausgaben-ⓘ weist den staatlichen Anteil aus. [Jahresablauf](HANDLUNGSANWEISUNG.md#s1).
+
+Übrige offene Steuer bleibt bei der schuldenden Person, auch auf Verkäufe für andere Ausgaben, Erbschaft oder Wohnrecht. Sie mindert das Nettovermögen und wird ab dem Folgejahr nach Grundbedarf und Pflege fällig. Erst dann kann sie den Notverkauf einer Immobilie dieser Person auslösen. Wohnrechtsteuer zu Jahresbeginn verwendet nur Geld oberhalb von Grundbedarf und Pflege. Der Rest wird am Jahresende gezahlt oder bleibt als Schuld. Wurde beim Verkauf Steuer einbehalten, haben Grundbedarf und Pflege trotzdem Vorrang. Die Regeln zur offenen Steuer gelten auch in der Ansparphase. [Steuerbeleg und Kennzahlen](SIMULATION_LESEN.md#deckung-und-aufgebrauchtes-vermögen).
+
+Die verstorbene Person schließt ihre eigene Pflege vor der Nachlassverteilung ab, bei Bedarf mit Hilfe zur Pflege. Die lebende Person kann das Erbe ab dem Folgejahr für ihre Pflege einsetzen. Bei Ehe oder eingetragener Partnerschaft berücksichtigt der Simulator den Versorgungsfreibetrag abzüglich des Kapitalwerts der eingetragenen Hinterbliebenenrente. Den steuerpflichtigen Erwerb rundet er nach den Abzügen auf volle 100 € ab. [Versorgungsfreibetrag](STEUERN.md#versorgungsfreibetrag) und [Nachlass und Zahlung](TOD_UND_ERBE.md#zahlung).
+
+### Schätzung in Balance und Jahresabschluss
+
+Die App schätzt die Hilfe für das Planjahr und für das Folgejahr. Sie rechnet den Erlös aus Wertpapieren nach Verkaufssteuer mit Teilfreistellung, Sparer-Pauschbetrag, Verlustvortrag und bei gemeinsamer Veranlagung mit beiden Personen. Bei Unverheirateten ordnet sie erst den Grundbedarf und die persönlichen Pflegekosten zu und zieht dann die Einkünfte je Person ab. Im Vorgabemodus zählen für den Grundbedarfsanteil die Vermögensanteile samt Pflegereserve.
+
+„Hilfe zur Pflege, voraussichtlich … €“ steht in der Budgeterklärung und unter „Was zu tun ist“. Muss zuerst eine Immobilie verkauft werden, nennt der Hinweis für diese Person den Verkauf. Den voraussichtlichen staatlichen Anteil zieht die App vor der Budgetentscheidung ab, auch fürs Liquiditätsziel des Folgejahrs. Fehlt Grundbedarf zu Hause, weisen Hinweis und Jahresbeleg den Mangel aus. Die Rechnung kürzt den nicht finanzierbaren Flex.
+
+Das Folgejahr startet mit dem Restbestand nach Verkaufssteuer und bezahltem Flex bis zum Planbetrag. Einstand der übrigen Wertpapiere und fortgeschriebener Verlustvortrag fließen in die Schätzung ein. Die persönlichen Anteile richten sich nach diesem Bestand. Die Liquiditätsaufteilung füllt Tagesgeld je Person bis zum eigenen Ziel und weist den übrigen Zufluss ihrem Geldmarkt zu. [Liquiditätsaufteilung](HANDLUNGSANWEISUNG.md#tagesgeldanteil).
+
+## Annahmen, Beispiele und Sichtbarkeit
+
+### Modellannahmen und Grenzen
+
+Die Pflegequoten nach Alter und Geschlecht sowie die Gradverteilung sind intern auf Destatis 2023 abgestimmt. Der statistische Bestand beschreibt einen Stichtag. Die Abstimmung verwendet dafür die Periodentafel 2023/25. Nur die Abstimmkohorte startet mit statistisch verteilten Pflegegraden. Die Simulation startet mit den eingetragenen Graden und zieht Todesfälle nach der Tafel des jeweiligen Jahrgangs.
+
+Die App senkt bei aktiviertem Zufallsmodell die Grundsterblichkeit gesunder Personen so ab, dass sie mit späteren Pflegefällen im Mittel der Zieltafel folgen. Das gilt für chronische und akute Pflege. Im Pflegefall wirken die Faktoren 1,5 / 2 / 3 / 4 / 5 ab dem aktuellen Grad ohne Rampe. Ein heutiger Pflegegrad kann die Lebenserwartung zusätzlich verkürzen. Die Tabelle zeigt Modellwerte ab Gesundheit für chronische Pflege und Vorgabefaktoren, nachgerechnet am 21.11.2026. Im Sterbejahr zählt ein halbes Pflegejahr. [Daten und interne Abstimmung](DATA_SOURCES.md#lebensereignisse).
+
+| Person | Wird pflegebedürftig | Jahre je Pflegefall | Pflegejahre je Person |
+|---|---:|---:|---:|
 | Frau, 64, Jahrgang 1961 | 74 % | 8,9 | 6,6 |
-| Frau, 55, Jahrgang 1971 | 73 % | 9,4 | 6,9 |
+| Frau, 55, Jahrgang 1971 | 73 % | 9,3 | 6,9 |
 | Mann, 67, Jahrgang 1958 | 58 % | 6,4 | 3,7 |
 | Mann, 76, Jahrgang 1950 | 61 % | 5,3 | 3,2 |
 
-Das ist eine Folge der Regeln, keine Statistik: Eintritt je Alter und Überleben je Jahrgang stehen fest, also auch die Pflegejahre. Im Sterbejahr zählt ein halbes Pflegejahr.
+Die App prüft weder den medizinischen Verlauf noch persönliche Leistungsansprüche. Die Staffel legt Annahmen für das Szenario fest. Als Kassenleistungen rechnet die App nur mit Pflegegeld nach Pflegegrad und Pflegeform und mit dem Heimzuschuss nach Heimjahr. Heimpreise nach Bundesland und Steuerentlastungen für Heimkosten fehlen. Das Modell vereinfacht die Vermögensprüfung für die Hilfe zur Pflege. Schonvermögen, Einkommensgrenzen, Barbetrag, Kinderunterhalt und Rückforderungen von Schenkungen bleiben dabei außen vor. Für Immobilienverkäufe und den Abzug der Verkaufssteuer gelten die Regeln [zur Finanzierung](#wenn-das-geld-nicht-reicht). Eine Pflegereserve bietet keinen Versicherungsschutz.
 
-Mangels Kreuztabelle Alter × Grad nutzt die Abstimmung Gradanteile aller Altersgruppen. Die Sterblichkeitsfaktoren 1,5 / 2 / 3 / 4 / 5 wirken ab dem aktuellen Grad, ohne Kostenrampe. Diese interne Abstimmung ist keine unabhängige Validierung. [Datenquellen](DATA_SOURCES.md#lebensereignisse) führen Herkunft, Transformation und offene Nachweise.
+Der Simulator rechnet bei der Jahresentscheidung mit dem vollen Pflegebedarf des Haushalts. Deshalb kann er Flex auch kürzen, wenn der Staat die Pflege später bezahlt. Bei getrennten Kassen kann er Flex auch für die Person ohne Pflegebedarf kürzen.
 
-Modellgrenzen:
+Bei getrennten Kassen kann eine Altschuld der Person im Heim den Flex des Partners kürzen. Im Modell kann die Steuer auf einen Geldmarktverkauf des Partners bei der Person im Heim stehen. Die Steuersumme des Haushalts bleibt dabei korrekt.
 
-- Kein medizinischer Verlauf und keine persönliche Leistungsprüfung.
-- Außer dem Zuschuss nach Heimjahren keine eigene Berechnung von Kassenleistungen; Staffelbeträge sind Szenarioannahmen.
-- Keine Steuerentlastung für Heimkosten, keine Hilfe zur Pflege, keine Heimkosten nach Bundesland. Verlässt jemand das Heim und kehrt zurück, beginnt das Heimjahr wieder bei 1.
-- Pflege-Rücklage und bestandene Rechentests belegen keinen Versicherungsschutz oder extern bestätigte Pflegewahrscheinlichkeiten.
+Der Simulator prüft geplante Einmalausgaben vor der Finanzierung. Er berücksichtigt je Jahr zusammen höchstens 70.368.744.177.663 € in nominalen Euro, damit die Rechnung Centbeträge noch abbilden kann. Posten oberhalb dieser Grenze weist er im Jahresprotokoll als abgelehnt aus. Die Rechnung läuft mit den berücksichtigten Posten weiter.
 
-### Max und Erika
+<a id="max-und-erika"></a>
 
-Synthetische Rechenvariante, geprüft am 27.10.2026: Erika hat heute Grad 2 und Angehörigenpflege; Max pflegt sie. Ohne Inflation erhält sie 347 × 12 = 4.164 € jährlich. Ihre heutigen Kosten sind bereits im Bedarf enthalten. Für Grad 2 sind beispielhaft 6.000 € jährlicher Zusatz gespeichert; der Deckel lässt ihn vollständig zu. Erreicht Max Grad 3, entfallen Erikas 4.164 € Pflegegeld und die 6.000 € kommen ab diesem Jahr hinzu. Der Finanzierungsbedarf steigt dadurch um 10.164 € gegenüber unveränderter Pflege. Ein Heimverkauf folgt daraus nicht. Max’ eigene Pflegekosten wären zusätzlich zu betrachten.
+### Beispiel Max und Erika
 
-### Helga und Werner im Heim
+Rechenprobe mit Max und Erika Mustermann, Testdatum 15.11.2026. Erika hat Grad 2 und Max pflegt sie. Der Deckel von 120.000 € lässt beide Zusätze zu. Die Beträge gelten jeweils für ein volles Jahr ohne Inflation, Kostenanstieg und Regionalzuschlag.
 
-Synthetische Rechenprobe ohne Inflation, Kostenanstieg und Regionalzuschlag, geprüft am 07.11.2026: Helga und Werner planen 36.000 € Grundbedarf. Kommen beide im selben Jahr mit Grad 4 ins Heim, fällt dieser Grundbedarf weg. Je Person kostet das erste Heimjahr 40.368 € Heimkosten und 6.000 € eigene Ausgaben, zusammen 92.736 €. Ab dem vierten Heimjahr sind es 62.664 €. Kommt nur Werner ins Heim, bleiben 27.000 € Grundbedarf für Helga, dazu 46.368 € für Werner, also 73.368 €. Die Übung im Steckbrief zeigt dasselbe in einem Monte-Carlo-Pfad.
+| Bestandteil pro Jahr | Heute | Max erreicht Grad 3 |
+|---|---:|---:|
+| Grundbedarf ohne Pflege | 30.000 € | 30.000 € |
+| Erikas Pflegezusatz | 6.000 € | 6.000 € |
+| Max’ Pflegezusatz | 0 € | 18.000 € |
+| Grundbedarf und Pflege zusammen | 36.000 € | 54.000 € |
+| Erikas Pflegegeld | 4.164 € | 0 € |
+| Nach Pflegegeld zu decken | 31.836 € | 54.000 € |
+
+Erikas 347 € Pflegegeld im Monat zählen getrennt als Einnahme. Erreicht Max Grad 3, wechselt Erika zu externer Unterstützung. Ihr Zusatz bleibt gleich, das Pflegegeld entfällt. Zusammen mit Max’ Zusatz sind 22.164 € mehr zu decken. Renten und Flex werden getrennt verrechnet. Erika bleibt zu Hause.
+
+### Beispiel Helga und Werner
+
+Rechenprobe mit Helga und Werner, Testdatum 07.11.2026. Sie planen 36.000 € Grundbedarf. Ziehen beide mit Grad 4 ins Heim, fällt der Grundbedarf zu Hause weg. Im ersten Heimjahr kosten Heim und eigene Ausgaben je Person 40.368 € plus 6.000 €, zusammen 92.736 €. Ab dem vierten Heimjahr sind es zusammen 62.664 €. Zieht nur Werner ins Heim, bleiben für Helga 27.000 € zu Hause. Mit Werners 46.368 € sind es 73.368 €. Gerechnet ohne Preisfortschreibung und Regionalzuschlag. [Übung mit Helga und Werner](BEISPIELHAUSHALTE.md#helga-und-werner).
 
 ### Wo du es in der App siehst
 
-„Personen & Vermögen“ führt im Band „Pflege heute“ der Personenkarte „Pflegegrad“, „Pflegeform“, „Im Heim seit“, „Kosten über die Kasse hinaus“, Verlauf und Kassenleistungen; die Zeile „Angesetzt“ nennt den gerechneten Monatsbetrag. Hat eine Person einen Pflegegrad heute, zeigen Personenkarte, Haushalt & Plan und Balance einmal den Hinweis „Die App rechnet Pflegekosten jetzt selbst …“ mit den angesetzten Kosten je Person; „Erledigt“ merkt sich der Haushalt mit der Regelversion (`household_care_hint_v1`), auch über Sicherung und Spielbereich. Balance zeigt unter „Dein Bedarf“ je Person „Pflege“ oder „Heim“. Der Reiter „Pflege“ zeigt den heutigen Zustand je Person mit dem angesetzten Monatsbetrag. Darunter stehen die Annahmen in fünf Aufklappzeilen, zugeklappt mit ihren aktuellen Werten: Staffel, übliche Form und Deckel, Heim mit Bestandteilen, Heimjahren und eigenen Ausgaben, Flex je Grad, Kostenanstieg mit Zuschlag sowie das Pflegegeld. Pflegegeld je Grad und die drei Heim-Bestandteile änderst du dort jederzeit; sie gelten sofort, erhalten die Herkunft „von Hand“ mit dem laufenden Monat und erscheinen im nächsten Jahresabschluss als Ausgangswerte. Der Simulator zeigt diese Werte in einer Zeile mit Link und führt nur Verlauf und Simulationsannahmen. Staffel, Deckel und Heimkosten prüfst du im Jahresabschluss unter „Pflegewerte“, bereits fortgeschrieben. Im Jahresprotokoll trennt das ⓘ bei „Ausgaben“ Grundbedarf zu Hause, Pflege zu Hause, Heimkosten und eigene Ausgaben; Beträge unter 0,50 € in der gewählten Eurobasis (nominal oder heutige Kaufkraft) bilden keine Zeile. Darunter stehen je Person Grad, tatsächlich verwendete Form, Heimjahr und Zuschuss. „Änderung Pflegebedarf“ zeigt nur den nichtnegativen Anstieg des Pflegezusatzes zu Hause. Sinkende Heimkosten stehen als Änderung zum Vorjahr im Ausgaben-ⓘ. Das ⓘ bei „Einnahmen“ erklärt Pflegegeld und Wechselgrund. Klickwege: [Handbuch](../../Handbuch.html#person-pflegen). [Technische Belege](TECHNICAL.md#lebensereignisse-und-steuer-belegen) verbinden die Grenzen mit bestehenden Prüfungen.
+In „Personen & Vermögen“ pflegst du im Band „Pflege heute“ Grad, Form und Verlauf. „Angesetzt“ nennt den Monatsbetrag. Den Pflegehinweis kannst du für den Haushalt als „Erledigt“ markieren. Im Reiter „Pflege“ stehen die heutigen Kosten und die gemeinsamen Annahmen.
+
+In Balance findest du unter „Dein Bedarf“ den Grundbedarf zu Hause und je Person „Pflege“ oder „Heim“. Das Heim-ⓘ nennt Heimjahr, Heimkosten und eigene Ausgaben. Im Jahresabschluss zeigt „Pflegewerte“ die fortgeschriebenen Beträge. Der Simulator verlinkt auf diese Werte. Dort stellst du Verlauf und Simulationsannahmen ein. Für Marktpfade ist „Stationary Bootstrap“ die Vorgabe. Der Vermögensfächer zeichnet Beträge unter 1 € als 0 €. [Simulationsergebnisse lesen](SIMULATION_LESEN.md).
+
+Im Jahresprotokoll zeigt das ⓘ bei „Ausgaben“ Grundbedarf zu Hause, Pflegezusatz, Heimkosten und eigene Ausgaben im Heim. Das ⓘ bei „Einnahmen“ erklärt Pflegegeld und Wechselgrund. [Klickwege im Handbuch](../../Handbuch.html#pflege), [Protokoll und Kennzahlen](SIMULATION_LESEN.md#pflege) und [technische Belege](TECHNICAL.md#lebensereignisse-und-steuer-belegen).

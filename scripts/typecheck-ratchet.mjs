@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 
@@ -15,11 +15,13 @@ export function inspectTypeDirectives(text, file = 'source.js') {
     return { exceptions, noCheck: source.checkJsDirective?.enabled === false };
 }
 
-/** @param {string[]} current @param {string[]} previous
+/** Gelöschte Dateien verlassen die Liste mit ihrem Code (WS-1); jede bestehende Datei bleibt streng.
+ * @param {string[]} current @param {string[]} previous
  * @param {Record<string, number>} counts @param {Record<string, number>} limits
+ * @param {(file: string) => boolean} [exists]
  * @returns {string[]}
  */
-export function checkTypeRatchet(current, previous, counts, limits) {
+export function checkTypeRatchet(current, previous, counts, limits, exists = () => true) {
     if (!Array.isArray(previous) || previous.some(file => typeof file !== 'string')) {
         throw new Error('Die bisherige strenge Liste muss Dateipfade enthalten.');
     }
@@ -29,7 +31,7 @@ export function checkTypeRatchet(current, previous, counts, limits) {
     const errors = [];
     const selected = new Set(current);
     for (const file of previous) {
-        if (!selected.has(file)) errors.push(`${file}: aus typcheck/streng.json entfernt; die Liste darf nur wachsen`);
+        if (!selected.has(file) && exists(file)) errors.push(`${file}: aus typcheck/streng.json entfernt; die Liste darf nur wachsen`);
     }
     for (const [folder, limit] of Object.entries(limits)) {
         if (!Number.isSafeInteger(limit) || limit < 0) errors.push(`${folder}: ungültige Ausnahmegrenze`);
@@ -59,5 +61,6 @@ export function inspectTypeRatchet(files, strictFiles, root) {
         cwd: root, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024
     }));
     const limits = JSON.parse(readFileSync(path.join(root, 'typcheck/ausnahmen.json'), 'utf8'));
-    return { counts, errors: [...disabled, ...checkTypeRatchet(strictFiles.map(relative), previous, counts, limits)] };
+    return { counts, errors: [...disabled, ...checkTypeRatchet(strictFiles.map(relative), previous, counts, limits,
+        file => existsSync(path.join(root, file)))] };
 }

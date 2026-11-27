@@ -1,0 +1,603 @@
+{
+  "note": "RK-1-Merge (19.11.2026): vb-1 (Basis c86bdad8) in rk-1 (d47eed85 + JA-4 + MS-1 + KR-1). Je Eintrag Wert der VB-1-Seite, Wert der HEAD-Seite, gemessener neuer Wert und Grund. Nur Werte, die beide Seiten geändert haben; kind hash ersetzt den HEAD-Hash (Helfer rk-1-merge-expectations.mjs), selection und number stehen im Test. basis ist der gemeinsame Ausgangshash vor beiden Paketen. Gemessen auf Linux x64, Node v22.23.2, mit den Werkzeugen der Tests. Nachtrag schwere Suite (19.11.2026): Einträge mit old ersetzen den bisher erwarteten Wert (old) durch new; old ist der Wert, den der Test auf c5292130 erwartete. Hat nur eine Seite den Wert geändert, fehlen vb1 und head; sonst ist head auf d6f32e04 (Kopf vor dem VB-1-Merge) gemessen. Belegt je Ursache: d6f32e04 rechnet ohne VB-1, und c5292130 mit der nachschüssigen VPW-Formel vor FR-88 ergibt die alten Werte. Nachtrag volle Suite (19.11.2026): flex-safety-bytegleich, balance-planned-posts (Hashpaare old -> new) und simulator-backtest (kind input: neu kalibrierter Testzeuge, Wert steht im Test).",
+  "entries": [
+    {
+      "test": "tests/go-go-survivor-regression.test.mjs",
+      "field": "survivor[2].entnahme_effektiv (Alter 75, beide Reihenfolgen)",
+      "kind": "number",
+      "vb1": 60000,
+      "head": 58800,
+      "new": 60000,
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben). Gemessen: Todesjahr Erbschaftsteuer 85.500 -> 40.000 Euro (wie VB-1), VPW-Rate 0,030352 (wie HEAD); Vermögen nach dem Todesjahr 2.036.500 + 45.500 = 2.082.000 Euro, Jahr 2 rawDynamicFlex 57.401 Euro -> 60.000 Euro. Gleichheit mit der VB-1-Seite ist Zufall der 1.200-Euro-Stufe (VB-1 allein: 58.735 Euro roh)."
+    },
+    {
+      "test": "tests/go-go-survivor-regression.test.mjs",
+      "field": "previous[2].entnahme_effektiv (bisherige Altersregel, beide Reihenfolgen)",
+      "kind": "number",
+      "vb1": 51600,
+      "head": 49200,
+      "new": 50400,
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben). Gleiche Todesjahr-Steuer 40.000 Euro und FR-88-Rate; Jahr 2 rawDynamicFlex 45.034 Euro (HEAD 43.714, VB-1 46.146) -> 50.400 Euro."
+    },
+    {
+      "test": "tests/pfa-1-invariance.test.mjs",
+      "field": "Ohne heutigen Grad und Pflegeeintritt vollständige MC-Bytes gleich",
+      "kind": "hash",
+      "vb1": "a2249aebcd2ee1ca23e085f8a679da808ac870824756ff2b4d7ae56fc75827da",
+      "head": "15bf9be0a78bbfab5f1d889c43599fb08d0634d4053e2a3ac009da0a7b849dcb",
+      "new": "cbd03b19dc87899f4c5157d5231b128685c67eab2e995233d2edd3309378de83",
+      "basis": "d216fc4ee712cb1060788d6098816141b10f1c66ab5abd7469bf2b5224685041",
+      "reason": "Basis d216fc4e von beiden Seiten geändert: MS-1 (NG-9/NG-8): block bzw. stationary zieht zirkulär (Block 3, Max und Erika) und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben)."
+    },
+    {
+      "test": "tests/rechenregeln-bytegleich.test.mjs",
+      "field": "konservativ: MC-Pfad 0 mit FR-21–24/27",
+      "kind": "hash",
+      "vb1": "2a01d2b3f89c5bfa907526fc0391724dc4a0151dd5364bfefe001ad8a7688509",
+      "head": "40494f8cdfbd2a27dd50f717a2e0a261bffe393f67ae08543cc54791cfcb2e11",
+      "new": "e8da3c299b277363ae563e7ae09317842b8e046f5e0057e9729b0bdfddbaa415",
+      "basis": "2a13951d5690e54cdc0c181283f7d8817ab3333dfc3c251d184f1012222b939f",
+      "reason": "Basis 2a13951d von beiden Seiten geändert: FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (Dynamic-Flex-Vorlagen, MC-Pfad 0) und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben)."
+    },
+    {
+      "test": "tests/rechenregeln-bytegleich.test.mjs",
+      "field": "ausgewogen: MC-Pfad 0 mit FR-21–24/27",
+      "kind": "hash",
+      "vb1": "5573fb6ed48beaf82af3773d80bbf9e4d5db1ce9e841b1c8fa940f257919e30b",
+      "head": "223d29bbdb5788e913fc9c84ad0565b7a32a257e60dfe1a29806e5e4cfd444fe",
+      "new": "45e1487ef553b2e8496e3ecfdb40cd74f1544c62f65f35713ddfedcda38c6146",
+      "basis": "c8e2674268f11c57e3a65558dbe87e8a3d02e0f8a58d40f39c291fb495e26e9a",
+      "reason": "Basis c8e26742 von beiden Seiten geändert: FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (Dynamic-Flex-Vorlagen, MC-Pfad 0) und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben)."
+    },
+    {
+      "test": "tests/rechenregeln-bytegleich.test.mjs",
+      "field": "offensiv: MC-Pfad 0 mit FR-21–24/27",
+      "kind": "hash",
+      "vb1": "daa7dd9e3ff82146d36ad4154bd13052bdd256958c0e660787d0d3dcb88e1ecf",
+      "head": "dbfa8384eca1774f2c4f79d2fe6144b001b67e3c7d2928034129f31328c9c173",
+      "new": "fc48add3aab1bde08a891e3cea9fbdbdf1618a3a42702d4c0f82acc9cf2e01a3",
+      "basis": "64d2f8511cfe9c99129c4b0a78b922903c89024cdb400776f8677114ab90f302",
+      "reason": "Basis 64d2f851 von beiden Seiten geändert: FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (Dynamic-Flex-Vorlagen, MC-Pfad 0) und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben)."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "konservativ: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+      "kind": "hash",
+      "vb1": "834c83bbe4b696b8867e14d5120bb41618fc90889ccd9f33c9ebd7db80b228d9",
+      "head": "8595b14827886d987ac9006c02095ba86414cc9943f5aefdedcc86a2df06bab2",
+      "new": "05fb4b56259270aa582e537c4334c8d7b9f61adb2a6d9f1b16f39289ee128db7",
+      "basis": "8875d67ceaebcc468234ff88f1ae01a9c3b91aa93aa1b4186036ed6e2cb34706",
+      "reason": "Basis 8875d67c von beiden Seiten geändert: FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (Dynamic-Flex-Vorlagen, PM-1c) und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben)."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "konservativ: vollständiger PM-1c-Backtest und MC-Pfad 0",
+      "kind": "hash",
+      "vb1": "63fcfaf398361bea25d2848ba1c3c73ee23dcebf1eef6dde36740fa11d8f35a9",
+      "head": "bbc272055b1fe0947fcff1ec6b2d5ef37e9fd587cb50738fb943a93cf8166f4d",
+      "new": "a901836a196cf6d888e8aae63b9abf97852430a2460de5c7b6a10a3df098c089",
+      "basis": "1f814c198610ff205137e2687017ca76a91af3b8d8ec04a479f6c9beeea97fc8",
+      "reason": "Basis 1f814c19 von beiden Seiten geändert: FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (Dynamic-Flex-Vorlagen, PM-1c) und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben)."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "konservativ: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+      "kind": "hash",
+      "vb1": "fa42bbf45ffeec342a30c03569e9825cceb266b78bee8325ce289a01176ddf91",
+      "head": "6cdcf7f01db3029293a3755ea77340e0ff260389bf54a0b22d54d6905068ec79",
+      "new": "607f322c993c13b091e5428eebf5bb86089e51f6b78aba5df6ff0a61027afeda",
+      "basis": "94cdd127810bd7e108b4ddc2dfa0cc6a018a61d101ae681c5dd695569071a184",
+      "reason": "Basis 94cdd127 von beiden Seiten geändert: FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (Dynamic-Flex-Vorlagen, PM-1c) und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben)."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "ausgewogen: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+      "kind": "hash",
+      "vb1": "c9b7f669209738b95f7beac6c9e81b2b854d4216cc31c3110a43aeb31b15b88f",
+      "head": "39b181e4c45ea6b050e1ace8b6c43346edc8f299d4a1f9ee9f4a23c97ba73836",
+      "new": "450274cdb613c9ff81cd059fb72fc7d8d7c89211ff0a416a07ede6ca28b1027a",
+      "basis": "2bc5a9afbc24a6c73fdc7063a301d9485c641c9b0d647fbade727dd60d2e581e",
+      "reason": "Basis 2bc5a9af von beiden Seiten geändert: FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (Dynamic-Flex-Vorlagen, PM-1c) und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben)."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "ausgewogen: vollständiger PM-1c-Backtest und MC-Pfad 0",
+      "kind": "hash",
+      "vb1": "27f996d8250b93607597e999dce2031182fb92a3f6d39830b3d0e417f80a2f4a",
+      "head": "78223dec78fd1f53f14ade77c3b1d430368b4e37109f9f9672239b859513a5c7",
+      "new": "07350a9095807192bc6a919d1587f500b58d10cb714e07655366e602cf6aa2c0",
+      "basis": "c7ac02d2eb2e06aa2975c0c3d2ae43e99ee6712eaba2bb691084620890b5ce58",
+      "reason": "Basis c7ac02d2 von beiden Seiten geändert: FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (Dynamic-Flex-Vorlagen, PM-1c) und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben)."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "ausgewogen: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+      "kind": "hash",
+      "vb1": "07ed90f51a858c037e16a415f42f70d5d73a906371ea964917eb63c7701b178c",
+      "head": "0c376751826d7328f882815d7ebd9a8f7f4d24b65ff649a2dbfbda938116c155",
+      "new": "3f9d381b7e9fc4b36c339244fbc7644006cf2fb60c86e0f04cd62affe70d349c",
+      "basis": "052d6d6c9a8fbd598ab51207231b133a66a11531f4dd5ea1ff3ae1a92847a7d9",
+      "reason": "Basis 052d6d6c von beiden Seiten geändert: FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (Dynamic-Flex-Vorlagen, PM-1c) und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben)."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "offensiv: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+      "kind": "hash",
+      "vb1": "9ee64ac9284655772c06ee19a1319236f5faec623eb79394af2698f45705dd94",
+      "head": "3c8645852da469897b3cc683ca8abd5a46ce5024b8556df4b1d51250b397c9b4",
+      "new": "7eb31b6b48568cba01c0a332d59c0b321c114aac1113996cb219d5ea4821d77b",
+      "basis": "654eded2084e05d75ecc88183b0933f27288bd5d0c7340f19ec27cd3b4f7449a",
+      "reason": "Basis 654eded2 von beiden Seiten geändert: FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (Dynamic-Flex-Vorlagen, PM-1c) und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben)."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "offensiv: vollständiger PM-1c-Backtest und MC-Pfad 0",
+      "kind": "hash",
+      "vb1": "59208a9c802766d375ecbf39e58230b87744b053a94b7e96212ebe3dc990aa21",
+      "head": "26be91240358591c8c8be2f8c01077851ef455784215ae22f9e9993cce32d345",
+      "new": "8eff419fe37970519e9a6e4f6f248df06b0e34e219c3b5b441335d25738d372b",
+      "basis": "04132cee3e592e2aa0020254fc182a450fe0de896b113db1ba3482134ac08ecc",
+      "reason": "Basis 04132cee von beiden Seiten geändert: FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (Dynamic-Flex-Vorlagen, PM-1c) und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben)."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "offensiv: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+      "kind": "hash",
+      "vb1": "f92dc4f08f6cd1ac379cc491f1d8dbbac5aaf3cc5c78d0b3043069225270854e",
+      "head": "b241b72349507d8b8feda91505b8970ccceee1d86e0986d18e47973a08720ab9",
+      "new": "6a474a26df520e2d28ba38d419a12c4013db7759618f1feb9648bd9b0d49c5b2",
+      "basis": "5c1acb5611b35f17f81905184c251c4cb9d4b5f62ec48b275707ad4cea4804a5",
+      "reason": "Basis 5c1acb56 von beiden Seiten geändert: FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (Dynamic-Flex-Vorlagen, PM-1c) und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben)."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "block/no-home/lists",
+      "kind": "hash",
+      "vb1": "9871114ac66dbe977415e0df8950249877bef67951a816b7323653480d17f62c",
+      "head": "312236d0e23ba064974c60c66c7795f0c56ce3e5dfa3a2871ba3f434c31f1912",
+      "new": "0055ae93ff23118ef0a1cbdd5e6795d6f454824eedcf30b2df39bfd053bc84a4",
+      "reason": "MS-1 (NG-9/NG-8): block bzw. stationary zieht zirkulär und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben). Gemessen gegen HEAD: genau die 41 von 50 Läufen mit Ehe-Erbschaftsteuer im Todesjahr ändern sich, alle tragen pensionAllowance; Läufe ohne Todesjahr-Steuer bytegleich."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "block/no-home/pathSummaries",
+      "kind": "hash",
+      "vb1": "514d26c857380c381191ddc9126207b0e0e95fc16601b2ef8ebcdcbbf521d5d8",
+      "head": "1cb7dd4327407916e27abd37d9f1b63cd4ac68773ac2d6622fc0b5c970464d00",
+      "new": "aa5f47c485345c36ebfbf5dc47fd1f1fc67941efca350b09e38647190a66ac64",
+      "reason": "MS-1 (NG-9/NG-8): block bzw. stationary zieht zirkulär und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben). Gemessen gegen HEAD: genau die 41 von 50 Läufen mit Ehe-Erbschaftsteuer im Todesjahr ändern sich, alle tragen pensionAllowance; Läufe ohne Todesjahr-Steuer bytegleich."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "block/no-home/combined",
+      "kind": "hash",
+      "vb1": "f2709c8a3629b21ba5954b48fec7b95a424f62546d66c932ac51e567ccab5d82",
+      "head": "715a5d1687f88a62a12f627b0ad46fa838d25e785169153996ae33dffd903dfe",
+      "new": "ef85081c646c1b82461b2cd456857b01767c6c81b8f7fe52ebd4089bae94f4c7",
+      "reason": "MS-1 (NG-9/NG-8): block bzw. stationary zieht zirkulär und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben). Gemessen gegen HEAD: genau die 41 von 50 Läufen mit Ehe-Erbschaftsteuer im Todesjahr ändern sich, alle tragen pensionAllowance; Läufe ohne Todesjahr-Steuer bytegleich."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "block/no-home/characteristicIndices",
+      "kind": "selection",
+      "vb1": [
+        10,
+        40,
+        15,
+        33,
+        22,
+        26,
+        45,
+        35,
+        47,
+        3,
+        43,
+        8
+      ],
+      "head": [
+        18,
+        46,
+        30,
+        8,
+        1,
+        14,
+        39,
+        27,
+        47,
+        28,
+        40,
+        43,
+        22,
+        3
+      ],
+      "new": [
+        18,
+        46,
+        30,
+        8,
+        1,
+        14,
+        39,
+        27,
+        47,
+        28,
+        40,
+        43,
+        22,
+        37
+      ],
+      "reason": "MS-1 (NG-9/NG-8): block bzw. stationary zieht zirkulär und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben): Protokollpfadauswahl nach geänderten Endvermögen; alle gewechselten Läufe liegen unter den Läufen mit Todesjahr-Steuer."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "stationary/no-home/lists",
+      "kind": "hash",
+      "vb1": "8256d1a6410181532940069e648bb9ef83d70e99dadf36d6681c6658e89b155e",
+      "head": "93a0d2639f607427e921f9c97b40ea5a49e82194d3d9a24813062aec97bc61fe",
+      "new": "a7bfcd2206724b4147a58dcac59b68ee8994ac7a9afe901618a6a371d0acf72a",
+      "reason": "MS-1 (NG-9/NG-8): block bzw. stationary zieht zirkulär und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben). Gemessen gegen HEAD: genau die 38 von 50 Läufen mit Ehe-Erbschaftsteuer im Todesjahr ändern sich, alle tragen pensionAllowance; Läufe ohne Todesjahr-Steuer bytegleich."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "stationary/no-home/pathSummaries",
+      "kind": "hash",
+      "vb1": "f8df21a367816a61dd5e61924dcddb59a3e52585557a5e765b94c9555b3ee95e",
+      "head": "31b45c2eadb18477afac17477f015bf3aa6f5e4456a289c70c72a6d51f7ca80f",
+      "new": "fada740a0f2502eaa4c28e80327c4c661e6e06476c9a43901e18baf8e0549a7b",
+      "reason": "MS-1 (NG-9/NG-8): block bzw. stationary zieht zirkulär und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben). Gemessen gegen HEAD: genau die 38 von 50 Läufen mit Ehe-Erbschaftsteuer im Todesjahr ändern sich, alle tragen pensionAllowance; Läufe ohne Todesjahr-Steuer bytegleich."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "stationary/no-home/combined",
+      "kind": "hash",
+      "vb1": "ecfa2bfa54555c0f7a29e2b95827db60f00b58428cde4a93c8e356850cdc5b73",
+      "head": "7e3f00997b8ee1745c144a966a2b3654270b592c8555146980f23c14fc288928",
+      "new": "2e837d597b549c7c859745aecc222423b3351e1c8b7c6c12af05da9ebb1986d4",
+      "reason": "MS-1 (NG-9/NG-8): block bzw. stationary zieht zirkulär und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben). Gemessen gegen HEAD: genau die 38 von 50 Läufen mit Ehe-Erbschaftsteuer im Todesjahr ändern sich, alle tragen pensionAllowance; Läufe ohne Todesjahr-Steuer bytegleich."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "block/home/totals",
+      "kind": "hash",
+      "vb1": "98e1aa94b2960eec63cc75de6feffadd3c620be967544e74985f7ccceb535d9a",
+      "head": "a6eb2bfdc6c510b5eab65383fb4fa86363d2b5807ccebaac925384b7e28e38f6",
+      "new": "c06edc63a06fd21c865031fdc387e966af8dfb7864ab7a7bc9219690f7ca27cc",
+      "reason": "MS-1 (NG-9/NG-8): block bzw. stationary zieht zirkulär und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben). Gemessen gegen HEAD: genau die 41 von 50 Läufen mit Ehe-Erbschaftsteuer im Todesjahr ändern sich, alle tragen pensionAllowance; Läufe ohne Todesjahr-Steuer bytegleich. totals: einzig totalTaxSavedByLossCarry weicht um 3e-12 ab (Gleitkommasumme über die geänderten Läufe)."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "block/home/lists",
+      "kind": "hash",
+      "vb1": "84b9547b0fc92b6ded83c9be17959ddcce5b3daac0b6260c225e6950574a6d36",
+      "head": "eddf145c440ba06f699dd8fc834bf890021dda4a4ad4e352912c86f579f52c75",
+      "new": "d379e6748961f0eb5cee090d50fd06792a3cd5ea9f089653d9102a28e8519468",
+      "reason": "MS-1 (NG-9/NG-8): block bzw. stationary zieht zirkulär und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben). Gemessen gegen HEAD: genau die 41 von 50 Läufen mit Ehe-Erbschaftsteuer im Todesjahr ändern sich, alle tragen pensionAllowance; Läufe ohne Todesjahr-Steuer bytegleich."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "block/home/pathSummaries",
+      "kind": "hash",
+      "vb1": "c23f0760fd9a80dc8510bf4422502743b20653c46ca79e59462ef9f10fe9faf7",
+      "head": "0da242d7b3a3dba5d196a6a920760cd021c04488542ce437a9fd03a415cc4d98",
+      "new": "15673041039200afafe719bf6d1518d7b479831ba1fb07909b531b88cf2496bc",
+      "reason": "MS-1 (NG-9/NG-8): block bzw. stationary zieht zirkulär und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben). Gemessen gegen HEAD: genau die 41 von 50 Läufen mit Ehe-Erbschaftsteuer im Todesjahr ändern sich, alle tragen pensionAllowance; Läufe ohne Todesjahr-Steuer bytegleich."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "block/home/combined",
+      "kind": "hash",
+      "vb1": "c76d0863cbbe1134375ea9a9f22a75227257c08d9b0d86c709ab6339b102af25",
+      "head": "c52ee968117bdfa3e94a1d71d764a0eb0362e51c2c9081625657b4011d2326f2",
+      "new": "e390343e06e84d526da538076cb6a23a18377cd01fda93979aa753dc3cef8895",
+      "reason": "MS-1 (NG-9/NG-8): block bzw. stationary zieht zirkulär und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben). Gemessen gegen HEAD: genau die 41 von 50 Läufen mit Ehe-Erbschaftsteuer im Todesjahr ändern sich, alle tragen pensionAllowance; Läufe ohne Todesjahr-Steuer bytegleich."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "block/home/characteristicIndices",
+      "kind": "selection",
+      "vb1": [
+        10,
+        40,
+        15,
+        8,
+        42,
+        26,
+        31,
+        24,
+        47,
+        3,
+        43,
+        22
+      ],
+      "head": [
+        18,
+        46,
+        12,
+        32,
+        1,
+        7,
+        39,
+        31,
+        47,
+        28,
+        40,
+        43,
+        22,
+        8,
+        3
+      ],
+      "new": [
+        18,
+        46,
+        11,
+        32,
+        1,
+        23,
+        39,
+        31,
+        47,
+        28,
+        40,
+        43,
+        22,
+        8,
+        3
+      ],
+      "reason": "MS-1 (NG-9/NG-8): block bzw. stationary zieht zirkulär und VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr, Geburtsdaten in den Eingaben): Protokollpfadauswahl nach geänderten Endvermögen; alle gewechselten Läufe liegen unter den Läufen mit Todesjahr-Steuer."
+    },
+    {
+      "test": "tests/gn-2-renate-mc.test.mjs",
+      "field": "GN-2 max-erika: ohne Pflegelogik Monte-Carlo bytegleich",
+      "kind": "hash",
+      "old": "ce8c398e7d6a6d87f6d8edc9c76cf1724dd9e8c025be8aaf3ba7e2f328a657cb",
+      "new": "247e1ad1e2e115a844ff49bd35332764c31c359fac67106a802976d28ddab298",
+      "reason": "VB-1: verheirateter Fall mit Todesfall (Versorgungsfreibetrag § 17 ErbStG im Todesjahr). Von 200 Läufen ändern sich genau die 162 mit Ehe-Erbschaftsteuer; in jedem ist das erste geänderte Jahr das Todesjahr mit Versorgungsfreibetrag und niedrigerer Steuer (Lauf 0, Jahr 15: 255.930 -> 236.072 Euro). Die 38 Läufe ohne Erbschaftsteuer sind bytegleich. Auf d6f32e04 (ohne VB-1) grün; Max und Erika rechnen ohne Dynamic Flex, FR-88 wirkt nicht."
+    },
+    {
+      "test": "tests/gn-2-renate-mc.test.mjs",
+      "field": "GN-2 max-erika: ohne Pflegelogik Backtest bytegleich",
+      "kind": "hash",
+      "old": "d05889f1665eb93bdc018e757ad247d2fc1f6329a922146449b598ae42ce6cb2",
+      "new": "8a335fe883237f7c1c7c778545e65f4152d1893df7e0dc34da11fd7cebc54ab8",
+      "reason": "VB-1: Geburtsdaten in den Eingaben jeder Ehe. Der Backtest legt seine Eingaben im Ergebnis ab; geändert sind nur request.inputs.simulationPeople[0/1].geburtsdatum (1958-03-14, 1961-08-22) und residenceReferenceYear 2026. Alle 26 Jahreszeilen und outcome sind bytegleich zu d6f32e04 (ohne VB-1); Renate (unverheiratet) unverändert."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "backtest: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder",
+      "kind": "hash",
+      "old": "d76fa6e418846798d1cb1c518d253b7fbbf177c26f56aa11b1758428e1525c07",
+      "new": "b060e60b559727d35b326b9618e5712c8706d8a98192c795a4ee86b631f7956c",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate. Der KG-1-Muster-Backtest rechnet mit Dynamic Flex (Vorlage offensiv): ab 2000 kleinere VPW-Gesamtentnahme (2000: 46.457 -> 45.622 Euro, Flex-Rate 128 -> 124 %). Auf d6f32e04 (ohne VB-1) derselbe neue Wert; c5292130 mit nachschüssiger Formel ergibt den alten Wert. VB-1 ändert den Backtest nicht."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "backtest: vollständige Referenz ohne Grund und Anmerkung",
+      "kind": "hash",
+      "old": "bc0e93d7b8bcbc5e66a823abf9b40b53448fe16c91babf6e93d29fa4b29bf615",
+      "new": "eed617c8a0619365b41b136661bee52441bc3868f702d850df791f46e29b8330",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate. Der KG-1-Muster-Backtest rechnet mit Dynamic Flex (Vorlage offensiv): ab 2000 kleinere VPW-Gesamtentnahme (2000: 46.457 -> 45.622 Euro, Flex-Rate 128 -> 124 %). Auf d6f32e04 (ohne VB-1) derselbe neue Wert; c5292130 mit nachschüssiger Formel ergibt den alten Wert. VB-1 ändert den Backtest nicht."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "backtest: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen",
+      "kind": "hash",
+      "old": "c741de5b9c38b64c492eaf152753ae5390670230609d3d5cb078e5bf38594e64",
+      "new": "458fb98f420572f8031fe3aab7d873d9b778b67a43113942acaf092e3be5019f",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate. Der KG-1-Muster-Backtest rechnet mit Dynamic Flex (Vorlage offensiv): ab 2000 kleinere VPW-Gesamtentnahme (2000: 46.457 -> 45.622 Euro, Flex-Rate 128 -> 124 %). Auf d6f32e04 (ohne VB-1) derselbe neue Wert; c5292130 mit nachschüssiger Formel ergibt den alten Wert. VB-1 ändert den Backtest nicht."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "backtest: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste",
+      "kind": "hash",
+      "old": "d95ac1665747d7f33b83ef9748f86c83714863ffedab69bbd9a5d401098948af",
+      "new": "01863bcddd178ef96b9bf71b65263305466453ea02309f7803c1740515fb33c1",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate. Der KG-1-Muster-Backtest rechnet mit Dynamic Flex (Vorlage offensiv): ab 2000 kleinere VPW-Gesamtentnahme (2000: 46.457 -> 45.622 Euro, Flex-Rate 128 -> 124 %). Auf d6f32e04 (ohne VB-1) derselbe neue Wert; c5292130 mit nachschüssiger Formel ergibt den alten Wert. VB-1 ändert den Backtest nicht."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "mc: sämtliche Zahlenfelder einschließlich belegter Rentenreste",
+      "kind": "number",
+      "old": 787427,
+      "vb1": 787427,
+      "head": 787559,
+      "new": 787578,
+      "basis": 787414,
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (KG-1-MC, Vorlage offensiv, 100 Pfade, alle geändert) und VB-1: Versorgungsfreibetrag in Todesjahren mit Ehe-Erbschaftsteuer (Wert old der VB-1-Seite). c5292130 mit nachschüssiger Formel ergibt old, d6f32e04 ohne VB-1 ergibt head. Die Zahl der Zahlenfelder ändert sich, weil andere Flex-Raten andere Entscheidungszweige öffnen (u. a. Safety-Cap-Felder, VPW-Blöcke, Verkaufsquellen, Einkommensüberschuss); nachschüssige Formel ergibt wieder die alte Zahl."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "mc: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder",
+      "kind": "hash",
+      "old": "3ae0d9776d2568b2a2d41552d488b3ade318b93f4d351932384ab9c13e632112",
+      "vb1": "3ae0d9776d2568b2a2d41552d488b3ade318b93f4d351932384ab9c13e632112",
+      "head": "7dbfaa7eea88489e4cf11cdf63d987cdd14bed4255fa95c698bf99d98859eb7c",
+      "new": "a28ca69c6f79fcf93337e41985517fcbc0bb068e3e7e794c11b8214626d6d2b7",
+      "basis": "59b041e824e3c43df163f00e9903a8c90a2c60a9f546d90ad77a44957cc9ef18",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (KG-1-MC, Vorlage offensiv, 100 Pfade, alle geändert) und VB-1: Versorgungsfreibetrag in Todesjahren mit Ehe-Erbschaftsteuer (Wert old der VB-1-Seite). c5292130 mit nachschüssiger Formel ergibt old, d6f32e04 ohne VB-1 ergibt head."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "mc: vollständige Referenz ohne Grund und Anmerkung",
+      "kind": "hash",
+      "old": "0ff63ab004616e9ba94fa7e7a8fd181cae0541706d5eaae4ba11474426050a4c",
+      "vb1": "0ff63ab004616e9ba94fa7e7a8fd181cae0541706d5eaae4ba11474426050a4c",
+      "head": "f7fceff2471666a51de7e0269fe809f92f0bfaf4fb4bd95b8fcd4f87a2239623",
+      "new": "72930f04254033115496b07baee479b8e6009701c6a75dd1b47475d046ca58ed",
+      "basis": "a97906bc153cdbad9a82bcdef7a216ed684cec8cb1a2981cc1de313745d2f78f",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (KG-1-MC, Vorlage offensiv, 100 Pfade, alle geändert) und VB-1: Versorgungsfreibetrag in Todesjahren mit Ehe-Erbschaftsteuer (Wert old der VB-1-Seite). c5292130 mit nachschüssiger Formel ergibt old, d6f32e04 ohne VB-1 ergibt head."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "mc: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen",
+      "kind": "hash",
+      "old": "71170c1138624d7536555689f9a2e405f09dc1c895a22fc50a833cc54e7614ab",
+      "vb1": "71170c1138624d7536555689f9a2e405f09dc1c895a22fc50a833cc54e7614ab",
+      "head": "6582f60d0765940e503e34f3aeb7829d882239f8398d572b4c8f7569b03840e7",
+      "new": "ab0c2d625b5a1fb055bc6835da38c8c40f4c0a13328f465233b7a9aec79eee05",
+      "basis": "e9330c7441a6945f28a3e2668b7ca451277f491a5296231c0c38bdbd7a512ebb",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (KG-1-MC, Vorlage offensiv, 100 Pfade, alle geändert) und VB-1: Versorgungsfreibetrag in Todesjahren mit Ehe-Erbschaftsteuer (Wert old der VB-1-Seite). c5292130 mit nachschüssiger Formel ergibt old, d6f32e04 ohne VB-1 ergibt head."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "mc: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste",
+      "kind": "hash",
+      "old": "2a64becf68dc3db972c22ddfa4206ec0da4542bc567fbfad4b9047d1758cfd5b",
+      "vb1": "2a64becf68dc3db972c22ddfa4206ec0da4542bc567fbfad4b9047d1758cfd5b",
+      "head": "e49e472915dfeaa5f4108076d3713207e3c71fda22d9b03b3f640ad3b42a7371",
+      "new": "8cf2154bf83c9eccaf408a4ca55d9ebbb67cde1af094a67af2113ddee63b23e1",
+      "basis": "36b5948c1191f8b83f0e4be4118a5b75982f15d327210b1f72520c49ad8c71f0",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (KG-1-MC, Vorlage offensiv, 100 Pfade, alle geändert) und VB-1: Versorgungsfreibetrag in Todesjahren mit Ehe-Erbschaftsteuer (Wert old der VB-1-Seite). c5292130 mit nachschüssiger Formel ergibt old, d6f32e04 ohne VB-1 ergibt head."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "engineResults: sämtliche Zahlenfelder einschließlich belegter Rentenreste",
+      "kind": "number",
+      "old": 1117013,
+      "vb1": 1117013,
+      "head": 1116811,
+      "new": 1117095,
+      "basis": 1116838,
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (Engine-Ergebnisse des KG-1-Backtests und -MC) und VB-1 (Wert old der VB-1-Seite). c5292130 mit nachschüssiger Formel ergibt old, d6f32e04 ohne VB-1 ergibt head. Die Zahl der Zahlenfelder ändert sich, weil andere Flex-Raten andere Entscheidungszweige öffnen (u. a. Safety-Cap-Felder, VPW-Blöcke, Verkaufsquellen, Einkommensüberschuss); nachschüssige Formel ergibt wieder die alte Zahl."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "engineResults: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder",
+      "kind": "hash",
+      "old": "177552916fcfd9a030f7e95e176c697824cd6655a76a7cd70d8216c1d5a59c81",
+      "vb1": "177552916fcfd9a030f7e95e176c697824cd6655a76a7cd70d8216c1d5a59c81",
+      "head": "e5665126fe7ef2b4427beeba0adde5a498fdcb168c1c54654cfd6bcdd22bbc36",
+      "new": "1b4b4c691065aac3a7082866f7fb2829ba554b3846e4ac46ddb5f68885b733d3",
+      "basis": "468236889b59b306d4883f79b7024070e8dae7f7ba4230b68ba29d89e7407903",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (Engine-Ergebnisse des KG-1-Backtests und -MC) und VB-1 (Wert old der VB-1-Seite). c5292130 mit nachschüssiger Formel ergibt old, d6f32e04 ohne VB-1 ergibt head."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "engineResults: vollständige Referenz ohne Grund und Anmerkung",
+      "kind": "hash",
+      "old": "51aff473664c10cc5d2f2fe090cd57fe9ba22f4e83a6611e091a4b748745a6c9",
+      "vb1": "51aff473664c10cc5d2f2fe090cd57fe9ba22f4e83a6611e091a4b748745a6c9",
+      "head": "5b2c56fa6c0ea0d86abbc67a53b1fa868b2a2310e99f2dda5b6df826d86497b4",
+      "new": "7809f40faf87758e0ce59ed070dfa30b0dceec265d70c8a3e3a96c1822e6f4d7",
+      "basis": "af360bbfee8559f56212e69145a54c4d6248360082bfb37b92385858b65e1d3c",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (Engine-Ergebnisse des KG-1-Backtests und -MC) und VB-1 (Wert old der VB-1-Seite). c5292130 mit nachschüssiger Formel ergibt old, d6f32e04 ohne VB-1 ergibt head."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "engineResults: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen",
+      "kind": "hash",
+      "old": "51aff473664c10cc5d2f2fe090cd57fe9ba22f4e83a6611e091a4b748745a6c9",
+      "vb1": "51aff473664c10cc5d2f2fe090cd57fe9ba22f4e83a6611e091a4b748745a6c9",
+      "head": "5b2c56fa6c0ea0d86abbc67a53b1fa868b2a2310e99f2dda5b6df826d86497b4",
+      "new": "7809f40faf87758e0ce59ed070dfa30b0dceec265d70c8a3e3a96c1822e6f4d7",
+      "basis": "af360bbfee8559f56212e69145a54c4d6248360082bfb37b92385858b65e1d3c",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (Engine-Ergebnisse des KG-1-Backtests und -MC) und VB-1 (Wert old der VB-1-Seite). c5292130 mit nachschüssiger Formel ergibt old, d6f32e04 ohne VB-1 ergibt head."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "engineResults: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste",
+      "kind": "hash",
+      "old": "926c14c11520128470e601079d5e23a3efd0b733515a5f1270080b4714e1884f",
+      "vb1": "926c14c11520128470e601079d5e23a3efd0b733515a5f1270080b4714e1884f",
+      "head": "c28c5584a3b1ef0db387475d66984342b3097db882ae9011e6006b108a47b34e",
+      "new": "6546908916bb8dc98126d8036cbd839ca30abfa8ef889d4abd1ee67693f71a07",
+      "basis": "e1836103a23809b66749dac3ae66933af4f2dba3be33f345da1bd1e0dd75510c",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate (Engine-Ergebnisse des KG-1-Backtests und -MC) und VB-1 (Wert old der VB-1-Seite). c5292130 mit nachschüssiger Formel ergibt old, d6f32e04 ohne VB-1 ergibt head."
+    },
+    {
+      "test": "tests/immobilien-empty-bytegleich.test.mjs",
+      "field": "Ohne Immobilien: vollständiger Paritätsbeleg mit erklärtem Ausgabetext bytegleich zum gemessenen Stand",
+      "kind": "hash",
+      "old": "98b329184427db77714e7d4c5df2934e568aee9813f41ee7da848bc898311345",
+      "new": "427873b8d390c82e7d34978b36c987c50d1424b113bf89a8cf30ba60558ea601",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate. Von 208 Paritätsfällen ändern sich genau die 156 mit Dynamic Flex (konservativ, ausgewogen, offensiv; je recorded und sequence, 26 Jahre); die 52 Fälle „Aus“ (dynamicFlex false) sind bytegleich, parity.failed bleibt false. Auf d6f32e04 (ohne VB-1) derselbe neue Hash; c5292130 mit nachschüssiger Formel ergibt den alten."
+    },
+    {
+      "test": "tests/ff-g-regression.test.mjs",
+      "field": "dynamicUnaffected: ungefilterte JSON-Bytes gegen BK-2",
+      "kind": "hash",
+      "old": "7c5d8f9b623e555242bc5d919d79d6565227370ee2c8d311b01cea330c44b057",
+      "new": "71d29dcd76b5060a647839a6f408d00f40edf83fef54867bde5be48d59b3028a",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate. Alle sechs synthetischen Einjahresfälle rechnen mit Dynamic Flex; VPW-Rate z. B. 0,076138 -> 0,072937 (Horizont 20 Jahre), dynamischer Flex 31.365 -> 27.524 Euro bzw. unverändert 54.000 Euro an der Obergrenze. staticResults (ohne Dynamic Flex) bleiben bytegleich. Auf d6f32e04 (ohne VB-1) derselbe neue Hash; c5292130 mit nachschüssiger Formel ergibt den alten. Fiel in der Gegenprobe jahresdaten-gegenprobe auf."
+    },
+    {
+      "test": "tests/flex-safety-bytegleich.test.mjs",
+      "field": "Sechs vollständige Engine-Ergebnisse nach FR-20/33/34 auf BK-2-Referenz",
+      "kind": "hash",
+      "old": "f99d313a5d66babc0dfcc15960baa9e7b500ca2ca49acc1753d89b3e303ead74",
+      "new": "ba01f12a3f2e1503a04a0d3020fcb161f4a6f0c16b3e636c4fc41582747a2fa0",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate. Von den sechs Engine-Fällen ändern sich genau die drei mit Dynamic Flex (VPW-Rate 5,667 -> 5,457 %, dynamischer Flex 13.999 -> 12.744 Euro); die drei ohne Dynamic Flex und die drei Simulatorfälle bleiben bytegleich. Schon auf kr-1 (d9534853) rot. Auf d6f32e04 (ohne VB-1) derselbe neue Wert; 2a74a295 mit nachschüssiger Formel ergibt den alten. Nachtrag volle Suite (19.11.2026)."
+    },
+    {
+      "test": "tests/balance-planned-posts.test.mjs",
+      "field": "Ohne geplante Posten: Ergebnis Muster-Haushalt, Haushalt mit Außenperson und aktive Außenperson, standard",
+      "kind": "hash",
+      "old": "47a7cbbc6f5a56ad33deed89e53145fc44187a2d5b9c3336d41bc9dccfb2a89e",
+      "new": "63b7bb31506338f8c175e8deb7d93acc4a4ffa05a82606310835abcec989fd07",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate. Alle zwölf Balance-Jahresrechnungen rechnen mit Dynamic Flex; die Eingabe-Hashes bleiben gleich, nur die Ergebnisse ändern sich. Auf d6f32e04 (ohne VB-1) derselbe neue Wert; 2a74a295 mit nachschüssiger Formel ergibt den alten. Nachtrag volle Suite (19.11.2026)."
+    },
+    {
+      "test": "tests/balance-planned-posts.test.mjs",
+      "field": "Ohne geplante Posten: Ergebnis Muster-Haushalt, Haushalt mit Außenperson und aktive Außenperson, 3_bucket_jilge",
+      "kind": "hash",
+      "old": "e0d284d814a2293913689129bf4febe4389a5c16f0e207c8e866bba341dd5483",
+      "new": "716df2a223ddc9ff4451fcde304a1af6866d6a8c029dd1a6f80d542ff088b5a7",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate. Alle zwölf Balance-Jahresrechnungen rechnen mit Dynamic Flex; die Eingabe-Hashes bleiben gleich, nur die Ergebnisse ändern sich. Auf d6f32e04 (ohne VB-1) derselbe neue Wert; 2a74a295 mit nachschüssiger Formel ergibt den alten. Nachtrag volle Suite (19.11.2026)."
+    },
+    {
+      "test": "tests/balance-planned-posts.test.mjs",
+      "field": "Ohne geplante Posten: Ergebnis Einzelprofil, standard",
+      "kind": "hash",
+      "old": "d4349af171e0e180f36a39f16b25f4f449e10971a5cafe4ef1579334579649c5",
+      "new": "5c63a589743b9fd44a7252180f06cb2fc299255443a8350f816d0d35d32ff65a",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate. Alle zwölf Balance-Jahresrechnungen rechnen mit Dynamic Flex; die Eingabe-Hashes bleiben gleich, nur die Ergebnisse ändern sich. Auf d6f32e04 (ohne VB-1) derselbe neue Wert; 2a74a295 mit nachschüssiger Formel ergibt den alten. Nachtrag volle Suite (19.11.2026)."
+    },
+    {
+      "test": "tests/balance-planned-posts.test.mjs",
+      "field": "Ohne geplante Posten: Ergebnis Einzelprofil, 3_bucket_jilge",
+      "kind": "hash",
+      "old": "6c3c1172f9a1d324197f94632fb70d4e4832b239aacb228b16c443858b3ef46f",
+      "new": "76769f52018e3630dc82dcfc3a9485e8b3b0ccf0da48398bc41b4fbbcc17efa7",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate. Alle zwölf Balance-Jahresrechnungen rechnen mit Dynamic Flex; die Eingabe-Hashes bleiben gleich, nur die Ergebnisse ändern sich. Auf d6f32e04 (ohne VB-1) derselbe neue Wert; 2a74a295 mit nachschüssiger Formel ergibt den alten. Nachtrag volle Suite (19.11.2026)."
+    },
+    {
+      "test": "tests/balance-planned-posts.test.mjs",
+      "field": "Ohne geplante Posten: Ergebnis synthetische Echtform, standard",
+      "kind": "hash",
+      "old": "1b2bf62463a7de064b78ad8e8cf4a84f59f4999cf8de5eb838ae119fb2844dfe",
+      "new": "0368b18b439cf1f94d70f2ee94b54f3c8237d73597d960118092d17b541c1ee4",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate. Alle zwölf Balance-Jahresrechnungen rechnen mit Dynamic Flex; die Eingabe-Hashes bleiben gleich, nur die Ergebnisse ändern sich. Auf d6f32e04 (ohne VB-1) derselbe neue Wert; 2a74a295 mit nachschüssiger Formel ergibt den alten. Nachtrag volle Suite (19.11.2026)."
+    },
+    {
+      "test": "tests/balance-planned-posts.test.mjs",
+      "field": "Ohne geplante Posten: Ergebnis synthetische Echtform, 3_bucket_jilge",
+      "kind": "hash",
+      "old": "6a2ad34132fd2299d543045816859e413055efe3f57fbb8b98fbfff058ec1395",
+      "new": "f9a007c780ed83a4431db89398a53688f01ebeb2518852e740791b730d7cca61",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate. Alle zwölf Balance-Jahresrechnungen rechnen mit Dynamic Flex; die Eingabe-Hashes bleiben gleich, nur die Ergebnisse ändern sich. Auf d6f32e04 (ohne VB-1) derselbe neue Wert; 2a74a295 mit nachschüssiger Formel ergibt den alten. Nachtrag volle Suite (19.11.2026)."
+    },
+    {
+      "test": "tests/balance-planned-posts.test.mjs",
+      "field": "Ohne geplante Posten: Ergebnis Altbestand, standard",
+      "kind": "hash",
+      "old": "db32f1a8acabca8676f8ed6f60bb9e4d8724eb10c18004d53fa66d1068cc2b9d",
+      "new": "2015647503b539b34c72d00f8661e88c54cad7829a0e12da91b357a2a1637277",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate. Alle zwölf Balance-Jahresrechnungen rechnen mit Dynamic Flex; die Eingabe-Hashes bleiben gleich, nur die Ergebnisse ändern sich. Auf d6f32e04 (ohne VB-1) derselbe neue Wert; 2a74a295 mit nachschüssiger Formel ergibt den alten. Nachtrag volle Suite (19.11.2026)."
+    },
+    {
+      "test": "tests/balance-planned-posts.test.mjs",
+      "field": "Ohne geplante Posten: Ergebnis Altbestand, 3_bucket_jilge",
+      "kind": "hash",
+      "old": "a1396cc3c64931778ee67524e25e5aad6accd75e0d502927d2e468afc61fd496",
+      "new": "9aaaefbab7d68419d6ec6abc315a70534d7a26d0890151e7a8130f41e18cfb08",
+      "reason": "FR-88 (KR-1b): Dynamic Flex mit vorschüssiger VPW-Rate. Alle zwölf Balance-Jahresrechnungen rechnen mit Dynamic Flex; die Eingabe-Hashes bleiben gleich, nur die Ergebnisse ändern sich. Auf d6f32e04 (ohne VB-1) derselbe neue Wert; 2a74a295 mit nachschüssiger Formel ergibt den alten. Nachtrag volle Suite (19.11.2026)."
+    },
+    {
+      "test": "tests/simulator-backtest.test.mjs",
+      "field": "TEST 8 Mindest-Flex: Eingabe minimumFlexAnnual (Zeuge für Status applied)",
+      "kind": "input",
+      "old": 12000,
+      "new": 10000,
+      "reason": "FR-88 (KR-1b): Mit der kleineren vorschüssigen VPW-Rate braucht der Mindest-Flex von 12.000 Euro im Jahr 2005 mehr als 100 % Flex-Rate; der Status wird limited_by_available_flex statt applied, und kein Jahr bleibt als Zeuge für applied. Der Test prüft weiter, dass ein angewandter Mindest-Flex die Entnahme nicht senkt und nach der Endrundung erfüllt ist. Neu kalibriert wie KR-1 bei care-death und vpw-dynamic-flex: mit 10.000 Euro ist 2006 applied und alle Prüfungen der Datei sind grün. Mit 12.000 Euro: d6f32e04 (ohne VB-1) ebenso rot, 2a74a295 mit nachschüssiger Formel grün (2005 applied)."
+    }
+  ]
+}

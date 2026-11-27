@@ -339,30 +339,3 @@ export function createNavigationOperationLifecycle({ guard = null, message = 'Da
 }
 
 export const RESET_RELOAD_REQUIRED_MESSAGE = 'Reset gespeichert; die Seite wurde nicht neu geladen. Bitte jetzt neu laden. Eingaben werden bis dahin nicht gespeichert.';
-
-/** Ein begonnener Reset bleibt schreibgeschützt; Wiederholung bestätigt nur den Flush.
- *
- * @param options Optionen des Aufrufers.
- * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
- */
-export function createResetReloadController({ reload, mutate, blockWrites, flush, message }) {
-    let started = false, stored = false;
-    const writeMessage = () => stored ? message
-        : 'Reset noch nicht dauerhaft bestätigt. Bitte den Speicherabschluss abwarten oder erneut versuchen. Eingaben werden bis zum Neuladen nicht gespeichert.';
-    return {
-        async run(opener) {
-            const result = await reload({ opener, returnResult: true, completionMessage: message,
-                mutate: () => {
-                    if (started) return;
-                    started = true;
-                    // Synchrone Resetmutation und Sperrinstallation bilden einen Abschnitt.
-                    // Auch nach einer teilweise gescheiterten Mutation bleiben alte Inputs gesperrt.
-                    try { mutate(); } finally { blockWrites(writeMessage); }
-                }, flush });
-            if (['reloaded', 'reload_required'].includes(result.status)) stored = true;
-            // Auch nach dem Reloadcallback bleibt die alte Dokumentgeneration gesperrt.
-            // Erst das neu geladene Modul besitzt wieder einen ungesperrten Cache.
-            return result;
-        }
-    };
-}

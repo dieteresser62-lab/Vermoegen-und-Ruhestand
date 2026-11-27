@@ -73,13 +73,13 @@ export function assessPersonData(entries, referenceYear, { deferred = false } = 
         message: missing.length ? `Für die Rechnung fehlt das Geburtsdatum von ${missing.map(person => person.name).join(', ')} – in Personen & Vermögen ergänzen` : '' };
 }
 
-/** Nur lesend: die ausgewählten Haushaltsmitglieder sperren, Außenprofile nicht.
+/** Nur lesend: die Personen des Haushalts prüfen.
  *
  * @param {{storage?: import("../../typcheck/datenvertraege.js").RecordStorage; win?: Window & typeof globalThis; referenceYear?: number}} [options]
  * @param {boolean} [balance]
  * @returns Ergebnis der bestehenden Projektion.
  */
-function readPersonStatus({ storage = persistenceStorage, win = globalThis.window, referenceYear } = {}, balance = false, single = false) {
+function readPersonStatus({ storage = persistenceStorage, win = globalThis.window, referenceYear } = {}, balance = false) {
     if (win?.__personMigrationDeferred) return assessPersonData([], referenceYear, { deferred: true });
     const loaded = loadProfileRegistry(storage);
     if (['corrupt', 'unavailable'].includes(loaded.status)) return { ready: false, status: 'corrupt', error: loaded.error || new Error('Profilbestand nicht lesbar.'), message: 'Profilbestand nicht lesbar.' };
@@ -90,13 +90,9 @@ function readPersonStatus({ storage = persistenceStorage, win = globalThis.windo
     const active = storage.getItem('rs_active_profile');
     try { assertProfileIdentityRecords(loaded.value, current, active, loaded.raw); }
     catch (error) { return { ready: false, status: 'corrupt', error, message: error.message }; }
-    const selectedIds = Object.keys(profiles).filter(id => profiles[id].meta?.belongsToHousehold !== false);
-    const singleProfile = single || balance && selectedIds.length === 0;
-    const entries = Object.entries(profiles).filter(([id, p]) => singleProfile
-        ? id === current : p.meta?.belongsToHousehold !== false).map(([id, profile]) => ({
+    const entries = Object.entries(profiles).map(([id, profile]) => ({
         profileId: id, name: profile.meta?.name || id, data: { ...profile.data }
     }));
-    if (!entries.length && current && profiles[current]) entries.push({ profileId: current, name: profiles[current].meta?.name || current, data: { ...profiles[current].data } });
     for (const entry of entries) if (entry.profileId === current) {
         for (const key of [...Object.values(INCOME_KEYS), 'profile_planned_inflows_v1', ...Object.values(PERSON_VALUE_KEYS), ...Object.values(CARE_VALUE_KEYS), 'sim_pflegeKostenStaffelPreset', ...[1, 2, 3, 4, 5].map(grade => `sim_pflegeStufe${grade}Form`), 'profile_aktuelles_alter', 'profile_rente_monatlich', 'profile_sonstige_einkuenfte']) {
             const raw = storage.getItem(key); if (raw !== null) entry.data[key] = raw;
@@ -115,26 +111,18 @@ function readPersonStatus({ storage = persistenceStorage, win = globalThis.windo
     }
     try {
         const year = referenceYear ?? personReferenceYear(metadata);
-        return { ...assessPersonData(entries, year), referenceYear: year, entries, singleProfile, careValues: readCareValues(storage), ...(balance ? { calculationProfileId: entries.some(entry => entry.profileId === current) ? current : entries.map(entry => entry.profileId).sort()[0] } : {}) };
+        return { ...assessPersonData(entries, year), referenceYear: year, entries, careValues: readCareValues(storage), ...(balance ? { calculationProfileId: entries.some(entry => entry.profileId === current) ? current : entries.map(entry => entry.profileId).sort()[0] } : {}) };
     } catch (error) { return { ready: false, status: 'corrupt', error, message: error.message, entries }; }
 }
 
-/** Simulator: ausgewählte Haushaltsmitglieder, unabhängig vom geöffneten Profil.
+/** Simulator: die Personen des Haushalts, unabhängig vom geöffneten Profil.
  *
  * @param options Optionen des Aufrufers.
  * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
 export function readHouseholdPersonStatus(options) { return readPersonStatus(options); }
 
-/** UR-1c: Nur die geöffnete Person als Einzelprofil mit ihren eigenen Pflegewerten, wie der Simulator sie allein rechnet.
- * Für die Anzeige einer Person außerhalb des Haushalts; liest nur.
- *
- * @param options Optionen des Aufrufers.
- * @returns Rückgabe wie {@link readBalancePersonStatus}, mit genau einem Eintrag.
- */
-export function readSingleProfileStatus(options) { return readPersonStatus(options, true, true); }
-
-/** Balance: Auswahl bestimmt den Umfang; ohne Auswahl rechnet die geöffnete Person.
+/** Balance: alle Personen des Haushalts, dazu die rechnende Person.
  *
  * @param options Optionen des Aufrufers.
  * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.

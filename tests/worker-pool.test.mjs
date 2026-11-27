@@ -37,7 +37,7 @@ class MockWorker {
 
     _processMessage(message) {
         // Simuliere verschiedene Message-Typen
-        if (message.type === 'init' || message.type === 'sweep-init') {
+        if (message.type === 'init') {
             return {
                 jobId: message.jobId,
                 type: 'ready',

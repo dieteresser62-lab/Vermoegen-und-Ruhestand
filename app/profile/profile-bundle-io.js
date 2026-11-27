@@ -5,6 +5,7 @@ import { PROFILE_VERSION, getProfileRegistry } from './profile-registry.js';
 import { loadProfileDataIntoLocalStorage } from './profile-live-storage.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import { validatePersistenceDomainRecords } from '../shared/persistence-backup.js';
+import { HOUSEHOLD_PURCHASES_KEY } from '../simulator/simulator-household-purchases-persistence.js';
 import { isAllowedPersistenceImportKey } from '../shared/persistence-key-policy.js';
 import { PARTNERSHIP_KEY, migratePartnershipRecord } from './household-partnership.js';
 import { areaSessionStorage, getStorageArea } from '../shared/persistence-area-storage.js';
@@ -35,6 +36,8 @@ const ACTIVE_PROFILE_KEY = PROFILE_STORAGE_KEYS.active;
 export const PROFILE_BUNDLE_GLOBAL_KEYS = Object.freeze([
     'household_partnership_v1',
     'household_care_values_v1',
+    'household_simulator_widow_v1',
+    HOUSEHOLD_PURCHASES_KEY,
     'household_care_hint_v1',
     'rs_wealth_history_start_v1',
     'rs_daily_prices_v1',

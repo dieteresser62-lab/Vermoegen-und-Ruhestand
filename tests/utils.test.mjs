@@ -3,8 +3,7 @@ import {
     formatCurrencyShortLog,
     shortenText,
     mean, quantile,
-    rng,
-    parseRangeInput
+    rng
 } from '../app/simulator/simulator-utils.js';
 
 console.log('--- Utilities Tests ---');
@@ -74,24 +73,6 @@ console.log('--- Utilities Tests ---');
     const stream = rng(12345), forkA = stream.fork('CARE_P1'), forkB = stream.fork('CARE_P1');
     assertEqual(forkA(), forkB(), 'Fork bleibt deterministisch');
     assert(stream.fork('CARE_P1')() !== stream.fork('CARE_P2')(), 'Pflegeströme bleiben getrennt');
-}
-
-// --- TEST 4: Range Parsing ---
-{
-    // Range parsing supports sweep input formats.
-    // Format "start:step:end"
-    const r1 = parseRangeInput("10:5:20");
-    assert(JSON.stringify(r1) === JSON.stringify([10, 15, 20]), 'Range start:step:end');
-
-    // Format "a,b,c"
-    const r2 = parseRangeInput("10, 15, 20");
-    assert(JSON.stringify(r2) === JSON.stringify([10, 15, 20]), 'Comma separated list');
-
-    // Format "x"
-    const r3 = parseRangeInput("42");
-    assert(JSON.stringify(r3) === JSON.stringify([42]), 'Single value');
-
-    console.log('✅ Range Parsing Passed');
 }
 
 console.log('--- Utilities Tests Completed ---');

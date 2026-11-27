@@ -2,6 +2,7 @@
 /** @import * as AnalysisTypes from '../../../typcheck/simulator-analysis.js' */
 "use strict";
 
+import HISTORICAL_DATENSTAND from '../historical-datenstand.js';
 import { staticEntry, unresolved, resolved, notApplicable } from './entry-builders.js';
 
 export const capital_income_tax_parameters = staticEntry({
@@ -79,7 +80,7 @@ export const stress_presets = staticEntry({
             'app/simulator/simulator-portfolio-stress.js:buildStressContext'
         ],
         unit: 'mixed_stress_parameter_contract',
-        embeddedValueHash: resolved('e42d795bef1f5f30b9664864aa8981d1a55efa691ed827d29faeb78675ec3988'),
+        embeddedValueHash: resolved('ee5081aeb94b48208056188ced1cf18b13ebb1c816539f4264ae0e8a4c7a57da'),
         contractValue: {
             evidenceKinds: ['none', 'historical_filter', 'reconstructed_window', 'hybrid_synthetic', 'synthetic_shock'],
             sourceEvidenceKinds: ['not_applicable', 'mixed_observation_proxy_and_reconstruction', 'research_proxy_reconstruction', 'mixed_observation_proxy_and_reconstruction_plus_synthetic_shift'],
@@ -90,7 +91,15 @@ export const stress_presets = staticEntry({
         externalValidationStatus: 'not_applicable'
     });
 
-export const regime_classification_thresholds = staticEntry({
+/**
+ * Einträge, deren Inhalt oder Hash vom Datenumfang abhängt: Regimeschwellen mit geprüfter Regimezählung,
+ * Regimeübergänge und Monte-Carlo-Grenzen („Startjahr ab“ reicht bis zum Endjahr). Zählung und Hashes stehen im Datenstand.
+ *
+ * @param {typeof HISTORICAL_DATENSTAND} [stand] Datenstand; ohne Angabe der eingebettete.
+ */
+export function historicalPolicyEntries(stand = HISTORICAL_DATENSTAND) {
+    const { regimeDistribution, policyHashes } = stand;
+    const regime_classification_thresholds = staticEntry({
         id: 'regime_classification_thresholds',
         category: 'stress_regime',
         label: 'Historical regime-classification thresholds',
@@ -100,7 +109,7 @@ export const regime_classification_thresholds = staticEntry({
             'app/simulator/simulator-data.js:classifyHistoricalRegime'
         ],
         unit: 'mixed_percent_and_ratio_thresholds',
-        embeddedValueHash: resolved('8dad669ee3def85c107b2ea21d5e4531af9fd0a0cb0d0bfe4271a02dd9f448da'),
+        embeddedValueHash: resolved(policyHashes.regime_classification_thresholds),
         contractValue: {
             schemaVersion: 'HistoricalRegimeClassificationV1',
             sourceSeries: 'global_equity_research_annual_returns',
@@ -111,43 +120,31 @@ export const regime_classification_thresholds = staticEntry({
             labels: ['BULL', 'BEAR', 'SIDEWAYS', 'STAGFLATION'],
             calibrationStatus: 'retained_after_total_return_distribution_review',
             reviewedDistribution1925To2025: {
-                observationCount: 101,
-                BULL: 40,
-                BEAR: 6,
-                SIDEWAYS: 49,
-                STAGFLATION: 6
+                observationCount: regimeDistribution.observationCount,
+                BULL: regimeDistribution.BULL,
+                BEAR: regimeDistribution.BEAR,
+                SIDEWAYS: regimeDistribution.SIDEWAYS,
+                STAGFLATION: regimeDistribution.STAGFLATION
             }
         },
         externalValidationStatus: 'not_validated'
     });
 
-export const regime_transition_matrix = staticEntry({
+    const regime_transition_matrix = staticEntry({
         id: 'regime_transition_matrix',
         category: 'stress_regime',
         label: 'Derived historical regime transition counts',
         evidenceClass: 'derived',
         implementationLocations: ['app/simulator/simulator-data.js:REGIME_TRANSITIONS'],
         unit: 'transition_count',
-        embeddedValueHash: resolved('ab1a37acbf4a1f141983ad194108f028fac85eb3f3c5522efe1d70c42601f398'),
+        embeddedValueHash: resolved(policyHashes.regime_transition_matrix),
         source: resolved('ruhestandsapp-historical-data-v1 plus REGIME_CLASSIFICATION_THRESHOLDS'),
         seriesIdentifier: resolved('REGIME_TRANSITIONS'),
         transformation: resolved('Count consecutive canonical annual regime labels; missing regime pools or outgoing transitions reject initialization.'),
         externalValidationStatus: 'not_validated'
     });
 
-export const engine_policy_defaults = staticEntry({
-        id: 'engine_policy_defaults',
-        category: 'defaults_fallbacks',
-        label: 'Engine policy, threshold and fallback registry',
-        evidenceClass: 'model_assumption',
-        implementationLocations: ['engine/config.mjs:CONFIG'],
-        unit: 'mixed_engine_policy_contract',
-        // Unbenutztes CAUTION.inflationCap entfernt; wirksame Parameter unverändert.
-        embeddedValueHash: resolved('f8ed19ec58efa139c8f806ffd77d53959393a20669ea1648c31a029ae2991d85'),
-        externalValidationStatus: 'not_validated'
-    });
-
-export const monte_carlo_defaults = staticEntry({
+    const monte_carlo_defaults = staticEntry({
         id: 'monte_carlo_defaults',
         category: 'defaults_fallbacks',
         label: 'Monte Carlo parameter limits, defaults and method vocabulary',
@@ -158,7 +155,27 @@ export const monte_carlo_defaults = staticEntry({
         ],
         unit: 'mixed_simulation_parameter_contract',
         // FR-75: legacyStoredDefault (alte Vorgabe 35 gilt beim Lesen als automatisch).
-        embeddedValueHash: resolved('2a85b230cfe4324e4630127d452c59f5588f3d3ce4305bd17831ea78b34502f3'),
+        embeddedValueHash: resolved(policyHashes.monte_carlo_defaults),
+        externalValidationStatus: 'not_validated'
+    });
+
+    return { regime_classification_thresholds, regime_transition_matrix, monte_carlo_defaults };
+}
+
+const HISTORICAL_POLICY_ENTRIES = historicalPolicyEntries();
+export const regime_classification_thresholds = HISTORICAL_POLICY_ENTRIES.regime_classification_thresholds;
+export const regime_transition_matrix = HISTORICAL_POLICY_ENTRIES.regime_transition_matrix;
+export const monte_carlo_defaults = HISTORICAL_POLICY_ENTRIES.monte_carlo_defaults;
+
+export const engine_policy_defaults = staticEntry({
+        id: 'engine_policy_defaults',
+        category: 'defaults_fallbacks',
+        label: 'Engine policy, threshold and fallback registry',
+        evidenceClass: 'model_assumption',
+        implementationLocations: ['engine/config.mjs:CONFIG'],
+        unit: 'mixed_engine_policy_contract',
+        // Unbenutztes CAUTION.inflationCap entfernt; wirksame Parameter unverändert.
+        embeddedValueHash: resolved('f8ed19ec58efa139c8f806ffd77d53959393a20669ea1648c31a029ae2991d85'),
         externalValidationStatus: 'not_validated'
     });
 

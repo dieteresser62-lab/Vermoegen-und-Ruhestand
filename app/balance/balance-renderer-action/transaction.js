@@ -127,7 +127,7 @@ export const transactionMethods = {
                     });
                 }
                 if ((entryAction.steuer || 0) > 0) {
-                    quellenItems.push(createRow(`Steuern (${entryAction.taxSettlement && !entryAction.taxEstimated ? 'final, Settlement' : 'geschätzt'})`, entryAction.steuer || 0, null, entryName, true));
+                    quellenItems.push(createRow(`Steuern (${entryAction.taxSettlement && !entryAction.taxEstimated ? 'abgerechnet' : 'geschätzt'})`, entryAction.steuer || 0, null, entryName, true));
                 }
 
                 const uses = entryAction.verwendungen || {};
@@ -204,7 +204,7 @@ export const transactionMethods = {
             const taxTotal = action.steuer || 0;
             if (taxTotal > 0) {
                 const taxWeights = sourceTotals.some(total => total > 0) ? sourceTotals : totalAssets;
-                addRows(action.taxSettlement ? 'Steuern (final, Settlement)' : 'Steuern (geschätzt)', distributeAmount(taxTotal, taxWeights), null, true);
+                addRows(action.taxSettlement ? 'Steuern (abgerechnet)' : 'Steuern (geschätzt)', distributeAmount(taxTotal, taxWeights), null, true);
             }
 
             verwendungenItems.length = 0;
@@ -245,7 +245,7 @@ export const transactionMethods = {
             });
             const actionTax = Number(action?.steuer || 0);
             if (actionTax > 0) {
-                const taxRowLabel = action?.taxSettlement && !action.taxEstimated ? '- Steuern (final, Settlement)' : '- Steuern (geschätzt)';
+                const taxRowLabel = action?.taxSettlement && !action.taxEstimated ? '- Steuern (abgerechnet)' : '- Steuern (geschätzt)';
                 const steuerRow = createRow(taxRowLabel, actionTax, null, '', true);
                 quellenItems.push(steuerRow);
             }

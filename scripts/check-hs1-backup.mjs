@@ -11,6 +11,7 @@ let checks = 0;
 try {
     const { PersistenceFacade } = await import('../app/shared/persistence-facade.js');
     const { importFullPersistenceBackup } = await import('../app/shared/persistence-backup.js');
+    const { BACKUP_DELIVERY_KEY } = await import('../app/data/data-backup-summary.js');
     persistence = PersistenceFacade;
     const payload = JSON.parse(await readFile(process.argv[2], 'utf8'));
     if (!payload?.records || typeof payload.records !== 'object') throw new Error();
@@ -31,20 +32,27 @@ try {
     const read = await persistence.readPersistedRecords();
     // Ausschließlich Zählwerte und Prüfsummen; auch Loaderdiagnosen nie ausgeben.
     const { loadExpensesStoreResult } = await import('../app/balance/balance-expenses-storage.js');
-    const { hasExpenseImport, hasCategoryNeeds } = await import('../app/balance/balance-expenses-metrics.js');
-    const { computeSpent } = await import('../app/balance/balance-expenses-metrics.js');
+    const { hasExpenseImport, hasCategoryNeeds, computeSpent, expenseConventions } = await import('../app/balance/balance-expenses-metrics.js');
     const loaded = loadExpensesStoreResult({ getItem: key => read[key] ?? null });
     if (loaded.status === 'corrupt') throw new Error();
-    const entries = store => Object.values(store?.years || {}).flatMap(year => Object.values(year.months || {})
-        .flatMap(month => Object.values(month.profiles || {}))).filter(hasExpenseImport);
+    const entries = store => Object.values(store?.years || {}).flatMap(year => {
+        const directions = expenseConventions(year);
+        return Object.values(year.months || {}).flatMap(month => Object.entries(month.profiles || {})
+            .filter(([, entry]) => hasExpenseImport(entry))
+            .map(([id, entry]) => ({ entry, direction: directions.get(id) })));
+    });
     const oldEntries = entries(payload.records.balance_expenses_v1 ? JSON.parse(payload.records.balance_expenses_v1) : {});
     const newEntries = entries(loaded.store);
-    const sumsHash = values => createHash('sha256').update(JSON.stringify(values.map(entry => computeSpent(entry.categories)))).digest('hex');
+    const sumsHash = values => createHash('sha256').update(JSON.stringify(values.map(({ entry, direction }) => computeSpent(entry.categories, direction)))).digest('hex');
     const oldSumsHash = sumsHash(oldEntries), newSumsHash = sumsHash(newEntries);
-    const withBreakdownCount = newEntries.filter(hasCategoryNeeds).length;
+    const withBreakdownCount = newEntries.filter(({ entry }) => hasCategoryNeeds(entry)).length;
     const withoutBreakdownCount = newEntries.length - withBreakdownCount;
-    const oldHash = hash(payload.records), newHash = hash(read);
-    const oldCount = Object.keys(payload.records).length, newCount = Object.keys(read).length;
+    // Der lokale Sicherungsstatus entsteht erst bei der Übernahme. Verglichen werden die Fachrecords der Datei.
+    const oldRecords = { ...payload.records };
+    delete oldRecords[BACKUP_DELIVERY_KEY];
+    delete read[BACKUP_DELIVERY_KEY];
+    const oldHash = hash(oldRecords), newHash = hash(read);
+    const oldCount = Object.keys(oldRecords).length, newCount = Object.keys(read).length;
     const equal = oldHash === newHash && oldCount === newCount && oldSumsHash === newSumsHash && oldEntries.length === newEntries.length;
     output(JSON.stringify({ checks: ++checks, oldCount, newCount, oldHash, newHash,
         oldExpenseCount: oldEntries.length, newExpenseCount: newEntries.length, withBreakdownCount, withoutBreakdownCount, oldSumsHash, newSumsHash }) + '\n');

@@ -5,7 +5,7 @@ import { assertHouseholdPlanInputValues, bindHouseholdPlanField, readHouseholdPl
     syncWithdrawalModeOptions, planModeChangeText } from '../shared/household-plan-fields.js';
 import { readAnnualPlanRecord, annualPlanEntryMode } from '../profile/annual-plan-record.js';
 import { appNow } from '../shared/app-clock.js';
-import { persistenceStorage, PersistenceFacade } from '../shared/persistence-facade.js';
+import { persistenceStorage, PersistenceFacade, syncWriteBlockMessage } from '../shared/persistence-facade.js';
 import { readBalanceHouseholdPlan, assertPlanValues, patchHouseholdPlan, canonicalPlan } from '../profile/household-plan.js';
 import { initializeHouseholdPlanPage } from '../profile/household-plan-dialog.js';
 import { loadProfileRegistry } from '../profile/profile-registry.js';
@@ -109,7 +109,7 @@ export function createManagerHouseholdPlan({ doc, getProfileId, storage = persis
     const clearTimer = () => { if (timer !== null) unschedule(timer); timer = null; };
     const current = (key = scope?.key, id = origin, epoch = generation) => {
         if (disposed || getProfileId() !== id || generation !== epoch) return false;
-        try { return readBalanceHouseholdPlan({ storage, profileId: id }).scope?.key === key; } catch { return false; }
+        try { return readBalanceHouseholdPlan({ storage }).scope?.key === key; } catch { return false; }
     };
     const dirty = () => Object.keys(changes).length > 0 || Boolean(retryChanges);
     const bindings = new Map(fields.map(field => {
@@ -185,7 +185,7 @@ export function createManagerHouseholdPlan({ doc, getProfileId, storage = persis
         text('managerPlanTechnicalMessage', error);
         if (node('managerPlanTechnical')) node('managerPlanTechnical').hidden = !error;
         text('managerPlanStatus', validation ? `Nicht gespeichert: ${validationText}` : error
-            ? persistence.hasSyncWriteBlocks?.() ? 'Speichern und Rücknahme nicht bestätigt. Bitte neu laden und die Sicherung prüfen.' : 'Nicht gespeichert. Die Änderung konnte nicht bestätigt werden. Bitte erneut versuchen.'
+            ? persistence.hasSyncWriteBlocks?.() ? syncWriteBlockMessage() : 'Nicht gespeichert. Die Änderung konnte nicht bestätigt werden. Bitte erneut versuchen.'
             : writing ? 'Wird gespeichert …' : dirty() ? 'Änderungen warten auf Bestätigung …' : confirmed ? saved ? 'Gespeichert' : 'Bestätigter Plan geladen' : 'Planbereich noch nicht bestätigt.');
         syncBlocked(); notify();
     }
@@ -230,7 +230,7 @@ export function createManagerHouseholdPlan({ doc, getProfileId, storage = persis
         text('managerPlanInflation', 'Inflationsfortschreibung noch nicht belegt');
         if (node('managerPlanComparison')) node('managerPlanComparison').innerHTML = '';
         try {
-            const loaded = readBalanceHouseholdPlan({ storage, profileId: origin });
+            const loaded = readBalanceHouseholdPlan({ storage });
             scope = loaded.scope; confirmed = loaded.status === 'valid' ? loaded.entry : null;
             const registry = loadProfileRegistry(storage).value;
             const names = scope?.ids.map(id => registry?.profiles[id]?.meta.name || id) || [];

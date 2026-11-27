@@ -1,4 +1,9 @@
+import { fz1References } from './helpers/fz-1-expectations.mjs';
+import { readHP4References } from './helpers/hp-4-expectations.mjs';
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import { readVB1References } from './helpers/vb-1-expectations.mjs';
 import { readEV1bReferences } from './helpers/ev-1b-expectations.mjs';
+import { hashWithoutExemptHome } from './helpers/family-home-log-hash.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { readPartnership, migratePartnershipRecord, equalizationAllowance, inheritancePreview, testamentEstate, PARTNERSHIP_KEY } from '../app/profile/household-partnership.js';
@@ -18,17 +23,18 @@ import { exportProfilesBundle, importProfilesBundle } from '../app/profile/profi
 import { buildFullPersistenceBackup, normalizeFullPersistenceBackup, validatePersistenceDomainRecords } from '../app/shared/persistence-backup.js';
 
 import { readFI1References } from './helpers/fi-1-expectations.mjs';
+const readFZ1Reference = fz1References(import.meta.url);
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const controls = JSON.parse(readFileSync(new URL('./fixtures/zg-1-byte-controls.json', import.meta.url)));
 for (const status of ['married', 'unmarried']) {
     const { inputs, state } = inheritanceCase(status);
-    assertEqual(hash(deathYear(inputs, state)), readFI1References(readEV1bReferences(controls[status])), `${status}: vollständiges Todesjahr bytegleich zum Ausgangsstand`);
+    assertEqual(hash(deathYear(inputs, state)), readHP4References(readKR1cReferences(readVB1References(readFI1References(readEV1bReferences(controls[status]))))), `${status}: vollständiges Todesjahr bytegleich zum Ausgangsstand`);
 }
 const married = { status: 'married', maritalPropertyRegime: 'community' };
 const zg1bControls = JSON.parse(readFileSync(new URL('./fixtures/zg-1b-byte-controls.json', import.meta.url)));
 for (const kind of Object.keys(zg1bControls.hashes)) {
     const { inputs, state } = zg1bControlCase(kind);
-    assertEqual(hash(deathYear(inputs, state)), readFI1References(zg1bControls.hashes[kind]), `ZG-1b ${kind}: vollständiges Todesjahr bytegleich`);
+    assertEqual(hashWithoutExemptHome(deathYear(inputs, state)), readFZ1Reference(readHP4References(readKR1cReferences(readVB1References(readFI1References(zg1bControls.hashes[kind]))))), `ZG-1b ${kind}: Todesjahr im früheren Protokollformat bytegleich`);
 }
 function estate({ regime = 'community', deceased = 2200000, survivor = 400000, factor = 2, percent = 100, rule, homes = [], inflows = [] } = {}) {
     const inputs = { partnership: { schemaVersion: 1, status: 'married', maritalPropertyRegime: regime, inheritance: {},
@@ -47,17 +53,19 @@ function estate({ regime = 'community', deceased = 2200000, survivor = 400000, f
 }
 {
     // Variante: Hinterbliebene 300.000, Zugewinn 100.000; Ausgleich 250.000.
-    for (const [cash, value, survivor, allowance, expected] of [
-        [2200000, 1000000, 400000, 500000, 273238.09523809527], [1600000, 800000, 300000, 250000, 185250]
+    // VB-1: Der Simulator zieht ohne Hinterbliebenenrente zusätzlich 256.000 € Versorgungsfreibetrag ab (vorher 273.238,10 € und 185.250 €),
+    // die Vorschau bleibt ohne Versorgungsfreibetrag. HP-4: Erwerb auf volle 100 € abgerundet (vorher 273.238,10 € und 224.598,10 €).
+    for (const [cash, value, survivor, allowance, expected, simulated] of [
+        [2200000, 1000000, 400000, 500000, 273220, 224580], [1600000, 800000, 300000, 250000, 185250, 136610]
     ]) {
         const homes = [{ id: 'familienheim', profileId: 'max', wert: value, nutzung: 'selbst', stand: '2026-10' }];
         const result = estate({ deceased: cash, survivor, homes }).result;
         const reduced = allowance * cash / (cash + value * 2);
         assertClose(result.inheritance.exemptGain, reduced, 1e-8, 'Satz 6: Ausgleich nur im Verhältnis des nicht befreiten Endvermögens');
-        assertClose(result.erbschaftsteuer, expected, 1e-8, 'Satz 6: Gegenrechnung Haupt- und Variantenfall');
+        assertClose(result.erbschaftsteuer, simulated, 1e-7, 'Satz 6: Gegenrechnung Haupt- und Variantenfall');
         for (const rule of [{ home: 'money' }, { home: 'life-estate' }]) {
             const testament = estate({ deceased: cash, survivor, homes, rule }).result;
-            assertClose(testament.erbschaftsteuer, expected, 1e-8, 'Satz 6 gilt auch beim Testament');
+            assertClose(testament.erbschaftsteuer, simulated, 1e-7, 'Satz 6 gilt auch beim Testament');
         }
         const partial = estate({ deceased: cash, survivor, homes, percent: 50 }).result;
         assertClose(partial.inheritance.exemptGain, allowance * (cash + value) / (cash + value * 2), 1e-8,
@@ -67,7 +75,7 @@ function estate({ regime = 'community', deceased = 2200000, survivor = 400000, f
         for (const testament of [undefined, { home: 'life-estate' }]) {
             const preview = inheritancePreview(cash, value * 2, 100, { ...married, exemptHome: value * 2, gains, testament });
             assertClose(preview.tax, expected, 1e-8, 'Vorschau und Simulator verwenden dieselbe Satz-6-Rechnung');
-            assertClose(preview.taxable, cash - 500000 - reduced, 1e-8, 'Vorschau-Bemessung enthält den gekürzten Zugewinnabzug');
+            assertClose(preview.taxable, Math.floor((cash - 500000 - reduced) / 100) * 100, 1e-8, 'Vorschau-Bemessung enthält den gekürzten Zugewinnabzug');
             assertEqual(preview.rate, .19, 'Vorschausatz folgt der Bemessung mit Zugewinnabzug');
         }
     }
@@ -82,7 +90,8 @@ function estate({ regime = 'community', deceased = 2200000, survivor = 400000, f
     }
     const inherited = estate({ inflows: [{ profileId: 'max', amount: 300000, year: 2030, factor: 2, label: 'Erbschaft' }] }).result;
     assertEqual(inherited.inheritance.exemptGain, 500000, 'Erbschaft 300.000 erhöht das Anfangsvermögen statt des Zugewinns');
-    assertEqual(inherited.erbschaftsteuer, 285000, 'Erbschaft 300.000: Steuer 285.000 statt 256.500');
+    // VB-1: 1.500.000 € − 256.000 € Versorgungsfreibetrag = 1.244.000 € × 19 % (vorher 285.000 € statt 256.500 €).
+    assertEqual(inherited.erbschaftsteuer, 236360, 'Erbschaft 300.000: Steuer 236.360 statt 207.860');
     const receivedBySurvivor = estate({ inflows: [{ profileId: 'erika', amount: 300000, year: 2030, factor: 2, label: 'Schenkung' }] }).result;
     assertEqual(receivedBySurvivor.inheritance.exemptGain, 500000, 'Zufluss an die hinterbliebene Person wird ebenfalls bereinigt');
     const indexed = estate({ inflows: [
@@ -112,10 +121,11 @@ function estate({ regime = 'community', deceased = 2200000, survivor = 400000, f
 {
     const community = estate().result, separation = estate({ regime: 'separation' }).result;
     // Anfang 500.000/100.000; Inflation ×2; Tod 2.200.000/400.000.
-    // Zugewinn 1.200.000/200.000; Ausgleich 500.000; steuerpflichtig 1.200.000 ×19 %.
+    // Zugewinn 1.200.000/200.000; Ausgleich 500.000; steuerpflichtig 1.200.000 − 256.000 Versorgungsfreibetrag (VB-1) ×19 %.
+    // Vorher ohne Versorgungsfreibetrag: 228.000 und 323.000 Euro.
     assertEqual(community.inheritance.exemptGain, 500000, '(a) Handrechnung: halbe Zugewinndifferenz');
-    assertEqual(community.erbschaftsteuer, 228000, '(a) Handrechnung: 228.000 Euro Steuer nach Ausgleich');
-    assertEqual(separation.erbschaftsteuer, 323000, '(a) Gütertrennung: 1.700.000 ×19 Prozent');
+    assertEqual(community.erbschaftsteuer, 179360, '(a) Handrechnung: 179.360 Euro Steuer nach Ausgleich und Versorgungsfreibetrag');
+    assertEqual(separation.erbschaftsteuer, 274360, '(a) Gütertrennung: (1.700.000 − 256.000) ×19 Prozent');
     assertEqual(community.inheritance.inherited, separation.inheritance.inherited, 'Ausgleich ändert den Erwerb nicht');
 }
 {
@@ -154,9 +164,12 @@ for (const testament of [undefined, { home: 'residence', residenceTax: 'annual' 
         exemptGain: annual.exemptGain, residenceTax: annual.residenceTax } }], { source: 'mc', inputs: logInputs });
     assert(html.includes('500.000 € persönlicher Freibetrag plus 100.000 € Zugewinnausgleich'),
         'Jahressteuer-ⓘ nennt den persönlichen Freibetrag und den Zugewinnanteil getrennt');
+    // VB-1: Das echte Todesjahr trägt den Versorgungsfreibetrag; er erhöht den Freibetragsrest wie der Zugewinnanteil.
+    assert(html.includes('plus 100.000 € Zugewinnausgleich plus 256.000 € Versorgungsfreibetrag)'),
+        'Jahressteuer-ⓘ nennt auch den Versorgungsfreibetrag');
     for (const status of ['married', 'unmarried']) {
         const withoutGain = renderProtocolTable([{ ...row, inheritance: { ...row.inheritance,
-            exemptGain: 0, residenceTax: annual.residenceTax } }], { source: 'mc', inputs: { ...logInputs,
+            exemptGain: 0, pensionAllowance: undefined, residenceTax: annual.residenceTax } }], { source: 'mc', inputs: { ...logInputs,
                 partnership: { ...logInputs.partnership, status, maritalPropertyRegime: 'separation' } } });
         assert(!withoutGain.includes('plus 0 € Zugewinnausgleich') && withoutGain.includes('persönlicher Freibetrag)'),
             status + ': Jahressteuer-ⓘ nennt ohne Zugewinn nur den persönlichen Freibetrag');

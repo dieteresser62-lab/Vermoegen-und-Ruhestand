@@ -1,10 +1,12 @@
-import { projectHistoryClosures, renderManagerWealthHistory, managerHistoryLegend, dailyHistoryMetricsMarkup } from '../app/tranches/tranchen-history-closures.js';
-import { renderWealthHistorySvg } from '../app/tranches/tranchen-history-svg.js';
+import { renderManagerWealthHistory, managerHistoryLegend, dailyHistoryMetricsMarkup } from '../app/tranches/tranchen-history-closures.js';
+import { renderWealthHistorySvg, historyDayRows } from '../app/tranches/tranchen-history-svg.js';
 import { historyDay } from '../app/tranches/tranchen-history-store.js';
 import { createManualWealthHistoryEntry, createAnnualWealthHistoryEntry } from '../types/wealth-history-contract.js';
-import { summaryMarkup, tableMarkup } from '../app/balance/balance-wealth-history-renderer.js';
+import { WEALTH_CAPTURES_KEY } from '../types/wealth-capture-contract.js';
 import { CONFIG } from '../app/balance/balance-config.js';
 
+// VS-2: Personen & Vermögen › Verlauf zeigt keine erfassten Stände mehr. Gespeicherte Erfassungen bleiben
+// unverändert im Speicher, erscheinen aber weder als Raute noch als Kennzahl, Tabelle oder Legende.
 const source = { tagesgeld: 100, geldmarktEtf: 200, depotwertAlt: 300, depotwertNeu: 400 };
 const annual = createAnnualWealthHistoryEntry(source, 2026);
 const manual = createManualWealthHistoryEntry({ ...source, tagesgeld: 2000 }, '2027-01-02');
@@ -15,63 +17,28 @@ const history = { points: [{ date: '2027-01-01', day, total: 80, known: 80, allo
 const frozen = value => { Object.freeze(value); for (const child of Object.values(value)) if (child && typeof child === 'object') frozen(child); return value; };
 frozen(state); frozen(history);
 const before = JSON.stringify([state, history]);
-const projection = projectHistoryClosures(history, state);
-assertEqual(projection.chart.points, history.points, 'Tagesreihe bleibt dieselbe unveränderte Quelle');
-assertEqual(projection.chart.range.end, historyDay(manual.asOf), 'Heutiger Stand erweitert Achse über gestern hinaus');
-assertEqual(projection.chart.range.start, historyDay(annual.asOf), 'Früher Abschluss erweitert Datumsachse');
-const svg = renderWealthHistorySvg(projection.chart);
-for (const entry of [annual, manual]) {
-    assert(svg.includes(`data-closure-date="${entry.asOf}" data-closure-total="${entry.total}"`), 'Marke am gespeicherten Stichtag mit unveränderter Summe');
-    assert(svg.includes(entry.asOf.split('-').reverse().join('.') + ':') && svg.includes('Gesamtvermögen'), 'Tooltip nennt Datum und Summe');
-}
-assert(svg.includes('history-closure-annual') && svg.includes('history-closure-manual'), 'Gefüllte und offene Raute haben getrennte Darstellung');
-assert(Number(svg.match(/data-scale-ceiling="([^"]+)"/)[1]) > manual.total, 'Achse enthält abweichenden Abschlusswert vollständig');
-assertEqual(projection.rows.map(row => row.marker).join(','), '◆,◇', 'Jahresmarker ist gefüllte Raute');
-assertEqual(JSON.stringify([state, history]), before, 'Anzeige verändert keine Quelle');
-const alone = projectHistoryClosures(null, state);
-assertEqual(alone.chart.points.length, 0, 'Ohne Tageslinie werden keine Tageswerte erfunden');
-assert(!renderWealthHistorySvg(alone.chart).includes('class="history-total"'), 'Marken allein zeichnen keine Tageslinie');
-assertEqual(projectHistoryClosures(null, {}).chart, null, 'Leerer Bestand bleibt leer');
-const nodes = Object.fromEntries(['managerWealthChart', 'managerWealthContext', 'managerWealthMetrics', 'managerWealthTable', 'managerWealthHint', 'managerWealthCapturedTitle', 'managerWealthPersonHint', 'managerWealthLegend', 'managerWealthDailyNote', 'managerWealthBasis', 'managerWealthStatus', 'managerDailyMetrics', 'managerDailyPeriod', 'managerDailyStatus', 'managerDailyAllocation', 'managerDailyInfo'].map(id => [id, { innerHTML: '', textContent: '' }]));
+const nodes = Object.fromEntries(['managerWealthChart', 'managerWealthContext', 'managerWealthLegend', 'managerWealthDailyNote', 'managerWealthBasis', 'managerDailyMetrics', 'managerDailyPeriod', 'managerDailyStatus', 'managerDailyInfo'].map(id => [id, { innerHTML: '', textContent: '' }]));
 const doc = { getElementById: id => nodes[id] };
-const registry = { profiles: { a: { data: { [CONFIG.STORAGE.LS_KEY]: JSON.stringify(state) } }, b: { data: {} } } };
+const captureRaw = JSON.stringify({ schemaVersion: 1, captures: [{ capturedAt: '2027-01-02T12:00:00Z', household: manual, people: { a: manual } }] });
+const registry = { profiles: { a: { data: { [CONFIG.STORAGE.LS_KEY]: JSON.stringify(state), [WEALTH_CAPTURES_KEY]: captureRaw } }, b: { data: {} } } };
 const model = { profiles: [{ id: 'a', name: 'A', history }, { id: 'b', name: 'B' }], householdHistory: history };
+for (const view of [{ kind: 'history', historyScope: 'household' }, { kind: 'plan' }, { kind: 'history', historyScope: 'person' }]) {
+    renderManagerWealthHistory(doc, model, registry, 'a', view);
+    const svg = nodes.managerWealthChart.innerHTML;
+    assert(svg.includes('history-total'), 'Tageslinie bleibt sichtbar: ' + JSON.stringify(view));
+    assert(!svg.includes('data-closure-date') && !svg.includes('history-closure'), 'Keine Rauten aus erfassten Ständen: ' + JSON.stringify(view));
+    assertEqual(nodes.managerWealthBasis.textContent, 'Kurve aus Beständen und Tageskursen', 'Herkunft nennt nur die Kurve: ' + JSON.stringify(view));
+    assert(!nodes.managerWealthLegend.innerHTML.includes('Jahresabschluss') && !nodes.managerWealthLegend.innerHTML.includes('Unterjährig'), 'Legende erklärt keine Rauten mehr');
+    assertEqual(svg.replace(/wealth-history-\d+/g, 'x'), renderWealthHistorySvg(history).replace(/wealth-history-\d+/g, 'x'), 'Diagramm entsteht allein aus der Tagesprojektion');
+}
+assertEqual(nodes.managerWealthContext.textContent, 'Vermögensverlauf A', 'Personenansicht nennt die Person ohne Hinweis auf Haushaltsstände');
 renderManagerWealthHistory(doc, model, registry, 'a', { kind: 'history', historyScope: 'household' });
-assertEqual(nodes.managerWealthMetrics.innerHTML, summaryMarkup(projection.rows, { missingComparisonHint: 'Jahresvergleich braucht zwei erfasste Stände' }), 'Drei Kennzahlen entsprechen bestehender Abschlussaufbereitung');
-assertEqual(nodes.managerWealthTable.innerHTML, tableMarkup(projection.rows), 'Tabelle erhält Beträge, Spalten und Reihenfolge');
-assertEqual(nodes.managerWealthContext.textContent, '', 'Ohne Datenkonflikt steht kein zusätzlicher Erklärungssatz bei den Haushaltsständen');
-assert(nodes.managerWealthTable.innerHTML.indexOf('02.01.2027') < nodes.managerWealthTable.innerHTML.indexOf('31.12.2026'), 'Neueste Stände zuerst');
-assert(nodes.managerWealthMetrics.innerHTML.includes('Jahresvergleich braucht zwei erfasste Stände'), 'Jahresvergleich erklärt die fehlenden erfassten Stände unabhängig von Tageskursen');
-assert(nodes.managerWealthBasis.textContent.includes('Kurve aus Beständen und Tageskursen') && nodes.managerWealthBasis.textContent.includes('Rauten aus erfassten Ständen'), 'Sichtbare Herkunft trennt berechnete Kurve und gespeicherte Stände');
-renderManagerWealthHistory(doc, model, registry, 'b', { kind: 'plan' });
-assertEqual(nodes.managerWealthTable.innerHTML, tableMarkup(projection.rows), 'Profilwechsel erhält alle Haushaltsstände');
-assert(nodes.managerWealthChart.innerHTML.includes('history-total'), 'Haushaltsansicht erhält Tageslinie unabhängig von Abschlussständen');
-
-assert(nodes.managerWealthMetrics.innerHTML !== '', 'Haushaltskennzahlen bleiben beim Profilwechsel erhalten');
-assertEqual(nodes.managerWealthHint.textContent, '', 'Vorhandene Haushaltsstände brauchen keinen Leertext');
-renderManagerWealthHistory(doc, model, registry, 'a', { kind: 'history', historyScope: 'person' });
-assertEqual(nodes.managerWealthMetrics.innerHTML, '', 'Person erhält keine Haushaltskennzahlen aus erfassten Ständen');
-assertEqual(nodes.managerWealthTable.innerHTML, '', 'Person erhält keine Haushaltszeilen');
-assert(!nodes.managerWealthChart.innerHTML.includes('data-closure-date'), 'Person erhält keine Haushaltsrauten');
-assert(nodes.managerWealthCapturedTitle.hidden && nodes.managerWealthMetrics.hidden && nodes.managerWealthTable.hidden, 'Überschrift, Kennzahlen und Tabelle sind bei Personen verborgen');
-assert(!nodes.managerWealthPersonHint.hidden, 'Person sieht den Verweis auf Haushaltsstände');
-assert(!nodes.managerWealthBasis.textContent.includes('Rauten'), 'Personenbasis behauptet keine erfassten Stände');
-assertEqual(nodes.managerWealthHint.textContent, '', 'Person wird nicht zu vermeintlichen Personenständen aufgefordert');
-nodes.managerWealthStatus.textContent = 'Vermögensstand gesichert';
-renderManagerWealthHistory(doc, model, registry, 'a', { kind: 'history', historyScope: 'person' });
-assertEqual(nodes.managerWealthStatus.textContent, 'Vermögensstand gesichert', 'Erfolg bleibt beim Neuzeichnen derselben Ansicht sichtbar');
-renderManagerWealthHistory(doc, model, registry, 'a', { kind: 'history', historyScope: 'household' });
-assertEqual(nodes.managerWealthStatus.textContent, '', 'Haushaltswechsel entfernt fremden Erfolg');
+assertEqual(nodes.managerWealthContext.textContent, '', 'Haushalt ohne Zusatzsatz zu abweichenden Ständen');
 assertEqual(nodes.managerWealthDailyNote.textContent, '', 'Haushaltslinie wiederholt keine Erklärung aus dem kurzen ⓘ');
-assert(!nodes.managerWealthCapturedTitle.hidden && !nodes.managerWealthMetrics.hidden && !nodes.managerWealthTable.hidden && nodes.managerWealthPersonHint.hidden, 'Rückkehr zum Haushalt stellt bisherige Standanzeige wieder her');
-assertEqual(nodes.managerWealthTable.innerHTML, tableMarkup(projection.rows), 'Haushaltsanzeige bleibt nach Personenwechsel unverändert');
 
 const croppedLegend = managerHistoryLegend(history);
 assert(croppedLegend.includes('Geldvermögen') && !croppedLegend.includes('history-cash'), 'Gesamtfläche bei positiver Untergrenze zeigt keine Anlagefarben');
-assert(!croppedLegend.includes('Jahresabschluss') && !croppedLegend.includes('Unterjährig') && !croppedLegend.includes('Kauf') && !croppedLegend.includes('Verkauf'), 'Nicht gezeichnete Marken fehlen in Legende');
-assert(managerHistoryLegend(projection.chart).includes('history-cash'), 'Abschlusswerte in Skalenbasis können die sichtbare Stapelung ermöglichen');
-const markersLegend = managerHistoryLegend(alone.chart);
-assert(markersLegend.includes('Jahresabschluss') && markersLegend.includes('Unterjährig') && !markersLegend.includes('Geldvermögen'), 'Stände ohne Kurve erklären nur gezeichnete Rauten');
+assert(!croppedLegend.includes('Kauf') && !croppedLegend.includes('Verkauf'), 'Nicht gezeichnete Marken fehlen in Legende');
 const visible = { ...history, types: ['cash', 'gold'], points: [{ ...history.points[0], total: 0, allocation: { cash: 0, gold: 0 } },
     { ...history.points[0], day: day + 1, total: 80, allocation: { cash: 80, gold: 0 } }],
     events: [{ kind: 'buy', day: day + 1 }, { kind: 'sell', day: day + 2 }], gaps: [[day, day]] };
@@ -80,11 +47,13 @@ assert(visibleLegend.includes('history-cash') && !visibleLegend.includes('histor
 assert(visibleLegend.includes('Kauf') && !visibleLegend.includes('Verkauf') && visibleLegend.includes('Ungeprüfte Werktage'), 'Legende zeigt nur bewertbar gezeichnete Ereignisse und vorhandene Schraffur');
 assertEqual(managerHistoryLegend(null), '', 'Kein Diagramm erhält keine Legende');
 renderManagerWealthHistory(doc, { profiles: [{ id: 'a', name: 'A' }] }, registry, 'a', { kind: 'history', historyScope: 'household' });
-assert(nodes.managerWealthBasis.textContent.startsWith('Keine bewertbare Tageskurve'), 'Marken ohne Kurse behaupten keine berechnete Tageskurve');
-renderManagerWealthHistory(doc, { profiles: [{ id: 'b', name: 'B' }] }, registry, 'b', { kind: 'history', historyScope: 'person' });
-assertEqual(nodes.managerWealthBasis.textContent, '', 'Leere Auswahl entfernt fremde Datenbasis');
+assertEqual(nodes.managerWealthBasis.textContent, '', 'Ohne Tageslinie zeichnen erfasste Stände allein kein Diagramm');
+assertEqual(nodes.managerWealthChart.innerHTML, '', 'Ohne Tageslinie bleibt die Diagrammfläche leer');
 assertEqual(nodes.managerWealthLegend.innerHTML, '', 'Leere Auswahl entfernt fremde Legende');
-assertEqual(JSON.stringify([state, history]), before, 'Neue Erklärung und Legende ändern keine Datenquellen');
+renderManagerWealthHistory(doc, { profiles: [{ id: 'a', name: 'A', history: { ...history, points: [] } }] }, registry, 'a', { kind: 'history', historyScope: 'person' });
+assertEqual(nodes.managerWealthChart.innerHTML, '', 'Tagesprojektion ohne abgeschlossenen Tag zeichnet wie bisher kein Diagramm');
+assertEqual(JSON.stringify([state, history]), before, 'Anzeige verändert keine Datenquellen');
+assertEqual(registry.profiles.a.data[WEALTH_CAPTURES_KEY], captureRaw, 'Gespeicherte Erfassungen bleiben unverändert');
 
 // Die verschobenen Kennzahlen behalten dieselbe Tagesbewertung, auch bei abweichenden erfassten Ständen.
 const { evaluateWealthHistory } = await import('../app/tranches/tranchen-history-model.js');
@@ -95,103 +64,30 @@ const daily = evaluateWealthHistory({ startDate: '2026-01-01', today: '2026-01-0
     prices: { symbols: { BOND: { currency: 'EUR', days: [start + 1, start + 4, start + 5], closes: [100, 120, 110], queried: [[start, start + 5]] } } } });
 frozen(daily);
 const values = html => [...html.matchAll(/class="expenses-card-value[^"]*">([^<]+)</g)].map(match => match[1].replace(/\s+/g, ' ').trim());
-assertEqual(JSON.stringify(values(dailyHistoryMetricsMarkup(daily))), JSON.stringify(['+100 €', '0 €', '+100 €', '1.300 €', '−7,7 %']), 'Alle fünf verschobenen Feiertagskennzahlen bleiben exakt');
+// OP-2 (Punkt 1): Vor den fünf Kennzahlen steht die Kachel „Stand“; die fünf Werte bleiben exakt.
+assertEqual(JSON.stringify(values(dailyHistoryMetricsMarkup(daily))), JSON.stringify(['1.200 €', '+100 €', '0 €', '+100 €', '1.300 €', '−7,7 %']), 'Stand plus alle fünf verschobenen Feiertagskennzahlen bleiben exakt');
 const dailyModel = { profiles: [{ id: 'a', name: 'Max Mustermann', history: daily }, { id: 'b', name: 'Erika Mustermann' }], householdHistory: daily };
 renderManagerWealthHistory(doc, dailyModel, registry, 'a', { kind: 'history', historyScope: 'household' });
 assert(nodes.managerDailyPeriod.innerHTML.includes('02.01.2026 · vorläufig') && nodes.managerDailyPeriod.innerHTML.includes('06.01.2026'), 'Eigene Tagesgruppe nennt Messbeginn, Status und Endtag');
 assert(!nodes.managerDailyPeriod.innerHTML.includes('2027'), 'Erfasste Stände erweitern niemals den Kennzahlenzeitraum');
-assert(nodes.managerDailyAllocation.innerHTML.includes('06.01.2026') && nodes.managerDailyAllocation.innerHTML.includes('1.100'), 'Aufteilung nennt den tatsächlichen Tagesendbetrag');
-assert(nodes.managerDailyAllocation.innerHTML.includes('class="ds-wealth-allocation"')
-    && nodes.managerDailyAllocation.innerHTML.includes('class="ds-wealth-amount"')
-    && nodes.managerDailyAllocation.innerHTML.includes('class="ds-wealth-share"'), 'Verlauf nutzt das gemeinsame Raster mit getrennten Betrag- und Anteilspalten');
+// OP-1 (Punkt 1): Der Block „Aufteilung am …“ über den Kacheln entfällt; die Aufteilung steht nur noch im Maus-Hinweis, mit Anteil.
+assert(!Object.values(nodes).some(node => `${node.innerHTML}${node.textContent}`.includes('Aufteilung am')), 'OP-1 Punkt 1: Verlauf zeigt keinen Block „Aufteilung am“ mehr');
+const lastRows = historyDayRows(daily.points.at(-1), daily).map(row => row.text);
+assert(lastRows.some(row => /^Anleihen: 1\.100\s€ · 91,7\s%$/.test(row)) && lastRows.some(row => /^Tagesgeld: 100\s€ · 8,3\s%$/.test(row)),
+    'OP-1 Punkt 1: Maus-Hinweis am letzten Tag nennt Betrag und Anteil wie der frühere Block: ' + lastRows.join(' | '));
+assert(dailyHistoryMetricsMarkup(daily).includes('Aus Tagesgeld-Rückgängen') && !dailyHistoryMetricsMarkup(daily).includes('erfassten'), 'OP-1 Nachtrag 2: Entnahmen nennen „Aus Tagesgeld-Rückgängen“');
 assert(nodes.managerDailyInfo.innerHTML.includes('Transfers') && nodes.managerDailyInfo.innerHTML.includes('keine Rendite') && nodes.managerDailyStatus.textContent.includes('rückwirkend angenommen'), 'Kurze Lesehilfe im Infofeld und Basisannahme im sichtbaren Datenstatus');
 const dailyBytes = JSON.stringify(dailyModel);
 renderManagerWealthHistory(doc, dailyModel, registry, 'b', { kind: 'history', historyScope: 'person' });
-assertEqual(nodes.managerDailyAllocation.innerHTML, '', 'Person ohne Verlauf behält keine fremde Aufteilung');
 assert(nodes.managerDailyStatus.textContent.includes('Noch keine') && values(nodes.managerDailyMetrics.innerHTML).every(value => value === '—'), 'Fehlende Tageshistorie zeigt keine erfundenen Nullen');
 assertEqual(JSON.stringify(dailyModel), dailyBytes, 'Haushalts-/Personenwechsel verändert keine Tagesquelle');
 for (const missing of [false, true]) {
     const cash = evaluateWealthHistory({ startDate: '2026-01-01', today: '2026-01-04', profiles: [
         { id: 'a', currentCash: 80, lots: [], cashHistory: missing ? null : { version: 1, baselineValue: 100, entries: [{ date: '2026-01-02', value: 80 }] } },
         { id: 'b', currentCash: 50, lots: [] }] });
-    assertEqual(values(dailyHistoryMetricsMarkup(cash))[1], missing ? '0 €' : '20 €', 'Entnahmen behalten Haushaltsbeiträge trotz fehlender Cashhistorie');
+    assertEqual(values(dailyHistoryMetricsMarkup(cash))[2], missing ? '0 €' : '20 €', 'Entnahmen behalten Haushaltsbeiträge trotz fehlender Cashhistorie');
 }
 
-// Muster-Haushalt: unterschiedliche Profilkopien derselben Haushaltserfassung,
-// Altformat ohne Umfangskennung im schon früher genutzten v29-Schlüssel und
-// unter dem alten Snapshotpräfix; beide bleiben rein lesend erhalten.
-const { projectProfileWealthHistory } = await import('../app/profile/profile-wealth-history.js');
-const { prepareWealthHistoryMetrics } = await import('../app/balance/balance-wealth-history-metrics.js');
-const { loadStoredBalanceStateFromData } = await import('../app/profile/profile-state.js');
-const oldFirst = createManualWealthHistoryEntry({ tagesgeld: 7300, geldmarktEtf: 4200, depotwertAlt: 6200, depotwertNeu: 8100 }, '2026-03-03');
-const oldLast = createManualWealthHistoryEntry({ tagesgeld: 7100, geldmarktEtf: 4200, depotwertAlt: 6500, depotwertNeu: 8400 }, '2026-03-06');
-const oldStates = [[oldFirst, oldLast], [{ ...oldFirst, tagesgeld: 7200, total: oldFirst.total - 100 }]];
-const sampleRegistry = { version: 1, profiles: Object.fromEntries(['a', 'b'].map((id, index) => [id, { meta: { id, name: index ? 'Erika Mustermann' : 'Max Mustermann' }, data: {
-    [CONFIG.STORAGE.LS_KEY]: JSON.stringify({ inputs: {}, wealthHistory: { schemaVersion: 1, entries: oldStates[index] } }),
-    ruhestandsmodell_snapshot_alt: JSON.stringify({ inputs: {}, wealthHistory: { schemaVersion: 1, entries: [oldFirst] } }),
-    profile_tagesgeld: index ? '300' : '7000', depot_tranchen: '[]',
-    profile_cash_history_v1: JSON.stringify({ version: 1, baselineValue: index ? 300 : 7000, entries: [] })
-} }])) };
-const people = [{ id: 'a', name: 'Max Mustermann', valid: true, belongs: true, values: { tagesgeld: 7000 } },
-    { id: 'b', name: 'Erika Mustermann', valid: true, belongs: true, values: { tagesgeld: 300 } }];
-const sampleContext = { status: 'ready', startDate: '2026-03-01', today: '2026-03-08', prices: { symbols: {} } };
-for (const person of people) person.history = projectProfileWealthHistory(sampleRegistry, people, { ...sampleContext, profileId: person.id });
-const sampleModel = { profiles: people, householdHistory: projectProfileWealthHistory(sampleRegistry, people, sampleContext), historyContext: sampleContext };
-frozen(sampleRegistry); frozen(sampleModel);
-const sampleBytes = JSON.stringify([sampleRegistry, sampleModel]);
-const stableSvg = svg => svg.replace(/wealth-history-\d+/g, 'wealth-history-test');
-for (const id of ['a', 'b']) {
-    renderManagerWealthHistory(doc, sampleModel, sampleRegistry, id, { kind: 'history', historyScope: 'household' });
-    const loaded = loadStoredBalanceStateFromData(sampleRegistry.profiles[id].data).value;
-    const { projectWealthCaptures } = await import('../app/profile/profile-wealth-captures.js');
-    const expected = projectHistoryClosures(sampleModel.householdHistory, projectWealthCaptures(sampleRegistry, null));
-    const householdSvg = nodes.managerWealthChart.innerHTML;
-    assertEqual(nodes.managerWealthTable.innerHTML, tableMarkup(expected.rows), 'Altbestand: Haushaltszeilen bleiben exakt wie bisher');
-    assertEqual(nodes.managerWealthMetrics.innerHTML, summaryMarkup(expected.rows, { missingComparisonHint: 'Jahresvergleich braucht zwei erfasste Stände' }), 'Altbestand: Haushaltskennzahlen bleiben exakt wie bisher');
-    assertEqual(stableSvg(householdSvg), stableSvg(renderWealthHistorySvg(expected.chart)), 'Altbestand: Haushaltsskala und Rauten bleiben exakt wie bisher');
-    const expectedDaily = dailyHistoryMetricsMarkup(people.find(person => person.id === id).history);
-    renderManagerWealthHistory(doc, sampleModel, sampleRegistry, id, { kind: 'history', historyScope: 'person' });
-    const personSvg = nodes.managerWealthChart.innerHTML;
-    assert(!personSvg.includes('data-closure-date'), 'Auch abweichender Altbestand erscheint nie als Personenraute');
-    assertEqual(nodes.managerWealthMetrics.innerHTML + nodes.managerWealthTable.innerHTML, '', 'Beide Personen ohne Haushaltskennzahlen und Tabellenzeilen');
-    const person = people.find(person => person.id === id);
-    const pureSvg = renderWealthHistorySvg(projectHistoryClosures(person.history, {}).chart);
-    for (const field of ['floor', 'ceiling']) assertEqual(personSvg.match(new RegExp(`data-scale-${field}="([^"]+)"`))[1], pureSvg.match(new RegExp(`data-scale-${field}="([^"]+)"`))[1], 'Personenachse entsteht ausschließlich aus Personenwerten');
-    assertEqual(nodes.managerDailyMetrics.innerHTML, expectedDaily, 'Tageskennzahlen beider Personen bleiben erhalten');
-    assertEqual(JSON.stringify(prepareWealthHistoryMetrics(loaded).map(row => row.total)), JSON.stringify(oldStates[id === 'a' ? 0 : 1].map(row => row.total)), 'Ausgeblendete Altstände bleiben unverändert lesbar');
-    renderManagerWealthHistory(doc, sampleModel, sampleRegistry, id, { kind: 'history', historyScope: 'household' });
-    assertEqual(stableSvg(nodes.managerWealthChart.innerHTML), stableSvg(householdSvg), 'Rückkehr stellt Haushaltsgrafik unverändert wieder her');
-}
-assertEqual(JSON.stringify([sampleRegistry, sampleModel]), sampleBytes, 'Alle Profil-, Alt- und Sicherungsrecords bleiben bytegleich');
-
-// Neue Personenstände verwenden eigene Rauten, Kennzahlen, Tabelle und Achse.
-const own = createManualWealthHistoryEntry({ tagesgeld: 110, geldmarktEtf: 20, depotwertAlt: 30, depotwertNeu: 40 }, '2027-01-03');
-const ownA = { ...own, goldWert: 10, anleihen: 15, total: own.total + 25 };
-const ownB = { ...ownA, tagesgeld: 11, total: ownA.total - 99 };
-const householdEntry = Object.fromEntries(Object.entries(ownA).map(([key, value]) => [key, typeof value === 'number' ? value + ownB[key] : value]));
-const captureRaw = JSON.stringify({ schemaVersion: 1, captures: [{ capturedAt: '2027-01-03T12:00:00Z', household: householdEntry, people: { a: ownA, b: ownB } }] });
-const storage = { getItem: () => captureRaw };
-for (const [id, entry] of [['a', ownA], ['b', ownB]]) {
-    renderManagerWealthHistory(doc, model, registry, id, { kind: 'history', historyScope: 'person' }, storage);
-    const expected = projectHistoryClosures(model.profiles.find(person => person.id === id).history, { wealthHistory: { schemaVersion: 1, entries: [entry] } });
-    assertEqual(nodes.managerWealthMetrics.innerHTML, summaryMarkup(expected.rows, { missingComparisonHint: 'Jahresvergleich braucht zwei erfasste Stände' }), 'Personenkennzahlen entsprechen ausschließlich dem eigenen Stand');
-    assertEqual(nodes.managerWealthTable.innerHTML, tableMarkup(expected.rows), 'Personentabelle enthält eigenen Stand einschließlich Gold und Anleihen');
-    assert(nodes.managerWealthChart.innerHTML.includes('data-closure-date="2027-01-03"'), 'Eigenes Erfassen erscheint als Personenraute');
-    assertEqual(stableSvg(nodes.managerWealthChart.innerHTML), stableSvg(renderWealthHistorySvg(expected.chart)), 'Personenachse verwendet nur eigene Tages- und erfasste Werte');
-    assert(!nodes.managerWealthMetrics.hidden && !nodes.managerWealthTable.hidden, 'Personen mit eigenen Ständen zeigen Kennzahlen und Tabelle');
-}
-renderManagerWealthHistory(doc, model, registry, 'b', { kind: 'history', historyScope: 'household' }, storage);
-assert(nodes.managerWealthTable.innerHTML.includes('03.01.2027') && nodes.managerWealthTable.innerHTML.includes('02.01.2027'), 'Haushalt zeigt auch nach Profilwechsel neue und alte Stände zusammen');
-
-// Erfasste Stände außerhalb der Auswahl dürfen kurze Tagesverläufe nicht strecken.
-for (const period of ['year', '12m', '1m', '1w']) {
-    const filtered = projectHistoryClosures({ ...history, range: { ...history.range, period } }, state);
-    assertEqual(filtered.rows.length, 2, period + ': gespeicherte Standtabelle bleibt vollständig');
-    assertEqual(filtered.chart.closures.length, 0, period + ': keine Raute außerhalb der Tagesauswahl');
-    assertEqual(filtered.chart.range.start, day, period + ': gewählter Anfang bleibt erhalten');
-    assertEqual(filtered.chart.range.end, day, period + ': gewähltes Ende bleibt erhalten');
-    assertEqual(filtered.chart.points, history.points, period + ': keine Änderung der Tageswerte');
-}
 for (const [period, phrase] of [['1m', 'im letzten Monat'], ['1w', 'in der letzten Woche']]) {
     assert(dailyHistoryMetricsMarkup({ ...daily, range: { ...daily.range, period } }).includes(phrase), 'Personenkennzahlen nennen ' + phrase);
 }
@@ -199,9 +95,67 @@ const fs = await import('node:fs');
 const managerHtml = fs.readFileSync(new URL('../depot-tranchen-manager.html', import.meta.url), 'utf8');
 const periodLabels = [...managerHtml.matchAll(/data-manager-history-period="[^"]+" aria-pressed="[^"]+">([^<]+)</g)].map(m => m[1]);
 assertEqual(JSON.stringify(periodLabels), JSON.stringify(['Alles', 'Laufendes Jahr', 'Letzte 12 Monate', 'Letzter Monat', 'Letzte Woche']), 'Manager nutzt dieselben fünf Zeitraumtexte');
+for (const removed of ['managerCaptureWealthBtn', 'Stand jetzt erfassen', 'Aus erfassten Ständen', 'managerWealthMetrics', 'managerWealthTable',
+    'managerWealthRecords', 'Erfasste Vermögensstände', 'managerWealthPersonHint', 'Ältere Stände', 'Rauten']) {
+    assert(!managerHtml.includes(removed), 'VS-2: Verlauf enthält keine Anzeige erfasster Stände mehr: ' + removed);
+}
+const dailyAt = managerHtml.indexOf('id="managerDailyMetrics"'), chartAt = managerHtml.indexOf('id="managerWealthChart"');
+assert(dailyAt > 0 && dailyAt < chartAt, 'VS-2: Kennzahlen „Aus Tageskursen“ stehen über dem Diagramm an der Stelle der alten Kacheln');
 
-const inside = projectHistoryClosures({ ...history, range: { start: day, end: day + 1, period: '1w' } }, state);
-assertEqual(inside.chart.closures.length, 1, 'Raute innerhalb der Wochenauswahl bleibt sichtbar');
-assertEqual(inside.chart.closures[0].asOf, manual.asOf, 'Nur der enthaltene gespeicherte Stand wird gezeichnet');
-assertEqual(inside.chart.range.end, day + 1, 'Enthaltener Stand erweitert die Auswahl nicht');
-assertEqual(JSON.stringify([state, history]), before, 'Zeitraumfilter verändert weder gespeicherte Stände noch Tagesreihe');
+// OP-2 (Punkt 1): Kachel „Stand am …“ = letzter Kurvenpunkt (Gesamtvermögen und „davon Geldvermögen“), für Haushalt und eine Person,
+// bei „Alles“ und „Letzte Woche“. Ohne Immobilien entfällt „davon Geldvermögen“; ohne Wert am letzten Tag steht „Nicht verfügbar“.
+{
+    const { projectProfileWealthHistory } = await import('../app/profile/profile-wealth-history.js');
+    const { PROFILE_CASH_HISTORY_KEY } = await import('../app/profile/profile-wealth-history.js');
+    const cashData = (baselineValue, entries) => ({ depot_tranchen: '[]', [PROFILE_CASH_HISTORY_KEY]: JSON.stringify({ version: 1, baselineValue, entries }) });
+    const standRegistry = { profiles: { max: { data: cashData(1000, [{ date: '2026-01-03', value: 1200 }, { date: '2026-01-16', value: 1150 }]) },
+        erika: { data: cashData(500, [{ date: '2026-01-10', value: 650 }]) } } };
+    const persons = [{ id: 'max', name: 'Max', valid: true, belongs: true,
+        values: { tagesgeld: 1150, immobilien: [{ id: 'haus', nutzung: 'selbst', wert: 300000, stand: '2025-06' }] } },
+        { id: 'erika', name: 'Erika', valid: true, belongs: true, values: { tagesgeld: 650 } }];
+    const historyContext = { status: 'ready', startDate: '2026-01-01', today: '2026-01-20', prices: { version: 1, symbols: {} }, events: [] };
+    const project = (period, profileId = null) => projectProfileWealthHistory(standRegistry, persons, { ...historyContext, period, profileId });
+    const standModel = { profiles: persons.map(person => ({ ...person, history: project('all', person.id) })), householdHistory: project('all'), historyContext };
+    const standNodes = Object.fromEntries(Object.keys(nodes).map(id => [id, { innerHTML: '', textContent: '' }]));
+    let periodClick = null;
+    standNodes.managerHistoryPeriods = { addEventListener: (type, handler) => { periodClick = handler; } };
+    const standDoc = { getElementById: id => standNodes[id] };
+    const tile = () => {
+        const html = standNodes.managerDailyMetrics.innerHTML;
+        const first = html.slice(0, html.indexOf('</div></div>') + 12);
+        const text = cls => first.match(new RegExp(`class="${cls}[^"]*">([^<]*)<`))?.[1] ?? null;
+        return { label: text('expenses-card-label'), value: text('expenses-card-value'), sub: text('expenses-card-sub') };
+    };
+    const choose = period => periodClick({ target: { closest: () => ({ dataset: { managerHistoryPeriod: period } }) } });
+    for (const [scope, activeId, view] of [['Haushalt', 'max', { kind: 'history', historyScope: 'household' }], ['Max', 'max', { kind: 'history', historyScope: 'person' }]]) {
+        renderManagerWealthHistory(standDoc, standModel, standRegistry, activeId, view);
+        const seen = [];
+        for (const period of ['all', '1w']) {
+            choose(period);
+            const expected = project(period, scope === 'Haushalt' ? null : activeId);
+            const last = expected.points.at(-1);
+            const rows = historyDayRows(last, expected).map(row => row.text);
+            const shown = tile();
+            assert(expected.hasHomes && last.totalWithHomes !== last.total, `${scope}/${period}: Gesamtvermögen und Geldvermögen unterscheiden sich im Beispiel`);
+            assertEqual(shown.label, 'Stand am ' + last.date.split('-').reverse().join('.'), `${scope}/${period}: Kachel nennt den letzten Tag des Zeitraums`);
+            assertEqual('Gesamtvermögen: ' + shown.value, rows[1], `${scope}/${period}: Kachelwert = Gesamtvermögen des letzten Kurvenpunkts im Maus-Hinweis`);
+            assertEqual(shown.sub, rows[2], `${scope}/${period}: „davon Geldvermögen“ = Geldvermögen des letzten Kurvenpunkts im Maus-Hinweis`);
+            seen.push(JSON.stringify(shown));
+        }
+        assertEqual(seen[1], seen[0], `${scope}: Zeitraumwechsel ändert die Kachel nicht, solange der letzte Tag gleich bleibt`);
+        assert(standNodes.managerDailyMetrics.innerHTML.indexOf('Stand am') < standNodes.managerDailyMetrics.innerHTML.indexOf('Veränderung Geldvermögen'), `${scope}: „Stand“ ist die erste Kachel`);
+        choose('all');
+    }
+    renderManagerWealthHistory(standDoc, standModel, standRegistry, 'erika', { kind: 'history', historyScope: 'person' });
+    const erika = tile(), erikaLast = standModel.profiles[1].history.points.at(-1);
+    assertEqual(erika.value, historyDayRows(erikaLast, standModel.profiles[1].history)[1].text.replace('Gesamtvermögen: ', ''), 'Person ohne Immobilien: Kachelwert = letzter Kurvenpunkt');
+    assertEqual(erika.sub, '', 'Ohne Immobilien entfällt „davon Geldvermögen“');
+    const unknownLast = { ...daily, points: [...daily.points.slice(0, -1), { ...daily.points.at(-1), total: null }] };
+    const unknown = values(dailyHistoryMetricsMarkup(unknownLast));
+    assert(unknown[0] === '—' && dailyHistoryMetricsMarkup(unknownLast).includes('Nicht verfügbar'), 'Ohne Wert am letzten Tag zeigt die Kachel „Nicht verfügbar“');
+    assert(dailyHistoryMetricsMarkup(null).startsWith('<div class="wealth-metric ds-kpi"><div class="expenses-card-label">Stand</div>'), 'Ohne Verlauf heißt die Kachel nur „Stand“');
+}
+const pvCss = fs.readFileSync(new URL('../css/personen-vermoegen.css', import.meta.url), 'utf8');
+assert(pvCss.includes('.manager-daily-history .wealth-metrics { grid-template-columns: repeat(6, minmax(0, 1fr)); }'), 'OP-2 Punkt 1: Kachelzeile im Verlauf ist sechsspaltig');
+assert(pvCss.includes('.manager-daily-history .wealth-metrics > .ds-kpi:nth-child(3n + 1) { border-inline-start: 0; }')
+    && pvCss.includes('.manager-daily-history .wealth-metrics > .ds-kpi:nth-child(n + 4) { border-block-start: 1px solid var(--border); }'), 'OP-2 Nachtrag 2: unter 1600 px Trennlinien in beiden Zeilen wie in der ersten');

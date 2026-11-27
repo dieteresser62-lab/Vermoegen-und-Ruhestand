@@ -4,8 +4,7 @@ import { beginPersonalTaxYear, recordPersonalSales, settlePersonalTaxYear, attri
 import { debitPersonalLiquidity, snapshotPersonalInvestments, applyPersonalInterest } from '../app/simulator/simulator-personal-accounts.js';
 import { EngineAPI } from '../engine/index.mjs';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
-import { runSweepChunk } from '../app/simulator/sweep-runner.js';
-import { normalizeWidowOptions } from '../app/simulator/simulator-sweep-utils.js';
+import { normalizeWidowOptions } from '../app/simulator/simulator-run-utils.js';
 import { inputs, runFixture } from './extended/parity-replay-fixture.mjs';
 import { buildSimulatorInputsFromProfileData, combineSimulatorProfiles } from '../app/simulator/simulator-profile-inputs.js';
 import { records } from './extended/parity-replay-fixture.mjs';
@@ -35,13 +34,12 @@ for (const mode of ['tax_optimized', 'proportional', 'runway_first']) {
     { householdWithdrawalMode: mode });
     const grossA = action.quellen.filter(source => source.sourceProfileId === 'a').reduce((sum, row) => sum + row.brutto, 0);
     const grossB = action.quellen.filter(source => source.sourceProfileId === 'b').reduce((sum, row) => sum + row.brutto, 0);
-    const expectedTax = mode === 'tax_optimized' ? 0 : mode === 'proportional'
-        ? (.7 * ((5000 - 263.75) / (2 - .7 * .26375)) - 1000) * .26375
-        : (5000 * .3 * .7 - 1000) * .26375 / (1 - .3 * .7 * .26375);
+    // FR-87: Bei gleicher Liquidität (je 1.000 €) teilt „Reichweite zuerst“ den Verkauf je zur Hälfte, wie hier „Anteilig“.
+    const expectedTax = mode === 'tax_optimized' ? 0 : (.7 * ((5000 - 263.75) / (2 - .7 * .26375)) - 1000) * .26375;
     assertClose(action.steuer, expectedTax, 1e-7, `${mode}: Balance source planner preserves personal allowance`);
     assertClose(action.nettoErlös, 5000, 1e-7, `${mode}: personal taxes preserve the household use`);
     if (mode === 'tax_optimized') { assertEqual(grossA, 0, 'Tax optimization uses the zero-gain owner'); assertClose(grossB, 5000, 1e-7, 'Selected original ID is executable'); }
-    else assertClose(grossA / (grossA + grossB), mode === 'proportional' ? .5 : .3, 1e-7, `${mode}: sale ownership follows Balance weights`);
+    else assertClose(grossA / (grossA + grossB), .5, 1e-7, `${mode}: sale ownership follows Balance weights`);
 }
 
 {
@@ -132,9 +130,6 @@ for (const mode of ['tax_optimized', 'proportional', 'runway_first']) {
     const mc = await runMonteCarloChunk({ inputs, monteCarloParams: params,
         widowOptions: normalizeWidowOptions(inputs.widowOptions), useCapeSampling: true, engine: EngineAPI });
     assertEqual(mc.financialMetricsValid, true, 'MC personal tax books remain evaluable');
-    const sweep = await runSweepChunk({ baseInputs: inputs, paramCombinations: [{ liquidityRunwayYears: 3 }, { liquidityRunwayYears: 5 }],
-        sweepConfig: { ...params, anzahl: 2, useCapeSampling: true }, engine: EngineAPI });
-    assertEqual(sweep.results.length, 2, 'Sweep returns both combinations with personal settlement');
 }
 
 // FR-63: Reserve gilt auch bei Tagesgeld plus Aktienverkauf zur Anleihenauffüllung.

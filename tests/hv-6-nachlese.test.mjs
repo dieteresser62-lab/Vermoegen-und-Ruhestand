@@ -11,6 +11,13 @@ import { validateHouseholdRegistry } from '../app/shared/household-registry.js';
 import { createFullBackupFilename } from '../app/shared/persistence-backup.js';
 import { SnapshotArchive } from '../app/shared/snapshot-archive.js';
 import { MemoryWebStorage, fakeAreaIndexedDB, fakeAreaTauri } from './helpers/persistence-area-backends.mjs';
+import { OVERVIEW_BACKUP_KEY } from '../app/overview/overview-storage.js';
+import { buildFullPersistenceBackup, buildRecoveryPersistenceBackup, importFullPersistenceBackup } from '../app/shared/persistence-backup.js';
+import { buildHouseholdTransfer } from '../app/shared/household-transfer.js';
+import { readDataModel } from '../app/data/data-model.js';
+import { renderDataPage } from '../app/data/data-renderer.js';
+import { createPresentationTestDocument } from './designsystem-source-contract.mjs';
+import fs from 'node:fs';
 
 // HV-6 Nachlese (Gutachten 05.11.2026): Nachbesserungen rund um „Mehrere Haushalte“.
 
@@ -113,7 +120,7 @@ for (const [label, prepare] of valued) {
     const now = new Date(2026, 10, 5, 12, 0);
     assertEqual(JSON.stringify(householdBackupState(null, now)), JSON.stringify({ text: 'noch nie', warning: true }), 'Nie gesichert warnt');
     assertEqual(householdBackupState(new Date(2026, 10, 5, 9, 0).toISOString(), now).text, 'heute', 'Heute gesichert');
-    assertEqual(householdBackupState(new Date(2026, 10, 4, 9, 0).toISOString(), now).text, 'vor 1 Tag', 'Gestern gesichert');
+    assertEqual(householdBackupState(new Date(2026, 10, 4, 9, 0).toISOString(), now).text, 'gestern', 'Gestern gesichert');
     const old = householdBackupState(new Date(2026, 9, 1, 9, 0).toISOString(), now);
     assert(old.text === 'vor 35 Tagen' && old.warning, 'Älter als 30 Tage warnt');
     assert(!householdBackupState(new Date(2026, 9, 30, 9, 0).toISOString(), now).warning, 'Eine Woche alt warnt nicht');
@@ -166,6 +173,57 @@ for (const [label, prepare] of valued) {
     const date = new Date('2026-11-05T12:13:14Z');
     assert(createFullBackupFilename(date).startsWith('ruhestand-suite-full-backup-2026-11-05_'), 'Ein Haushalt: Dateiname wie bisher');
     assert(createFullBackupFilename(date, 'Testkind M.').startsWith('ruhestand-suite-full-backup-Testkind-M-2026-11-05_'), 'Mehrere Haushalte: Name im Dateinamen');
+}
+// 7. ST7-FIX (Gutachten ST7 P2-1, Befund 1047), mit zwei Haushalten: Eine Übergabe- oder Wiederherstellungsdatei trägt eine ältere
+// Vollsicherungszeit als ihr Dateidatum. Sie zählt nicht als Vollsicherung. Karte und Haushaltsliste behalten diese Zeit und warnen nach
+// 30 Tagen weiter. Der Kopf nennt „Datei vom … eingespielt am …“ und dieselbe letzte Vollsicherung wie die Karte. Eine echte
+// Vollsicherung trägt ihr Dateidatum als Sicherungszeit und heißt weiter „Sicherung vom …“.
+{
+    const local = new MemoryWebStorage(), session = new MemoryWebStorage(), tauri = fakeAreaTauri();
+    const window = { localStorage: local, sessionStorage: session, name: '', __TAURI__: {} };
+    const options = { window, localStorage: local, indexedDB: fakeAreaIndexedDB(), invoke: (command, args) => tauri.invoke(command, args), installLifecycleHooks: false };
+    const restart = async () => { P.resetPersistenceRuntimeForTests(); await P.init(options); };
+    const older = '2026-11-20T09:00:00.000Z', stored = '2026-10-20T09:58:00.000Z', fileDate = '2026-11-25T08:30:00.000Z';
+    const now = new Date('2026-11-25T12:00:00.000Z');
+    await restart();
+    P.setItemSync('profile_tagesgeld', '100.00'); P.setItemSync(OVERVIEW_BACKUP_KEY, stored); await P.flush();
+    const transfer = { ...buildHouseholdTransfer({ id: 'h1', name: 'Haushalt 1', records: await P.readHouseholdRecords('h1') }), exportedAt: fileDate };
+    const recovery = { ...buildRecoveryPersistenceBackup(), exportedAt: fileDate };
+    const fullRecords = { ...buildFullPersistenceBackup().records, [OVERVIEW_BACKUP_KEY]: fileDate };
+    const full = { ...buildFullPersistenceBackup(), exportedAt: fileDate, records: fullRecords, localStorage: fullRecords, recordCount: Object.keys(fullRecords).length };
+    await P.createHousehold('Probe');
+    await restart();
+    P.setItemSync('profile_tagesgeld', '200.00'); P.setItemSync(OVERVIEW_BACKUP_KEY, older); await P.flush();
+    await P.switchHousehold('h1');
+    await restart();
+    const html = fs.readFileSync(new URL('../Daten-Sicherung.html', import.meta.url), 'utf8');
+    const doc = createPresentationTestDocument();
+    for (const [, id] of html.matchAll(/\bid="([^"]+)"/g)) { const node = doc.createElement('div'); node.id = id; doc.body.append(node); }
+    const text = id => doc.getElementById(id).textContent;
+    const day = date => date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    for (const [label, file] of [['Übergabedatei', transfer], ['Wiederherstellungsdatei', recovery], ['Vollsicherung', full]]) {
+        P.setItemSync(OVERVIEW_BACKUP_KEY, older); await P.flush();
+        const started = new Date();
+        const imported = await importFullPersistenceBackup(file);
+        assert(imported.ok, `${label}: eingespielt ${imported.ok ? '' : imported.message}`);
+        await restart();
+        const model = await readDataModel(P, { now });
+        renderDataPage(doc, model);
+        const own = (await P.readHouseholdRecords('h1'))[OVERVIEW_BACKUP_KEY];
+        assertEqual((await P.readHouseholdRecords(P.getHouseholds().households[1].id))[OVERVIEW_BACKUP_KEY], older, `${label}: der andere Haushalt bleibt unverändert`);
+        assertEqual(model.backupImport?.at, fileDate, `${label}: Der Einspielvermerk hält das Dateidatum`);
+        if (label === 'Vollsicherung') {
+            assertEqual(model.lastBackup, fileDate, 'Vollsicherung: Karte nennt das Dateidatum wie bisher');
+            assert([started, new Date()].some(at => text('dataBackupContext') === `Sicherung vom 25.11.2026 eingespielt am ${day(at)}`), `Vollsicherung: Kopf unverändert (${text('dataBackupContext')})`);
+            assert(!model.age.warning && own === fileDate, 'Vollsicherung: keine Warnung, Haushaltsliste nennt dieselbe Sicherung');
+            continue;
+        }
+        assertEqual(model.lastBackup, stored, `${label}: Karte behält die Vollsicherungszeit der Datei`);
+        assert(model.age.warning && doc.getElementById('dataBackupTile').dataset.state === 'warning' && text('dataBackupAge') === 'vor 36 Tagen', `${label}: Karte warnt weiter (${text('dataBackupAge')})`);
+        assert([started, new Date()].some(at => text('dataBackupContext') === `Datei vom 25.11.2026 eingespielt am ${day(at)} · letzte Vollsicherung: 20.10.2026`), `${label}: Kopf nennt die Datei und die letzte Vollsicherung (${text('dataBackupContext')})`);
+        assert(text('dataBackupDate').startsWith('20.10.2026'), `${label}: Kopf und Karte nennen dieselbe Vollsicherung`);
+        assertEqual(JSON.stringify(householdBackupState(own, now)), JSON.stringify({ text: 'vor 36 Tagen', warning: true }), `${label}: Haushaltsliste warnt wie die Karte`);
+    }
 }
 P.resetPersistenceRuntimeForTests();
 P.resetPersistenceForTests();

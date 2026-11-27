@@ -44,7 +44,9 @@ function documentDouble() {
     }
     doc.body = doc.createElement('body');
     for (const id of ['probelaufBand', 'probelaufBandText', 'probelaufStart', 'probelaufStatus', 'overviewWelcomeDemo']) { const node = doc.createElement('div'); node.id = id; doc.body.appendChild(node); }
-    for (const action of ['day', 'month', 'date', 'end']) { const node = doc.createElement('button'); node.dataset.probelaufAction = action; doc.getElementById('probelaufBand').appendChild(node); }
+    for (const action of ['day', 'month', 'date']) { const node = doc.createElement('button'); node.dataset.probelaufAction = action; doc.getElementById('probelaufBand').appendChild(node); }
+    // OP-1 (Punkt 2): „Spielbereich beenden“ sitzt im Kopf neben dem Startknopf, nicht im Band.
+    const end = doc.createElement('button'); end.id = 'probelaufEnd'; end.dataset.probelaufAction = 'end'; doc.body.appendChild(end);
     return { doc, nodes, dialog: () => nodes.findLast(node => node.tagName === 'dialog') };
 }
 {
@@ -118,6 +120,43 @@ for (const page of ['Ausgaben.html', 'index.html', 'Balance.html', 'Simulator.ht
     assertEqual((html.match(/id="probelaufBand"/g) || []).length, 1, `${page}: genau ein Bandhost`);
     assert(/id="probelaufBand"[^>]*hidden/.test(html), `${page}: Band anfangs verborgen`);
     for (const action of ['day', 'month', 'date', 'end']) assert(html.includes(`data-probelauf-action="${action}"`), `${page}: Aktion ${action}`);
+    // OP-1 (Punkt 2): Beenden steht genau einmal, rechts im Kopf direkt nach dem Startknopf, und nicht mehr im Band.
+    const header = html.match(/<header class="suite-header">([\s\S]*?)<\/header>/)[1], band = html.match(/<aside id="probelaufBand"[\s\S]*?<\/aside>/)[0];
+    assertEqual((html.match(/data-probelauf-action="end"/g) || []).length, 1, `${page}: genau ein Beenden`);
+    assert(/id="probelaufStart"[^>]*>Spielbereich starten …<\/button><button id="probelaufEnd"[^>]*class="suite-probelauf-end[^"]*"[^>]*data-probelauf-action="end"[^>]*hidden>Spielbereich beenden<\/button>/.test(header)
+        && !band.includes('data-probelauf-action="end"'), `${page}: Beenden an der Stelle des Startknopfs im Kopf, nicht im Band`);
+}
+{
+    // OP-1 (Punkt 2): Der Kopfknopf nutzt denselben Ablauf und dieselben Sperren wie bisher der Bandknopf.
+    const f = documentDouble(), calls = [];
+    const c = { runtime: { canStart: true, canContinue: true }, state: null, busy: false, blocked: false, end: async confirm => { if (await confirm()) calls.push('end'); } };
+    bindProbelaufUI(f.doc, c, { confirmEnd: async () => true });
+    const end = f.doc.getElementById('probelaufEnd'), start = f.doc.getElementById('probelaufStart');
+    assert(end.hidden && !start.hidden, 'OP-1 Punkt 2: ohne Spielbereich nur „Spielbereich starten …“');
+    c.state = { phase: 'active', testDate: '2027-07-01' }; renderProbelaufUI(f.doc, c);
+    assert(!end.hidden && start.hidden && !end.disabled, 'OP-1 Punkt 2: im Spielbereich steht „Spielbereich beenden“ an derselben Stelle');
+    c.waiting = true; renderProbelaufUI(f.doc, c);
+    assert(end.disabled, 'OP-1 Punkt 2: Speichern sperrt Beenden im Kopf');
+    c.waiting = false; c.busy = true; renderProbelaufUI(f.doc, c);
+    assert(end.disabled, 'OP-1 Punkt 2: laufende Aktion sperrt Beenden im Kopf');
+    c.busy = false; renderProbelaufUI(f.doc, c);
+    end.fire('click'); await Promise.resolve(); await Promise.resolve();
+    assertEqual(calls.join(','), 'end', 'OP-1 Punkt 2: Kopfknopf beendet über denselben Ablauf');
+    c.runtime = { canStart: true, canContinue: false, canRecover: false }; renderProbelaufUI(f.doc, c);
+    assert(end.hidden && f.doc.getElementById('probelaufBand').hidden, 'OP-1 Punkt 2: ohne erlaubte Laufzeit verschwinden Band und Beenden gemeinsam');
+}
+{
+    // HP-2: Die Rückfrage „Beispiel neu starten?“ nennt das Datum, an dem das Beispiel neu beginnt (aktuelles Testdatum).
+    const f = documentDouble(), records = createMusterHaushaltRecords(HANDBOOK_MUSTER_DATE, 'max-erika');
+    let confirmed;
+    const c = { runtime: { canStart: true, canContinue: true }, state: { version: 2, phase: 'active', source: 'demo', householdId: 'max-erika', variantId: 'grund',
+        testDate: '2027-01-02', initialDomain: projectProbelaufDomain(records) }, restart: async confirm => { confirmed = await confirm(); } };
+    bindProbelaufUI(f.doc, c);
+    f.doc.getElementById('probelaufBand').fire('click', { target: f.doc.getElementById('probelaufRestart') });
+    await drainUntil(() => f.dialog()?.open, 'HP-2: Rückfrage „Beispiel neu starten?“ offen');
+    assert(f.nodes.some(node => node.textContent?.startsWith?.('Das Beispiel beginnt neu am 02.01.2027.')), 'HP-2: Rückfrage nennt das Datum des Neustarts');
+    f.nodes.find(node => node.dataset.pageChoiceCancel === '').fire('click');
+    await drainUntil(() => confirmed === false, 'HP-2: „Weiter spielen“ bricht den Neustart ab');
 }
 assert(fs.readFileSync(new URL('../Handbuch.html', import.meta.url), 'utf8').includes('Im Spielbereich ausprobieren'), 'Handbuch beschreibt den allgemeinen Spielbereich');
 const env = documentDouble();
@@ -230,6 +269,7 @@ for (const reason of ['eligible', 'date', 'demo', 'real-changed']) {
         profile_gold_aktiv: 'true', profile_gold_ziel_pct: '10', profile_tagesgeld: '20000' };
     const plan = JSON.parse(play.household_plan_v1); Object.values(plan.entries)[0].values.flexBedarf = 32000; play.household_plan_v1 = JSON.stringify(plan);
     const review = await calculateProbelaufEndReview({ realRecords: records, playRecords: play, now: new Date('2026-10-15T10:00:00Z') });
+    review.play.monteCarloStale = true;
     review.play.fixedPlan = { monthlyBudget: 5000, liquidityBefore: 77, committedAt: '2026-01-02T12:00:00Z',
         action: { type: 'NONE', title: 'Nichts tun' } };
     let complete;
@@ -246,6 +286,7 @@ for (const reason of ['eligible', 'date', 'demo', 'real-changed']) {
     assert(env.nodes.some(n => n.textContent?.includes('Gold kaufen') && n.textContent.includes('40.000')), 'Dialog zeigt Gold-Handlungsanweisung mit Betrag ohne Balancebesuch');
     assert(env.nodes.some(n => n.className === 'ds-info-pop' && n.textContent.includes('festgeschrieben') && n.textContent.includes('5.000')), 'Abweichender festgeschriebener Plan steht im Info-Popover');
     assert(env.nodes.some(n => n.textContent === 'Liquidität (Vorschau heute)'), 'Liquidität benennt ihren Bezug');
+    assert(env.nodes.some(n => n.textContent === 'Monte Carlo neu rechnen'), 'Der Endedialog fordert einen neuen Lauf bei veraltetem Spielergebnis');
     env.nodes.find(n => n.dataset.pageChoiceCancel === '').fire('click'); await pending;
 }
 for (const earlyClose of [false, true]) {
@@ -277,7 +318,7 @@ for (const earlyClose of [false, true]) {
     await drainUntil(() => env.dialog()?.dataset.comparisonStatus === 'ready', 'Vergleich geöffnet');
     env.nodes.findLast(n => n.textContent === 'Übernehmen …').fire('click');
     await drainUntil(() => env.nodes.some(n => n.textContent === 'Jetzt übernehmen'), 'Bestätigung geöffnet');
-    assert(env.nodes.some(n => n.textContent?.includes('Vor Übernahme aus dem Spielbereich')), 'Bestätigung nennt Wiederherstellungspunkt');
+    assert(env.nodes.some(n => n.textContent?.includes('Vor Übernahme der Spielkopie')), 'Bestätigung nennt Wiederherstellungspunkt');
     assert(env.nodes.some(n => n.textContent?.startsWith('Danach ist der Spielbereich geschlossen')), 'Bestätigung erklärt Schließen');
     assert(env.nodes.some(n => n.tagName === 'li' && n.textContent.includes('Gold: aus → an')), 'Bestätigung zeigt vorher und nachher aus Vergleichsbaustein');
     assertEqual(f.realBytes(), before, 'Bestätigungsansicht bleibt vollständig lesend');

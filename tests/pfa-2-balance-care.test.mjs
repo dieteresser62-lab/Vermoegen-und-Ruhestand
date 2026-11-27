@@ -103,13 +103,14 @@ assertEqual(R.care.persons[1].form, 'home-support', 'R wirksame Form der gepfleg
 const alone = balance({ care: [today(2, 'family')], single: true });
 assertEqual(alone.input.renteMonatlich * 12, 4164, 'R alleinstehend behält 4.164 € Pflegegeld');
 
-// U: Unverheiratet, Vermögensanteile 60/40 ohne Einkünfte; persönliche Heimkosten bleiben bei der Person.
+// U: Unverheiratet, Vermögensanteile 60/40 ohne Einkünfte; persönliche Heimkosten bleiben bei der Person. NK-2 (FR-84 Punkt 18): Ab dem
+// Heimeintritt trägt die Person zu Hause den Grundbedarf zu Hause allein (vorher 60 %).
 const U = balance({ care: [null, today(4, 'residential')], unmarried: true, cash: [600000, 400000], clearTranches: true });
 const need = calculateHouseholdWithdrawalNeed(U.calculation.profiles, { floorBedarf: U.input.floorBedarf, flexBedarf: U.input.flexBedarf });
 assertEqual(JSON.stringify(need.personalNeeds), JSON.stringify({ [IDS[1]]: 46368 }), 'U persönliche Pflegekosten der Person im Heim');
 const split = calculateWithdrawalDistribution(U.calculation.profiles, { ...need, netWithdrawal: 73368 }, 'proportional');
-close(split.items.find(item => item.profileId === IDS[0]).withdrawalAmount, 16200, 'U Anteil der Person zu Hause 60 % × 27.000', .01);
-close(split.items.find(item => item.profileId === IDS[1]).withdrawalAmount, 57168, 'U Anteil der Person im Heim 40 % × 27.000 + 46.368', .01);
+close(split.items.find(item => item.profileId === IDS[0]).withdrawalAmount, 27000, 'U die Person zu Hause trägt die 27.000 € allein', .01);
+close(split.items.find(item => item.profileId === IDS[1]).withdrawalAmount, 46368, 'U die Person im Heim zahlt nur ihr Heim (46.368 €)', .01);
 const married = balance({ care: [null, today(4, 'residential')], cash: [600000, 400000], clearTranches: true });
 assert(married.calculation.profiles.every(entry => !entry.personalCareNeed), 'U Verheiratete behalten die gemeinsame Verteilung');
 

@@ -17,7 +17,7 @@ Die eigene App passt zur jährlichen Planung mit selbst gepflegten Beständen un
 
 ### Stärken
 
-Monats- und Jahresabschluss, Ausgabenvergleich und Sicherung begleiten die laufende Nutzung. Für höchstens zwei Personen modelliert die App Pflege, Tod und Hinterbliebenenzahlungen. Eigentum, Miete, Verkauf und Nachlass von Immobilien sind enthalten. Gesamtvermögen umfasst Geldvermögen und Immobilien; Entnahmen, Strategiequoten und Ruin beziehen sich auf Geldvermögen. Die App führt keine Bankgeschäfte aus. [Eigene Funktionsbelege](MARKTVERGLEICH_EVIDENZREGISTER.md#mkt-rs-01).
+Monats- und Jahresabschluss, Ausgabenvergleich und Sicherung begleiten die laufende Nutzung. Für höchstens zwei Personen modelliert die App Pflege, Tod und Hinterbliebenenzahlungen. Eigentum, Miete, Verkauf und Nachlass von Immobilien sind enthalten. Gesamtvermögen umfasst Geldvermögen und Immobilien; Entnahmen, Strategiequoten und aufgebrauchtes Vermögen beziehen sich auf Geldvermögen. Die App führt keine Bankgeschäfte aus. [Eigene Funktionsbelege](MARKTVERGLEICH_EVIDENZREGISTER.md#mkt-rs-01).
 
 ### Grenzen
 

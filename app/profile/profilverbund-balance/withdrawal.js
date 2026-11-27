@@ -3,6 +3,7 @@ import { resolveTrancheSplitTotals } from './tranches.js';
 import { resolveLiquidityRunwayYears } from '../../../types/liquidity-runway-contract.js';
 import { profileAssetTotal, profileLiquidity } from './values.js';
 import { activeCarrier } from '../household-withdrawal-mode.js';
+import { equalizeLiquidity } from '../runway-equalize.js';
 
 // Berechne Entnahmeverteilung nach Modus
 export function calculateWithdrawalDistribution(profileInputs, aggregated, mode = 'tax_optimized') {
@@ -52,8 +53,11 @@ export function calculateWithdrawalDistribution(profileInputs, aggregated, mode 
     let remainingCents = commonCents;
     let allocations = [];
     // FR-80: Bei „Eine Person trägt“ übernimmt die tragende Person den gemeinsamen Anteil. Fehlt sie (gestorben, nicht im
-    // Haushalt), endet der Modus und es gilt „steueroptimiert“.
-    const carrierId = activeCarrier(mode, entries);
+    // Haushalt), endet der Modus und es gilt „steueroptimiert“. NK-2 (FR-84 Punkte 18 und 19): Lebt eine von zwei unverheirateten
+    // Personen im Heim, trägt die Person zu Hause den gemeinsamen Anteil allein; das Geld der Person im Heim zahlt zuerst ihr Heim, ein
+    // Rest deckt, was zu Hause fehlt. Ohne Hinweis „wird angegriffen“, denn das ist keine Wahl des Modus.
+    const homeAlone = list.length === 2 ? list.find(entry => entry?.homeAloneCarrier)?.homeAloneCarrier : null;
+    const carrierId = homeAlone && entries.some(entry => entry.profileId === homeAlone) ? homeAlone : activeCarrier(mode, entries);
     const kind = carrierId ? 'one_carries' : String(mode).startsWith('one_carries') ? 'tax_optimized' : mode;
 
     if (kind === 'one_carries') {
@@ -68,13 +72,20 @@ export function calculateWithdrawalDistribution(profileInputs, aggregated, mode 
             return { entry, amountCents };
         });
     } else {
-        // Proportional nach Vermögen oder (runway_first) nach Runway-Zielen.
-        const weights = entries.map(entry => {
-            if (mode === 'runway_first') {
-                return entry.assets > 0 ? Math.max(0, entry.liquidityRunwayYears || 0) : 0;
-            }
-            return Math.max(0, entry.assets || 0);
-        });
+        // Proportional nach Vermögen. FR-87 (runway_first): Der Teil bis zur Haushaltsliquidität zahlt zuerst die Person mit mehr
+        // operativer Liquidität, bis beide gleich viel haben, dann zu gleichen Teilen; nur der Überschuss folgt den Runway-Zielen (stetig).
+        const liquidityCents = entries.map(entry => Math.max(0, Math.round(entry.liquidity * 100)));
+        const coveredCents = Math.min(commonCents, liquidityCents.reduce((sum, value) => sum + value, 0));
+        const years = entries.map(entry => entry.assets > 0 ? Math.max(0, entry.liquidityRunwayYears || 0) : 0);
+        const yearsTotal = years.reduce((sum, value) => sum + value, 0);
+        // HP-1: Ohne Zieljahre folgt der Überschuss den Vermögensanteilen wie bei „Anteilig“.
+        const assetWeights = entries.map(entry => Math.max(0, entry.assets || 0));
+        const excessWeights = yearsTotal > 0 ? years : assetWeights;
+        const excessTotal = excessWeights.reduce((sum, value) => sum + value, 0);
+        const weights = mode === 'runway_first'
+            ? equalizeLiquidity(liquidityCents, coveredCents, 'drain').map((cents, idx) => cents
+                + (excessTotal > 0 ? (commonCents - coveredCents) * excessWeights[idx] / excessTotal : 0))
+            : assetWeights;
         const totalWeight = weights.reduce((sum, val) => sum + val, 0);
         if (totalWeight > 0) {
             const raw = entries.map((entry, idx) => {
@@ -99,11 +110,38 @@ export function calculateWithdrawalDistribution(profileInputs, aggregated, mode 
 
     allocations.forEach((item, index) => { item.amountCents += personalCents[entries.indexOf(item.entry)] ?? personalCents[index] ?? 0; });
     creditPersonalIncome(allocations, entries, incomeCents, totalNeedCents);
-    if (kind === 'one_carries') return finishWithdrawalItems(allocations, totalNeedCents, carryingRemainder(allocations, totalNeedCents, carrierId), mode, carrierId);
+    if (kind === 'one_carries') {
+        // NK-2d (Gutachten NK2C3 Befund 3): auch bei ausdrücklich gewählter tragender Person zu Hause.
+        const explicit = activeCarrier(mode, entries) === carrierId, homeRule = Boolean(homeAlone) && homeAlone === carrierId;
+        // NK-2c (Gutachten NK2C2 Befund 3, Fable P2-3): Die Person im Heim deckt nur die Grundbedarfslücke der Person zu Hause, nie deren Flex;
+        // der nicht gedeckte Flex wird gekürzt.
+        const carrier = allocations.find(item => item.entry.profileId === carrierId);
+        const floorDue = Math.max(0, Math.round((Number(aggregated?.totalFloor) || 0) * 100) - personalCents.reduce((sum, value) => sum + value, 0)
+            - (incomeCents[entries.indexOf(/** @type {any} */ (carrier)?.entry)] || 0));
+        const othersLimit = homeRule && Number.isFinite(Number(aggregated?.totalFloor)) && carrier
+            ? Math.max(0, floorDue - Math.min(floorDue, Math.max(0, Math.round(carrier.entry.assets * 100)))) : Infinity;
+        const rest = carryingRemainder(allocations, totalNeedCents, carrierId, othersLimit);
+        if (!homeRule) return finishWithdrawalItems(allocations, totalNeedCents, rest, mode, carrierId);
+        // NK-2d (Gutachten NK2C3 Befund 1): Gekürzt wird nur bewilligter Flex; ein darüber hinaus fehlender Grundbedarf bleibt offen.
+        const commonFloor = Math.max(0, Math.round((Number(aggregated?.totalFloor) || 0) * 100) - personalCents.reduce((sum, value) => sum + value, 0));
+        const flexCents = Math.max(0, commonCents - commonFloor);
+        const cutCents = Number.isFinite(othersLimit) ? Math.min(rest.remainingCents, flexCents) : 0, shortCents = rest.remainingCents - cutCents;
+        const result = finishWithdrawalItems(allocations, totalNeedCents - cutCents, { remainingCents: shortCents, attacked: explicit ? rest.attacked : [] },
+            mode, explicit ? carrierId : null);
+        return { ...result, ...(cutCents > 0 ? { flexCut: [{ profileId: carrierId, amount: cutCents / 100 }] } : {}),
+            ...(shortCents > 0 ? { floorShortfall: shortCents / 100 } : {}) };
+    }
     // Erst Liquidität für den Plan, dann übrige Haushaltsliquidität, zuletzt Verkäufe.
     const originalAmounts = allocations.map(item => item.amountCents);
     for (const item of allocations) item.amountCents = Math.min(item.amountCents,
         Math.max(0, Math.round(item.entry.liquidity * 100)));
+    // FR-84: Eigene Pflegekosten zahlt die Person aus eigenem Vermögen; reicht ihre Liquidität nicht, verkauft sie selbst,
+    // statt die Liquidität des Partners zu nutzen.
+    if (personalSum > 0) allocations.forEach((item, index) => {
+        const care = personalCents[entries.indexOf(item.entry)] ?? 0;
+        const assets = Math.max(0, Math.round(item.entry.assets * 100));
+        item.amountCents += Math.max(0, Math.min(originalAmounts[index] - item.amountCents, care, assets - item.amountCents));
+    });
     remainingCents = totalNeedCents - allocations.reduce((sum, item) => sum + item.amountCents, 0);
     for (const item of allocations) {
         const available = Math.max(0, Math.round(item.entry.liquidity * 100) - item.amountCents);
@@ -148,18 +186,20 @@ export function calculateWithdrawalDistribution(profileInputs, aggregated, mode 
  * deren Vermögen nicht, greift der Plan auf das Vermögen der anderen zu, Reihenfolge wie steueroptimiert (Liquidität in
  * Haushaltsreihenfolge, dann Verkäufe nach Steuer je Euro). Diese Personen stehen in `attacked`. */
 /** @param {{entry: any, amountCents: number}[]} allocations @param {number} totalNeedCents @param {string} carrierId */
-function carryingRemainder(allocations, totalNeedCents, carrierId) {
+function carryingRemainder(allocations, totalNeedCents, carrierId, othersLimit = Infinity) {
     const assetsCents = item => Math.max(0, Math.round(item.entry.assets * 100));
     const own = allocations.map(item => item.amountCents);
     for (const item of allocations) item.amountCents = Math.min(item.amountCents, assetsCents(item));
     let remainingCents = totalNeedCents - allocations.reduce((sum, item) => sum + item.amountCents, 0);
     const carrier = allocations.find(item => item.entry.profileId === carrierId);
-    const take = (item, available) => { const cents = Math.max(0, Math.min(remainingCents, available)); item.amountCents += cents; remainingCents -= cents; };
+    let budget = othersLimit;
+    const take = (item, available, limited = false) => { const cents = Math.max(0, Math.min(remainingCents, available, limited ? budget : Infinity));
+        item.amountCents += cents; remainingCents -= cents; if (limited) budget -= cents; };
     if (carrier) take(carrier, assetsCents(carrier) - carrier.amountCents);
     const others = allocations.filter(item => item !== carrier);
-    for (const item of others) take(item, Math.round(item.entry.liquidity * 100) - item.amountCents);
+    for (const item of others) take(item, Math.round(item.entry.liquidity * 100) - item.amountCents, true);
     for (const item of others.slice().sort((a, b) => a.entry.taxPerEuro - b.entry.taxPerEuro
-        || String(a.entry.profileId).localeCompare(String(b.entry.profileId)))) take(item, assetsCents(item) - item.amountCents);
+        || String(a.entry.profileId).localeCompare(String(b.entry.profileId)))) take(item, assetsCents(item) - item.amountCents, true);
     const attacked = others.filter(item => item.amountCents > own[allocations.indexOf(item)] + 0.5)
         .map(item => ({ profileId: item.entry.profileId, name: item.entry.name, amount: (item.amountCents - own[allocations.indexOf(item)]) / 100 }));
     return { remainingCents, attacked };

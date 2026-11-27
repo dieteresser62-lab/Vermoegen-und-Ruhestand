@@ -110,7 +110,7 @@ try {
         'applyLoadResult', 'applyProfileAssetValuesToDom', 'loadProfileAssetValues', 'updateActiveProfileLabel',
         'bindProfileValueInputs', 'bindControls', 'render', 'renderPersistenceState', 'observeSelectionText',
         'managerInputSignature', 'RECONCILIATION_INPUT_IDS', 'PROFILE_INPUT_IDS', 'getPageNavigationGuard', 'createNavigationOperationLifecycle',
-        'bindManagerHistoryStartUI', 'saveManagerHistoryStart', 'bindTrancheHistoryUI', 'renderDepotHistory', 'processingIsBlocked', 'bindManagerPersonCards', 'flushManagerCashInput',
+        'bindManagerHistoryStartUI', 'saveManagerHistoryStart', 'bindTrancheHistoryUI', 'renderDepotHistory', 'processingIsBlocked', 'bindManagerPersonCards', 'flushManagerProfileInputs',
         `${functionSource('app/tranches/tranchen-manager-page/startup.js', 'initTranchenManagerPage')}\nreturn initTranchenManagerPage;`)(
         state, () => 'fixture', () => {}, () => null, () => ({ status: 'empty' }), () => {}, () => {}, () => ({}),
         () => {}, () => {}, () => {}, () => {

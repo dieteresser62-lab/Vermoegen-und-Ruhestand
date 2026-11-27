@@ -6,10 +6,16 @@ import { persistenceStorage } from '../shared/persistence-facade.js';
 export const PROFILE_VERSION = 1;
 export const HOUSEHOLD_LIMIT_REASON = 'Ein Haushalt hat höchstens zwei Personen.';
 export const HOUSEHOLD_LIMIT_MESSAGE = 'Die Sicherung enthält mehr als zwei Haushaltspersonen. Ein Haushalt hat höchstens zwei. Es wurde nichts geändert.';
-export const HOUSEHOLD_CURRENT_LIMIT_MESSAGE = count => `Dein Haushalt hat ${count} Personen; ein Haushalt hat höchstens zwei. Entferne in „Personen verwalten“ bei einer Person das Häkchen „im Haushalt“.`;
+export const HOUSEHOLD_CURRENT_LIMIT_MESSAGE = count => `Dein Haushalt hat ${count} Personen; ein Haushalt hat höchstens zwei. Lösche in „Personen verwalten“ eine Person oder lege für sie einen eigenen Haushalt an.`;
 export const HOUSEHOLD_MINIMUM_REASON = 'Ein Haushalt braucht mindestens eine Person.';
+/** AP-1 [A7]: Personen außerhalb des Haushalts gibt es nicht mehr. Ein altes `belongsToHousehold: false` weist das Lesen ab, ohne zu schreiben.
+ * Neue Profile (auch Muster und Personenmigration) speichern weiter fest `belongsToHousehold: true`, damit ältere App-Versionen sie als
+ * Haushaltsperson lesen [V8]. */
+export const OUTSIDE_PERSON_CODE = 'PROFILE_REGISTRY_OUTSIDE_PERSON';
+export const OUTSIDE_PERSON_IMPORT_MESSAGE = 'Diese Sicherung enthält eine Person außerhalb des Haushalts. Das unterstützt die App nicht mehr. Lege für sie einen eigenen Haushalt an. Es wurde nichts geändert.';
+export const OUTSIDE_PERSON_RESTORE_POINT_MESSAGE = 'Dieser Wiederherstellungspunkt enthält eine Person außerhalb des Haushalts. Das unterstützt die App nicht mehr. Lege für sie einen eigenen Haushalt an. Es wurde nichts geändert.';
 export function householdMemberCount(registry) {
-    return Object.values(registry?.profiles || {}).filter(profile => profile.meta?.belongsToHousehold !== false).length;
+    return Object.keys(registry?.profiles || {}).length;
 }
 export function assertHouseholdLimit(registry, message = HOUSEHOLD_LIMIT_MESSAGE) {
     if (householdMemberCount(registry) > 2) {
@@ -43,11 +49,6 @@ export class ProfileRegistryError extends Error {
 
 function nowIso() {
     return new Date().toISOString();
-}
-
-function normalizeBelongsFlag(meta) {
-    if (!meta) return true;
-    return meta.belongsToHousehold !== false;
 }
 
 function slugify(name) {
@@ -140,6 +141,16 @@ function validateProfileRegistryShape(parsed, raw) {
                     code: 'PROFILE_REGISTRY_ENTRY_INVALID',
                     message: `Die Profilregistry enthaelt fuer ${id || 'unbekannt'} einen ungueltigen Profileintrag.`,
                     profileId: id || null
+                }
+            });
+        }
+        if (meta.belongsToHousehold === false) {
+            return createRegistryLoadResult(PROFILE_LOAD_STATUS.CORRUPT, {
+                raw,
+                error: {
+                    code: OUTSIDE_PERSON_CODE,
+                    message: `Die gespeicherten Daten enthalten mit ${meta.name || id} eine Person außerhalb des Haushalts. Das unterstützt die App nicht mehr.`,
+                    profileId: id
                 }
             });
         }
@@ -393,10 +404,7 @@ export function setCurrentProfileId(id, storage = persistenceStorage) {
 
 export function listProfiles(options = {}) {
     const registry = ensureDefaultProfile(options);
-    return Object.values(registry.profiles).map(p => ({
-        ...p.meta,
-        belongsToHousehold: normalizeBelongsFlag(p.meta)
-    }));
+    return Object.values(registry.profiles).map(p => ({ ...p.meta }));
 }
 
 /** Bereits ausgewählte Haushaltsmitglieder in Registryreihenfolge; unabhängig vom aktiven Profil. */
@@ -407,8 +415,7 @@ export function getHouseholdPrimaryProfileId(householdMembers) {
 export function getProfileMeta(id, options = {}) {
     const registry = ensureDefaultProfile(options);
     const meta = registry.profiles[id]?.meta || null;
-    if (!meta) return null;
-    return { ...meta, belongsToHousehold: normalizeBelongsFlag(meta) };
+    return meta ? { ...meta } : null;
 }
 
 export function getProfileData(id, options = {}) {
@@ -436,7 +443,7 @@ export function createProfile(name, options = {}) {
         data: { [PERSON_VALUE_KEYS.personSchemaVersion]: '1' }
     };
 
-    saveProfileRegistry(registry, storage);
+    if (!saveProfileRegistry(registry, storage)) throw new Error('Die neue Person konnte nicht gespeichert werden.');
     return registry.profiles[id].meta;
 }
 
@@ -448,25 +455,8 @@ export function renameProfile(id, name, options = {}) {
     if (!registry.profiles[id]) return null;
     registry.profiles[id].meta.name = name || registry.profiles[id].meta.name;
     registry.profiles[id].meta.updatedAt = nowIso();
-    saveProfileRegistry(registry, storage);
-    return { ...registry.profiles[id].meta, belongsToHousehold: normalizeBelongsFlag(registry.profiles[id].meta) };
-}
-
-export function setProfileVerbundMembership(profileId, belongs, options = {}) {
-    const {
-        storage = persistenceStorage
-    } = options;
-    const registry = ensureDefaultProfile(options);
-    if (!registry.profiles[profileId]) return false;
-    if (belongs && !normalizeBelongsFlag(registry.profiles[profileId].meta) && householdMemberCount(registry) >= 2) {
-        throw new Error(HOUSEHOLD_LIMIT_REASON);
-    }
-    if (!belongs && normalizeBelongsFlag(registry.profiles[profileId].meta) && householdMemberCount(registry) <= 1) {
-        throw new Error(HOUSEHOLD_MINIMUM_REASON);
-    }
-    registry.profiles[profileId].meta.belongsToHousehold = Boolean(belongs);
-    registry.profiles[profileId].meta.updatedAt = nowIso();
-    return saveProfileRegistry(registry, storage);
+    if (!saveProfileRegistry(registry, storage)) throw new Error('Der neue Name konnte nicht gespeichert werden.');
+    return { ...registry.profiles[id].meta };
 }
 
 export function deleteProfile(id, options = {}) {

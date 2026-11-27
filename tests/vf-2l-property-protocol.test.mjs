@@ -95,7 +95,8 @@ for (const entry of historical.rows) {
     if (entry.row.immobilienverkauf || historical.rows.some(previous => previous.jahr < entry.jahr && previous.row.immobilienverkauf)) continue;
     assertClose(entry.row.immobilien_wert_end, 180000 * historicalFactor, .001, 'Backtest übernimmt bewerteten Jahresendbestand');
 }
-assert(serializeHistoricalBacktestCsv(historical).split('\n')[0].endsWith(';Immobilien;Gesamtvermögen'), 'Echter Backtest-CSV hängt beide Köpfe an');
+assert(serializeHistoricalBacktestCsv(historical).split('\n')[0].endsWith(';Immobilien;Gesamtvermögen;VPW-Status;VPW-Hinweis'),
+    'Echter Backtest-CSV führt beide Immobilienköpfe vor den VPW-Spalten');
 const empty = await measurementInputs(0, 'renate', '2026-10-23', 'klein');
 const [emptyRows] = await runs(empty, [0]);
 for (const source of ['mc', 'backtest']) for (const logDetailLevel of ['normal', 'detailed']) {

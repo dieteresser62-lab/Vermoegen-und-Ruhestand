@@ -2,7 +2,7 @@ import { EngineAPI } from '../engine/index.mjs';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input-storage.js';
 import { createProfilverbundHandlers } from '../app/balance/balance-main-profilverbund.js';
-import { evaluateBalanceFileInputs } from '../app/balance/balance-file-service.js';
+import { evaluateBalanceInputs } from '../app/balance/balance-evaluation.js';
 import { evaluateBalanceMarketPreview } from '../app/balance/balance-market-preview-runtime.js';
 import { prepareMarketPreview } from '../app/balance/balance-market-preview.js';
 import { CONFIG } from '../app/balance/balance-config.js';
@@ -48,9 +48,7 @@ function assertBase(result, base, label) {
     assertEqual(json(result.modelResult), json(base.modelResult), label + ': vollständiges Basis-Ergebnis bytegleich');
     assertEqual(json(result.profilverbundRuns), json(base.profilverbundRuns), label + ': Basis-Profilaktionen bytegleich');
     assertEqual(result.marketPreview.withoutQuote, true, label + ': ohne Kurs');
-    assertEqual(result.marketPreview.readingsEqual, true, label + ': gleiche Lesarten');
-    assertEqual(result.marketPreview.comparison.state, 'not_reliable', label + ': Budgetvergleich nicht belastbar');
-    assert(Boolean(result.marketPreview.comparison.reason), label + ': Budgetvergleich mit Grund');
+    assert(Boolean(result.marketPreview.unreliableReason), label + ': nicht belastbar, mit Grund');
 }
 const savedGlobals = Object.fromEntries(['window', 'document', 'Event'].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
 const savedDate = getAppTestDate(), savedError = console.error, savedInfo = console.info;
@@ -69,10 +67,10 @@ try {
         ['Datum', f => { f.context.now = new Date(NaN); }],
         ['Speicherlesefehler', f => { f.context.storage = { get length() { throw new Error('Synthetischer Lesefehler'); } }; }]
     ]) {
-        const f = fixture(), base = evaluateBalanceFileInputs(f.options);
+        const f = fixture(), base = evaluateBalanceInputs(f.options);
         change(f);
         const before = json(f.records), previousErrors = errors.length;
-        const result = evaluateBalanceFileInputs({ ...f.options, marketPreviewContext: f.context });
+        const result = evaluateBalanceInputs({ ...f.options, marketPreviewContext: f.context });
         assertBase(result, base, label);
         assertEqual(result.marketPreview.yearEndDate, null, label + ': kein erfundenes Bezugsdatum');
         assertEqual(errors.length, previousErrors + 1, label + ': Fehler nur in Konsole');
@@ -84,7 +82,7 @@ try {
         let base, baseActions, baseDistribution;
         const result = evaluateBalanceMarketPreview(f.options, f.context, options => {
             if (options.inputData.ath === 200 && failure === 'engine') throw new Error('Synthetischer Vorschaufehler');
-            const evaluated = evaluateBalanceFileInputs(options);
+            const evaluated = evaluateBalanceInputs(options);
             if (!base) { base = evaluated; baseActions = window.__profilverbundActionResults; baseDistribution = window.__profilverbundDistribution; }
             if (options.inputData.ath === 200 && failure === 'projection') evaluated.modelResult.ui.market = null;
             return evaluated;
@@ -105,12 +103,11 @@ try {
         const prepared = prepareMarketPreview({ inputs, dailyPrices, today: '2026-10-30', yearEndDate: '2025-12-31', hasAnnualClose: true });
         assertEqual(prepared.withoutQuote, true, date + ': alter Schluss zählt nicht als Tageskurs');
         assertEqual(prepared.withoutQuoteReason, 'kein Tageskurs seit Jahresende VJ', date + ': genauer Anzeigegrund');
-        assertEqual(json(prepared.ruleInputs), json(inputs), date + ': Regelinputs unverändert');
-        assertEqual(json(prepared.highInputs), json(inputs), date + ': Hochinputs unverändert');
-        const f = fixture(), base = evaluateBalanceFileInputs(f.options);
+        assertEqual(json(prepared.marketInputs), json(inputs), date + ': Markteingaben unverändert');
+        const f = fixture(), base = evaluateBalanceInputs(f.options);
         f.records[DAILY_PRICES_KEY] = json(dailyPrices);
         let calls = 0;
-        const result = evaluateBalanceMarketPreview(f.options, f.context, options => { calls++; return evaluateBalanceFileInputs(options); });
+        const result = evaluateBalanceMarketPreview(f.options, f.context, options => { calls++; return evaluateBalanceInputs(options); });
         assertBase(result, base, date);
         assertEqual(calls, 1, date + ': nur Basisrechnung');
         assertEqual(result.marketPreview.withoutQuoteReason, 'kein Tageskurs seit Jahresende VJ', date + ': Grund bis zur Projektion');
@@ -125,21 +122,21 @@ try {
             pendingCommit: { periodId: 'calendar-year:2026', phase: 'snapshot_confirmed', snapshotId: 'synthetic' } }; }],
         ['unavailable', null]
     ]) {
-        const f = fixture(), base = evaluateBalanceFileInputs(f.options);
+        const f = fixture(), base = evaluateBalanceInputs(f.options);
         if (change) { const state = JSON.parse(f.records[CONFIG.STORAGE.LS_KEY]); change(state); f.records[CONFIG.STORAGE.LS_KEY] = json(state); }
         else f.records.depot_tranchen = '{broken';
         const model = projectOverviewFromRecords({ registry: JSON.parse(f.records.rs_profiles_v1), activeId: f.records.rs_current_profile,
-            liveData: f.records, now, balanceSingleFallback: true });
+            liveData: f.records, now });
         assertEqual(model.occasion.annualState, expected, expected + ': tatsächlicher Jahreszustand im Übersichtsmodell');
-        const result = evaluateBalanceFileInputs({ ...f.options, marketPreviewContext: f.context });
+        const result = evaluateBalanceInputs({ ...f.options, marketPreviewContext: f.context });
         assertBase(result, base, expected);
         assertEqual(result.marketPreview.yearEndDate, null, expected + ': kein stiller Datumsfallback');
     }
     for (const missing of ['activeId', 'model']) {
-        const f = fixture(), base = evaluateBalanceFileInputs(f.options);
+        const f = fixture(), base = evaluateBalanceInputs(f.options);
         if (missing === 'activeId') delete f.records.rs_current_profile;
         else f.records.rs_profiles_v1 = json({ profiles: {} });
-        const result = evaluateBalanceFileInputs({ ...f.options, marketPreviewContext: f.context });
+        const result = evaluateBalanceInputs({ ...f.options, marketPreviewContext: f.context });
         assertBase(result, base, missing);
         assertEqual(result.marketPreview.yearEndDate, null, missing + ': kein stiller Datumsfallback');
     }

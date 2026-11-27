@@ -3,7 +3,8 @@
 import { describePlanAction } from './balance-action-summary.js';
 import { annualActionPlanLines, annualActionAssetClass } from './annual-action-progress.js';
 import { resolveTargetTagesgeld, ironCashReserve } from './balance-play-execution.js';
-import { personalCashTargetEntries } from './balance-reserves.js';
+import { personalCashTargetEntries, annualInflowParts, displayedAnnualUse } from './balance-reserves.js';
+import { displayedSaleTotal } from '../shared/display-rounding.js';
 import { confirmedCarrier } from './balance-action-origin.js';
 import { PROFILE_TRANCHES_KEY } from '../profile/profile-state.js';
 import { resolveLiquidityRunwayYears } from '../../types/liquidity-runway-contract.js';
@@ -38,8 +39,9 @@ export function saleEntryHref(target) {
 
 /** Plan des Jahresbelegs für die Karte. Status und Beträge stammen aus `projectAnnualActionProgress`; ohne Stand gilt alles als offen.
  * @param {{confirmed: {year: number, committedAt?: string, action: any, text?: string, progress?: any, marketReading?: any}|null|undefined,
- * people?: {id: string, name: string}[], routing?: {tagesgeld: number, geldmarkt: number}|null, cashMonths?: number|null}} options */
-export function projectAnnualTodoPlan({ confirmed, people = [], routing = null, cashMonths = null }) {
+ * people?: {id: string, name: string}[], routing?: ReturnType<typeof import('./balance-play-execution.js').annualLiquidityInflowRouting>}} options
+ * `routing` liefert im Jahresabschluss-Ergebnis die genaue Aufteilung wie in „Deine Reserven“. */
+export function projectAnnualTodoPlan({ confirmed, people = [], routing = null }) {
     if (!confirmed?.action) return null;
     const action = confirmed.action, sources = Array.isArray(action.quellen) ? action.quellen : [];
     const summary = describePlanAction(action);
@@ -64,21 +66,22 @@ export function projectAnnualTodoPlan({ confirmed, people = [], routing = null, 
         .reduce((sum, source) => sum + (finite(source.steuer) ? source.steuer : 0), 0);
     const open = rows.find(row => row.status !== 'erledigt') || null;
     const uses = Object.entries(action.verwendungen || {}).filter(([, amount]) => finite(amount) && amount > 0);
-    const months = Number.isInteger(cashMonths) && cashMonths > 0 ? cashMonths : 12;
     // RD-1e: `purchase` kennzeichnet Käufe (Gold, Aktien, Anleihen); die Anzeige rundet sie ab.
     const PURCHASE_KEYS = ['gold', 'aktien', 'bonds'];
-    /** @type {{label: string, amount: number, purchase?: boolean}[]} */
-    const destinations = [];
-    for (const [key, amount] of uses) {
-        if (key !== 'liquiditaet') { destinations.push({ label: USE_NAMES[key] || `In ${key}`, amount, purchase: PURCHASE_KEYS.includes(key) }); continue; }
-        if (routing && finite(routing.tagesgeld) && finite(routing.geldmarkt)) {
-            if (routing.geldmarkt > 0.5) destinations.push({ label: `Aufs Tagesgeld, bis es ${months} Monate Entnahme deckt`, amount: routing.tagesgeld },
-                { label: 'Der Rest in den Geldmarkt', amount: routing.geldmarkt });
-            else destinations.push({ label: `Alles aufs Tagesgeld, bis es ${months} Monate Entnahme deckt`, amount });
-        } else destinations.push({ label: 'Aufs Tagesgeld bis zum Tagesgeldziel, der Rest in den Geldmarkt', amount });
-    }
     // Käufe tragen im Beleg keine Person (Verwendungen des Haushalts); ihr Stand ist ohne Raten nicht ableitbar.
     const purchases = uses.filter(([key]) => key !== 'liquiditaet' && key !== 'cash').map(([key, amount]) => ({ label: USE_NAMES[key] || `In ${key}`, amount, purchase: PURCHASE_KEYS.includes(key) }));
+    const parts = routing && rows.length ? annualInflowParts(action, routing, displayedSaleTotal(rows)) : null;
+    /** @type {{label: string, amount: number, purchase?: boolean, shown?: number}[]} */
+    const destinations = [];
+    for (const [key, amount] of uses) {
+        if (key !== 'liquiditaet') { destinations.push({ label: USE_NAMES[key] || `In ${key}`, amount, purchase: PURCHASE_KEYS.includes(key),
+            ...(parts ? { shown: displayedAnnualUse(key, amount) } : {}) }); continue; }
+        if (routing && finite(routing.tagesgeld) && finite(routing.geldmarkt)) {
+            if ((parts ? parts.geldmarkt : routing.geldmarkt) > 0.5) destinations.push({ label: 'Aufs Tagesgeld bis zum Tagesgeldziel', amount: routing.tagesgeld,
+                ...(parts ? { shown: parts.tagesgeld } : {}) }, { label: 'Der Rest in den Geldmarkt', amount: routing.geldmarkt, ...(parts ? { shown: parts.geldmarkt } : {}) });
+            else destinations.push({ label: 'Alles aufs Tagesgeld bis zum Tagesgeldziel', amount, ...(parts ? { shown: parts.tagesgeld } : {}) });
+        } else destinations.push({ label: 'Aufs Tagesgeld bis zum Tagesgeldziel, der Rest in den Geldmarkt', amount });
+    }
     const credits = (progress?.creditPendingSales || []).map((/** @type {any} */ sale) => ({ profileId: sale.profileId, date: todoDate(sale.executedAt),
         amount: sale.netProceeds, who: people.find(entry => entry.id === sale.profileId)?.name || null }));
     const securities = [...new Set(rows.filter(row => row.restNet > 0).map(row => row.security))];
@@ -173,9 +176,12 @@ export function cashRefillMonthlyBase(currentYear) {
 }
 
 /** RK-2 (Ergänzung 1 FR-80): Personen ohne Auftrag bei „Eine Person trägt“, deren Tagesgeld unter ihrem Ziel liegt (nur Hinweis).
- * @param {{carrierHold?: boolean, tagesgeld: number, target: number}[]} people aus `cashRefillPeople` */
-export const heldBelowCashTarget = people => (people || []).filter(person => person.carrierHold === true && finite(person.tagesgeld)
-    && finite(person.target) && person.tagesgeld < person.target - 0.5);
+ * NK-2 (Befund 2153): nur, wer Depot, Geldmarkt oder Gold zum Umschichten hat, und nie bei Hilfe zur Pflege für diese Person.
+ * @param {{profileId?: string|null, carrierHold?: boolean, tagesgeld: number, target: number, investments?: number}[]} people aus `cashRefillPeople`
+ * @param {(string|null|undefined)[]} [careAidIds] Personen mit voraussichtlicher Hilfe zur Pflege */
+export const heldBelowCashTarget = (people, careAidIds = []) => (people || []).filter(person => person.carrierHold === true && finite(person.tagesgeld)
+    && finite(person.target) && person.tagesgeld < person.target - 0.5 && !(finite(person.investments) && /** @type {number} */ (person.investments) <= 0.5)
+    && !careAidIds.includes(person.profileId));
 
 /** Personen für „Tagesgeld auffüllen“: Tagesgeld, Geldmarkt und Tagesgeldziel wie beim Routing der Planerlöse.
  * Im Haushalt die Personeneinträge des laufenden Jahres, sonst die Haushaltseingaben. Die Geldmarkt-Tranche je Person
@@ -198,9 +204,11 @@ export function cashRefillPeople(currentYear, readRegistry, activeId = null, con
         const carrierId = confirmed?.action ? confirmedCarrier(confirmed)?.carrierId : null;
         const decided = carrierId && entries.some(entry => entry.profileId === carrierId);
         const held = (/** @type {any} */ entry) => confirmed?.action ? Boolean(decided) && entry.profileId !== carrierId : entry.action?.carrierHold === true;
+        // NK-2 (Befund 2153): Was die Person umschichten könnte (Depot, Geldmarkt, Gold).
+        const investments = (/** @type {any} */ input) => ['depotwertAlt', 'depotwertNeu', 'goldWert', 'geldmarktEtf'].reduce((sum, key) => sum + (finite(input?.[key]) ? Math.max(0, input[key]) : 0), 0);
         return entries.map((entry, index) => ({ profileId: entry.profileId ?? null, name: entry.name ?? null, tagesgeld: entry.input?.tagesgeld,
             geldmarkt: entry.input?.geldmarktEtf, target: targets[index]?.tagesgeldTarget, moneyMarketTrancheId: moneyMarket(entry.profileId),
-            ...(held(entry) ? { carrierHold: true } : {}) }));
+            ...(held(entry) ? { carrierHold: true, investments: investments(entry.input) } : {}) }));
     }
     const input = currentYear.input || {}, entry = currentYear.profileActionResults?.[0];
     const profileId = entry?.profileId ?? activeId ?? null;

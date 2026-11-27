@@ -578,7 +578,7 @@ const technicalEngineError = runHistoricalBacktest({
         isRuin: false,
         error: {
             code: 'SIM_ENGINE_RESULT_ERROR',
-            message: 'Die Simulations-Engine hat das Jahr abgewiesen (SIM_ENGINE_RESULT_ERROR).',
+            message: 'Der Rechenkern hat das Jahr abgewiesen (SIM_ENGINE_RESULT_ERROR).',
             cause: new Error('internal C:\\private\\engine.js')
         }
     })

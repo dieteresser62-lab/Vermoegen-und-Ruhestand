@@ -95,7 +95,6 @@ export class MockElement {
         if (selector === '[data-action]' && this.dataset.action) return this;
         if (selector === '[data-cash-action]' && this.dataset.cashAction) return this;
         if (selector === '[data-person-action]' && this.dataset.personAction) return this;
-        if (selector === '[data-person-membership]' && this.dataset.personMembership) return this;
         return null;
     }
 }
@@ -233,7 +232,7 @@ export function createTranchenPageDom() {
     doc.register(backLink);
     [
         'depotAddTrancheBtn',
-        'updatePricesBtn',
+        'managerQuoteRefresh',
         'closeTrancheModalBtn',
         'deleteTrancheDialogBtn',
         'revealCorruptPayloadBtn',
@@ -470,7 +469,7 @@ async function createMonthlyCashScenario() {
         profile_cash_history_v1: JSON.stringify({ version: 1, baselineValue: 9000, entries: [] }),
         profile_wealth_history_lots_v1: JSON.stringify({ version: 1, lots: {} }) };
     registry.profiles[id].data = { ...data };
-    registry.profiles.fremd = { meta: { id: 'fremd', name: 'Synthetische zweite Person', belongsToHousehold: false },
+    registry.profiles.fremd = { meta: { id: 'fremd', name: 'Synthetische zweite Person' },
         data: { profile_tagesgeld: '321', depot_tranchen: '[]', fremder_beleg: 'unverändert' } };
     const backend = new Map(Object.entries({ ...data, rs_profiles_v1: JSON.stringify(registry),
         rs_current_profile: id, rs_active_profile: id, fremder_record: 'unverändert' }));
@@ -735,7 +734,7 @@ async function runTranchenManagerPageTests() {
         };
         try {
             await initTranchenManagerPage();
-            await doc.getElementById('updatePricesBtn').listeners.click[0]();
+            await doc.getElementById('managerQuoteRefresh').listeners.click[0]();
             await PersistenceFacade.flush();
         } finally {
             if (previousFetch === undefined) delete global.fetch; else global.fetch = previousFetch;
@@ -809,6 +808,9 @@ async function runTranchenManagerPageTests() {
             quoteCalls.set(symbol, (quoteCalls.get(symbol) || 0) + 1);
             if (symbol === 'SAME.DE') {
                 await eurQuoteGate;
+                return { ok: false, status: 404, json: async () => ({ code: 'SYMBOL_NOT_FOUND' }) };
+            }
+            if (symbol === 'SAME.SG') {
                 return {
                     ok: true,
                     status: 200,
@@ -817,6 +819,7 @@ async function runTranchenManagerPageTests() {
                         price: 125,
                         currency: 'EUR',
                         asOf: now,
+                        exchangeName: 'STU',
                         source: 'yahoo-chart'
                     })
                 };
@@ -833,10 +836,10 @@ async function runTranchenManagerPageTests() {
         };
 
         try {
-            const firstClick = doc.getElementById('updatePricesBtn').listeners.click[0]();
-            const secondClick = doc.getElementById('updatePricesBtn').listeners.click[0]();
+            const firstClick = doc.getElementById('managerQuoteRefresh').listeners.click[0]();
+            const secondClick = doc.getElementById('managerQuoteRefresh').listeners.click[0]();
             await waitFor(() => quoteCalls.get('SAME.DE') === 1, 'Duplicate symbol should start exactly one active quote request');
-            assertEqual(doc.getElementById('updatePricesBtn').disabled, true, 'Active quote batch should disable repeated UI action');
+            assertEqual(doc.getElementById('managerQuoteRefresh').disabled, true, 'Active quote batch should disable repeated UI action');
             releaseEurQuote();
             await Promise.all([firstClick, secondClick]);
             await PersistenceFacade.flush();
@@ -845,6 +848,7 @@ async function runTranchenManagerPageTests() {
         }
 
         assertEqual(quoteCalls.get('SAME.DE'), 1, 'Same symbol across lots and double click must remain single-flight');
+        assertEqual(quoteCalls.get('SAME.SG'), 1, 'Die Ausweichbörse wird für beide Tranchen einmal abgefragt');
         assertEqual(window.tranchen.find(item => item.trancheId === 'eur-a').currentPrice, 125, 'First EUR lot should update');
         assertEqual(window.tranchen.find(item => item.trancheId === 'eur-b').currentPrice, 125, 'Second EUR lot should share result');
         assertEqual(window.tranchen.find(item => item.trancheId === 'usd').currentPrice, 80, 'Rejected USD lot must retain old price');
@@ -858,17 +862,19 @@ async function runTranchenManagerPageTests() {
                 const lot = collection.find(item => item.trancheId === id);
                 assertEqual(lot.asOf, now, 'Auch gleicher Preis und geteiltes Symbol erhalten exakt quote.asOf');
                 assertEqual(lot.currentPrice, 125, 'Preis bleibt an Kurszeit gebunden');
-                assertEqual(lot.ticker, 'SAME.DE', 'Aufgelöster Ticker wird mitgespeichert');
+                assertEqual(lot.ticker, 'SAME.DE', 'Das gespeicherte Kürzel bleibt beim Ausweichkurs erhalten');
+                assertEqual(lot.quoteExchange, 'Stuttgart', 'Die tatsächliche Börse wird mit dem Kurs gespeichert');
             }
             assertEqual(collection.find(item => item.trancheId === 'usd').asOf, now - 2000,
                 'Teilfehler erhält den alten Kurszeitpunkt');
         }
         assertEqual(JSON.parse(adapterStore.get('depot_tranchen')).find(item => item.trancheId === 'usd').currentPrice, 80, 'Persisted rejected lot should retain old price');
+        assert(/Stuttgart\u00a0\d{2}:\d{2}/.test(doc.getElementById('tranchenTable').innerHTML), 'Die Tranchenzeile verbindet Börse und Uhrzeit mit einem geschützten Leerzeichen');
         const batchStatus = doc.getElementById('priceUpdateStatus').textContent;
         assert(batchStatus.startsWith('Kurse teilweise aktualisiert (2 von 3).'), 'Mixed outcome should remain concise and unambiguous');
         assert(batchStatus.includes('USD Lot: Waehrung USD wird nicht unterstuetzt.'), 'Rejected tranche and understandable reason should remain visible');
         assert(!batchStatus.includes('yahoo-chart') && !batchStatus.includes('Stichtag'), 'Successful quote metadata should not clutter the status');
-        assertEqual(doc.getElementById('updatePricesBtn').disabled, false, 'Completed batch should re-enable controls');
+        assertEqual(doc.getElementById('managerQuoteRefresh').disabled, false, 'Completed batch should re-enable controls');
     }
     console.log('✓ quote batch resilience contract OK');
 
@@ -905,7 +911,7 @@ async function runTranchenManagerPageTests() {
         };
 
         try {
-            const oldBatch = doc.getElementById('updatePricesBtn').listeners.click[0]();
+            const oldBatch = doc.getElementById('managerQuoteRefresh').listeners.click[0]();
             await started;
             initTranchenManagerPage({
                 profileId: 'other',
@@ -922,7 +928,7 @@ async function runTranchenManagerPageTests() {
         assert(!('asOf' in JSON.parse(persistenceStorage.getItem('depot_tranchen'))[0]),
             'Abbruch und Profilwechsel dürfen keine Kurszeit persistieren');
         assertEqual(doc.getElementById('priceUpdateStatus').textContent, '', 'Late result must not overwrite the new profile status');
-        assertEqual(doc.getElementById('updatePricesBtn').disabled, false, 'Profile switch should release quote-batch controls');
+        assertEqual(doc.getElementById('managerQuoteRefresh').disabled, false, 'Profile switch should release quote-batch controls');
     }
     console.log('✓ late quote invalidation OK');
 
@@ -959,7 +965,7 @@ async function runTranchenManagerPageTests() {
                 ? { quotes: [{ symbol: 'RESOLVED.DE' }] }
                 : { symbol: 'RESOLVED.DE', price: 120, currency: 'EUR', asOf: now, source: 'yahoo-chart' }
         });
-        try { await doc.getElementById('updatePricesBtn').click(); }
+        try { await doc.getElementById('managerQuoteRefresh').click(); }
         finally { if (previousFetch === undefined) delete global.fetch; else global.fetch = previousFetch; }
         assertEqual(window.tranchen[0].asOf, now - 1000, 'Fehlgeschlagener Flush zeigt nur die bestätigte Kurszeit');
         assertEqual(persistenceStorage.getItem('depot_tranchen'), initialRaw, 'Live-Store wird bytegleich zurückgesetzt');
@@ -1173,6 +1179,23 @@ async function runTranchenManagerPageTests() {
         assertEqual(persistenceStorage.getItem('profile_tagesgeld'), '200', 'Negative input must leave confirmed state unchanged');
     }
     console.log('✓ profile validation and debounce gate OK');
+
+    {
+        const doc = createTranchenPageDom();
+        installGlobals(doc, createLocalStorageMock());
+        PersistenceFacade.resetPersistenceForTests();
+        await initTranchenManagerPage({ profileId: 'default' });
+        const field = doc.getElementById('profileGeburtsdatum');
+        field.value = '1958-03-16';
+        field.listeners.input[0]();
+        let decisions = 0;
+        const guard = getPageNavigationGuard(doc);
+        const attempt = await guard.prepare({ decide: async () => { decisions++; return false; } });
+        assertEqual(decisions, 0, 'Sofortige Navigation speichert Profilwerte ohne Verlustrückfrage');
+        assert(attempt && guard.commitNavigation(attempt, () => {}), 'Navigation läuft nach bestätigtem Speichern weiter');
+        assertEqual((await PersistenceFacade.readPersistedRecords()).profile_geburtsdatum, '1958-03-16',
+            'Geburtsdatum ist vor dem Seitenwechsel dauerhaft gespeichert');
+    }
 
     console.log('Test 9: valid input queued during a slow flush is committed automatically');
     {
@@ -1654,7 +1677,7 @@ async function runTranchenManagerPageTests() {
             'Verkauf und Märzbestätigung bleiben unverändert');
         assertEqual(records[2].confirmedNetProceedsEur, 95, 'Nettoerlös bleibt unverändert und wird nicht addiert');
         assertEqual(records[2].cashBalanceAfterPostingEur, amount, 'Audit dokumentiert ausschließlich den ausdrücklich bestätigten Betrag');
-        assertEqual(JSON.stringify(registry.profiles.fremd), JSON.stringify(oldRegistry.profiles.fremd), 'Fremde Person bleibt unverändert');
+        assertEqual(JSON.stringify(registry.profiles.fremd), JSON.stringify(oldRegistry.profiles.fremd), 'Zweite Person bleibt unverändert');
         const otherProfileData = data => Object.fromEntries(Object.entries(data).filter(([key]) => !['profile_tagesgeld', 'profile_cash_history_v1'].includes(key)));
         assertEqual(JSON.stringify(otherProfileData(registry.profiles[id].data)), JSON.stringify(otherProfileData(oldRegistry.profiles[id].data)),
             'Alle übrigen profilgebundenen Records bleiben unverändert');
@@ -1875,11 +1898,10 @@ async function runTranchenManagerPageTests() {
         const doc = createTranchenPageDom(), backend = createLocalStorageMock();
         installGlobals(doc, backend); PersistenceFacade.resetPersistenceForTests();
         const registry = createCashRegistry([]);
-        const id = 'page-cash-profile', other = 'plan-outside';
-        registry.profiles[other] = { meta: { id: other, name: 'Außen', belongsToHousehold: false }, data: {} };
-        const household = planScope('household', [id]), single = planScope('single', [other]);
-        const raw = buildPlanRecord(null, [{ scope: household, values: structuredClone(PLAN_DEFAULTS) },
-            { scope: single, values: { ...structuredClone(PLAN_DEFAULTS), floorBedarf: 9000 } }]).raw;
+        const id = 'page-cash-profile', other = 'plan-partner';
+        registry.profiles[other] = { meta: { id: other, name: 'Partnerin' }, data: {} };
+        const household = planScope('household', [id, other]);
+        const raw = buildPlanRecord(null, [{ scope: household, values: structuredClone(PLAN_DEFAULTS) }]).raw;
         persistenceStorage.setItem('rs_profiles_v1', JSON.stringify(registry));
         persistenceStorage.setItem('rs_current_profile', id); persistenceStorage.setItem('rs_active_profile', id);
         persistenceStorage.setItem(HOUSEHOLD_PLAN_KEY, raw); await PersistenceFacade.flush();
@@ -1902,13 +1924,13 @@ async function runTranchenManagerPageTests() {
         assertEqual(await switchManagerProfile(other), true, 'Profilwechsel schließt Planautosave vorher dauerhaft ab');
         const committed = JSON.parse((await PersistenceFacade.readPersistedRecords())[HOUSEHOLD_PLAN_KEY]);
         assertEqual(committed.entries[household.key].values.floorBedarf, 13500, 'Echter Wechsel persistiert ursprünglichen Haushaltsplan');
-        assertEqual(floor.value, '9.000 €', 'Nach Wechsel zeigt das statische Feld den Außenplan');
-        assertEqual(readHouseholdPlanField(floor, 'floorBedarf'), 9000, 'Nach Wechsel bleibt der projizierte Außenplanwert kanonisch 9000');
+        assertEqual(floor.value, '13.500 €', 'Nach Wechsel zur zweiten Person zeigt das statische Feld denselben Haushaltsplan');
+        assertEqual(readHouseholdPlanField(floor, 'floorBedarf'), 13500, 'Nach Wechsel bleibt der projizierte Planwert kanonisch 13500');
         floor.value = ''; host.dispatchEvent({ type: 'input', target: floor });
         assertEqual(await flushManagerHouseholdPlan(), false, 'Leerer Zahlenentwurf wird an realer Seitengrenze nicht gespeichert');
         floor.value = '9500'; host.dispatchEvent({ type: 'input', target: floor });
-        assertEqual(await flushManagerHouseholdPlan(), true, 'Korrigierter Außenplan lässt sich bestätigen');
-        assertEqual(JSON.parse((await PersistenceFacade.readPersistedRecords())[HOUSEHOLD_PLAN_KEY]).entries[single.key].values.floorBedarf, 9500, 'Manager schreibt ausschließlich Einzelplan');
+        assertEqual(await flushManagerHouseholdPlan(), true, 'Korrigierter Haushaltsplan lässt sich bestätigen');
+        assertEqual(JSON.parse((await PersistenceFacade.readPersistedRecords())[HOUSEHOLD_PLAN_KEY]).entries[household.key].values.floorBedarf, 9500, 'Manager schreibt den gemeinsamen Haushaltsplan');
     }
 
     // Presetbedienung mit echten DOM-Ereignissen und dem produktiven Backendwriter.

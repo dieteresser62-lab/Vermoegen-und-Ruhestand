@@ -139,53 +139,35 @@
     "targetResultDocument": "docs/internal/MINDEST_FLEX_NOTFALLGATE_TRAGFAEHIGKEIT.md",
     "reviewStatus": "pending_external_review",
     "sourceMeasurementSha256": "80eba72b118cd4dd8c41adcd360479e1b2c49be3af3222a749ae73fd9f19d42f",
-    "targetMeasurementSha256": "8201af7591a4df383fdf7ca5251cabd6da484465b4f30afc12c4d4c4cf70ed4f",
+    "targetMeasurementSha256": "debe1e4540c36b2555813526d20bddcb16be110617af0f61cae2ab0f453db98e",
     "targetSummary": {
       "outcomeCounts": {
-        "ruin": 2,
-        "allDead": 2045,
-        "horizonExhausted": 1,
+        "ruin": 8,
+        "allDead": 1989,
+        "horizonExhausted": 51,
         "technicalError": 0
       },
       "lifespanYears": {
-        "p10": 16,
-        "p50": 26,
-        "p90": 32
+        "p10": 19,
+        "p50": 29,
+        "p90": 37
       },
       "finalWealthNominalEur": {
-        "p10": 1400634.732407,
-        "p50": 3923227.947045,
-        "p90": 11481172.487412
+        "p10": 1510487.025278,
+        "p50": 7709284.455729,
+        "p90": 36628734.098967
       },
       "care": {
-        "anyCareRunCount": 1725,
-        "p1EntryRunCount": 1159,
-        "p2EntryRunCount": 1315,
+        "anyCareRunCount": 1718,
+        "p1EntryRunCount": 1022,
+        "p2EntryRunCount": 1386,
         "additionalNeedNominalEur": {
           "p10": 0,
-          "p50": 84193.536697,
-          "p90": 306424.653501
+          "p50": 266560.899733,
+          "p90": 1259783.048476
         }
       },
-      "pathEvidenceHash": "caed2aec3f35d39c4c22fa6cc08c252625c605f9955767cca92eb5a59b6723d9",
-      "sweep": [
-        {
-          "comboIdx": 0,
-          "successProbFloor": 99.902344,
-          "p10EndWealth": 1400634.732407,
-          "medianEndWealth": 3923227.947045,
-          "worst5Drawdown": 59.228115,
-          "evidenceHash": "739d197782ff06457bf7dcd594aaf5637cc7c3a118197b7e82c8267f50a8f605"
-        },
-        {
-          "comboIdx": 1,
-          "successProbFloor": 99.902344,
-          "p10EndWealth": 1320798.530974,
-          "medianEndWealth": 3263875.384716,
-          "worst5Drawdown": 54.978586,
-          "evidenceHash": "e133e3660265fb1ca792c3389aadd291b7f7c642c2ca278fef0417b788b16962"
-        }
-      ]
+      "pathEvidenceHash": "e829ac6f97df8034287894e18dd68f9ea3f51c223b93ede538ffa8ec5c724fd3"
     },
     "cause": "protected_withdrawal_capacity_prevents_zero_flex_when_minimum_spending_remains_affordable"
   }

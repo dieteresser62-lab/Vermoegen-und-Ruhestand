@@ -332,15 +332,14 @@ console.log('Personendaten: echte Kernwerte, Datumshinweise und sichere Textknot
     assert(hosts.managerPersonSummary.textContent.includes('geb. 14.03.1958 · 68 Jahre') && hosts.managerPersonSummary.textContent.includes('Kirchensteuer 8,0 %'), 'Geschlossene Personzeile enthält echte Kernwerte');
     assert(hosts.managerAssetsSummary.textContent.includes('7,5 %'), 'Geschlossene Vermögenszeile enthält echte Beträge und Goldstrategie');
     assert(hosts.managerCareSummary.textContent.includes('40.000 €') && hosts.managerCareSummary.textContent.includes('Pflegegrad 3'), 'Geschlossene Pflegezeile enthält echtes Ziel und Trigger');
-    assert(hosts.managerBirthSupplement.hidden && hosts.profileAlter.value === 67, 'Vollständiges Datum ersetzt Ergänzung durch Januaralter');
+    assert(hosts.managerBirthSupplement.hidden, 'Vollständiges Datum ersetzt Ergänzung durch Januaralter');
     assertEqual(JSON.stringify(profile), before, 'Darstellung lässt sämtliche Fachbytes unverändert');
     renderManagerPersonData(doc, { ...profile, personDates: describePersonDates(data, 2027) });
-    assertEqual(hosts.profileAlter.value, 68, 'Neue Jahresbasis projiziert Alter erneut');
     renderManagerPersonData(doc, { ...profile, id: 'b', personDates: describePersonDates({ profile_aktuelles_alter: '64' }, 2026), values: { ...values, goldAktiv: false, healthBucket: { enabled: false } } });
     assert(!hosts.managerBirthSupplement.hidden && hosts.managerAssetsSummary.textContent === 'aus' && hosts.managerCareSummary.textContent.includes('inaktiv'), 'Personenwechsel projiziert Datumslücke und Strategiezustände neu');
     assert(hosts.profilePersonDateStatus.textContent.includes('festes Altalter') && hosts.managerBirthSuggestion.textContent.includes('1961'), 'Fallback bleibt mit reinem Jahresvorschlag sichtbar');
     renderManagerPersonData(doc, { id: 'corrupt', name: 'Unvollständige Person', valid: false });
-    assert(hosts.profileAlter.value === '' && hosts.managerBirthSupplement.hidden && hosts.profilePersonDateStatus.textContent.includes('unvollständig'), 'Ungültiger Personenwechsel hinterlässt keine fremden Kalenderhinweise');
+    assert(hosts.managerBirthSupplement.hidden && hosts.profilePersonDateStatus.textContent.includes('unvollständig'), 'Ungültiger Personenwechsel hinterlässt keine fremden Kalenderhinweise');
 }
 
 {
@@ -387,7 +386,7 @@ console.log('Personendaten: echte Kernwerte, Datumshinweise und sichere Textknot
         ].map(([id, birth]) => [id, { meta: { name: id }, data: { profile_geburtsdatum: birth, profile_rente_monatlich: '1000' } }])) };
         const raw = JSON.stringify(registry);
         const projection = projectManagerProfiles(registry, 'a');
-        const hosts = Object.fromEntries(['managerHousehold', 'managerPageTitle', 'managerSectionNav', 'managerPersonSummary', 'profilePersonDateStatus', 'profileAlter'].map(id => [id, { innerHTML: '', textContent: '', value: '', dataset: {} }]));
+        const hosts = Object.fromEntries(['managerHousehold', 'managerPageTitle', 'managerSectionNav', 'managerPersonSummary', 'profilePersonDateStatus'].map(id => [id, { innerHTML: '', textContent: '', value: '', dataset: {} }]));
         const doc = { getElementById: id => hosts[id], createElement: documentDouble().doc.createElement };
     if (hosts.profilePersonDateStatus) hosts.profilePersonDateStatus = documentDouble().doc.createElement('p');
         const before = JSON.stringify(projection);
@@ -400,7 +399,6 @@ console.log('Personendaten: echte Kernwerte, Datumshinweise und sichere Textknot
             renderManagerPersonData(doc, person);
             assert(hosts.managerPersonSummary.textContent.includes(`${today} Jahre`), 'Geschlossene Zusammenfassung zeigt heutiges Alter');
             assertEqual(person.values.alter, january, 'values.alter bleibt Planungswert');
-            assertEqual(hosts.profileAlter.value, january, 'Verborgenes profileAlter bleibt Planungswert');
             assertEqual(hosts.profilePersonDateStatus.textContent, `Planalter 2026: ${january} Jahre`, 'Kurze Zeile zeigt Januaralter');
             const explanation = hosts.profilePersonDateStatus.children.at(-1).children[1].textContent;
             assert(explanation.includes(`Planung 2026 zählt das Alter am 01.01.: ${january} Jahre`) && explanation.includes(`Planung 2027: ${january + 1}`), 'Infofenster erhält Januarregel und Folgeplanung');

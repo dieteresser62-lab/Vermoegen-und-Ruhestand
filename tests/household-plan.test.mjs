@@ -5,7 +5,7 @@ import { createLocalStorageAdapter } from '../app/shared/persistence-adapter-loc
 
 const expected = 'floorBedarf flexBedarf minimumFlexAnnual flexBudgetAnnual flexBudgetYears flexBudgetRecharge liquidityRunwayYears liquidityCashMonths minCashBufferMonths maxSkimPctOfEq maxBearRefillPctOfEq decumulation dynamicFlex horizonMethod horizonYears survivalQuantile goGoActive goGoMultiplier longevityMode longevityQuantileShift jointAssessment longevityRelativePct longevityBufferYears householdWithdrawalMode cape equityCostPct';
 assertEqual(PLAN_FIELDS.join(' '), expected, 'Vollständige abgegrenzte Feldliste ohne Personen-/Vermögenswerte');
-const scope = planScope('household', ['z', 'a']), outsider = planScope('single', ['outside']);
+const scope = planScope('household', ['z', 'a']), otherArea = planScope('single', ['z']);
 assertEqual(scope.key, '["household",["a","z"]]', 'Bereich sortiert und dedupliziert');
 assert(PLAN_FIELD_PATHS.includes('cape.source') && PLAN_FIELD_PATHS.includes('decumulation.mode'), 'Kanonische verschachtelte Feldpfade');
 const values = { ...structuredClone(PLAN_DEFAULTS), dynamicFlex: true, cape: { value: 0, asOf: null, source: null } };
@@ -15,7 +15,7 @@ assertEqual(projectPlanToBalance(values).floorBedarf, 12000, 'Bedarf bleibt jäh
 assertEqual(projectPlanToBalance(values).liquidityRunwayYears, 5, 'Reichweite bleibt Jahre');
 assertEqual(JSON.stringify(projectPlanToSimulator({ ...values, liquidityCashMonths: 60 })), JSON.stringify(projectPlanToSimulator({ ...values, liquidityCashMonths: 12 })),
     'Tagesgeldanteil verändert keine Simulator-Recheneingabe');
-const first = buildPlanRecord(null, [{ scope, values }, { scope: outsider, values: structuredClone(PLAN_DEFAULTS) }], { now: () => new Date('2026-10-09T12:00:00Z') });
+const first = buildPlanRecord(null, [{ scope, values }, { scope: otherArea, values: structuredClone(PLAN_DEFAULTS) }], { now: () => new Date('2026-10-09T12:00:00Z') });
 const reversed = Object.fromEntries(Object.entries(values).reverse());
 const same = buildPlanRecord(first.raw, [{ scope, values: reversed }], { now: () => new Date('2027-01-01') });
 assertEqual(same.raw, first.raw, 'Identischer Inhalt erhält Rohrecord und Zeitstempel');
@@ -32,7 +32,7 @@ assertEqual(legacyRead.entry.values.liquidityCashMonths, 12, 'Altbestand erhält
 assertEqual(legacyRead.raw, legacyBytes, 'Lesen erhält die ursprünglichen Sicherungsbytes');
 assertEqual(buildPlanRecord(legacyBytes, [{ scope, values: legacyRead.entry.values }]).raw, legacyBytes, 'No-op auf altem Plan speichert keine Vorgabe');
 const legacyPatched = buildPlanRecord(legacyBytes, [{ scope, values: { ...legacyRead.entry.values, liquidityCashMonths: 24 } }]);
-assertEqual(JSON.stringify(legacyPatched.record.entries[outsider.key]), JSON.stringify(legacyRecord.entries[outsider.key]), 'Schreiben erhält andere alte Planbereiche bytegleich ohne neue Vorgabe');
+assertEqual(JSON.stringify(legacyPatched.record.entries[otherArea.key]), JSON.stringify(legacyRecord.entries[otherArea.key]), 'Schreiben erhält andere alte Planbereiche bytegleich ohne neue Vorgabe');
 for (const raw of ['{', '{"version":2,"entries":{}}', '{"version":1,"entries":{"x":{}}}']) {
     const status = readHouseholdPlan({ scope, storage: { getItem: () => raw } });
     assertEqual(status.status, 'invalid', 'Beschädigte/zukünftige Records unterscheiden sich von fehlend');
@@ -47,7 +47,7 @@ try {
     await patchHouseholdPlan({ scope, patch: { flexBedarf: 25000 }, storage: persistenceStorage, now: () => new Date('2026-10-10') });
     const patched = assertHouseholdPlanRecord(P.getItemSync(HOUSEHOLD_PLAN_KEY));
     assertEqual(patched.entries[scope.key].values.flexBedarf, 25000, 'Bestätigter Patch im gewählten Bereich');
-    assertEqual(JSON.stringify(patched.entries[outsider.key]), JSON.stringify(first.record.entries[outsider.key]), 'Außenperson bleibt bytegleich isoliert');
+    assertEqual(JSON.stringify(patched.entries[otherArea.key]), JSON.stringify(first.record.entries[otherArea.key]), 'Anderer Planbereich bleibt bytegleich isoliert');
     let rejected = false;
     try { await patchHouseholdPlan({ scope, patch: { minimumFlexAnnual: 26000 }, storage: persistenceStorage }); } catch { rejected = true; }
     assert(rejected && assertHouseholdPlanRecord(P.getItemSync(HOUSEHOLD_PLAN_KEY)).entries[scope.key].values.minimumFlexAnnual === 0, 'Mindest-Flex wird ohne Write oder Clamping abgewiesen');

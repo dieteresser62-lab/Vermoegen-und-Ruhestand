@@ -1,5 +1,13 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { fz1References } from './helpers/fz-1-expectations.mjs';
+import { readJA1References } from './helpers/ja-1-expectations.mjs';
+import { readHP4References } from './helpers/hp-4-expectations.mjs';
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import { readVB1References } from './helpers/vb-1-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
 import { readLE1References } from './helpers/le-1-expectations.mjs';
 import { withPreviousRunEvidence } from './helpers/le-1b-expectations.mjs';
+const readFZ1Reference = fz1References(import.meta.url);
 const readQSCReferences = value => readPFA1References(beforePFA1QSCReferences(value));
 import { readGU1References } from './helpers/gu-1-expectations.mjs';
 import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
@@ -28,7 +36,6 @@ import { createMonteCarloLifeState, updateMonteCarloLifeEventsForYear } from '..
 import { calculateFixedIncomeForYear } from '../app/simulator/simulator-fixed-income.js';
 import { fixedCareTodayForYear } from '../app/simulator/simulator-care-today.js';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
-import { runSweepChunk } from '../app/simulator/sweep-runner.js';
 import { rng } from '../app/simulator/simulator-utils.js';
 import { CARE_BENEFITS_2026 } from '../app/shared/care-benefits.js';
 import { evaluateHealthBucketTrigger } from '../app/simulator/simulator-health-bucket.js';
@@ -118,10 +125,10 @@ for (const [progression, factor] of [['usual', 1], ['slower', .5], ['much_slower
                 monteCarloParams: { anzahl: 4, maxDauer: 35, methode: 'regime_markov', blockSize: 3,
                     seed: 12345, rngMode: 'per-run-seed', startYearMode: 'UNIFORM' },
                 logIndices: [0, 1, 2, 3], widowOptions: input.widowOptions, useCapeSampling: false, engine: EngineAPI });
-            assertEqual(hash(withPreviousRunEvidence(chunk)), readFI1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(mcSha256)))))), `${variant}, Paar ${couple}: vollständiges MC-Ergebnis mit belegten PA-1-Folgen (Laufbeleg wie vor LE-1b)`);
+            assertEqual(hash(withPreviousRunEvidence(chunk)), readFZ1Reference(readJA1References(readHP4References(readKR1cReferences(readVB1References(readFI1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(mcSha256))))))))))), `${variant}, Paar ${couple}: vollständiges MC-Ergebnis mit belegten PA-1-Folgen (Laufbeleg wie vor LE-1b)`);
         }
         const historical = runFixture({ input, selectedPeriod: { startYear: 2000, endYear: 2011 } });
-        assertEqual(hash(historical), readLE1References(readGU1References(readQSCReferences(readVF2BReferences(backtestSha256)))), `${variant}, Paar ${couple}: vollständiger Backtest bytegleich zu vor LV-1`);
+        assertEqual(hash(historical), readFZ1Reference(readKR1cReferences(readLE1References(readGU1References(readQSCReferences(readVF2BReferences(backtestSha256)))))), `${variant}, Paar ${couple}: vollständiger Backtest bytegleich zu vor LV-1`);
     }
 }
 {
@@ -178,24 +185,20 @@ for (const [progression, factor] of [['usual', 1], ['slower', .5], ['much_slower
 }
 {
     const inputs = base(), params = { anzahl: 4, maxDauer: 8, methode: 'block', blockSize: 1, seed: 12345 };
+    let observed = 0;
+    const engine = { ...EngineAPI, simulateSingleYear(input, ...rest) {
+        if (input.aktuellesAlter === 60) { observed++; assertClose(input.floorBedarf, inputs.startFloorBedarf + 13200, 1e-7, 'FR-73: MC übergibt heutige Pflege im Grundbedarf an die Engine'); }
+        return EngineAPI.simulateSingleYear(input, ...rest);
+    } };
     const chunk = await runMonteCarloChunk({ inputs, monteCarloParams: params, logIndices: new Set([0, 1, 2, 3]),
-        widowOptions: inputs.widowOptions, useCapeSampling: false, engine: EngineAPI });
+        widowOptions: inputs.widowOptions, useCapeSampling: false, engine });
     assertEqual(chunk.financialMetricsValid, true, 'MC mit heutigem Grad ist auswertbar');
     for (const meta of chunk.runMeta) {
         const first = meta.logDataRows.find(row => row.recordType === 'financial_year');
         assertEqual(first.CareP1_Grade, 2, 'MC startet jede Person mit dem heutigen Grad');
         assertClose(first.CareP1_Cost, 13200, 1e-8, 'FR-73: MC-Jahr 1 mit vollem heutigen Staffelwert');
     }
-    let observed = 0;
-    const engine = { ...EngineAPI, simulateSingleYear(input, ...rest) {
-        if (input.aktuellesAlter === 60) { observed++; assertClose(input.floorBedarf, inputs.startFloorBedarf + 13200, 1e-7, 'FR-73: Sweep rechnet heutige Pflege wie MC'); }
-        return EngineAPI.simulateSingleYear(input, ...rest);
-    } };
-    const sweep = runSweepChunk({ baseInputs: inputs,
-        paramCombinations: [{ liquidityRunwayYears: 3, goldRebalancingBand: 20, maxSkimPct: 10, maxBearRefillPct: 5, goldTargetPct: 0 }],
-        sweepConfig: { anzahlRuns: 4, maxDauer: 8, blockSize: 1, baseSeed: 12345, methode: 'block', rngMode: 'per-run-seed', startYearMode: 'UNIFORM' }, engine });
-    assertEqual(sweep.results[0].metrics.invalidCombination, undefined, 'Sweep mit heutigem Grad ist auswertbar');
-    assertEqual(observed, 4, 'Sweep prüft Jahr 1 aller vier Pfade');
+    assertEqual(observed, 4, 'MC prüft Jahr 1 aller vier Pfade');
 }
 assertEqual(Object.values(CARE_BENEFITS_2026).map(row => row.allowance).join('/'), '0/347/599/800/990', 'BMG 2026: Pflegegeld PG1–5');
 

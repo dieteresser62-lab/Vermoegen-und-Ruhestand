@@ -63,6 +63,11 @@ export const CONFIG = {
         LS_KEY: `ruhestandsmodellValues_v29_guardrails`,
         MIGRATION_FLAG: 'migration_v29_inflation_sanitized',
         SNAPSHOT_PREFIX: 'ruhestandsmodell_snapshot_'
+    },
+    MARKET: {
+        // FR-89, Ergänzung 3: Grundrauschen. Liegt der Kurs höchstens so viele Prozent unter dem echten Allzeithoch,
+        // gilt er für die Marktphase der Balance als Höchststand (balance-ath-noise.js). Engine und Simulator kennen das nicht.
+        ATH_NOISE_BAND_PCT: 5
     }
 };
 

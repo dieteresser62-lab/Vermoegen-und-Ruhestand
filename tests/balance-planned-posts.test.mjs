@@ -4,9 +4,10 @@ import { readGL1References } from './helpers/gl-1-expectations.mjs';
 import { readAN1Hash } from './helpers/an-1-expectations.mjs';
 import { readFileSync } from 'node:fs';
 import { readNR1Hash } from './helpers/nr-1-expectations.mjs';
+import { readRK1MergeReferences } from './helpers/rk-1-merge-expectations.mjs';
 import { EngineAPI } from '../engine/index.mjs';
 import { balanceMeasurement, hash } from './helpers/ga-1b-measurement.mjs';
-import { balanceStorageFixture, recordStorage, annualTestMarketData, annualTestNow } from './helpers/balance-storage-fixtures.mjs';
+import { balanceStorageFixture, recordStorage, annualTestMarketData, annualTestNow, STORAGE_FIXTURE_KINDS } from './helpers/balance-storage-fixtures.mjs';
 import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input-storage.js';
 import { computeAnnualPlanUpdate, captureAnnualRecords, annualRecordStorage } from '../app/balance/balance-annual-storage.js';
 import { evaluateAnnualDraft, prepareAnnualCommitRecords } from '../app/balance/balance-annual-storage-commit.js';
@@ -33,7 +34,8 @@ import { buildPlanOverview } from '../app/simulator/simulator-plan-overview.js';
 import { buildInputsCtxFromPortfolio } from '../app/simulator/simulator-portfolio-tranches.js';
 
 const saved = getAppTestDate();
-const same = (a, b, label) => assertEqual(JSON.stringify(a), readLE1References(JSON.stringify(b)), label);
+// FR-88: Dynamic Flex rechnet die VPW-Rate vorschüssig; gemessene Hashpaare in rk-1-merge-expectation-deltas.json.
+const same = (a, b, label) => assertEqual(JSON.stringify(a), readRK1MergeReferences(readLE1References(JSON.stringify(b))), label);
 const close = (a, b, label) => assertClose(a, b, 1e-6, label);
 const once = { id: 'auto', monat: '2026-04', betrag: 25000, bezeichnung: 'Auto' };
 const fixed = { id: 'kredit', bezeichnung: 'Kredit', betragMonat: 450, ab: '2026-10', bis: '2027-03', anpassung: 'inflation' };
@@ -50,7 +52,10 @@ function simulate(calc) {
 try {
     setAppTestDate('2026-10-21');
     const before = JSON.parse(readFileSync(new URL('./fixtures/ga-1b-balance-parity.json', import.meta.url)));
-    const priorResults = readGL1References(before.map(row => ({ ...row, result: readAN1Hash(readNR1Hash(row.result)) })));
+    // AP-1: Die Varianten mit Außenperson sind entfallen; dazu zählt der frühere Fall „Einzelprofil“ (eine Person außerhalb des
+    // Haushalts). Heute ist „Einzelprofil“ ein Ein-Personen-Haushalt auf dem Haushaltsweg; seine Belege bleiben unverändert stehen.
+    const measured = kind => STORAGE_FIXTURE_KINDS.includes(kind) && kind !== 'Einzelprofil';
+    const priorResults = readGL1References(before.filter(row => measured(row.kind)).map(row => ({ ...row, result: readAN1Hash(readNR1Hash(row.result)) })));
     // Nur Drei Töpfe: FR-63 ergänzt die Anleihenpriorität und sperrt Bärenauffüllungen.
     const threeBucketHashes = {
         d58f618bcf7e55ae4362d963badc4936acae514821da005ca4e3f04973c9048e: 'c827601100d06cf4d5ec79163501d7b232f13dbaa268da22528ac2cdd4e8cd79',
@@ -65,7 +70,7 @@ try {
         a6d5dc658ea9fc353800ac82e3abbd754a5d836c69e444ac5bf66dc6d93e179c: '37a982444458c5f54b3e3247d5a22f9f26b69bb1a85638e162fa6f321d2c12e8',
         '3d254d635f226279e1e6a7ee8d0f867c4108169b7efa829cb09f964897748a96': 'a1396cc3c64931778ee67524e25e5aad6accd75e0d502927d2e468afc61fd496' };
     const ko2 = (row, value) => row.kind === 'Altbestand' ? altbestandKO2[value] ?? value : value;
-    same(balanceMeasurement(), priorResults.map(row => ({ ...row, input: ko2(row, row.input),
+    same(balanceMeasurement().filter(row => measured(row.kind)), priorResults.map(row => ({ ...row, input: ko2(row, row.input),
         result: ko2(row, row.strategy === '3_bucket_jilge' ? readVF2DReferences(threeBucketHashes[row.result]) : row.result) })),
         'Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63');
     assertEqual(hash(before), '4c821e638a2dcfd17f1483c1358d0bd883a33cf0cdc3ab691cf37737ba9f846b', 'Prüfsummenbestand stammt vom Ausgangsstand');

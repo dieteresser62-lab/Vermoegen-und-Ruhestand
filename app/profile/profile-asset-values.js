@@ -1,10 +1,11 @@
-import { IMMOBILIEN_KEY, readImmobilien, writeImmobilien, immobilienErrors, immobilienIncome } from './profile-immobilien.js';
+import { IMMOBILIEN_KEY, readImmobilien, writeImmobilienMitVerlauf, immobilienErrors, immobilienIncome } from './profile-immobilien.js';
 import { applyPersonImmobilienToDom } from '../tranches/tranchen-manager-immobilien.js';
 import { PENSION_LABEL_KEY, INCOME_KEY, INCOME_MIGRATION_KEY, incomeFromStorage, readIncome, writeIncome, incomeErrors, monthlyOtherIncome, incomeMonthInput, incomeMonthDisplay } from './profile-income.js';
 import { applyPersonIncomeToDom } from '../tranches/tranchen-manager-income.js';
 import { PERSON_VALUE_KEYS, validatePersonValues, personAge, personReferenceYear, personDateInputToIso, personDateDisplay, personGenderAssumed, describePersonDates } from './profile-person-data.js';
 import { CARE_VALUE_KEYS, CARE_FORM_IDS, normalizeCareToday, careTodayErrors, careTodayFromStorage } from './profile-care.js';
 import { PROFILE_CASH_HISTORY_KEY, appendCashHistory } from './profile-wealth-history.js';
+import { localHistoryDate } from '../tranches/tranchen-history-store.js';
 import { canonicalDecimalInput, displayDecimalInput, isEditableDecimalInput } from '../tranches/tranchen-manager-decimal-input.js';
 
 import { CONFIG } from '../balance/balance-config.js';
@@ -436,7 +437,9 @@ export function saveProfileAssetValues(values, storage = persistenceStorage, { r
     const residentialToday = normalized.careToday.grade > 0 && normalized.careToday.form === 'residential';
     const anchor = residentialToday ? normalized.careToday.residentialFirstYear ?? storage.getItem(CARE_VALUE_KEYS.residentialFirstYear) ?? '' : '';
     if (anchor !== (storage.getItem(CARE_VALUE_KEYS.residentialFirstYear) ?? '')) storage.setItem(CARE_VALUE_KEYS.residentialFirstYear, String(anchor));
-    if (normalized.immobilien.length || storage.getItem(IMMOBILIEN_KEY) !== null) storage.setItem(IMMOBILIEN_KEY, writeImmobilien(normalized.immobilien));
+    // FR-85 Punkt 2: Wertänderung und Entfernen ergänzen den Wertverlauf mit dem Tagesdatum; sonst bleiben die Bytes wie bisher.
+    if (normalized.immobilien.length || storage.getItem(IMMOBILIEN_KEY) !== null) storage.setItem(IMMOBILIEN_KEY,
+        writeImmobilienMitVerlauf(storage.getItem(IMMOBILIEN_KEY), normalized.immobilien, date ?? localHistoryDate()));
     storage.setItem(INCOME_KEY, writeIncome(normalized.einkuenfte));
     storage.setItem(INCOME_MIGRATION_KEY, '1');
     storage.setItem(PENSION_LABEL_KEY, normalized.renteBezeichnung);

@@ -3,6 +3,7 @@ import { validateScenarioLogExportV2 } from './scenario-log.js';
 import { canonicalizeHistoricalContractValue } from '../historical-backtest-contract.js';
 import { personDataCsvFields } from '../simulator-person-overrides.js';
 import { protocolAnnualTotals } from '../protocol-cashflows.js';
+import { formatProtocolValue, PROTOCOL_COLUMNS } from '../protocol-columns.js';
 import { normalizeSource, exportError } from './envelope.js';
 import { SCENARIO_LOG_EXPORT_VERSION, SCENARIO_V1_WARNING_CODES } from './schema.js';
 import { deepFreezeMonteCarloContract } from '../monte-carlo-contracts.js';
@@ -22,12 +23,27 @@ function csvCellV2(value) {
     return /[;"\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+const CSV_TEXT_COLUMNS = PROTOCOL_COLUMNS.filter(column => column.format === 'text');
+
+/** @param {Record<string, unknown>} row */
+function translateCsvTextColumns(row) {
+    /** @type {Record<string, unknown> | null} */
+    const vpw = row.vpw && typeof row.vpw === 'object' && !Array.isArray(row.vpw) ? { ...row.vpw } : null;
+    for (const column of CSV_TEXT_COLUMNS) {
+        if (!column.mcPath) continue;
+        const [key, field] = column.mcPath.split('.');
+        const cells = field ? vpw : row;
+        const id = field ?? key;
+        if (typeof cells?.[id] === 'string') cells[id] = formatProtocolValue(column, cells[id], row);
+    }
+    if (vpw) row.vpw = vpw;
+}
+
 /** @param {ScenarioLogDocument} document */
 export function serializeScenarioLogCsvV2(document) {
     validateScenarioLogExportV2(document);
     const rows = /** @type {Record<string,unknown>[]} */ (document.records.map(record => ({
         ...Object.fromEntries(Object.entries(record).filter(([key]) => !['einnahmen_gesamt', 'ausgaben_gesamt'].includes(key))),
-        ...(typeof record.aktionUndGrund === 'string' ? { aktionUndGrund: record.aktionUndGrund.replaceAll('Bonds Auffüllen', 'Anleihen auffüllen') } : {}),
         ...personDataCsvFields(document.personDataContext),
         scenarioLogSchemaVersion: document.schemaVersion,
         unitContractVersion: document.unitContract.schemaVersion
@@ -38,6 +54,7 @@ export function serializeScenarioLogCsvV2(document) {
     headers.push('Einnahmen', 'Ausgaben');
     if (hasHomes) headers.push('Immobilien', 'Gesamtvermögen');
     rows.forEach((row, index) => {
+        translateCsvTextColumns(row);
         const record = document.records[index], totals = protocolAnnualTotals(record);
         row.Einnahmen = record.einnahmen_gesamt ?? totals.einnahmen_gesamt;
         row.Ausgaben = record.ausgaben_gesamt ?? totals.ausgaben_gesamt;

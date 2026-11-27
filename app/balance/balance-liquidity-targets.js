@@ -3,7 +3,7 @@ import { persistenceStorage } from '../shared/persistence-facade.js';
 import { liveCashData } from '../profile/profile-cash-update.js';
 import { projectPersonMonthIncome } from '../profile/profile-person-data.js';
 import { loadExpensesStoreResult } from './balance-expenses-storage.js';
-import { computeSpent, hasExpenseImport } from './balance-expenses-metrics.js';
+import { computeSpent, expenseConventions, hasExpenseImport } from './balance-expenses-metrics.js';
 
 const cents = value => Math.round(value * 100) / 100;
 
@@ -19,7 +19,8 @@ export function personalCashTargets(entries, householdCash, householdMinimum, { 
     const registry = JSON.parse(storage.getItem('rs_profiles_v1') || 'null');
     const activeId = storage.getItem('rs_current_profile');
     const expenseResult = loadExpensesStoreResult(storage);
-    const expenses = expenseResult.store;
+    const expenseYears = expenseResult.store?.years ?? {};
+    const directions = new Map(Object.entries(expenseYears).map(([year, yearData]) => [Number(year), expenseConventions(yearData)]));
     const corrupt = expenseResult.status === 'corrupt';
     const first = entries[0].input || {};
     const budget = Math.max(0, (first.floorBedarf || 0) + (first.flexBedarf || 0));
@@ -29,8 +30,8 @@ export function personalCashTargets(entries, householdCash, householdMinimum, { 
         const data = entry.personData ?? (profile ? entry.profileId === activeId ? liveCashData(storage) : profile.data : null);
         for (let offset = 0; offset < 12; offset++) {
             const previous = new Date(now.getFullYear(), now.getMonth() - 1 - offset, 1);
-            const imported = expenses?.years?.[previous.getFullYear()]?.months?.[previous.getMonth() + 1]?.profiles?.[entry.profileId];
-            if (hasExpenseImport(imported)) annualExpenses += computeSpent(imported.categories).spent;
+            const imported = expenseYears[previous.getFullYear()]?.months?.[previous.getMonth() + 1]?.profiles?.[entry.profileId];
+            if (hasExpenseImport(imported)) annualExpenses += computeSpent(imported.categories, directions.get(previous.getFullYear())?.get(entry.profileId)).spent;
             else complete = false;
             const next = new Date(now.getFullYear(), now.getMonth() + offset, 1);
             if (data) {

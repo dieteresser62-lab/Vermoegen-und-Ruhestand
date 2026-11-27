@@ -3,7 +3,6 @@ import {
     MONTE_CARLO_APP_VERSION,
     MONTE_CARLO_EXPORT_SCHEMA_ID,
     MONTE_CARLO_EXPORT_V1_VERSION,
-    MONTE_CARLO_EXPORT_V2_VERSION,
     TOP_LEVEL_FIELDS,
     REQUEST_FIELDS,
     RESULT_FIELDS
@@ -14,10 +13,8 @@ import {
     normalizeMonteCarloJsonValue,
     MONTE_CARLO_SNAPSHOT_POLICY,
     fingerprintMonteCarloValue,
-    MONTE_CARLO_LEGACY_READ_ALIASES,
     deepFreezeMonteCarloContract,
-    MONTE_CARLO_FINGERPRINT_ALGORITHM,
-    collectMonteCarloLegacyAliasTelemetryV1
+    MONTE_CARLO_FINGERPRINT_ALGORITHM
 } from '../monte-carlo-contracts.js';
 import { normalizeExportedAt, fingerprintBasis, requireObject, exportError, requireString, unknownFields } from './envelope.js';
 import { freezePersonDataContext, validatePersonDataContext } from '../simulator-person-overrides.js';
@@ -40,7 +37,7 @@ export function buildMonteCarloExportV1({
     const base = {
         schemaId: MONTE_CARLO_EXPORT_SCHEMA_ID,
         schemaVersion: /** @type {'MonteCarloExportV1'} */ (MONTE_CARLO_EXPORT_V1_VERSION),
-        exportedAtUtc: normalizeExportedAt(exportedAt, MONTE_CARLO_EXPORT_V2_VERSION),
+        exportedAtUtc: normalizeExportedAt(exportedAt, MONTE_CARLO_EXPORT_V1_VERSION),
         app: normalizedApp,
         engine: normalizedEngine,
         snapshotPolicy: { ...MONTE_CARLO_SNAPSHOT_POLICY },
@@ -63,7 +60,7 @@ export function buildMonteCarloExportV1({
         compatibility: {
             forwardPolicy: 'ignore-unknown-fields-after-v1-required-field-validation',
             unknownSchemaVersions: 'reject',
-            deprecatedReadAliases: MONTE_CARLO_LEGACY_READ_ALIASES.map(alias => ({ ...alias })),
+            deprecatedReadAliases: [],
             newExportsWriteDeprecatedAliases: false
         },
         privacy: {
@@ -148,12 +145,11 @@ export function readMonteCarloExportV1(source, {
             onTelemetry({ event: 'monte_carlo_unknown_field_ignored', field });
         }
     }
-    const deprecatedAliases = collectMonteCarloLegacyAliasTelemetryV1(parsed, onTelemetry);
     return deepFreezeMonteCarloContract({
         document: parsed,
         compatibility: {
             unknownFields: unknown,
-            deprecatedAliases
+            deprecatedAliases: []
         }
     });
 }

@@ -19,11 +19,6 @@ export const PRIORITY_EXCEPTIONS = [
     "flex: 0 0 auto !important"
   ],
   [
-    "simulator.css",
-    ".ao-preset-btn:hover",
-    "border-color: var(--secondary-color) !important"
-  ],
-  [
     "css/personen-vermoegen-seite.css",
     ":where(.personen-vermoegen-page) [aria-invalid=\"true\"]:where(:not(dialog, dialog *))",
     "border-color: var(--bad) !important"
@@ -100,42 +95,37 @@ export const PRIORITY_EXCEPTIONS = [
   ],
   [
     "simulator.css",
-    "#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel[hidden], [data-stress-replay-comparison-panel][hidden]",
+    "#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel[hidden]",
     "display: block !important"
   ],
   [
     "simulator.css",
-    ".stress-replay-diagnostics > dl",
-    "display: grid !important"
-  ],
-  [
-    "simulator.css",
-    ".mc-view-nav, .tab-buttons, .mc-settings-actions, .stress-replay-comparison-tabs, .stress-replay-expert-toggle, #mcShowReplayButton, #mcShowScenarioLogsButton",
+    ".mc-view-nav, .tab-buttons, .mc-settings-actions",
     "display: none !important"
   ],
   [
     "simulator.css",
-    "#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput, .stress-replay-table-scroll",
+    "#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput",
     "width: auto !important"
   ],
   [
     "simulator.css",
-    "#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput, .stress-replay-table-scroll",
+    "#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput",
     "max-width: 100% !important"
   ],
   [
     "simulator.css",
-    "#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput, .stress-replay-table-scroll",
+    "#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput",
     "height: auto !important"
   ],
   [
     "simulator.css",
-    "#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput, .stress-replay-table-scroll",
+    "#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput",
     "max-height: none !important"
   ],
   [
     "simulator.css",
-    "#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput, .stress-replay-table-scroll",
+    "#mcSetupDisclosure, #mcSetupDisclosure > .mc-setup-content, .mc-view-panel, #monteCarloResults, #simulationLog, #scenarioLogOutput",
     "overflow: visible !important"
   ],
   [
@@ -145,33 +135,28 @@ export const PRIORITY_EXCEPTIONS = [
   ],
   [
     "simulator.css",
-    "#simulationLog table, #scenarioLogOutput table, .stress-replay-table-scroll table",
+    "#simulationLog table, #scenarioLogOutput table",
     "width: 100% !important"
   ],
   [
     "simulator.css",
-    "#simulationLog table, #scenarioLogOutput table, .stress-replay-table-scroll table",
+    "#simulationLog table, #scenarioLogOutput table",
     "min-width: 0 !important"
   ],
   [
     "simulator.css",
-    "#simulationLog th, #simulationLog td, #scenarioLogOutput th, #scenarioLogOutput td, .stress-replay-table-scroll th, .stress-replay-table-scroll td",
+    "#simulationLog th, #simulationLog td, #scenarioLogOutput th, #scenarioLogOutput td",
     "min-width: 0 !important"
   ],
   [
     "simulator.css",
-    "#simulationLog th, #simulationLog td, #scenarioLogOutput th, #scenarioLogOutput td, .stress-replay-table-scroll th, .stress-replay-table-scroll td",
+    "#simulationLog th, #simulationLog td, #scenarioLogOutput th, #scenarioLogOutput td",
     "white-space: normal !important"
   ],
-  // Eng gebundene Druckausnahmen für verschobene Replayahnen und geschlossenes Setup.
-  ["simulator.css", "#tab-montecarlo, #tab-werkstatt, #workshopReplayPanel[hidden], #workshopReplayPanel, #tab-sweep, #tab-sweep[hidden], #tab-auto-optimize, #tab-auto-optimize[hidden]", "display: block !important"],
-  ["simulator.css", ".sim-workshop-cards", "display: none !important"],
-  ["simulator.css", "#stressReplayExpertFields[hidden]", "display: grid !important"],
-  ["simulator.css", "#tab-werkstatt .ds-table-scroll, #tab-werkstatt .ds-tool-output", "overflow: visible !important"],
-  ["simulator.css", "#tab-werkstatt .ds-table-scroll, #tab-werkstatt .ds-tool-output", "max-height: none !important"],
-  ["simulator.css", "#tab-werkstatt > .sim-page-head, #tab-werkstatt button", "display: none !important"],
-  ["simulator.css", "#mcSetupDisclosure::details-content, .stress-replay-diagnostics::details-content", "display: contents !important"],
-  ["simulator.css", "#mcSetupDisclosure::details-content, .stress-replay-diagnostics::details-content", "content-visibility: visible !important"],
+  // Eng gebundene Druckausnahmen für Monte Carlo und geschlossenes Setup.
+  ["simulator.css", "#tab-montecarlo", "display: block !important"],
+  ["simulator.css", "#mcSetupDisclosure::details-content", "display: contents !important"],
+  ["simulator.css", "#mcSetupDisclosure::details-content", "content-visibility: visible !important"],
   ["simulator.css", "#mcSetupDisclosure:not([open]) > .mc-setup-content > :not(button)", "display: block !important"],
   ["simulator.css", "#mcSetupDisclosure:not([open]) > .mc-setup-content", "display: grid !important"],
   ["simulator.css", "#tab-montecarlo .kpi-description, #tab-montecarlo .summary-description", "display: block !important"],
@@ -179,17 +164,16 @@ export const PRIORITY_EXCEPTIONS = [
   ["simulator.css", ".mc-more-metrics::details-content", "display: contents !important"],
   ["simulator.css", ".mc-more-metrics::details-content", "content-visibility: visible !important"],
   ["simulator.css", "#tab-montecarlo .ds-info, .mc-settings-actions, #mcRunHead button, #mcSetupDisclosure #mcRecalculateButton", "display: none !important"],
-  ["simulator.css", ".ds-info-pop", "display: none !important"],
-  ["simulator.css", ".stress-replay-table-scroll th", "position: static !important"]
+  ["simulator.css", ".ds-info-pop", "display: none !important"]
 ];
 
 export const PAGES = ['Ausgaben.html', 'Daten-Sicherung.html', 'Balance.html', 'Simulator.html', 'index.html', 'Handbuch.html', 'depot-tranchen-manager.html'];
-export const BALANCE_RENDERERS = ['annual-marketdata', 'annual-modal', 'diagnosis-keyparams', 'expenses-renderer', 'main-profile-sync', 'renderer-action', 'renderer-summary'].map(name => `app/balance/balance-${name}.js`);
-export const SIMULATOR_FIELD_RENDERERS = ['monte-carlo-ui', 'simulator-main-3bucket', 'simulator-main-accumulation', 'simulator-main-dynamic-flex', 'simulator-main-partner', 'simulator-main-profiles', 'simulator-main-rent-adjust', 'simulator-portfolio-display', 'simulator-ui-pflege', 'simulator-ui-rente'].map(name => `app/simulator/${name}.js`);
-export const SIMULATOR_RESULT_RENDERERS = ['results-renderers', 'simulator-results', 'stress-replay-renderer', 'simulator-result-overview'].map(name => `app/simulator/${name}.js`);
-export const TOOL_RENDERERS = ['auto-optimize-renderer', 'auto_optimize_ui', 'simulator-heatmap', 'simulator-main-sweep-selftest', 'simulator-main-sweep-ui', 'simulator-optimizer', 'simulator-portfolio-chart', 'simulator-sweep', 'simulator-ui-pflege', 'simulator-visualization'].map(name => `app/simulator/${name}.js`);
-export const MANAGER_RENDERERS = ['app/profile/profile-asset-values.js', 'app/profile/profile-recovery-ui.js', ...['depot-tranchen-status', 'tranchen-manager-modal', 'tranchen-manager-page/state', 'tranchen-manager-page/helpers', 'tranchen-manager-page/controls', 'tranchen-manager-page/persistence-status', 'tranchen-manager-page/rendering', 'tranchen-manager-page/history', 'tranchen-manager-page/reconciliation-view', 'tranchen-manager-page/reconciliation', 'tranchen-manager-page/cash-posting', 'tranchen-manager-page/profile-values', 'tranchen-manager-page/tranches', 'tranchen-manager-page/quotes', 'tranchen-manager-page/recovery', 'tranchen-manager-page/bindings', 'tranchen-manager-page/people', 'tranchen-manager-page/views', 'tranchen-manager-page/startup', 'tranchen-manager-profiles', 'tranchen-manager-renderer', 'tranchen-manager-sale-dialog'].map(name => `app/tranches/${name}.js`)];
-export const SOURCE_PATHS = [...new Set([...PAGES, 'css/daten-sicherung.css', 'app/data/data-renderer.js', 'app/balance/balance-storage.js', 'app/balance/balance-reader.js', 'app/profile/profilverbund-balance-ui.js', 'app/shared/security-utils.js', 'app/simulator/simulator-backtest.js', 'app/simulator/simulator-main-init.js', 'app/profile/profile-manager.js', 'app/profile/profile-manager-bindings.js', 'app/profile/profile-recovery-ui.js', 'app/tranches/tranchen-manager-profiles.js', 'app/tranches/tranchen-startup-prices.js', 'css/personen-vermoegen.css', 'css/personen-vermoegen-seite.css', 'css/handbuch.css', 'css/overview.css', 'app/overview/overview-renderer.js', 'app/shared/designsystem-selection-text.js', 'app/shared/designsystem-number-format.js', 'app/balance/balance-wealth-history-renderer.js', 'app/balance/balance-wealth-history-metrics.js', 'app/balance/balance-expenses-history-renderer.js', 'css/suite-frame.css', 'css/tokens.css', 'css/fonts.css', 'css/balance.css', 'simulator.css', 'app/balance/balance-main.js', 'app/shared/designsystem-icons.js', 'css/components.css', 'app/shared/field-state.js', 'app/shared/designsystem-chart-colors.js', ...BALANCE_RENDERERS, ...SIMULATOR_FIELD_RENDERERS, ...SIMULATOR_RESULT_RENDERERS, ...TOOL_RENDERERS, ...MANAGER_RENDERERS])];
+export const BALANCE_RENDERERS = ['annual-marketdata', 'diagnosis-keyparams', 'expenses-renderer', 'main-profile-sync', 'renderer-action', 'renderer-summary'].map(name => `app/balance/balance-${name}.js`);
+export const SIMULATOR_FIELD_RENDERERS = ['monte-carlo-ui', 'simulator-main-3bucket', 'simulator-main-dynamic-flex', 'simulator-main-partner', 'simulator-main-profiles', 'simulator-main-rent-adjust', 'simulator-portfolio-display', 'simulator-ui-pflege', 'simulator-ui-rente'].map(name => `app/simulator/${name}.js`);
+export const SIMULATOR_RESULT_RENDERERS = ['results-renderers', 'simulator-results', 'simulator-result-overview'].map(name => `app/simulator/${name}.js`);
+export const TOOL_RENDERERS = ['simulator-heatmap', 'simulator-portfolio-chart', 'simulator-ui-pflege'].map(name => `app/simulator/${name}.js`);
+export const MANAGER_RENDERERS = ['app/profile/profile-asset-values.js', 'app/profile/profile-recovery-ui.js', ...['depot-tranchen-status', 'tranchen-manager-modal', 'tranchen-manager-page/state', 'tranchen-manager-page/helpers', 'tranchen-manager-page/controls', 'tranchen-manager-page/persistence-status', 'tranchen-manager-page/rendering', 'tranchen-manager-page/history', 'tranchen-manager-page/reconciliation-view', 'tranchen-manager-page/reconciliation', 'tranchen-manager-page/cash-posting', 'tranchen-manager-page/profile-values', 'tranchen-manager-page/tranches', 'tranchen-manager-page/quotes', 'tranchen-manager-page/recovery', 'tranchen-manager-page/bindings', 'tranchen-manager-page/people', 'tranchen-manager-page/views', 'tranchen-manager-page/startup', 'tranchen-manager-profiles', 'tranchen-manager-renderer'].map(name => `app/tranches/${name}.js`)];
+export const SOURCE_PATHS = [...new Set([...PAGES, 'css/daten-sicherung.css', 'app/data/data-renderer.js', 'app/balance/balance-storage.js', 'app/balance/balance-reader.js', 'app/shared/security-utils.js', 'app/simulator/simulator-backtest.js', 'app/simulator/simulator-main-init.js', 'app/profile/profile-manager-bindings.js', 'app/profile/profile-recovery-ui.js', 'app/tranches/tranchen-manager-profiles.js', 'app/tranches/tranchen-startup-prices.js', 'css/personen-vermoegen.css', 'css/personen-vermoegen-seite.css', 'css/handbuch.css', 'css/overview.css', 'app/overview/overview-renderer.js', 'app/shared/designsystem-selection-text.js', 'app/shared/designsystem-number-format.js', 'app/balance/balance-expenses-history-renderer.js', 'css/suite-frame.css', 'css/tokens.css', 'css/fonts.css', 'css/balance.css', 'simulator.css', 'app/balance/balance-main.js', 'app/shared/designsystem-icons.js', 'css/components.css', 'app/shared/field-state.js', 'app/shared/designsystem-chart-colors.js', ...BALANCE_RENDERERS, ...SIMULATOR_FIELD_RENDERERS, ...SIMULATOR_RESULT_RENDERERS, ...TOOL_RENDERERS, ...MANAGER_RENDERERS])];
 export const COLORS = {
     page: '#f1f2ee', surface: '#ffffff', 'surface-sunken': '#f4f5f1',
     'text-main': '#1d2830', 'text-muted': '#56626a', accent: '#7a5a1f',
@@ -206,7 +190,7 @@ export const CONTRAST_PAIRS = [
 // Grundbild aus Slice 1; Komponenten aus Slice 2 werden separat validiert.
 export const FOUNDATION_ROLES = {
     'css/components.css': { '.ds-plan-card': [null, 'surface'] },
-    'css/balance.css': { body: ['text-main', 'page'], '#btnJahresUpdate': ['text-main', 'surface'], '.btn.ds-button-primary': ['surface', 'text-main'], '.tranchen-warning': ['warn', null] },
+    'css/balance.css': { body: ['text-main', 'page'], '.btn.ds-button-primary': ['surface', 'text-main'], '.tranchen-warning': ['warn', null] },
     'simulator.css': { body: ['text-main', 'page'], '.panel': [null, 'surface'], fieldset: [null, 'surface-sunken'], ':where(.simulator-surface) button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item):not(.household-switch-button):not(.household-menu-item)': ['surface', 'text-main'], ':where(.simulator-surface) button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item):not(.household-switch-button):not(.household-menu-item):disabled': ['text-muted', 'surface-sunken'], '.tranchen-warning': ['warn', null] },
     'css/overview.css': { '.overview-page': ['text-main', null], '.overview-pill': ['text-main', 'surface'] },
     'css/handbuch.css': { ':where(html[data-suite-page="handbook"]) body': ['text-main', 'page'], '.hb-article': [null, 'surface'], '.hb-search': [null, 'surface'], '.step-number': ['surface', 'text-main'] },
@@ -638,15 +622,11 @@ export function validateSimulatorResultMarkup(html) {
         const classes = tag[2].match(/class="([^"]*)"/)?.[1].split(/\s+/) || [];
         const has = name => classes.includes(name);
         const requireRole = name => { if (!has(name)) errors.push(`Ergebnisrolle fehlt: ${classes.join(' ')} ${name}`); };
-        if (has('kpi-card') || has('summary-item') || has('stress-replay-highlight')) {
+        if (has('kpi-card') || has('summary-item')) {
             requireRole('ds-card'); requireRole('ds-metric');
         }
-        if (has('stress-replay-table-scroll')) requireRole('ds-table-scroll');
         if (tag[1] === 'table') requireRole('ds-table');
         if (tag[1] === 'button') requireRole(/role="tab"/.test(tag[2]) ? 'ds-tab' : 'ds-button');
-        if (has('stress-replay-message')) requireRole('ds-note');
-        if (has('stress-replay-message-error')) requireRole('ds-note-error');
-        if (has('stress-replay-message-warning')) requireRole('ds-note-warning');
     }
     for (const style of html.matchAll(/style="([^"]*)"/g)) {
         for (const [, prop, value] of style[1].matchAll(/(?:^|;)\s*(color|background(?:-color)?|border-color|opacity)\s*:\s*([^;]+)/g)) {
@@ -657,7 +637,7 @@ export function validateSimulatorResultMarkup(html) {
 }
 export function validateSimulatorResults(sources, fragments = []) {
     const errors = [];
-    const scoped = selector => /(?:summary-|kpi-|unified-kpi|drawdown-pair|reporting-reference|details-card|simulationLog|scenarioLogOutput|stress-replay|mc-view|log-export-buttons)/.test(selector);
+    const scoped = selector => /(?:summary-|kpi-|unified-kpi|drawdown-pair|reporting-reference|details-card|simulationLog|scenarioLogOutput|mc-view|log-export-buttons)/.test(selector);
     for (const path of ['simulator.css', 'Simulator.html']) {
         for (const rule of rules(path, sources[path])) {
             if (!scoped(rule.selector)) continue;
@@ -686,9 +666,6 @@ export function validateSimulatorResults(sources, fragments = []) {
         '.kpi-card': [null, 'surface-sunken'],
         '.kpi-card .value-line': ['text-main', null],
         '.kpi-card .kpi-description': ['text-muted', null],
-        '.stress-replay-message-error': ['bad', 'bad-soft'],
-        '.stress-replay-message-warning': ['warn', 'warn-soft'],
-        '.stress-replay-comparison-tabs [role="tab"][aria-selected="true"]': ['surface', 'text-main'],
         '#simulationLog, #scenarioLogOutput': ['text-main', 'surface']
     };
     const vars = { ...variables(sources['css/tokens.css']), ...variables(sources['simulator.css']) };
@@ -746,9 +723,6 @@ export function validateTools(sources, fragments = []) {
         if (/(?:color\s*:\s*|\.style\.color\s*=\s*['"])var\(--(?:chart-\d|accent-line|border(?:-strong)?)\)/.test(source)) errors.push(`Werkzeug-Serientext: ${path}`);
         errors.push(...validateToolMarkup(source, true));
     }
-    const section = sources['Simulator.html'].split('<div id="tab-werkstatt"')[1]?.split('<script type="module" src="app/profile/profile-bridge.js"')[0] || '';
-    if (/#[\da-f]{3,8}\b|rgba?\(/i.test(section)) errors.push('Werkzeug-HTML-Altpalette');
-    errors.push(...validateToolMarkup(section));
     const generatedStyle = sources['app/simulator/simulator-heatmap.js'].match(/HEATMAP_V4_STYLE = `([\s\S]*?)`;/)?.[1] || '';
     for (const rule of rules('simulator.css', generatedStyle.replace(/<\/?style[^>]*>/g, ''))) {
         for (const [property, value] of rule.entries) {
@@ -846,33 +820,25 @@ export function validateDataLayout(sources) {
             }
         }
     }
-    check(has('css/balance.css', '.wealth-scroll', 'overflow-x', 'auto'), 'Verlauf ohne Scrollkapsel');
     check(has('css/balance.css', '.expenses-table-wrap', 'overflow', 'auto'), 'Ausgaben ohne Scrollkapsel');
     check(has('css/personen-vermoegen-seite.css', '.table-scroll', 'overflow-x', 'auto'), 'Manager ohne Scrollkapsel');
-    for (const id of ['managerWealthTable', 'expensesHistoryChart', 'expensesHistoryTable']) {
-        const tag = sources[id.startsWith('expenses') ? 'Ausgaben.html' : 'depot-tranchen-manager.html'].match(new RegExp(`<div[^>]*id="${id}"[^>]*>`))?.[0] || '';
+    for (const id of ['expensesHistoryChart', 'expensesHistoryTable']) {
+        const tag = sources['Ausgaben.html'].match(new RegExp(`<div[^>]*id="${id}"[^>]*>`))?.[0] || '';
         check( /class="[^"]*\b(?:ds-table-scroll|expenses-table-region)\b/.test(tag) && tag.includes('tabindex="0"') && tag.includes('role="region"') && tag.includes('aria-label='), `Unbedienbare Verlaufskapsel: ${id}`);
     }
     for (const path of ['Handbuch.html', 'app/tranches/tranchen-manager-renderer.js']) check(sources[path].includes('ds-scroll-hint'), `Fortsetzungshinweis fehlt: ${path}`);
     check(sources['Handbuch.html'].includes('<div class="ds-table-scroll" tabindex="0" role="region"'), 'Handbuchtabelle ohne Scrollkapsel');
     check(/<div class="table-scroll ds-table-scroll"[^>]*role="region"[^>]*tabindex="0"/.test(sources['app/tranches/tranchen-manager-renderer.js']), 'Managerregion nicht per Tastatur bedienbar');
-    for (const path of ['app/balance/balance-wealth-history-renderer.js', 'app/balance/balance-expenses-history-renderer.js']) {
-        const geometry = path.includes('wealth-history') ? sources['app/balance/balance-wealth-history-metrics.js'] : sources[path];
-        check(sources[path].includes('width="${width}"') && sources[path].includes('min-width:${width}px') && /rows\.length \* \d+/.test(geometry), `Datenabhängige Diagrammbreite fehlt: ${path}`);
+    // VS-3a: Der alte Balance-Verlaufsrenderer ist entfernt; es bleibt der Ausgabenverlauf.
+    for (const path of ['app/balance/balance-expenses-history-renderer.js']) {
+        check(sources[path].includes('width="${width}"') && sources[path].includes('min-width:${width}px') && /rows\.length \* \d+/.test(sources[path]), `Datenabhängige Diagrammbreite fehlt: ${path}`);
         check(sources[path].includes('preserveAspectRatio="xMidYMid meet"'), `Diagramm verzerrt Koordinaten: ${path}`);
     }
-    check(has('css/balance.css', '.wealth-scroll svg', 'min-width', '640px')
-        && has('css/balance.css', '.wealth-scroll svg text', 'font-size', 'var(--text-dense)')
-        && has('css/tokens.css', ':root', '--text-dense', '14px'), 'Diagramm ohne Mindestbreite oder echte Pixelschrift');
-    check(sources['app/balance/balance-wealth-history-renderer.js'].includes('height="360"')
-        && sources['app/balance/balance-expenses-history-renderer.js'].includes('height="270"'), 'Definierte Diagrammhöhen fehlen');
+    check(sources['app/balance/balance-expenses-history-renderer.js'].includes('height="270"'), 'Definierte Diagrammhöhe fehlt');
     for (const rule of rules('css/balance.css', sources['css/balance.css'])) {
-        if (/(?:wealth-scroll|wealthHistoryChart|expensesHistoryChart).*\bsvg\b/.test(rule.selector)
+        if (/(?:wealthHistoryChart|expensesHistoryChart).*\bsvg\b/.test(rule.selector)
             && (rule.declarations.height || rule.declarations.width)) {
             check(false, 'CSS überschreibt die explizite SVG-Pixelgeometrie');
-        }
-        if (/wealth-scroll.*:empty/.test(rule.selector)) {
-            check(!/none/.test(rule.declarations.display || '') && !/hidden|collapse/.test(rule.declarations.visibility || ''), 'Leere Verlaufskapsel nicht zugänglich');
         }
         if (/wealth-history\s+p|wealthHistory(?:Status|Hint)|expensesHistoryHint|aria-live|role\s*=\s*["']?status|(?:^|,\s*)p:empty/.test(rule.selector)) {
             check(!/^none(?:\s*!important)?$/.test(rule.declarations.display || '')
@@ -887,15 +853,12 @@ export function validateDataLayout(sources) {
     }
     check(has('css/balance.css', '.balance-page .wealth-history p:empty', 'margin', '0')
         && has('css/balance.css', '.balance-page #expensesHistoryHint:empty', 'margin', '0'), 'Leere Live-Regionen behalten unnötigen Abstand');
-    check(has('css/balance.css', '.wealth-line', 'stroke', 'var(--accent)')
-        && has('css/balance.css', '.wealth-area', 'fill', 'var(--accent-soft)'), 'Nominale Linie/Fläche ohne Grafikrollen');
     check(has('css/balance.css', '.balance-page .expenses-table thead th', 'overflow-wrap', 'anywhere'), 'Profilname der Importmatrix wird abgeschnitten');
     check(!sources['Balance.html'].includes('id="expensesImportCard"') && /<select id="expensesYearSelect"[^>]* hidden/.test(sources['Ausgaben.html']), 'Jahresbrücke nicht verborgen oder zweiter Importweg erhalten');
     check(sources['css/overview.css'].includes('@container suite-content'), 'Übersicht misst den vorhandenen Rahmencontainer');
     check(has('css/components.css', '.ds-selection-text', 'white-space', 'normal') && has('css/components.css', '.ds-selection-text', 'overflow-wrap', 'anywhere') && has('css/components.css', '.ds-selection-text', 'display', 'block'), 'Auswahlvolltext nicht sichtbar umbrechend');
     check(sources['app/tranches/tranchen-manager-page/startup.js'].includes('observeSelectionText(document.body)'), 'Managerauswahlen ohne vollständigen Anschluss');
     check(has('css/components.css', '.ds-selection-text[hidden]', 'display', 'none'), 'Passende Kurztexte werden sichtbar wiederholt');
-    for (const path of ['app/profile/profile-manager.js']) check(sources[path].includes('syncSelectionText(select'), `Optionsrefresh ohne Volltext: ${path}`);
     return errors;
 }
 
@@ -906,9 +869,7 @@ export const PRESENTATION_EXCEPTIONS = [
     ['css/balance.css', '.btn:not(:disabled):not(.ds-button-primary):not(.ds-button-danger):hover', 'box-shadow', '0 4px 12px rgba(197, 160, 89, 0.15)', 'Bestehender Dekorschatten außerhalb der Textfläche.'],
     ['css/balance.css', '.expenses-dialog', 'box-shadow', '0 24px 60px rgba(0, 0, 0, 0.35)', 'Bestehender Dialogschatten.'],
     ['css/balance.css', '.expenses-dialog::backdrop', 'background', 'rgba(0, 0, 0, 0.45)', 'Grafischer Dialoghintergrund ohne Text.'],
-    ['css/balance.css', '.annual-update-steps .step-dot', 'box-shadow', 'inset 0 0 0 1px rgba(0, 0, 0, 0.08)', 'Rein grafischer Fortschrittspunkt.'],
     ['css/balance.css', '.help-tooltip .tooltip-text', 'box-shadow', '0 8px 24px rgba(0, 0, 0, 0.3)', 'Bestehender Tooltipschatten.'],
-    ['css/balance.css', '.profilverbund-header-group', 'background', 'linear-gradient(to right, rgba(197, 160, 89, 0.05), transparent)', 'Bestehende opake Textdarstellung über minimalem Dekor auf heller Fläche.'],
     ['css/balance.css', '.basiswerte-divider', 'opacity', '0.6', 'Leere dekorative Trennlinie.'],
     ['css/balance.css', '.help-tooltip .tooltip-text', 'opacity', '0', 'Bestehender verborgener Tooltip; im Hoverzustand Deckkraft 1.'],
     ['simulator.css', '.chart-svg .area-band', 'opacity', '0.15', 'Reine Datenfläche ohne Textkinder.'],
@@ -925,7 +886,7 @@ export function validateSimulatorLayout(sources) {
     check(css.includes('container: simulator-panel / inline-size;') && css.includes('@container simulator-panel'), 'Simulator-Containerbezug fehlt');
     check(has('.ds-chart-scroll', 'overflow-x', 'auto'), 'Grafikscrollkapsel fehlt');
     check(css.includes('@media screen {\n    svg.chart-native-svg.chart-native-svg { display: block; width: auto; height: auto; min-width: 0; max-width: none; box-sizing: content-box; }'), 'Native SVG-Pixelmaße fehlen');
-    for (const selector of ['.heatmap-v4-svg', '.ds-pareto-svg']) check(parsed.some(rule => rule.selector === selector && /px$/.test(rule.declarations['min-width'] || '')), `Grafikmindestbreite fehlt: ${selector}`);
+    for (const selector of ['.heatmap-v4-svg']) check(parsed.some(rule => rule.selector === selector && /px$/.test(rule.declarations['min-width'] || '')), `Grafikmindestbreite fehlt: ${selector}`);
     for (const rule of parsed) {
         if (/^(?:body|html)$/.test(rule.selector)) check(!/hidden|clip/.test(rule.declarations['overflow-x'] || rule.declarations.overflow || ''), 'Simulator global abgeschnitten');
         if (/^\.(?:form-grid(?:-three-col|-four-col)?|main-layout|panel)$/.test(rule.selector)) {
@@ -945,7 +906,7 @@ export function validateSimulatorLayout(sources) {
     check(sources['Simulator.html'].includes('id="scenarioList" class="scenario-list" role="listbox"')
         && sources['Simulator.html'].includes('id="scenarioSelectionSummary"')
         && sources['Simulator.html'].includes('id="scenarioSelectedHeading"'), 'Szenarioauswahl ohne einheitliche Listbox und Volltextkopf');
-    for (const path of ['app/simulator/simulator-heatmap.js', 'app/simulator/simulator-visualization.js', 'app/simulator/simulator-optimizer.js', 'app/simulator/stress-replay-renderer.js']) {
+    for (const path of ['app/simulator/simulator-heatmap.js']) {
         check(sources[path].includes('role="region" tabindex="0"') && sources[path].includes('ds-scroll-hint'), `Werkzeug ohne bedienbare Scrollregion: ${path}`);
     }
     return errors;
@@ -1017,9 +978,13 @@ export function validatePersonenVermoegenLayout(sources) {
     const html = sources['depot-tranchen-manager.html'];
     if (/<div[^>]*class="container\s+ds-card"/.test(html)) errors.push('Personenseite: äußerer Kartenrahmen');
     const heading = html.match(/<header class="pv-heading ds-page-head">[\s\S]*?<\/header>/)?.[0] || '';
-    for (const id of ['managerPageTitle', 'updatePricesBtn']) {
+    for (const id of ['managerPageTitle']) {
         if (!heading.includes(`id="${id}"`)) errors.push(`Personenseite: Kopfhost fehlt: ${id}`);
     }
+    // OP-3 Punkt 3: Kein eigener Kursknopf mehr im Seitenkopf; die Kursanzeige in der Kopfzeile ist der Knopf.
+    if (html.includes('id="updatePricesBtn"')) errors.push('Personenseite: alter Knopf „Kurse aktualisieren“ ist zurück');
+    const suiteHead = html.match(/<header class="suite-header">[\s\S]*?<\/header>/)?.[0] || '';
+    if (!/<button type="button" id="managerQuoteRefresh"[^>]*title="Kurse jetzt aktualisieren"[^>]*>[\s\S]*?id="managerQuoteContext"[\s\S]*?<\/button>/.test(suiteHead)) errors.push('Personenseite: Kursanzeige in der Kopfzeile ist kein Aktualisierungsknopf');
     for (const id of ['addTrancheBtn', 'openSaleEntryBtn']) {
         if (html.includes(`id="${id}"`)) errors.push(`Personenseite: doppelter Depotzugang: ${id}`);
     }

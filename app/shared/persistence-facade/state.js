@@ -144,6 +144,13 @@ export function hasSyncWriteBlocks() {
     return storeState.documentWriteBlock !== null || storeState.syncWriteBlocks.size > 0;
 }
 
+/** Liefert den Grund für eine allgemeine Schreibsperre. */
+export function syncWriteBlockMessage() {
+    if (storeState.documentWriteBlock !== null) return storeState.documentWriteBlock;
+    const message = storeState.syncWriteBlocks.values().next().value?.message;
+    return (typeof message === 'function' ? message() : message) || 'Änderungen können gerade nicht gespeichert werden.';
+}
+
 /** BFCache-Dokumente dürfen erst nach einem echten Neustart wieder schreiben. */
 /**
  * @param {string} message

@@ -138,13 +138,16 @@ if (selected(6)) {
         healthBucket: { enabled: true, initialAmount: 10000, assetSource: 'cash', triggerMinGrade: 4,
             coverageMode: 'floor_when_care_active' } });
     const result = annual(input);
-    A.equal(result.kind, 'ruin'); A.equal(result.newState.portfolio.healthBucketGeldmarkt, 0);
+    // FR-84: Heimkosten beenden den Lauf nicht mehr. Erst die Rücklage, dann das Tagesgeld; den Rest zahlt der Staat.
+    A.equal(result.kind, 'success'); A.equal(result.newState.portfolio.healthBucketGeldmarkt, 0);
     A.equal(result.logData.health_bucket_used, 10000); A.equal(result.logData.health_bucket_end, 0);
+    A.ok(result.logData.hilfe_zur_pflege > 0);
     const mc = await chunk(input);
-    A.equal(mc.technicalInventory.technicalError, 0); A.equal(mc.totals.failCount, 1);
+    A.equal(mc.technicalInventory.technicalError, 0); A.equal(mc.totals.failCount, 0);
     for (const field of ['healthBucketEnabledCount', 'healthBucketUsedCount', 'healthBucketDepletedCount']) A.equal(mc.totals[field], 1);
-    A.equal(mc.totals.totalHealthBucketUsed, 10000);
-    A.equal(mc.runMeta[0].logDataRows[0].health_bucket_used, 10000);
+    // KR-1c (NG-5): Im Monte-Carlo-Jahr (Zins 3,17 %) bekommt die Rücklage den Zins vor der Nutzung; genutzt wird der ganze Bestand.
+    A.equal(mc.totals.totalHealthBucketUsed, 10317);
+    A.equal(mc.runMeta[0].logDataRows[0].health_bucket_used, 10317);
 }
 if (selected(7)) {
     const input = cashInputs();
@@ -187,7 +190,8 @@ if (selected(8)) {
         homeReferenceYear: 2026,
         home: [{ id: 'haus', profileId: deceased, wert: 1000000, nutzung: 'selbst', stand: '2026-01' }] });
     const ruined = annual(inheritanceRuin, { p1Alive: false, p2Alive: true }, initMcRunState(inheritanceRuin), 0, { ...year, zinssatz: -.5 });
-    A.equal(ruined.kind, 'ruin'); close(ruined.logData.health_bucket_interest, -50);
+    // NK-2 (FR-84 Punkt 17, Punkt 6): Die ungedeckte Erbschaftsteuer im Ansparjahr wird Schuld statt Ruin; der Rücklagenzins steht im Protokoll.
+    A.equal(ruined.kind, 'success'); A.ok(ruined.logData.steuer_offen > 0); close(ruined.logData.health_bucket_interest, -50);
     const metrics = createMonteCarloRunMetrics(1);
     for (const interest of [-50, 0, 50]) recordMonteCarloRunOutcome(metrics, { i: 0, runIdx: 0,
         buffers: createMonteCarloBuffers(1), simState: initMcRunState(input), lebensdauer: 1,
@@ -228,7 +232,7 @@ if (selected('W')) {
         const household = { p1Alive: survivor === 0, p2Alive: survivor === 1 };
         const result = annual(input, household, state, index, { ...year, jahr: 1994 });
         A.equal(result.kind, 'success');
-        close(result.logData.inheritance.residenceCapital, 12000 * lifetimeUseMultiplier(age + index, 'w'));
+        close(result.logData.inheritance.residenceCapital, 12000 * lifetimeUseMultiplier(age + index, 'w', 2026 + index));
         delete input.partnership.testament;
         const withoutRight = annual(input, household, initMcRunState(input), index);
         input.simulationPeople[survivor].geburtsdatum = '1970-12-15';

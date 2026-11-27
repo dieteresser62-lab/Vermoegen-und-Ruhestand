@@ -26,6 +26,7 @@ const values = { ...structuredClone(PLAN_DEFAULTS), floorBedarf: 31001, flexBeda
     decumulation: { mode: '3_bucket_jilge', bondTargetFactor: 6, drawdownTrigger: 17, bondRefillThreshold: 2 },
     cape: { value: 23, asOf: '2026-10-09', source: 'Synthetisch' } };
 const scope = planScope('household', ['a', 'b']);
+// Fremder Einzelplan (etwa ein früherer Planbereich) bleibt neben dem Haushaltsplan unverändert.
 const outside = planScope('single', ['x']);
 const raw = buildPlanRecord(null, [{ scope, values }, { scope: outside, values: { ...values, floorBedarf: 9900 } }]).raw;
 const data = { profile_person_schema_version: '1', profile_geburtsdatum: '1958-03-14',
@@ -115,7 +116,7 @@ try {
 
     await PersistenceFacade.flush();
     const failed = await initializeHouseholdPlanPage({ doc, win: window, migrate: options => migrateHouseholdPlans({
-        ...options, choose: async () => ({}), archive: { async createSnapshot() { throw new Error('Synthetischer Archivfehler vor Veröffentlichung'); } }
+        ...options, choose: async () => ({}), archive: { async createInternalRecovery() { throw new Error('Synthetischer Archivfehler vor Veröffentlichung'); } }
     }) });
     assertEqual(failed.status, 'failed', 'Umstellungsfehler vor Veröffentlichung wird behandelt');
     refresh();
@@ -264,8 +265,8 @@ try {
 }
 
 try {
-    const profiles = Object.fromEntries(['a', 'b', 'x'].map(id => [id, { meta: { id, name: 'Muster ' + id,
-        belongsToHousehold: id !== 'x' }, data: { ...data } }]));
+    const profiles = Object.fromEntries(['a', 'b'].map(id => [id, { meta: { id, name: 'Muster ' + id,
+        belongsToHousehold: true }, data: { ...data } }]));
     backend = { rs_profiles_v1: JSON.stringify({ version: 1, profiles }), rs_current_profile: 'a', rs_active_profile: 'a',
         ...data, [HOUSEHOLD_PLAN_KEY]: raw, household_simulator_needs_v1: '{beschädigt',
         sim_dynamicFlex: 'false', sim_horizonYears: '1', sim_maxSkimPctOfEq: '25', sim_mcSeed: '4242' };
@@ -276,7 +277,8 @@ try {
     const spy = { getItem(key) { reads.push(key); if (key === 'household_simulator_needs_v1' || key.startsWith('sim_')) throw new Error('Altquelle gelesen'); return persistenceStorage.getItem(key); } };
     assertEqual(readHouseholdSimulatorNeedsState(spy).values.startFloorBedarf, '31001', 'Bedarfsreader nutzt Plan trotz kaputtem Altdatensatz');
     assert(!reads.includes('household_simulator_needs_v1') && !reads.some(key => key.startsWith('sim_')), 'Read-Spion: keine Altplanquelle');
-    assertEqual(readSimulatorHouseholdPlan({ profileId: 'x' }).entry.values.floorBedarf, 9900, 'Außenperson hat eigenen Planbereich');
+    assertEqual(readSimulatorHouseholdPlan().scope.key, scope.key, 'Simulator liest den Haushaltsplanbereich');
+    assertEqual(readHouseholdPlan({ scope: outside }).entry.values.floorBedarf, 9900, 'Fremder Einzelplan bleibt lesbar');
     assertEqual(buildSimulatorInputsFromProfileData(spyData).startFloorBedarf, 31001, 'Sekundärer Personenreader verwendet Plan ohne Altplanreads');
     assertEqual(combineSimulatorProfiles(entries.slice(0, 2), 'a').combined.minimumFlexAnnual, 3003, 'Zwei Personen verwenden denselben einzelnen Mindest-Flex');
     assertEqual(clearHouseholdSimulatorNeeds().source, 'household_plan_v1', 'Bedarfshelper löscht keinen gemeinsamen Plan');
@@ -298,7 +300,7 @@ try {
         if (typeof projected[id] === 'boolean' || id === 'dynamicFlexShowAdvanced' || id === 'chkPartnerAktiv') field.type = 'checkbox';
     }
     initInputPersistence(); initDynamicFlexControls(); const refresh = initSimulatorProfileSelection();
-    assertEqual(window.__profileRecoveryBlocker, null, 'Drei bestätigte Mitglieder initialisieren ohne Altbedarf-Recovery');
+    assertEqual(window.__profileRecoveryBlocker, null, 'Bestätigter Haushalt initialisiert ohne Altbedarf-Recovery');
     assertEqual(persistenceStorage.getItem(HOUSEHOLD_PLAN_KEY), raw, 'Initialisierung überschreibt keinen Plan und keine Zeitstempel');
     assertEqual(formNumber(doc.getElementById('flexBudgetAnnual')), 4004, 'Budget erscheint einmal im Formular');
     assertEqual(formNumber(doc.getElementById('horizonYears')), 37, 'Planhorizont ersetzt alte Rahmendatenkopie');
@@ -311,7 +313,7 @@ try {
     await PersistenceFacade.flush();
     await adoptTrial();
     assertEqual(readHouseholdPlan({ scope }).entry.values.floorBedarf, 32000, 'Bewusst übernommene Formularänderung persistiert im gemeinsamen Plan');
-    assertEqual(readHouseholdPlan({ scope: outside }).entry.values.floorBedarf, 9900, 'Haushaltswrite verändert keinen Außenplan');
+    assertEqual(readHouseholdPlan({ scope: outside }).entry.values.floorBedarf, 9900, 'Haushaltswrite verändert keinen fremden Einzelplan');
     doc.getElementById('minimumFlexAnnual').value = '999999';
     const beforeInvalid = persistenceStorage.getItem(HOUSEHOLD_PLAN_KEY);
     doc.getElementById('minimumFlexAnnual').dispatchEvent({ type: 'change' });
@@ -517,7 +519,7 @@ try {
     assertEqual(capeField.validationMessage, '', 'CAPE-Korrektur löscht Fehlermeldung');
     await adoptTrial();
     assertCapeAtStorageBoundary({ value: 31, asOf: null, source: null }, 'CAPE-Korrektur bestätigt manuellen Wert');
-    assertEqual(JSON.parse(backend[HOUSEHOLD_PLAN_KEY]).entries[outside.key].values.cape.source, 'Synthetisch', 'Manuelle Haushalts-CAPE-Eingabe erhält Herkunft im Außenplan');
+    assertEqual(JSON.parse(backend[HOUSEHOLD_PLAN_KEY]).entries[outside.key].values.cape.source, 'Synthetisch', 'Manuelle Haushalts-CAPE-Eingabe erhält Herkunft im fremden Einzelplan');
     globalThis.document = doc;
     persistenceStorage.removeItem(HOUSEHOLD_PLAN_KEY);
     const legacySkim = persistenceStorage.getItem('sim_maxSkimPctOfEq');

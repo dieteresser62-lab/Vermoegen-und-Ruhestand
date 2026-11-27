@@ -30,6 +30,7 @@ export function createAnnualCloseSession({ readContext, fetchers, showPreparatio
             try {
                 const value = await fetchers[type]({ targetYear: state.targetYear, signal: state.controller.signal });
                 check(state);
+                if (type === 'cape') state.capeWarning = /** @type {{storedCapeWarning?: string}} */ (value)?.storedCapeWarning;
                 // Die Validierung erhält bei CAPE den Hinweis mit dem letzten gespeicherten Stand.
                 state.values[type] = validateAnnualPreparationValue(type, value, state.targetYear); delete state.errors[type];
             } catch (error) {
@@ -38,7 +39,7 @@ export function createAnnualCloseSession({ readContext, fetchers, showPreparatio
             }
         }));
         check(state);
-        state.dialog?.updateMarketData({ values: state.values, errors: state.errors });
+        state.dialog?.updateMarketData({ values: state.values, errors: state.errors, capeWarning: state.capeWarning });
     };
     const load = state => {
         if (state.loading) return state.loading;
@@ -94,13 +95,12 @@ export function createAnnualCloseSession({ readContext, fetchers, showPreparatio
         dispose() { invalidate(); lease?.unregister(); }
     };
 }
-import { storeMonthProvision, OVERVIEW_MONTH_KEY, readOverviewSummary, OVERVIEW_SUMMARY_KEY } from '../overview/overview-storage.js';
+import { storeMonthProvision, readOverviewSummary, OVERVIEW_SUMMARY_KEY } from '../overview/overview-storage.js';
 import { captureCashPeople } from '../profile/profile-cash-update.js';
 import { SnapshotArchive } from './snapshot-archive.js';
-import { PersistenceFacade, persistenceStorage } from './persistence-facade.js';
+import { PersistenceFacade } from './persistence-facade.js';
 
-/** Der bestätigte Haushaltsplan kann bei einem geöffneten Außenprofil nur in
- * den Mitgliedsrecords liegen; alle Ablagen werden aus dem Backend gelesen.
+/** Alle Ablagen der Haushaltspersonen werden aus dem Backend gelesen.
  *
  * @param {{targetYear?: number; scope?: import("../../typcheck/datenvertraege.js").PlanScope; expectedProfileId?: string; persistence?: typeof PersistenceFacade}} [options]
  * @returns {Promise<boolean>} Monatsplan dauerhaft bestätigt.
@@ -213,37 +213,10 @@ export async function createAnnualMonthSession({ targetYear, annualSnapshotId, c
                     phase = 'recovery';
                     const recovery = { snapshotId: monthSnapshotId, release: null, block() {
                         this.release ||= PersistenceFacade.blockSyncWrites(['rs_profiles_v1', 'rs_current_profile', 'rs_active_profile'],
-                            'Monatswiederherstellung erforderlich. Bitte den Monatswiederherstellungspunkt laden.',
+                            'Monatswiederherstellung erforderlich. Bitte den Punkt des Monatsabschlusses unter Daten & Sicherung zurückholen.',
                             { prefixes: ['profile_', 'balance_', 'overview_', 'depot_'] });
-                    }, unblock() { this.release?.(); this.release = null; },
-                    /** @param {{opener?: HTMLElement; reload?: ()=>void}} [options] */
-                    async restore({ opener, reload = () => globalThis.location.reload() } = {}) {
-                        // Monatscash ist identisch zum Jahrescash. Nur die beiden
-                        // Monatsrecords zurücknehmen, einschließlich aller Haushaltsmarker.
-                        const snapshot = await archive.readSnapshot(this.snapshotId);
-                        if (snapshot.activeProfileId !== request.expectedProfileId
-                            || persistenceStorage.getItem('rs_current_profile') !== request.expectedProfileId) throw new Error('Der Wiederherstellungspunkt passt nicht zum Monatsprofil.');
-                        const keys = ['rs_profiles_v1', OVERVIEW_MONTH_KEY];
-                        // Vollständiges Ersatzziel für beide erlaubten Schlüssel:
-                        // Fehlt der Monatsrecord im Snapshot, löscht der begrenzte
-                        // replaceRecordsTransactional ihn aus Backend und Cache.
-                        const records = Object.fromEntries(keys.filter(key => snapshot.records[key] !== undefined).map(key => [key, snapshot.records[key]]));
-                        let written = false;
-                        try {
-                            const restored = await guard.reload({ opener, reload, flush: () => PersistenceFacade.flush(),
-                                mutate: async navigationOperation => {
-                                    await PersistenceFacade.replaceRecordsTransactional(records, /** @type {import("../../typcheck/speicher-integration.js").ReplaceOptions} */ ({
-                                        probelaufDomainWrite: true, navigationOperation, allowKey: key => keys.includes(key)
-                                    }));
-                                    written = true;
-                                    return true;
-                                } });
-                            return { status: restored ? 'restored' : 'reload_required' };
-                        } catch (error) {
-                            if (written) return { status: 'reload_required', error };
-                            throw error;
-                        } finally { this.block(); }
-                    } };
+                    }, unblock() { this.release?.(); this.release = null; } };
+                    // SV-1: Zurückgeholt wird der Monatspunkt auf Daten & Sicherung, immer für den ganzen Haushalt.
                     recovery.block();
                     if (globalThis.window) globalThis.window.__balanceMonthRecovery = recovery;
                 }

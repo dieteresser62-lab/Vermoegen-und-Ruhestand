@@ -12,8 +12,7 @@ function fixture({ inputs = {}, shared = {}, sim = {}, override, active = 'z' } 
     const state = JSON.stringify({ inputs: { floorBedarf: 30000, flexBedarf: 20000, minimumFlexAnnual: 5000, flexBudgetAnnual: 7000, ...inputs }, profilverbundHouseholdInputs: shared });
     const data = { [CONFIG.STORAGE.LS_KEY]: state, ...sim };
     const registry = { version: 1, profiles: {
-        z: { meta: { belongsToHousehold: true }, data }, a: { meta: { belongsToHousehold: true }, data: { ...data } },
-        outside: { meta: { belongsToHousehold: false }, data: { [CONFIG.STORAGE.LS_KEY]: JSON.stringify({ inputs: { floorBedarf: 9000 } }) } }
+        z: { meta: { belongsToHousehold: true }, data }, a: { meta: { belongsToHousehold: true }, data: { ...data } }
     } };
     return { rs_profiles_v1: JSON.stringify(registry), rs_current_profile: active, rs_active_profile: active,
         ...registry.profiles[active].data, ...(override ? { household_simulator_needs_v1: JSON.stringify(override) } : {}) };
@@ -23,7 +22,7 @@ const first = household(fixture());
 assertEqual(first.sourceId, 'z', 'Hauptprofil folgt Profilreihenfolge, nicht sortiertem Bereich');
 assertEqual(first.conflicts.length, 0, 'Identische Mitgliedskopien ohne gespeicherte Simulatordefaults still');
 for (const [field, expected] of [['floorBedarf', 30000], ['flexBedarf', 20000], ['minimumFlexAnnual', 5000], ['flexBudgetAnnual', 7000]]) assertEqual(first.values[field], expected, 'Haushalt übernimmt einmal: ' + field);
-assertEqual(household(fixture({ active: 'outside' })).values.floorBedarf, 30000, 'Aktive Außenperson verdrängt die Hauptprofilquelle nicht');
+assertEqual(household(fixture({ active: 'a' })).values.floorBedarf, 30000, 'Geöffnete zweite Person verdrängt die Hauptprofilquelle nicht');
 assertEqual(household(fixture({ shared: { floorBedarf: 31000 } })).values.floorBedarf, 31000, 'Explizite Haushaltsquelle hat Vorrang');
 const override = { schemaVersion: 1, mode: 'override', source: 'manual', overriddenFields: ['startFloorBedarf'], values: { startFloorBedarf: '32000' } };
 const difference = household(fixture({ override }));
@@ -35,7 +34,7 @@ const zero = household(fixture({ inputs: { minimumFlexAnnual: 0, capeRatio: 0, d
 assertEqual(zero.conflicts.length, 0, '0 und false sind vorhanden und vergleichbar');
 assertEqual(zero.fields.find(field => field.path === 'cape.value').balance.status, 'present', 'Gespeicherte CAPE-Null hat Rohpräsenz');
 const aliases = household(fixture({ inputs: { runwayTargetMonths: 37, decumulation: { mode: 'vpw' } }, sim: { sim_runwayTargetMonths: '37', sim_entnahmeStrategie: 'guardrails' } }));
-assertEqual(aliases.values.liquidityRunwayYears, 3.5, 'Alte Monatsreichweite wird ohne Altwrite auf halbe Jahre aufgelöst');
+assertEqual(aliases.values.liquidityRunwayYears, 5, 'Alte Monatsreichweite wird nicht mehr umgerechnet, es gilt der Standard');
 assertEqual(aliases.values.decumulation.mode, 'standard', 'Bekannte Altstrategien normalisiert');
 assertEqual(aliases.conflicts.length, 0, 'Normalisierte Altwerte bleiben still');
 const broken = household(fixture({ sim: { sim_entnahmeStrategie: 'future', sim_horizonYears: 'kaputt' } }));
@@ -55,7 +54,7 @@ assert(!Object.hasOwn(direct, 'annual_plan_record_v1'), 'Migration erzeugt niema
 const membership = structuredClone(direct); const changedRegistry = JSON.parse(membership.rs_profiles_v1);
 changedRegistry.profiles.new = { meta: { belongsToHousehold: true }, data: {} }; membership.rs_profiles_v1 = JSON.stringify(changedRegistry);
 const enlarged = addDirectHouseholdPlans(membership);
-assertEqual(Object.keys(assertHouseholdPlanRecord(enlarged[HOUSEHOLD_PLAN_KEY]).entries).length, 3, 'Neue Mitgliedschaft übernimmt eindeutigen Haushaltsplan und bewahrt Historie/Außenperson');
+assertEqual(Object.keys(assertHouseholdPlanRecord(enlarged[HOUSEHOLD_PLAN_KEY]).entries).length, 2, 'Neue Person übernimmt eindeutigen Haushaltsplan und bewahrt die Historie');
 
 async function boot(records) {
     const map = new Map(Object.entries(records));
@@ -106,7 +105,7 @@ for (const flex of [20000, undefined]) for (const action of ['later', 'escape', 
         const values = assertHouseholdPlanRecord(P.getItemSync(HOUSEHOLD_PLAN_KEY)).entries[item.scope.key].values;
         assertEqual(values.minimumFlexAnnual, flex === undefined ? 25000 : 15000, 'Explizite Mindest-Flex-Entscheidung ohne Clamping');
         assertEqual(values.flexBedarf, flex === undefined ? 27000 : 20000, 'Explizite Flex-Bedarf-Entscheidung ohne Clamping');
-        assertEqual((await A.listSnapshots()).length, 1, 'Bestätigung besitzt genau einen gesicherten Altbestand');
+        assertEqual((await A.listSnapshots()).length, 0, 'SV-1: Nach erfolgreicher Umstellung entfällt die interne Rücksicherung');
     } else {
         assertEqual(P.getItemSync(HOUSEHOLD_PLAN_KEY), null, action + ': kein Planwrite');
         assertEqual((await A.listSnapshots()).length, 0, action + ': kein Snapshotwrite');
@@ -126,9 +125,16 @@ for (const fault of ['', 'flush', 'snapshot', 'readback', 'write', 'context', 'd
             if (fault === 'write') throw new Error('synthetischer Writefehler');
             return P.replaceRecordsTransactional(records, options);
         } };
+    // SV-1: Die Umstellung sichert sich intern; Schreiben und Rücklesen liegen in createInternalRecovery.
     const archive = {
-        async createSnapshot(args, options) { events.push('snapshot-write'); assertEqual(args.label, 'Vor Umstellung Haushalt & Plan', 'Benannter Recoverypunkt'); assertEqual(args.kind, 'household-plan-migration-recovery', 'Neue Umstellung verwendet dauerhafte Snapshot-Art'); if (fault === 'snapshot') throw new Error('Punktfehler'); return A.createSnapshot(args, options); },
-        async readSnapshot(id, options) { events.push('snapshot-read'); const value = await A.readSnapshot(id, options); if (fault === 'readback') value.records.rs_current_profile = 'fremd'; if (fault === 'context') P.setItemSync('rs_current_profile', 'outside'); return value; }
+        async createInternalRecovery(records, options) {
+            events.push('snapshot-write'); assertEqual(options.label, 'Vor Umstellung Haushalt & Plan', 'Benannte interne Rücksicherung');
+            if (fault === 'snapshot') throw new Error('Punktfehler');
+            const value = await A.createInternalRecovery(records, options);
+            assertEqual(value.kind, 'internal-recovery', 'Umstellung verwendet die interne Art');
+            events.push('snapshot-read'); if (fault === 'readback') value.records.rs_current_profile = 'fremd'; if (fault === 'context') P.setItemSync('rs_current_profile', 'a'); return value;
+        },
+        discardInternalRecovery: (id, options) => A.discardInternalRecovery(id, options)
     };
     const options = { storage: persistenceStorage, persistence, archive, isBlocked: () => false,
         choose: async () => { asks++; return fault === 'deferred' ? null : {}; } };
@@ -163,10 +169,11 @@ for (const fault of ['ack-without-write', 'partial-write', 'plan-readback', 'con
             if (planWrite && !injected && fault === 'ack-without-write') { injected = true; return; }
             deletes.forEach(key => delete values[key]); upserts.forEach(([key, raw]) => values[key] = raw);
             if (planWrite && !injected && fault === 'partial-write') { injected = true; throw new Error('Write nach Anwendung fehlgeschlagen'); }
-            if (planWrite && !injected && fault === 'context-after-write') { injected = true; P.setItemSync('rs_current_profile', 'outside'); }
+            if (planWrite && !injected && fault === 'context-after-write') { injected = true; P.setItemSync('rs_current_profile', 'a'); }
         },
         async writeSnapshot(point) { points.set(point.id, structuredClone(point)); },
-        async readSnapshot(id) { return structuredClone(points.get(id)); }, async listSnapshots() { return [...points.values()]; }
+        async readSnapshot(id) { return structuredClone(points.get(id)); }, async listSnapshots() { return [...points.values()]; },
+        async deleteSnapshot(id) { points.delete(id); }
     };
     P.resetPersistenceForTests(adapter); await P.init({ installLifecycleHooks: false });
     let failed = false;
@@ -176,7 +183,7 @@ for (const fault of ['ack-without-write', 'partial-write', 'plan-readback', 'con
     assertEqual(P.getItemSync(HOUSEHOLD_PLAN_KEY), null, fault + ': Cache aktiviert keinen Teilplan');
     assertEqual(values[CONFIG.STORAGE.LS_KEY], before[CONFIG.STORAGE.LS_KEY], fault + ': alte Balancequelle bytegleich');
     assertEqual(values.rs_profiles_v1, before.rs_profiles_v1, fault + ': Registry und fremde Profilquellen bleiben erhalten');
-    assertEqual(points.size, 1, fault + ': gesicherter Rückkehrpunkt bleibt verfügbar');
+    assertEqual(points.size, 0, fault + ': nach bestätigter Rücknahme entfällt die interne Rücksicherung');
 }
 for (const raw of ['{', '{"version":2,"entries":{}}']) {
     const records = { ...fixture(), [HOUSEHOLD_PLAN_KEY]: raw }; await boot(records);
@@ -188,23 +195,6 @@ for (const raw of ['{', '{"version":2,"entries":{}}']) {
 }
 P.resetPersistenceRuntimeForTests();
 
-// Aufschub in einem zweiten Bereich darf den bereits gewählten ersten nicht veröffentlichen.
-{
-    const records = fixture({ override });
-    const registry = JSON.parse(records.rs_profiles_v1);
-    registry.profiles.outside.data.sim_dynamicFlex = 'false';
-    const state = JSON.parse(registry.profiles.outside.data[CONFIG.STORAGE.LS_KEY]);
-    state.inputs.dynamicFlex = true;
-    registry.profiles.outside.data[CONFIG.STORAGE.LS_KEY] = JSON.stringify(state);
-    records.rs_profiles_v1 = JSON.stringify(registry);
-    await boot(records); let choices = 0;
-    const result = await migrateHouseholdPlans({ choose: async () => ++choices === 1 ? {} : null });
-    assertEqual(choices, 2, 'Haushalts- und Außenpersonkonflikt werden getrennt entschieden');
-    assertEqual(result.status, 'deferred', 'Aufschub eines weiteren Bereichs vertagt die gemeinsame Transaktion');
-    assertEqual(P.getItemSync(HOUSEHOLD_PLAN_KEY), null, 'Auch der zuvor gewählte Haushaltsbereich bleibt ohne Teilplan');
-    for (const [key, raw] of Object.entries(records)) assertEqual(P.getItemSync(key), raw, 'Bereichsübergreifender Aufschub erhält Altquelle: ' + key);
-    assertEqual((await A.listSnapshots()).length, 0, 'Bereichsaufschub erzeugt keinen unnötigen Wiederherstellungspunkt');
-}
 P.resetPersistenceRuntimeForTests();
 
 // Unbestätigte Rücknahme sperrt Folgeschreiber über die vorhandene Recoverymechanik.

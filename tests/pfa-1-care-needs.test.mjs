@@ -103,8 +103,9 @@ const U = { ...C, partnership: { status: 'unmarried' }, simulationPeople: [{ pro
 const u = priced(U, 0, undefined, initMcRunState(C));
 const shares = unmarriedYearShares({ personAccounts: [{ profileId: 'a', tagesgeld: 600000 }, { profileId: 'b', tagesgeld: 400000 }] },
     U, u.household.care, false, u.household, 46368);
-close(shares[0].share * 27000 + shares[0].care, 16200, 'U persönlicher Anteil zu Hause');
-close(shares[1].share * 27000 + shares[1].care, 57168, 'U persönlicher Anteil im Heim');
+// NK-2 (FR-84 Punkt 18): Die Person zu Hause trägt den Grundbedarf zu Hause allein (vorher 60 % = 16.200 €), die Person im Heim nur ihr Heim.
+close(shares[0].share * 27000 + shares[0].care, 27000, 'U persönlicher Anteil zu Hause');
+close(shares[1].share * 27000 + shares[1].care, 46368, 'U persönlicher Anteil im Heim');
 const X = { ...S, home: [{ id: 'home', nutzung: 'selbst', wert: 450000, stand: '2026-10', profileId: fixture.simulationPeople?.[0]?.profileId || 'simulation' }] };
 const x = priced(X);
 const sold = simulateOneYear(x.state, X, year, 0, x.p1, 0, x.household, 0, EngineAPI);

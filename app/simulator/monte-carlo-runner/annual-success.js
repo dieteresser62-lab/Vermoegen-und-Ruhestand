@@ -9,7 +9,6 @@ import { portfolioTotal } from '../simulator-results.js';
 import { recordWealthFanYear } from '../wealth-fan-aggregation.js';
 import { recordMonteCarloStressYear } from '../mc-stress-tracker.js';
 import { buildMonteCarloYearLogRow } from '../mc-log-builder.js';
-import { createReplayAnnualRecord } from './replay-records.js';
 /** @param {import('./path-state.js').YearContext & {result:import('../../../typcheck/rechenkern').YearSuccess}} context */
 export function recordSuccessfulYear(context) {
     context.simState = context.result.newState;
@@ -19,6 +18,18 @@ export function recordSuccessfulYear(context) {
     recordEuroFinancialYear(context.euroTracker, context.result.logData, context.result.totalTaxesThisYear, context.simulationsJahr,
         Number.isFinite(context.yearData.inflation) ? resolveSimulatorCumulativeInflationFactor(context.simState) : NaN);
     context.totalTaxesThisRun += context.result.totalTaxesThisYear;
+    // FR-84: Hilfe zur Pflege je Lauf (nominal) und erstes Jahr.
+    const careAid = Number(context.result.logData?.hilfe_zur_pflege) || 0;
+    if (careAid > 0) {
+        if (!context.careAidSumThisRun) context.careAidFirstYearThisRun = context.simulationsJahr + 1;
+        context.careAidSumThisRun += careAid;
+    }
+    // NK-2 (FR-84 Punkt 16): entfallene Einmalausgaben je Lauf (nominal) und erstes Jahr.
+    const dropped = Number(context.result.logData?.geplante_ausgaben_gekuerzt) || 0;
+    if (dropped > 0) {
+        if (!context.droppedExpenseSumThisRun) context.droppedExpenseFirstYearThisRun = context.simulationsJahr + 1;
+        context.droppedExpenseSumThisRun += dropped;
+    }
     context.totalTaxSavedByLossCarryThisRun += Number(context.result.logData?.taxSavedByLossCarry) || 0;
     const cutPct = context.result.logData.flex_wunsch_haushalt_nominal > 0 ? Number(context.result.logData.entscheidung.kuerzungProzent) : 0;
     if (!context.isAccumulation) recordMinimumFlexYear(context.minimumFlexTracker, context.result.logData);
@@ -110,15 +121,4 @@ export function recordSuccessfulYear(context) {
         lifeLogContext: context.lifeLogContext,
         tailRiskOverlay: context.tailRiskOverlay
     })));
-    if (context.replayCapture) {
-        context.replayCapture.years.push(createReplayAnnualRecord({
-            yearIndex: context.simulationsJahr,
-            yearData: context.yearData,
-            recordType: 'financial_year',
-            stressEvents: context.replayStressEvents,
-            tailRiskOverlay: context.tailRiskOverlay,
-            householdEvent: context.replayHouseholdEvent
-        }));
-        context.replayCapture.sourcePrefixLength = context.replayCapture.years.length;
-    }
 }

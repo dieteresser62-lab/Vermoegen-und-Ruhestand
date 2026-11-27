@@ -4,25 +4,19 @@ import { performance } from 'node:perf_hooks';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runMonteCarloChunk } from '../../app/simulator/monte-carlo-runner.js';
-import { runSweepChunk } from '../../app/simulator/sweep-runner.js';
 import { EngineAPI } from '../../engine/index.mjs';
-import { normalizeWidowOptions } from '../../app/simulator/simulator-sweep-utils.js';
+import { normalizeWidowOptions } from '../../app/simulator/simulator-run-utils.js';
 import { inputs } from './parity-replay-fixture.mjs';
 
 const baselineRoot = process.env.PERSONAL_TAX_BASELINE_DIR;
 assert(baselineRoot, 'PERSONAL_TAX_BASELINE_DIR must name a private copy of PA-A6 app/, engine/, types/, workers/, data/ and package.json');
 const baselineMc = await import(pathToFileURL(join(resolve(baselineRoot), 'app/simulator/monte-carlo-runner.js')));
-const baselineSweep = await import(pathToFileURL(join(resolve(baselineRoot), 'app/simulator/sweep-runner.js')));
 const params = { anzahl: 12, maxDauer: 12, blockSize: 3, seed: 12345, methode: 'block', rngMode: 'per-run-seed', startYearMode: 'UNIFORM' };
 const mcOptions = { inputs, monteCarloParams: params, widowOptions: normalizeWidowOptions(inputs.widowOptions), useCapeSampling: true, engine: EngineAPI };
-const sweepOptions = { baseInputs: inputs, paramCombinations: [{ liquidityRunwayYears: 3 }, { liquidityRunwayYears: 5 }],
-    sweepConfig: { ...params, anzahl: 6, useCapeSampling: true }, engine: EngineAPI };
 const median = values => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
 const jobs = [
     { name: 'MC, 12 × maximal 12 Jahre', old: () => baselineMc.runMonteCarloChunk(mcOptions), current: () => runMonteCarloChunk(mcOptions),
-        check: value => assert.equal(value.financialMetricsValid, true) },
-    { name: 'Sweep, 2 × 6 × maximal 12 Jahre', old: () => baselineSweep.runSweepChunk(sweepOptions), current: () => runSweepChunk(sweepOptions),
-        check: value => assert.equal(value.results.length, 2) }
+        check: value => assert.equal(value.financialMetricsValid, true) }
 ];
 const measurements = [];
 for (const job of jobs) {

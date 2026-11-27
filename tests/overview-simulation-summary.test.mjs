@@ -2,6 +2,8 @@ import { CONFIG } from '../app/balance/balance-config.js';
 import { OVERVIEW_SIMULATION_KEY, FINGERPRINT_VERSION, sourceFingerprint, projectSimulationSummaries, assertSimulationRecord, fingerprint, simulationEntryKey } from '../app/overview/overview-simulation-summary.js';
 import { overviewScope, storeSimulationSummary } from '../app/overview/overview-storage.js';
 import { buildSimulationSummary } from '../app/simulator/simulator-overview-summary.js';
+import { HOUSEHOLD_WIDOW_KEY } from '../app/simulator/simulator-household-widow-persistence.js';
+import { HOUSEHOLD_PURCHASES_KEY } from '../app/simulator/simulator-household-purchases-persistence.js';
 import { validatePersistenceDomainRecords, buildFullPersistenceBackup, normalizeFullPersistenceBackup } from '../app/shared/persistence-backup.js';
 import { isAllowedSnapshotCaptureKey, isAllowedPersistenceImportKey } from '../app/shared/persistence-key-policy.js';
 import { PROFILE_SCOPED_FIXED_KEYS } from '../app/profile/profile-state.js';
@@ -23,9 +25,19 @@ for (const changes of [{ profile_tagesgeld: '200' }, { sim_mcAnzahl: '20' }, { s
     { [CONFIG.STORAGE.LS_KEY]: JSON.stringify({ inputs: { floorBedarf: 21, flexBedarf: 10 } }) }]) {
     assert(sourceFingerprint({ ...ctx, liveData: { ...data, ...changes } }) !== source, 'Wirksame Änderung macht Ergebnis veraltet: ' + Object.keys(changes)[0]);
 }
+const legacyWidowSource = sourceFingerprint({ ...ctx, liveData: { ...data, sim_widowPensionMode: 'stop' } });
+const householdWidowData = { ...data, [HOUSEHOLD_WIDOW_KEY]: JSON.stringify({ version: 1, values: { widowPensionMode: 'stop' } }) };
+assert(legacyWidowSource !== source, 'HL-1b: Hinterbliebenenrente zählt zur Quellenbasis');
+assertEqual(sourceFingerprint({ ...ctx, liveData: { ...householdWidowData, sim_widowPensionMode: 'percent' } }), legacyWidowSource,
+    'HL-1b: dieselbe Annahme zählt vor und nach Übernahme; Altwerte haben danach keinen Einfluss');
 const btSource = sourceFingerprint({ ...ctx, kind: 'backtest' });
 assertEqual(sourceFingerprint({ ...ctx, kind: 'backtest', liveData: { ...data, sim_mcAnzahl: '20' } }), btSource, 'MC-Einstellungen machen Backtest nicht veraltet');
 const balanceSource = sourceFingerprint({ ...ctx, kind: 'balance' });
+const separatePurchases = { ...data, [HOUSEHOLD_PURCHASES_KEY]: 'separate' };
+assert(sourceFingerprint({ ...ctx, liveData: separatePurchases }) !== source, 'FR-97: Ein eigenes Papier macht Monte Carlo veraltet');
+assert(sourceFingerprint({ ...ctx, kind: 'backtest', liveData: separatePurchases }) !== btSource, 'FR-97: Ein eigenes Papier macht den Backtest veraltet');
+assertEqual(sourceFingerprint({ ...ctx, kind: 'balance', liveData: separatePurchases }), balanceSource, 'FR-97: Die Haushaltswahl zählt nur im Simulator');
+assertEqual(sourceFingerprint({ ...ctx, liveData: { ...data, [HOUSEHOLD_PURCHASES_KEY]: 'same' } }), source, 'FR-97: Fehlende Wahl und gespeicherte Vorgabe sind gleich wirksam');
 assertEqual(sourceFingerprint({ ...ctx, kind: 'balance', liveData: { ...data, sim_pflegefallLogikAktivieren: 'true' } }), balanceSource, 'Simulatorpflege verändert Balance-Schrittgrundlage nicht');
 assertEqual(sourceFingerprint({ ...ctx, liveData: { ...data, depot_tranchen: '{kaputt' } }), null, 'Beschädigte Quellen liefern keine aktuelle Ausgangsbasis');
 const context = { kind: 'montecarlo', scope, sourceFingerprint: source, runFingerprint: fingerprint({ synthetic: true }), fingerprintVersion: FINGERPRINT_VERSION, deviationApplied: false };
@@ -47,10 +59,7 @@ const backtest = buildSimulationSummary({ ...context, kind: 'backtest', sourceFi
 assertEqual(backtest.metrics.endWealthReal, 12.5, 'Backtest verwendet kanonisches reales Endvermögen');
 assertEqual(backtest.metrics.failureYear, 2003, 'Finanzieller Ruin wird als abgeschlossenes Ergebnis gespeichert');
 assertEqual(buildSimulationSummary({ ...context, kind: 'backtest' }, { outcome: { kind: 'incomplete' } }), null, 'Incomplete ist kein Backtesterfolg');
-const workshop = { variantOrder: ['baseline', 'v1', 'v2'], variants: [{ variantId: 'baseline', label: 'Baseline' }, { variantId: 'v1', label: 'Erste', terminalStatus: 'ruin', summary: { finalValueRealEur: 0 } }, { variantId: 'v2', label: '<img onerror=bad>', terminalStatus: 'horizon_exhausted', summary: { finalValueRealEur: 20 } }], pairwise: [{ variantId: 'v1', comparable: true }, { variantId: 'v2', comparable: true }] };
-assert(buildSimulationSummary({ ...context, kind: 'workshop' }, workshop).statement.includes('<img onerror=bad>'), 'Variantenname bleibt Text und wird erst bei Ausgabe escaped');
-assert(buildSimulationSummary({ ...context, kind: 'workshop' }, workshop, { preferredVariantId: 'v1' }).statement.includes('Erste'), 'Zuletzt bearbeitete erfolgreiche Alternative hat Vorrang');
-assertEqual(buildSimulationSummary({ ...context, kind: 'workshop' }, { variantOrder: ['baseline'], variants: workshop.variants, pairwise: [] }), null, 'Baseline-only ist kein Vergleichserfolg');
+assertEqual(buildSimulationSummary({ ...context, kind: 'workshop' }, result, { requestedRuns: 4, completedAt }), null, 'WS-1: Die App legt keine Werkstatt-Zusammenfassung mehr an');
 const encoded = item => JSON.stringify({ version: 1, entries: { [simulationEntryKey(scope, item.kind)]: item } });
 const raw = encoded(summary);
 assertSimulationRecord(raw);
@@ -66,6 +75,24 @@ function storageFixture(reg = registry) {
     return { map, storage: { getItem: key => map.get(key) ?? null, setItem: (key, value) => map.set(key, String(value)), removeItem: key => map.delete(key), key: i => [...map.keys()][i] ?? null, get length() { return map.size; } } };
 }
 const deps = storage => ({ storage, flush: async () => true, guard: null, isBlocked: () => false, expectedProfileId: 'a' });
+// WS-1: Alte Stände mit einer Werkstatt-Zusammenfassung bleiben lesbar und einspielbar; die Anzeige überspringt sie.
+{
+    const legacyWorkshop = { scope, kind: 'workshop', completedAt: '2026-10-05T12:00:00Z', statement: 'Alternative gegen Baseline: Zeitraum überstanden',
+        priceBasis: 'hypothetischer Vergleich auf einem fixierten Pfad · real, Preise zum Pfadstart', fingerprintVersion: FINGERPRINT_VERSION,
+        sourceFingerprint: source, runFingerprint: fingerprint({ legacy: true }), deviationApplied: true, metrics: { endWealthReal: 1234 } };
+    const legacyRaw = JSON.stringify({ version: 1, entries: { [simulationEntryKey(scope, 'montecarlo')]: summary, [simulationEntryKey(scope, 'workshop')]: legacyWorkshop } });
+    assertEqual(Object.keys(assertSimulationRecord(legacyRaw).entries).length, 2, 'WS-1: Alte Werkstatt-Zusammenfassung wird beim Lesen nicht abgewiesen');
+    const legacyRegistry = structuredClone(registry); for (const profile of Object.values(legacyRegistry.profiles)) profile.data[OVERVIEW_SIMULATION_KEY] = legacyRaw;
+    const legacyProjection = projectSimulationSummaries({ ...ctx, registry: legacyRegistry, liveData: { ...data, [OVERVIEW_SIMULATION_KEY]: legacyRaw } });
+    assertEqual(JSON.stringify(Object.keys(legacyProjection)), JSON.stringify(['backtest', 'montecarlo']), 'WS-1: Die Anzeige überspringt die Werkstatt-Zusammenfassung');
+    assertEqual(legacyProjection.montecarlo.entry.metrics.runs, 4, 'WS-1: Andere Ergebnisse desselben Stands bleiben lesbar');
+    assertEqual(validatePersistenceDomainRecords({ rs_current_profile: 'a', rs_profiles_v1: JSON.stringify(legacyRegistry), [OVERVIEW_SIMULATION_KEY]: legacyRaw }).ok, true,
+        'WS-1: Eine Sicherung mit alter Werkstatt-Zusammenfassung besteht die Importprüfung');
+    const { storage, map } = storageFixture();
+    const before = JSON.stringify([...map]);
+    assertEqual(await storeSimulationSummary(legacyWorkshop, deps(storage)), false, 'WS-1: Eine Werkstatt-Zusammenfassung wird nicht mehr gespeichert');
+    assertEqual(JSON.stringify([...map]), before, 'WS-1: Abgewiesene Werkstatt-Ablage schreibt nichts');
+}
 {
     const { storage, map } = storageFixture();
     assertEqual(await storeSimulationSummary(summary, deps(storage)), true, 'Haushaltssummary wird dauerhaft bestätigt');
@@ -77,7 +104,7 @@ const deps = storage => ({ storage, flush: async () => true, guard: null, isBloc
     const backup = buildFullPersistenceBackup({ storage });
     assertEqual(normalizeFullPersistenceBackup(backup).ok, true, 'Vollbackup-Roundtrip bleibt lesbar');
 }
-for (const failure of ['flush', 'switch', 'membership', 'newer']) {
+for (const failure of ['flush', 'switch', 'household', 'newer']) {
     const { storage, map } = storageFixture(storedRegistry); map.set(OVERVIEW_SIMULATION_KEY, raw);
     const candidate = { ...summary, completedAt: '2026-10-07T12:00:00Z' };
     let flushes = 0;
@@ -85,7 +112,7 @@ for (const failure of ['flush', 'switch', 'membership', 'newer']) {
     const options = { ...deps(storage), flush: async () => {
         if (++flushes !== 2) return true;
         if (failure === 'switch') map.set('rs_current_profile', 'b');
-        if (failure === 'membership') { const current = JSON.parse(map.get('rs_profiles_v1')); current.profiles.b.meta.belongsToHousehold = false; map.set('rs_profiles_v1', JSON.stringify(current)); }
+        if (failure === 'household') { const current = JSON.parse(map.get('rs_profiles_v1')); delete current.profiles.b; map.set('rs_profiles_v1', JSON.stringify(current)); }
         if (failure === 'newer') { map.set(OVERVIEW_SIMULATION_KEY, encoded(newer)); const current = JSON.parse(map.get('rs_profiles_v1')); for (const profile of Object.values(current.profiles)) profile.data[OVERVIEW_SIMULATION_KEY] = encoded(newer); map.set('rs_profiles_v1', JSON.stringify(current)); }
         return false;
     } };
@@ -96,8 +123,8 @@ for (const failure of ['flush', 'switch', 'membership', 'newer']) {
 {
     const { storage, map } = storageFixture(); map.set('rs_current_profile', 'b');
     assertEqual(await storeSimulationSummary(summary, deps(storage)), false, 'Falsche Identität vor dem Write abgewiesen');
-    map.set('rs_current_profile', 'a'); const changed = structuredClone(registry); changed.profiles.b.meta.belongsToHousehold = false; map.set('rs_profiles_v1', JSON.stringify(changed));
-    assertEqual(await storeSimulationSummary(summary, deps(storage)), false, 'Falsche Mitgliedschaft vor dem Write abgewiesen');
+    map.set('rs_current_profile', 'a'); const changed = structuredClone(registry); delete changed.profiles.b; map.set('rs_profiles_v1', JSON.stringify(changed));
+    assertEqual(await storeSimulationSummary(summary, deps(storage)), false, 'Geänderter Haushalt vor dem Write abgewiesen');
     assertEqual(map.has(OVERVIEW_SIMULATION_KEY), false, 'Abgewiesener Kontext schreibt nichts');
 }
 {

@@ -11,8 +11,9 @@ import { formatDisplayNumber, formatDisplayDate } from './designsystem-number-fo
 export function householdPlanSummary(values) {
     if (!values) return 'Planbereich noch nicht bestätigt';
     const preset = DYNAMIC_FLEX_OPTIONS.find(([key]) => key === detectDynamicFlexPreset(values))?.[1];
-    const budget = Number(values.flexBudgetAnnual).toLocaleString('de-DE', { maximumFractionDigits: 0 });
-    return `Flex-Budget ${budget} €/Jahr · Reserven ${formatDisplayNumber(values.liquidityRunwayYears)} Jahre · Strategie ${values.decumulation.mode === 'standard' ? 'Standard' : '3-Töpfe'} · Dynamik ${preset} · CAPE ${formatDisplayNumber(values.cape.value)}`;
+    const budget = Number(values.flexBudgetAnnual);
+    const flex = budget === 0 ? 'Flex-Budget aus' : `Flex-Budget ${formatDisplayNumber(budget, { fractionDigits: 0 })} €/Jahr`;
+    return `${flex} · Reserven ${formatDisplayNumber(values.liquidityRunwayYears)} Jahre · Strategie ${values.decumulation.mode === 'standard' ? 'Standard' : '3-Töpfe'} · Dynamik ${preset} · CAPE ${formatDisplayNumber(values.cape.value)}`;
 }
 
 const prepared = new WeakSet();

@@ -17,11 +17,25 @@ const books = new WeakMap();
 const assessmentModes = new WeakMap();
 const sum = (rows, key) => rows.reduce((total, row) => total + (Number(row[key]) || 0), 0);
 
+/** FR-84 (NK-1c, Gutachten NK1C2 Befund 4): Hilfe zur Pflege für offene „Steuer aus Verkäufen oder Zinsen für die Pflege“. Seit KR-1c
+ * zählt auch die Zinssteuer auf Geld, das samt Zins ins Heim fließt (§ 82 Abs. 2 Nr. 1 SGB XII: Steuern mindern das einzusetzende Einkommen). Je Person höchstens der Anteil ihrer
+ * Jahressteuer, der auf die selbst bezahlte Pflege entfällt (Pflegequote ihrer Zahlung); der Rest ist Steuer ohne Pflegebezug. NK-2: Nur
+ * die neue Steuer des Jahres zählt (`newTaxShortfall`); offene Altschuld und Wohnrechtsteuer sind nie Hilfe (Gutachten NK1C2 Befund 1).
+ * @param {{profileId: string, taxDue?: number, taxShortfall?: number, newTaxShortfall?: number}[]} rows Ergebnis je Person aus `settlePersonalTaxYear`.
+ * @param {Record<string, number>} careShare Pflegequote der Zahlung je Person (0 bis 1).
+ * @returns {{total: number, persons: {profileId: string, amount: number}[]}} */
+export function careSaleTaxAid(rows, careShare) {
+    const persons = (rows || []).map(row => ({ profileId: row.profileId, amount: Math.min(Math.max(0, Number(row.newTaxShortfall ?? row.taxShortfall) || 0),
+        Math.max(0, Math.min(1, Number(careShare[row.profileId]) || 0) * (Number(row.taxDue) || 0))) })).filter(row => row.amount > 1e-8);
+    return { total: persons.reduce((sum, row) => sum + row.amount, 0), persons };
+}
+
 /**
  * @param portfolio Veränderlicher Portfoliozustand.
  * @param [singlePersonFallback]
  * @returns Ergebnis der Operation.
  */
+
 export function beginPersonalTaxYear(portfolio, singlePersonFallback = null) {
     // Older exports without individual allowances cannot prove their allocation.
     const fallback = portfolio.personAccounts.length === 1 ? singlePersonFallback : null;
@@ -334,6 +348,21 @@ export function coverPersonalPayout(portfolio, plan, market, bondsOnly = false) 
     return { raised, sources };
 }
 
+/** NK-3 (FR-84 Punkt 21): Steuer, die eine Person in diesem Jahr noch über das Einbehaltene hinaus zahlen muss, wenn sie ihre übrigen
+ * Wertpapiere verkauft (`withHoldings`) oder nur auf das bereits Verkaufte. Ohne Jahressteuerbuch 0.
+ * @param portfolio Veränderlicher Portfoliozustand. @param {string} profileId @param {boolean} [withHoldings] @returns {number} */
+export function personalTaxStillDue(portfolio, profileId, withHoldings = true) {
+    const row = books.get(portfolio)?.find(entry => entry.profileId === profileId);
+    if (!row) return 0;
+    const rawAggregate = { ...row.rawAggregate };
+    if (withHoldings) for (const lot of [...portfolio.depotTranchesAktien || [], ...portfolio.depotTranchesGold || []]) {
+        if ((lot.sourceProfileId || portfolio.simulationSourceProfileId) !== profileId || !(lot.marketValue > 0)) continue;
+        const gain = lot.marketValue - (Number(lot.costBasis) || 0);
+        addTaxRawAggregate(rawAggregate, { sumRealizedGainSigned: gain, sumTaxableAfterTqfSigned: lot.taxExempt === true ? 0 : gain * (1 - (Number(lot.tqf) || 0)) });
+    }
+    return Math.max(0, settleTaxYear({ ...row, rawAggregate }).taxDue - row.reserved);
+}
+
 /** Zusätzliche Verkaufssteuer mit dem noch verfügbaren persönlichen Jahressteuerbuch.
  *
  * @param portfolio Veränderlicher Portfoliozustand.
@@ -517,10 +546,16 @@ export function payPersonalExtraCost(portfolio, profileId, cost, personalInteres
  * @param options.spendingNewState
  * @param options.didForcedSale
  * @param [options.inputs]
+ * @param {string[]} [options.ownTaxOnly] FR-84: Personen, die ihre Steuer nur aus eigenem Geld zahlen.
+ * @param {string[]} [options.ownFirstIds] NK-3 (FR-84 Punkt 21): Personen, die ihre Steuer zuerst aus eigenem Geld und Depot zahlen.
+ * @param {Record<string, number>} [options.ownTaxShare] FR-84 (NK-1b, Fable P2-8): Anteil der Steuer je Person, der aus Pflegeverkäufen
+ *   stammt (0 bis 1). Diesen Anteil zahlt sie nur aus eigenem Geld; für den Rest bleibt der Rückgriff auf den Haushalt wie bisher.
  * @returns Ergebnis der Operation.
  */
 export function settlePersonalTaxYear({ portfolio, book, personalInterest, actionResult,
-    plannedActionFlow, regularSaleScale, forcedTaxReserved, spendingNewState, didForcedSale, inputs = /** @type {Partial<SimulatorInputs>} */ ({}) }) {
+    plannedActionFlow, regularSaleScale, forcedTaxReserved, spendingNewState, didForcedSale, inputs = /** @type {Partial<SimulatorInputs>} */ ({}),
+    ownTaxOnly = /** @type {string[]} */ ([]), ownTaxShare = /** @type {Record<string, number>} */ ({}), ownFirstIds = /** @type {string[]} */ ([]) }) {
+    const ownShare = (/** @type {string} */ id) => ownTaxOnly.includes(id) ? 1 : Math.min(1, Math.max(0, Number(ownTaxShare[id]) || 0));
     assessmentModes.set(portfolio, inputs.jointAssessment === true);
     const booked = new Map(book.map(row => [row.profileId, 0]));
     const householdFunding = new Map(book.map(row => [row.profileId, new Map()]));
@@ -566,41 +601,49 @@ export function settlePersonalTaxYear({ portfolio, book, personalInterest, actio
                 } else {
                     let paid = debitAccount(portfolio, row.account, -delta).amount;
                     syncPersonalLiquidity(portfolio);
+                    // FR-84: Den Steueranteil aus Pflegeverkäufen zahlt der Haushalt nicht; ohne Pflegeanteil ist die Grenze unendlich.
+                    const share = ownShare(row.profileId);
+                    let capLeft = share > 0 ? Math.max(0, (1 - share) * assess(row).taxDue + (row.openDebt || 0) + (row.residenceDebt || 0)
+                        - [...householdFunding.get(row.profileId).values()].reduce((sum, value) => sum + value, 0)) : Infinity;
                     const householdCash = () => {
                         // FR-16: use household liquidity in Balance plan order before
                         // selling the taxpayer's own investments. Each account uses TG before MM.
                         const profiles = personalProfiles(portfolio, inputs).filter(profile => profile.profileId !== row.profileId);
                         // The planner quantizes to cents; query at least one cent for
                         // the order while keeping actual payments unrounded (FR-14).
-                        const order = personalWithdrawalPlan(profiles, Math.max(0.01, -delta - paid), inputs.householdWithdrawalMode);
+                        const order = personalWithdrawalPlan(profiles, Math.max(0.01, Math.min(-delta - paid, capLeft)), inputs.householdWithdrawalMode);
                         for (const item of order.items) {
-                            const remaining = -delta - paid;
+                            const remaining = Math.min(-delta - paid, capLeft);
                             if (remaining <= 1e-8) break;
                             const account = portfolio.personAccounts.find(account => account.profileId === item.profileId);
                             const contribution = debitAccount(portfolio, account, remaining).amount;
                             const funding = householdFunding.get(row.profileId);
                             if (contribution > 0) funding.set(account.profileId, (funding.get(account.profileId) || 0) + contribution);
                             paid += contribution;
+                            capLeft -= contribution;
                         }
                     };
                     // TRG-1c Punkt 1 (FR-80 Punkte 2 und 3): Die tragende Person zahlt ihre Steuer aus eigener Liquidität, dann aus dem eigenen
                     // Depot; erst danach greift sie auf die andere Person zu (mit Hinweis). Sonst wie bisher erst die Haushaltsliquidität.
-                    const ownFirst = carrierId !== null && row.profileId === carrierId;
-                    if (!ownFirst && paid + 1e-8 < -delta) householdCash();
+                    // NK-3 (FR-84 Punkt 21): Der Partner einer Person im Heim zahlt seine Steuer ebenso erst aus eigenem Geld und eigenem Depot.
+                    const ownFirst = (carrierId !== null && row.profileId === carrierId) || ownFirstIds.includes(row.profileId);
+                    // FR-84 (Nachtrag Punkt 2): Unverheiratete Person mit eigener Pflege zahlt den Steueranteil aus Pflegeverkäufen nur aus
+                    // eigenem Geld. Was davon offen bleibt, ist Hilfe zur Pflege (`careSaleTaxAid`).
+                    if (!ownFirst && capLeft > 1e-8 && paid + 1e-8 < -delta) householdCash();
                     const need = -delta - paid;
                     if (need > 1e-8) {
                         fundPersonalCash(portfolio, row, need, {}, false, 'tax', householdTaxSources);
                         paid += debitAccount(portfolio, row.account, need).amount;
                     }
-                    if (ownFirst && paid + 1e-8 < -delta) householdCash();
-                    if (paid + 1e-8 < -delta) {
+                    if (ownFirst && capLeft > 1e-8 && paid + 1e-8 < -delta) householdCash();
+                    if (capLeft > 1e-8 && paid + 1e-8 < -delta) {
                         // Erst nach Haushaltsliquidität und eigenem Depot die übrigen
                         // Depots in Planreihenfolge nutzen. Gewinne gehören weiterhin
                         // dem Verkäufer und werden in den folgenden Durchgängen versteuert.
                         const profiles = personalProfiles(portfolio, inputs).filter(profile => profile.profileId !== row.profileId);
-                        const order = personalWithdrawalPlan(profiles, Math.max(0.01, -delta - paid), inputs.householdWithdrawalMode);
+                        const order = personalWithdrawalPlan(profiles, Math.max(0.01, Math.min(-delta - paid, capLeft)), inputs.householdWithdrawalMode);
                         for (const item of order.items) {
-                            const remaining = -delta - paid;
+                            const remaining = Math.min(-delta - paid, capLeft);
                             if (remaining <= 1e-8) break;
                             const helper = book.find(candidate => candidate.profileId === item.profileId);
                             const raised = fundPersonalCash(portfolio, helper, remaining, {}, false, 'tax', householdTaxSources);
@@ -609,6 +652,7 @@ export function settlePersonalTaxYear({ portfolio, book, personalInterest, actio
                             const funding = householdFunding.get(row.profileId);
                             if (contribution > 0) funding.set(helper.profileId, (funding.get(helper.profileId) || 0) + contribution);
                             paid += contribution;
+                            capLeft -= contribution;
                         }
                     }
                     booked.set(row.profileId, booked.get(row.profileId) - paid);
@@ -634,6 +678,14 @@ export function settlePersonalTaxYear({ portfolio, book, personalInterest, actio
         const funding = householdFunding.get(row.profileId);
         if (funding.size) result.householdTaxFunding = [...funding].map(([profileId, amount]) => ({ profileId, amount }));
         if (shortfall > 1e-8) result.taxShortfall = shortfall;
+        // NK-2 (Gutachten NK1C2 Befund 1): Gezahltes tilgt zuerst die Altschuld, dann die Wohnrechtsteuer, dann die neue Steuer.
+        if (row.openDebt > 0 || row.residenceDebt > 0 || row.releasedForFloor > 0) {
+            const old = row.openDebt || 0, residence = row.residenceDebt || 0;
+            const paid = Math.max(0, row.reserved + old + residence - booked.get(row.profileId));
+            const oldRest = Math.max(0, old - paid), residenceRest = Math.max(0, residence - Math.max(0, paid - old));
+            Object.assign(result, { oldDebt: old, oldDebtRest: Math.min(shortfall, oldRest), residenceTaxRest: Math.min(Math.max(0, shortfall - oldRest), residenceRest),
+                newTaxShortfall: Math.max(0, shortfall - oldRest - residenceRest) });
+        }
         return result;
     });
     syncPersonalLiquidity(portfolio);
@@ -668,10 +720,12 @@ export function settlePersonalTaxYear({ portfolio, book, personalInterest, actio
         actionResult.taxSettlement.taxShortfall = taxShortfall;
         return { totalTaxesThisYear: totalTax, taxCashAdjustment: adjustment, taxShortfall };
     }
+    // NK-2: Bezahlte Altschuld, Wohnrechtsteuer und für den Bedarf freigegebene Verkaufssteuer gehören nicht zum Vertrag dieses Jahres.
+    const carried = sum(book, 'openDebt') + sum(book, 'residenceDebt') + sum(book, 'releasedForFloor');
     attachExecutedTaxContract({ actionResult, plannedActionFlow, regularSaleScale,
         regularTaxReserved: (plannedActionFlow?.steuer || 0) * regularSaleScale, forcedTaxReserved,
-        taxReservedTotal: reserved, saleTaxDue: saleTax, cashInterestTaxDelta: totalTax - saleTax,
-        finalAnnualTax: totalTax, rawTaxCashAdjustment: reserved - totalTax, taxCashAdjustment: adjustment,
+        taxReservedTotal: reserved + carried, saleTaxDue: saleTax, cashInterestTaxDelta: totalTax - saleTax,
+        finalAnnualTax: totalTax, rawTaxCashAdjustment: reserved + carried - totalTax, taxCashAdjustment: adjustment + carried,
         recomputedWithForcedSales: didForcedSale, recomputedAfterActionTransform: true });
     return { totalTaxesThisYear: totalTax, taxCashAdjustment: adjustment };
 }

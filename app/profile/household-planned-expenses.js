@@ -1,7 +1,7 @@
 /** @import * as D from "../../typcheck/datenvertraege.js" */
 /** @import * as I from "../../typcheck/speicher-integration.js" */
 import { assertPlanScope, readSimulatorHouseholdPlan } from './household-plan.js';
-import { persistenceStorage, PersistenceFacade } from '../shared/persistence-facade.js';
+import { persistenceStorage, PersistenceFacade, syncWriteBlockMessage } from '../shared/persistence-facade.js';
 import { appNow } from '../shared/app-clock.js';
 
 export const PLANNED_EXPENSES_KEY = 'household_planned_expenses_v1';
@@ -76,7 +76,8 @@ export async function savePlannedExpenses({ scope, items, storage = persistenceS
     assertPlanScope(scope);
     const check = () => {
         navigationOperation?.check();
-        if (!isCurrent() || persistence.hasSyncWriteBlocks?.() || globalThis.window?.__profileRecoveryBlocker) throw new Error('Geplante Ausgaben: Speichern gesperrt oder Planbereich gewechselt.');
+        if (persistence.hasSyncWriteBlocks?.() || globalThis.window?.__profileRecoveryBlocker) throw new Error(syncWriteBlockMessage());
+        if (!isCurrent()) throw new Error('Der Plan hat sich geändert. Die Ausgaben wurden nicht gespeichert.');
     };
     check();
     const before = storage.getItem(PLANNED_EXPENSES_KEY);

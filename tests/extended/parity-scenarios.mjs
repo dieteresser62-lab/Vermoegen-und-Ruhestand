@@ -171,7 +171,10 @@ export function summarizeParityScenario(key, label, cases, outcome) {
         if (rows.some(row => row.status === 'TECHNISCHER_FEHLER')) result.errorYears++;
     }
     result.residuals = summarizeParityResiduals(cases);
-    result.console = `${label}: Entscheidungen gleich ${result.decisionEqualYears}/26; Personenplan gleich ${result.transactionEqualYears}/26; vollständig gleich ${result.equalYears}/26; Rundung ${result.roundingYears}; offene Fachfragen `
+    const fullComparison = result.missingPersonModelYears > 0
+        ? `Vollvergleich nicht möglich: Personenmodell fehlt in ${result.missingPersonModelYears} Fällen`
+        : `Vollvergleich gleich ${result.equalYears}/${result.years}`;
+    result.console = `${label}: Entscheidungen gleich ${result.decisionEqualYears}/${result.years} · Personenplan gleich ${result.transactionEqualYears}/${result.years} · ${fullComparison}; Rundung ${result.roundingYears}; offene Fachfragen `
         + (Object.keys(result.openQuestions).join(', ') || 'keine')
         + `; fehlendes Personenmodell ${result.missingPersonModelYears}; Fehler ${result.errorYears}; Folgelauf ${result.sequenceDecisions}/26`
         + (result.sequenceStoppedYear === null ? '.' : `, ab ${result.sequenceStoppedYear} unvollständig ausführbar.`);

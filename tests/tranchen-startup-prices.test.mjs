@@ -38,12 +38,19 @@ async function advance(ms) {
 }
 function deferred() { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; }
 const json = (body, status = 200) => ({ ok: status === 200, status, json: async () => body });
+// Bestehende Frist- und Fehlerfälle steuern den Basisabruf. Die Zusatzbörsen antworten sofort mit 404.
+function mockBaseRequests(handler) {
+    globalThis.fetch = (url, options) => {
+        const symbol = new URL(url).searchParams.get('symbol');
+        return /\.(SG|DU|MU)$/.test(symbol || '') ? Promise.resolve(json({ code: 'SYMBOL_NOT_FOUND' }, 404)) : handler(url, options);
+    };
+}
 const quote = (symbol, price = 120) => ({ symbol, price, currency: 'EUR', asOf: Math.floor(epoch / 1000) - 60, source: 'test' });
 const lot = (id, ticker, extra = {}) => ({ schemaVersion: 2, trancheId: id, name: `Tranche ${id}`, ticker, isin: '',
     category: 'equity', type: 'aktien_neu', shares: 2, purchasePrice: 80, currentPrice: 100,
     tqf: 0.3, taxExempt: false, asOf: Math.floor(epoch / 1000) - 86400, ...extra });
 async function setup(activeLots, inactiveLots = activeLots, { fail = false, hold = null, rollbackFail = false } = {}) {
-    const profile = (id, lots) => ({ meta: { id, name: personNames[id], createdAt: 'alt', updatedAt: 'unverändert', belongsToHousehold: id === 'a', custom: 'behalten' },
+    const profile = (id, lots) => ({ meta: { id, name: personNames[id], createdAt: 'alt', updatedAt: 'unverändert', belongsToHousehold: true, custom: 'behalten' },
         data: { depot_tranchen: JSON.stringify(lots), sim_extra: ' { "fremd": true } ', profile_tagesgeld: '500', sim_audit_bytes: ' { "audit": [] } ' }, extension: { untouched: true } });
     const registry = { version: 1, profiles: { a: profile('a', activeLots), b: profile('b', inactiveLots), c: profile('c', []) }, extra: 'original', trancheReconciliation: { schemaVersion: 1, actions: [], extension: 'Audit unverändert' } };
     const backend = { rs_profiles_v1: JSON.stringify(registry), rs_current_profile: 'a', rs_active_profile: 'a', ...registry.profiles.a.data };
@@ -106,7 +113,7 @@ function assertSingleCommit(trace, state, at) {
 const statusRows = host => (host.children.find(child => child.children?.some(row => row.children?.[0]?.href === 'depot-tranchen-manager.html'))?.children || []).map(row => row.textContent);
 function assertSessionReport(report) {
     const topFields = ['status', 'updated', 'retrievedAt', 'restored', 'results'];
-    const resultFields = ['profileId', 'trancheId', 'profileName', 'trancheName', 'status', 'code', 'message', 'asOf'];
+    const resultFields = ['profileId', 'trancheId', 'profileName', 'trancheName', 'status', 'code', 'message', 'asOf', 'quoteExchange'];
     const forbidden = ['quote', 'raw', 'tranche', 'price', 'currentPrice', 'purchasePrice', 'shares', 'marketValue', 'costBasis'];
     assert(Object.keys(report).every(key => topFields.includes(key)), 'Zusammenfassung enthält nur Statusmetadaten');
     for (const [key, value] of Object.entries(report)) {
@@ -124,7 +131,7 @@ try {
         time = Date.parse(day + 'T12:00:00Z');
         await setup([], []);
         let requests = 0;
-        globalThis.fetch = () => { requests++; throw new Error('Kein Kursdienst'); };
+        mockBaseRequests(() => { requests++; throw new Error('Kein Kursdienst'); });
         const report = await startCoordinator().task;
         assert.equal(report.status, 'empty', day + ': ohne Tranchen kein Offlinebefund');
         assert.equal(report.retrievedAt, undefined, 'Ohne Abruf keine Abrufzeit');
@@ -183,7 +190,7 @@ try {
         const state = await setup([...symbols.map((symbol, i) => lot(`a-${i}`, symbol)),
             lot('hanging', 'MISSING.DE', { isin: 'IE00HANG0001' })], symbols.map((symbol, i) => lot(`b-${i}`, symbol)));
         const held = [], requests = []; let bodyReads = 0, active = 0, peak = 0;
-        globalThis.fetch = (url, options) => {
+        mockBaseRequests((url, options) => {
             const u = new URL(url), symbol = u.searchParams.get('symbol');
             requests.push({ path: u.pathname, symbol, at: time });
             active++; peak = Math.max(peak, active);
@@ -196,13 +203,13 @@ try {
             const wait = deferred(); held.push({ wait, path: u.pathname, symbol });
             if (latePart === 'body') return Promise.resolve({ ...json({}), json: () => { bodyReads++; return wait.promise; } });
             return wait.promise;
-        };
+        });
         const trace = observeCoordinator(); await settle();
         await advance(13999); assert.equal(state.batches(), 0);
         await advance(1); const report = await trace.coordinator.task;
         assert.equal(report.status, 'complete'); assert.equal(report.updated, 16);
         assertSingleCommit(trace, state, epoch + 14000);
-        assert.equal(peak, 3, 'Höchstens drei aktive JS-Requests');
+        assert.equal(peak, 3, 'Höchstens drei Gruppen gleichzeitig in der Basisrunde');
         assert(requests.some(request => request.path === '/search') && requests.some(request => request.symbol === 'IE00HANG0001'), 'Fixture erreicht Suche, Wiederholung und ISINquote');
         for (const symbol of [...symbols, 'MISSING.DE']) assert.equal(requests.filter(request => request.symbol === symbol).length, 1, 'Direktquotes werden einschließlich 404 geteilt, nicht wiederholt');
         assert.equal(report.results.find(result => result.trancheId === 'hanging').code, 'STARTUP_FALLBACK_TIMEOUT');
@@ -226,7 +233,7 @@ try {
         const before = JSON.stringify({ backend: state.backend, cache: exportAllSync().records });
         const held = [], requests = []; let bodyReads = 0;
         const hanging = () => { const wait = deferred(); held.push(wait); return wait.promise; };
-        globalThis.fetch = async url => {
+        mockBaseRequests(async url => {
             const u = new URL(url), symbol = u.searchParams.get('symbol'), query = u.searchParams.get('q');
             requests.push({ path: u.pathname, symbol, query, at: time });
             if (['A.DE', 'B.DE', 'IE00READY001'].includes(symbol)) return json({ code: 'SYMBOL_NOT_FOUND' }, 404);
@@ -237,7 +244,7 @@ try {
             }
             if (symbol === 'RESOLVED.DE') return new Promise(resolve => setTimeout(() => resolve(json(quote(symbol))), epoch + successAt - time));
             return hanging();
-        };
+        });
         const trace = observeCoordinator(); await settle();
         const endAt = successAt === null ? 15000 : Math.max(14000, successAt);
         await advance(endAt - 1); assert.equal(state.batches(), 0);
@@ -267,7 +274,7 @@ try {
         installClock();
         const state = await setup([lot('ready', 'READY.DE'), lot('not-started', '', { isin: 'IE00HANG0001' })], []);
         const requests = [];
-        globalThis.fetch = async url => { requests.push(url); time = epoch + successAt; return json(quote('READY.DE')); };
+        mockBaseRequests(async url => { requests.push(url); time = epoch + successAt; return json(quote('READY.DE')); });
         const trace = observeCoordinator(), report = await trace.coordinator.task;
         assert.equal(report.updated, 1); assert.equal(requests.length, 1);
         assert.equal(report.results[1].code, 'STARTUP_FALLBACK_TIMEOUT');
@@ -280,14 +287,14 @@ try {
         const state = await setup([lot('ready', 'READY.DE'), lot('currency', 'USD.DE'), lot('missing', 'MISSING.DE'),
             lot('hanging', 'HANG.DE', { isin: 'IE00HANG0001' })], [], { hold, fail });
         const before = JSON.stringify(state.backend);
-        globalThis.fetch = async url => {
+        mockBaseRequests(async url => {
             const u = new URL(url), symbol = u.searchParams.get('symbol');
             if (symbol === 'READY.DE') return json(quote(symbol));
             if (symbol === 'USD.DE') return json({ ...quote(symbol), currency: 'USD' });
             if (symbol === 'MISSING.DE' || symbol === 'HANG.DE') return json({ code: 'SYMBOL_NOT_FOUND' }, 404);
             if (u.searchParams.get('q') === 'USD.DE' || u.searchParams.get('q') === 'MISSING.DE') return json({ quotes: [] });
             return late.promise;
-        };
+        });
         const { task, guard } = startCoordinator(); let done = false; task.then(() => { done = true; });
         await settle(); await advance(14000);
         assert.equal(state.batches(), 1); assert.equal(done, false, 'Vor Flushbestätigung ist noch kein Erfolg gemeldet');
@@ -312,11 +319,11 @@ try {
         const state = await setup(symbols.map((symbol, i) => lot(`a-${i}`, symbol)),
             symbols.map((symbol, i) => lot(`b-${i}`, symbol.toLowerCase())));
         const requests = []; let active = 0, peak = 0;
-        globalThis.fetch = url => {
+        mockBaseRequests(url => {
             const u = new URL(url), symbol = u.searchParams.get('symbol');
             requests.push({ path: u.pathname, symbol, at: time }); active++; peak = Math.max(peak, active);
             return new Promise(resolve => setTimeout(() => { active--; resolve(json(quote(symbol))); }, 1000));
-        };
+        });
         const started = time, { task } = startCoordinator(); await settle();
         await advance(2999); assert.equal(state.batches(), 0);
         await advance(1); const report = await task;
@@ -341,7 +348,7 @@ try {
         const state = await setup([lot('good', 'GOOD.DE'), lot('bad', 'BAD.DE'), lot('isin', '', { isin: 'IE00ONLY0001' }),
             lot('fallback', 'FALL.DE', { isin: 'IE00FALL0001' }), lot('none', '')], []);
         const requests = [], directEnds = [];
-        globalThis.fetch = url => {
+        mockBaseRequests(url => {
             const u = new URL(url), symbol = u.searchParams.get('symbol'), query = u.searchParams.get('q');
             requests.push({ path: u.pathname, symbol, query, at: time });
             return new Promise(resolve => setTimeout(() => {
@@ -350,7 +357,7 @@ try {
                 else if (['BAD.DE', 'FALL.DE', 'IE00ONLY0001'].includes(symbol)) resolve(json({ code: 'SYMBOL_NOT_FOUND' }, 404));
                 else resolve(json(quote(symbol)));
             }, symbol === 'GOOD.DE' ? 1000 : 100));
-        };
+        });
         const { task } = startCoordinator(); await settle(); await advance(2000); const report = await task;
         assert.equal(report.updated, 3); assert.equal(state.batches(), 1);
         assert(requests.filter(request => request.path === '/search').every(request => request.at >= Math.max(...directEnds)), 'Kein Suchrequest vor Ende aller direkten Gruppen');
@@ -370,11 +377,11 @@ try {
             lot(`${id}-isin`, '', { isin: 'IE00SEARCH01', notes: 'synthetische Zusatznotiz' }), lot(`${id}-original`, 'ORIGINAL.DE')];
         const state = await setup(lots('a'), lots('b'));
         const firstRequests = [];
-        globalThis.fetch = async url => {
+        mockBaseRequests(async url => {
             const u = new URL(url), symbol = u.searchParams.get('symbol'); firstRequests.push(u.pathname + u.search);
             if (u.pathname === '/search') return json({ quotes: [{ symbol: u.searchParams.get('q') === 'OLDQUERY' ? 'RESOLVED.DE' : 'ISINFUND.DE' }] });
             return ['OLDQUERY', 'IE00SEARCH01'].includes(symbol) ? json({ code: 'SYMBOL_NOT_FOUND' }, 404) : json(quote(symbol));
-        };
+        });
         const source = captureStartupPriceSource();
         const lifecycle = createNavigationOperationLifecycle({ guard: createNavigationGuard() });
         await lifecycle.run({}, async operation => {
@@ -401,7 +408,7 @@ try {
         assert.equal(registry.profiles.a.data.depot_tranchen, state.backend.depot_tranchen, 'Backend und aktive Registry enthalten dieselben Writerbytes');
         const reread = captureStartupPriceSource(), nextRequests = [];
         assert.equal(reread.liveRaw, state.backend.depot_tranchen, 'Neue Quelle stammt aus bestätigtem Writerergebnis');
-        globalThis.fetch = async url => { const u = new URL(url); nextRequests.push(u.pathname + u.search); return json(quote(u.searchParams.get('symbol'))); };
+        mockBaseRequests(async url => { const u = new URL(url); nextRequests.push(u.pathname + u.search); return json(quote(u.searchParams.get('symbol'))); });
         const report = await startCoordinator({ source: reread }).task;
         assert.equal(report.updated, 6); assert.equal(state.batches(), 2);
         assert.deepEqual(nextRequests.sort(), ['/quote?symbol=ISINFUND.DE', '/quote?symbol=ORIGINAL.DE', '/quote?symbol=RESOLVED.DE'], 'Zweiter Abruf verwendet nur gespeicherte Symbole, weder Suche noch alte Kennungen');
@@ -412,7 +419,7 @@ try {
         let calls = 0, bodyReads = 0;
         const deadline = epoch + STARTUP_PRICE_TIMEOUT_MS;
         time = epoch + elapsed;
-        globalThis.fetch = async () => { calls++; return { ...json(quote('BOUND.DE')), json: async () => { bodyReads++; return quote('BOUND.DE'); } }; };
+        mockBaseRequests(async () => { calls++; return { ...json(quote('BOUND.DE')), json: async () => { bodyReads++; return quote('BOUND.DE'); } }; });
         const scheduled = [];
         let error;
         try { await fetchProxyPrice('BOUND.DE', undefined, { deadline, now: () => time,
@@ -423,7 +430,7 @@ try {
         installClock();
         const state = await setup([lot('bound', 'BOUND.DE')], []), before = JSON.stringify(state.backend), cacheBefore = JSON.stringify(exportAllSync().records);
         let progresses = 0;
-        globalThis.fetch = async () => { time = epoch + elapsed; return json(quote('BOUND.DE')); };
+        mockBaseRequests(async () => { time = epoch + elapsed; return json(quote('BOUND.DE')); });
         const report = await startCoordinator({ progress: () => { progresses++; } }).task;
         assert.equal(report.updated, elapsed < 15000 ? 1 : 0); assert.equal(state.batches(), elapsed < 15000 ? 1 : 0);
         if (elapsed >= 15000) {
@@ -436,11 +443,11 @@ try {
         installClock();
         const state = await setup([lot('late', 'LATE.DE')], []), before = JSON.stringify(state.backend), cacheBefore = JSON.stringify(exportAllSync().records);
         const held = deferred(); let calls = 0, bodyReads = 0, progresses = 0;
-        globalThis.fetch = async () => {
+        mockBaseRequests(async () => {
             calls++;
             if (latePart === 'headers') return held.promise;
             return { ...json(quote('LATE.DE')), json: async () => { bodyReads++; return held.promise; } };
-        };
+        });
         const { task } = startCoordinator({ progress: () => { progresses++; } }); await settle();
         await advance(15000); const report = await task;
         assert.equal(report.updated, 0); assert.equal(state.batches(), 0);
@@ -454,14 +461,14 @@ try {
     installClock();
     {
         const state = await setup([lot('retry', 'RETRY.DE')], []); let calls = 0;
-        globalThis.fetch = async () => { calls++; time = epoch + 14999; return json({ code: 'PROVIDER_UNAVAILABLE' }, 503); };
+        mockBaseRequests(async () => { calls++; time = epoch + 14999; return json({ code: 'PROVIDER_UNAVAILABLE' }, 503); });
         const report = await startCoordinator().task;
         assert.equal(report.status, 'offline'); assert.equal(report.updated, 0); assert.equal(calls, 1, 'Unpassender Rückoff startet weder Retry noch Fallback'); assert.equal(state.batches(), 0);
     }
     for (const commitAt of [15000, 15001]) {
         installClock();
         const state = await setup([lot('commit-bound', 'BOUND.DE')], []), before = JSON.stringify(state.backend);
-        globalThis.fetch = async () => { time = epoch + 14999; return json(quote('BOUND.DE')); };
+        mockBaseRequests(async () => { time = epoch + 14999; return json(quote('BOUND.DE')); });
         const report = await startCoordinator({ commit: async (...args) => {
             time = epoch + commitAt;
             return commitStartupPriceResults(...args);
@@ -475,7 +482,7 @@ try {
     for (const fail of [false, true]) {
         installClock();
         const hold = deferred(), state = await setup([lot('flush', 'FLUSH.DE')], [], { hold, fail }), before = JSON.stringify(state.backend);
-        globalThis.fetch = async () => { time = epoch + 14999; return json(quote('FLUSH.DE')); };
+        mockBaseRequests(async () => { time = epoch + 14999; return json(quote('FLUSH.DE')); });
         const { task, guard } = startCoordinator(); await settle();
         assert(guard.reasons().some(reason => reason.phase === 'commit'), 'Commit beginnt rechtzeitig');
         await advance(2000); assert(guard.reasons().some(reason => reason.phase === 'commit'), 'Deadline bricht keinen Schreibabschnitt ab');
@@ -489,7 +496,7 @@ try {
     installClock();
     {
         const state = await setup([lot('rollback', 'ROLLBACK.DE')], [], { fail: true, rollbackFail: true });
-        globalThis.fetch = async () => json(quote('ROLLBACK.DE'));
+        mockBaseRequests(async () => json(quote('ROLLBACK.DE')));
         const report = await startCoordinator().task;
         assert.equal(report.status, 'storage-failed'); assert.equal(report.updated, 0); assert.equal(report.restored, false);
         assert.equal(state.batches(), 2, 'Fehlflush versucht den bestehenden kompensierenden Rückschreibweg');
@@ -574,7 +581,7 @@ try {
             { codes: ['REQUEST_TIMEOUT', 'PROVIDER_UNAVAILABLE'], summary: 'Keine Kurse aktualisiert',
                 reasons: ['Kursdienst antwortet nicht rechtzeitig', 'Kursanbieter vorübergehend nicht verfügbar'] }
         ];
-        let requests = 0; globalThis.fetch = () => { requests++; throw new Error('UNEXPECTED_REQUEST'); };
+        let requests = 0; mockBaseRequests(() => { requests++; throw new Error('UNEXPECTED_REQUEST'); });
         for (const item of cases) {
             const report = { status: item.status || (item.updated ? 'complete' : 'offline'), updated: item.updated || 0, retrievedAt: epoch,
                 results: item.codes.map(code => ({ profileId: 'a', trancheId: 'reason', status: 'failed', code, message: '<script>SECRET_PROVIDER</script>' })) };
@@ -639,7 +646,7 @@ try {
         const { backend, batches } = await setup([lot('a1', 'VWCE.DE'), lot('a2', '', { isin: 'IE00TEST00001' })],
             [lot('b1', ' vwce.de '), lot('b2', '', { isin: 'IE00TEST00001', name: 'Anderer Anzeigename' })]);
         const requests = [], counts = new Map();
-        globalThis.fetch = async url => {
+        mockBaseRequests(async url => {
             const value = new URL(url); const key = value.pathname + value.search;
             requests.push(key); counts.set(key, (counts.get(key) || 0) + 1);
             const symbol = value.searchParams.get('symbol');
@@ -647,7 +654,7 @@ try {
             if (value.pathname === '/search') return json({ quotes: [{ symbol: 'FUND.DE' }] });
             if (symbol === 'FUND.DE' && counts.get(key) === 1) return json({ code: 'PROVIDER_UNAVAILABLE' }, 503);
             return json(quote(symbol));
-        };
+        });
         const { doc, win, host } = dom(); const session = sessionStore(); const gate = deferred();
         const task = bindStartupPrices({ doc, win, session, guard: createNavigationGuard(), initialize: () => gate.promise });
         await settle(); assert.equal(requests.length, 0); assert.equal(batches(), 0);
@@ -687,11 +694,11 @@ try {
         const registry = JSON.parse(state.backend.rs_profiles_v1);
         registry.profiles.c.data.depot_tranchen = '{synthetisch-beschädigt';
         persistenceStorage.setItem('rs_profiles_v1', JSON.stringify(registry)); await flush();
-        globalThis.fetch = async url => {
+        mockBaseRequests(async url => {
             const u = new URL(url);
             if (u.pathname === '/search') return json({ quotes: [] });
             return u.searchParams.get('symbol') === 'FAIL.DE' ? json({ code: 'SYMBOL_NOT_FOUND' }, 404) : json(quote('GOOD.DE'));
-        };
+        });
         const page = dom(), session = sessionStore(); completeProfilePageReadiness(page.doc);
         await bindStartupPrices({ ...page, session, initialize: async () => true, guard: createNavigationGuard() });
         const rows = statusRows(page.host);
@@ -721,7 +728,7 @@ try {
         const session = sessionStore(), prior = JSON.stringify(report);
         session.setItem(STARTUP_PRICE_SESSION_KEY, prior);
         const before = JSON.stringify(state.backend), mirrorBefore = JSON.stringify(exportAllSync().records), batchesBefore = state.batches();
-        let requests = 0; globalThis.fetch = () => { requests++; throw new Error('unexpected'); };
+        let requests = 0; mockBaseRequests(() => { requests++; throw new Error('unexpected'); });
         const page = dom(); completeProfilePageReadiness(page.doc);
         await bindStartupPrices({ ...page, session, initialize: async () => true, guard: createNavigationGuard() });
         const rows = statusRows(page.host);
@@ -745,13 +752,13 @@ try {
         const state = await setup([lot('fast', 'FAST.DE'), lot('slow', 'SLOW.DE', { isin: 'IE00SLOW0001' }), lot('search', 'SEARCH.DE'), lot('retry', 'RETRY.DE')]);
         const beforeTimeout = JSON.stringify(state.backend), cacheBefore = JSON.stringify(exportAllSync().records);
         const originalInactive = structuredClone(state.registry.profiles.b);
-        globalThis.fetch = async url => {
+        mockBaseRequests(async url => {
             const u = new URL(url), symbol = u.searchParams.get('symbol');
             if (symbol === 'FAST.DE') return json(quote(symbol));
             if (symbol === 'SLOW.DE') return slow.promise;
             if (u.pathname === '/search') return search.promise;
             return json({ code: symbol === 'RETRY.DE' ? 'PROVIDER_UNAVAILABLE' : 'SYMBOL_NOT_FOUND' }, symbol === 'RETRY.DE' ? 503 : 404);
-        };
+        });
         const { task } = startCoordinator(); let done = false; task.then(() => { done = true; });
         await settle(); await advance(STARTUP_PRICE_TIMEOUT_MS - 1001);
         assert.equal(done, false); assert.equal(state.batches(), 0);
@@ -777,7 +784,7 @@ try {
     for (const trigger of ['navigation', 'link', 'pagehide', 'unload', 'profile', 'profile-pagehide']) {
         const slow = deferred(); const state = await setup([lot('fast', 'FAST.DE'), lot('slow', 'SLOW.DE')]);
         const before = JSON.stringify(state.backend);
-        globalThis.fetch = async url => new URL(url).searchParams.get('symbol') === 'FAST.DE' ? json(quote('FAST.DE')) : slow.promise;
+        mockBaseRequests(async url => new URL(url).searchParams.get('symbol') === 'FAST.DE' ? json(quote('FAST.DE')) : slow.promise);
         const { doc, win, host } = dom(); completeProfilePageReadiness(doc); const guard = createNavigationGuard({ decide: async () => true });
         const task = bindStartupPrices({ doc, win, session: sessionStore(), initialize: async () => true, guard });
         await settle(); await advance(13999);
@@ -818,7 +825,7 @@ try {
     console.log('Commit schützt Navigation bis zur Backendbestätigung; Fehler bestätigen keinen Erfolg');
     {
         const hold = deferred(); const state = await setup([lot('one', 'ONE.DE')], undefined, { hold });
-        globalThis.fetch = async url => json(quote(new URL(url).searchParams.get('symbol')));
+        mockBaseRequests(async url => json(quote(new URL(url).searchParams.get('symbol'))));
         const { doc, win } = dom(); completeProfilePageReadiness(doc); const guard = createNavigationGuard({ decide: async () => true });
         const control = { disabled: false }; doc.getElementById = id => id === 'profileSelect' ? control : null;
         const task = bindStartupPrices({ doc, win, session: sessionStore(), initialize: async () => true, guard });
@@ -855,12 +862,12 @@ try {
             upserts.forEach(([key, value]) => { state.backend[key] = value; });
         } });
         await init({ installLifecycleHooks: false, debounceMs: 60000 });
-        globalThis.fetch = async url => {
+        mockBaseRequests(async url => {
             const u = new URL(url), symbol = u.searchParams.get('symbol');
             if (symbol === 'FAIL.DE') return json({ code: 'SYMBOL_NOT_FOUND' }, 404);
             if (u.pathname === '/search') return json({ quotes: [] });
             return json(quote(symbol));
-        };
+        });
         const result = await startCoordinator().task;
         assert.equal(result.updated, 2);
         const expected = structuredClone(registry.profiles.b);
@@ -877,7 +884,7 @@ try {
     console.log('Bestands-/Verwaltungsänderung und fehlender Sitzungsspeicher erzeugen keine Kurswrites');
     {
         const slow = deferred(); const state = await setup([lot('one', 'ONE.DE')]);
-        globalThis.fetch = () => slow.promise;
+        mockBaseRequests(() => slow.promise);
         const { task } = startCoordinator(); await settle();
         const foreign = JSON.parse(state.backend.rs_profiles_v1); foreign.profiles.b.meta.name = 'Fremd';
         persistenceStorage.setItem('rs_profiles_v1', JSON.stringify(foreign)); await flush();
@@ -885,7 +892,7 @@ try {
         slow.resolve(json(quote('ONE.DE'))); const result = await task;
         assert.equal(result.status, 'changed'); assert.equal(result.updated, 0); assert.equal(JSON.stringify(state.backend), before);
         assert.equal(state.batches(), 1);
-        let requests = 0; globalThis.fetch = () => { requests++; throw new Error('unexpected'); };
+        let requests = 0; mockBaseRequests(() => { requests++; throw new Error('unexpected'); });
         const broken = { getItem() { throw new Error('session unavailable'); } };
         for (let i = 0; i < 2; i++) { const page = dom(); completeProfilePageReadiness(page.doc);
             await bindStartupPrices({ ...page, session: broken, initialize: async () => true, guard: createNavigationGuard() }); }
@@ -896,7 +903,7 @@ try {
         const gate = { promise: Promise.resolve() };
         const state = await setup([lot('one', 'ONE.DE')], undefined, { hold: gate });
         let requests = 0, read = null;
-        globalThis.fetch = async url => { requests++; return read ? read.promise : json(quote(new URL(url).searchParams.get('symbol'), 120 + requests)); };
+        mockBaseRequests(async url => { requests++; return read ? read.promise : json(quote(new URL(url).searchParams.get('symbol'), 120 + requests)); });
         const { doc, win, host } = dom(); completeProfilePageReadiness(doc);
         Object.assign(win, { __TAURI_INTERNALS__: {}, setTimeout: (fn, ms) => globalThis.setTimeout(fn, ms), clearTimeout: id => globalThis.clearTimeout(id) });
         doc.querySelectorAll = () => []; doc.removeEventListener = () => {};
@@ -931,6 +938,35 @@ try {
         win.dispatchEvent(new Event('pagehide'));
     }
     console.log('✓ Startkurse: Sitzungs-, Deadline-, Navigations- und Backendverträge');
+    installClock();
+    {
+        const state = await setup([lot('aktiver-lot', 'ABEND.DE')], [lot('inaktiver-lot', 'ABEND.DE')]);
+        const symbols = [];
+        globalThis.fetch = async url => {
+            const symbol = new URL(url).searchParams.get('symbol');
+            symbols.push(symbol);
+            if (symbol === 'ABEND.DE') return json({ ...quote(symbol, 100), previousClose: 99 });
+            if (symbol === 'ABEND.MU') return json({ ...quote(symbol, 102), asOf: epoch / 1000 - 10,
+                exchangeName: 'MUN', previousClose: 101 });
+            return json({ code: 'SYMBOL_NOT_FOUND' }, 404);
+        };
+        const report = await startCoordinator().task;
+        assert.equal(report.updated, 2, 'Startkurs wird für aktive und inaktive Person bestätigt');
+        assert.deepEqual(symbols, ['ABEND.DE', 'ABEND.SG', 'ABEND.DU', 'ABEND.MU'], 'Vier Kandidaten werden profilübergreifend geteilt');
+        assert.equal(report.results[0].quote.previousClose, 99, 'Vortag bleibt bei gültigem Xetra der Xetra-Vortag');
+        const registry = JSON.parse(state.backend.rs_profiles_v1);
+        for (const raw of [state.backend.depot_tranchen, registry.profiles.b.data.depot_tranchen]) {
+            const [saved] = JSON.parse(raw);
+            assert.equal(saved.currentPrice, 102);
+            assert.equal(saved.quoteExchange, 'München/gettex');
+            assert.equal(saved.ticker, 'ABEND.DE', 'Das gespeicherte Kürzel für Historie und Jahresende bleibt erhalten');
+        }
+        symbols.length = 0;
+        const close = await startCoordinator({ singleExchange: true }).task;
+        assert.deepEqual(symbols, ['ABEND.DE'], 'Kursaktualisierung im Abschluss fragt ausschließlich das gespeicherte Kürzel ab');
+        assert.equal(close.results[0].quote.price, 100, 'Abschlusskursabruf verwendet Xetra');
+        assert.equal(JSON.parse(state.backend.depot_tranchen)[0].quoteExchange, 'Xetra', 'Der Einzelbörsenabruf belegt Xetra auch ohne separates Börsenfeld in der Antwort');
+    }
 } finally {
     resetPersistenceForTests(); globalThis.fetch = original.fetch; globalThis.setTimeout = original.setTimeout;
     globalThis.clearTimeout = original.clearTimeout; globalThis.Date = original.Date;

@@ -2,6 +2,9 @@
 import { calculateSaleAndTax } from '../../engine/transactions/sale-engine.mjs';
 import { settleTaxYear } from '../../engine/tax-settlement.mjs';
 
+/** Nettoerlös eines Immobilienverkaufs: 90 % des fortgeschriebenen Werts (10 % Abschlag), für jeden Verkauf im Modell. */
+export const HOME_SALE_NET_SHARE = .9;
+
 /** @param {import("../../typcheck/rechenkern.js").EngineTranche[]} tranches @param {number} [kirchensteuerSatz] @returns {import("../../typcheck/rechenkern.js").SaleResult} */
 export function inheritanceSale(tranches, kirchensteuerSatz = 0) {
     const normalized = tranches.filter(lot => lot.marketValue > 0).map(lot => ({ ...lot, taxExempt: lot.taxExempt === true, tqf: Number(lot.tqf) || 0,
@@ -22,11 +25,11 @@ export function inheritanceSale(tranches, kirchensteuerSatz = 0) {
  * @param options Optionen und Abhängigkeiten des bestehenden Aufrufers.
  * @returns Funktion zur Ermittlung des Nettoerlöses eines Erbbetrags.
  */
-export function inheritanceNetProceeds({ cash = 0, tranches = [], reservedHomeProceeds = 0, kirchensteuerSatz = 0,
+export function inheritanceNetProceeds({ cash = 0, tranches = [], reservedHomeProceeds = 0, estateCosts = 0, kirchensteuerSatz = 0,
     sparerPauschbetrag = 0, taxStatePrev, saleTax = rawAggregate => settleTaxYear({ rawAggregate,
         kirchensteuerSatz, sparerPauschbetrag, taxStatePrev }).taxDue }) {
     const depot = tranches.reduce((sum, lot) => sum + lot.marketValue, 0);
-    const availableCash = Math.max(0, cash - reservedHomeProceeds);
+    const availableCash = Math.max(0, cash - reservedHomeProceeds - estateCosts);
     return amount => {
         const fromDepot = Math.max(0, amount - availableCash);
         if (!fromDepot || !depot) return amount;

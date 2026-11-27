@@ -1,4 +1,13 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { fz1References } from './helpers/fz-1-expectations.mjs';
+import { readJA1References } from './helpers/ja-1-expectations.mjs';
+import { readHP4References } from './helpers/hp-4-expectations.mjs';
+import { readKR1cReferences, kr1cEvidence } from './helpers/kr-1c-expectations.mjs';
+import { readVB1References, vb1Evidence } from './helpers/vb-1-expectations.mjs';
+import { readRK1MergeReferences, rk1MergeEvidence } from './helpers/rk-1-merge-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
 import { readPFA1References, pfa1Evidence } from './helpers/pfa-1-expectations.mjs';
+const readFZ1Reference = fz1References(import.meta.url);
 const readHE4References = value => readPFA1References(beforePFA1References(value));
 import { readEV1bReferences } from './helpers/ev-1b-expectations.mjs';
 import { readHE2References, he2Evidence } from './helpers/he-2-expectations.mjs';
@@ -13,6 +22,7 @@ import { renderScenarioComparison } from '../app/simulator/scenario-comparison.j
 import { setAppTestDate } from '../app/shared/app-clock.js';
 
 import { readFI1References } from './helpers/fi-1-expectations.mjs';
+import { ms1Evidence } from './helpers/ms-1-expectations.mjs';
 // LE-1b (P3-5): Das Ersatz-Geburtsjahr folgt der App-Uhr. Ein fester Stichtag (Messtag) hält die Belege über den Jahreswechsel.
 setAppTestDate('2026-11-12');
 
@@ -26,15 +36,17 @@ for (const [name, before] of Object.entries(baseline.cases)) {
     if (process.platform === equalization.runtime.platform && process.version === equalization.runtime.node) {
         assertEqual(JSON.stringify(equalization.cases[name].before), JSON.stringify(readEV1bReferences(before.hashes)), `${name}: vollständige Referenz vor ZG-1b bleibt erhalten`);
         // LE-1 (FR-75): Kohortentafel und abgestimmte Grundsterblichkeit ändern jeden Fall; gemessene Werte in le-1-expectation-deltas.json.
-        assertEqual(JSON.stringify(resultHashes(chunk)), readFI1References(JSON.stringify(le1Evidence.md2Cases[name]?.hashes ?? readHE4References(readHE2References(equalization.cases[name].after)))), `${name}: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung`);
+        // MS-1: block und stationary ziehen zirkulär (NG-9); gemessene Werte in ms-1-expectation-deltas.json. VB-1 und RK-1-Merge darüber.
+        assertEqual(JSON.stringify(resultHashes(chunk)), readFZ1Reference(readJA1References(readHP4References(readKR1cReferences(readRK1MergeReferences(readVB1References(ms1Evidence.md2Cases[name] ? JSON.stringify(ms1Evidence.md2Cases[name].hashes) : readFI1References(JSON.stringify(le1Evidence.md2Cases[name]?.hashes ?? readHE4References(readHE2References(equalization.cases[name].after)))))))))), `${name}: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung`);
         const selected = characteristicIndices(chunk.runMeta);
         const typical = new ScenarioAnalyzer(50);
         chunk.runMeta.forEach(run => typical.addRun(run));
         const typicalIndex = typical.buildScenarioLogs().characteristic.find(pick => pick.key === 'typicalMarket').sourceIdentity.absoluteRunIndex;
         // FR-72/HE-2: Heimpfade verändern Vermögen und damit die Auswahl; dann gilt die belegte Auswahl nach HE-2.
-        const he2Selection = le1Evidence.md2Cases[name]?.characteristicIndices ?? pfa1Evidence.characteristicIndices[name] ?? he2Evidence.characteristicIndices[name];
+        // KR-1c (NG-5): Der Zins vor der Entscheidung ändert Vermögen und damit drei Auswahlen; belegt in kr-1c-expectation-deltas.json.
+        const he2Selection = kr1cEvidence.value('tests/md-2-scenarios.test.mjs', `${name}/characteristicIndices`) ?? rk1MergeEvidence.value('tests/md-2-scenarios.test.mjs', `${name}/characteristicIndices`) ?? ms1Evidence.md2Cases[name]?.characteristicIndices ?? vb1Evidence.characteristicIndices[name] ?? le1Evidence.md2Cases[name]?.characteristicIndices ?? pfa1Evidence.characteristicIndices[name] ?? he2Evidence.characteristicIndices[name];
         if (he2Selection) {
-            assertEqual(JSON.stringify(selected), JSON.stringify(he2Selection), `${name}: Protokollpfade wie nach HE-2 belegt`);
+            assertEqual(JSON.stringify(selected), readFZ1Reference(readJA1References(JSON.stringify(he2Selection))), `${name}: Protokollpfade wie nach HE-2 belegt`);
             assert(selected.includes(typicalIndex), `${name}: typischer Marktpfad bleibt ausgewählt`);
         } else {
             assert(before.characteristicIndices.every(index => selected.includes(index)), `${name}: alle bisherigen Protokollpfade bleiben ausgewählt`);

@@ -1,4 +1,5 @@
 import { withPropertyHistory } from '../shared/wealth-display.js';
+import { IMMOBILIEN_KEY, readImmobilienRecord } from './profile-immobilien.js';
 import { normalizeTrancheCollection } from '../../types/tranche-contract.js';
 import { evaluateWealthHistory } from '../tranches/tranchen-history-model.js';
 import { assertHistoryObject, assertHistoryId, historyDay, localHistoryDate, requireHistoryRecord } from '../tranches/tranchen-history-store.js';
@@ -184,10 +185,10 @@ export function prepareProfileHistoryProfiles(registry, persons) {
             const copies = requireHistoryRecord(data[PROFILE_WEALTH_LOTS_KEY], assertWealthLots, { version: 1, lots: {} });
             const current = normalizeTrancheCollection(JSON.parse(data.depot_tranchen || '[]'), { mode: 'persisted' });
             const merged = mergeWealthLots(copies, current);
-            return { id: person.id, belongsToHousehold: person.belongs, currentCash: person.values?.tagesgeld,
+            return { id: person.id, name: person.name, currentCash: person.values?.tagesgeld,
                 cashHistory, lots: merged, error: person.valid ? null : 'Profilbestand unvollständig.' };
         } catch (error) {
-            return { id: person.id, belongsToHousehold: person.belongs, lots: [], currentCash: null, error: error.message };
+            return { id: person.id, name: person.name, lots: [], currentCash: null, error: error.message };
         }
     });
 }
@@ -203,11 +204,16 @@ export function projectProfileWealthHistory(registry, persons, options) {
     const profiles = prepareProfileHistoryProfiles(registry, persons);
     const result = evaluateWealthHistory({ ...options, profiles });
     if (profiles.some(profile => (!options.profileId || options.profileId === profile.id)
-        && (options.profileId || profile.belongsToHousehold !== false)
         && profile.cashHistory?.entries.some(entry => entry.source === 'spielwert'))) result.cashPlayValues = true;
     const manuallyCorrected = profiles.some(profile => (!options.profileId || options.profileId === profile.id)
-        && (options.profileId || profile.belongsToHousehold !== false)
         && profile.lots.some(lot => lot.manualCorrectionAt && (!options.assetType || options.assetType === lot.tranche.type)));
     if (manuallyCorrected && Number.isFinite(result.metrics.change)) result.metrics.status = 'provisional';
-    return options.assetType ? result : withPropertyHistory(result, persons.filter(person => options.profileId ? person.id === options.profileId : person.belongs));
+    if (options.assetType) return result;
+    // FR-85: Verläufe entfernter Immobilien stehen nur im gespeicherten Record; unlesbare zählen nicht.
+    const selected = persons.filter(person => !options.profileId || person.id === options.profileId).map(person => {
+        let beendet = [];
+        try { beendet = readImmobilienRecord(registry?.profiles?.[person.id]?.data?.[IMMOBILIEN_KEY]).beendet; } catch { beendet = []; }
+        return beendet.length ? { ...person, immobilienBeendet: beendet } : person;
+    });
+    return withPropertyHistory(result, selected);
 }

@@ -1,113 +1,113 @@
-import { SnapshotArchive, SNAPSHOT_KINDS, validateSnapshot } from './snapshot-archive.js';
-import { PersistenceFacade, persistenceStorage } from './persistence-facade.js';
+import { SnapshotArchive, SNAPSHOT_KINDS, SNAPSHOT_SCOPES, SNAPSHOT_ORIGIN, IMPORT_POINT_LABELS, isVisibleRestorePoint, validateSnapshot, storedRecordTypeDamage } from './snapshot-archive.js';
+import { PersistenceFacade } from './persistence-facade.js';
 import { isAllowedPersistenceImportKey, isAllowedSnapshotRestoreLiveKey, isNewBeginningRecordKey, PROBELAUF_STATE_KEY } from './persistence-key-policy.js';
+import { validatePersistenceDomainRecords } from './persistence-backup.js';
 import { PROFILE_STORAGE_KEYS as P } from '../profile/profile-state.js';
-import { isProfileScopedKey } from '../profile/profile-key-policy.js';
-import { CONFIG, StorageError } from '../balance/balance-config.js';
+import { OUTSIDE_PERSON_IMPORT_MESSAGE, OUTSIDE_PERSON_RESTORE_POINT_MESSAGE } from '../profile/profile-registry.js';
+import { CONFIG } from '../balance/balance-config.js';
 import { assertBalanceWealthHistory } from '../../types/wealth-history-contract.js';
 import { createNavigationGuard, createNavigationOperationLifecycle } from './navigation-guard.js';
+import { pruneRestorePoints } from './snapshot-retention.js';
+
+// SV-1: Zurückholen setzt immer den ganzen Haushalt auf den Stand des Punkts, über alle Schlüssel eines vollständigen Punkts.
+// Bei Monats- und Jahrespunkten bleiben Tageskurse, Sicherungszeit und technische Einstellungen auf dem heutigen Stand.
+// SV-1b: Punkte vor Vollimport, „Neu beginnen“ und Übernahme tragen ihren Umfang; Zurückholen stellt genau diesen wieder her.
 
 /**
  * @param value Zu verarbeitender Wert.
- * @returns {string} Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
+ * @returns {string} Inhaltsvergleich unabhängig von der Schlüsselreihenfolge.
  */
 export const recordIdentity = value => JSON.stringify(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)));
-const select = (records, allowKey) => Object.fromEntries(Object.entries(records).filter(([key]) => allowKey(key)));
+/** @type {Record<string, (key: string) => boolean>} */
+const SCOPE_POLICIES = { [SNAPSHOT_SCOPES.household]: key => isAllowedSnapshotRestoreLiveKey(key),
+    [SNAPSHOT_SCOPES.import]: key => isAllowedPersistenceImportKey(key), [SNAPSHOT_SCOPES.all]: key => isNewBeginningRecordKey(key) };
+/** @param {{scope?: string}} point @returns {(key: string) => boolean} Schlüssel, die Anlegen und Zurückholen dieses Punkts umfassen. */
+export const restorePointKeyPolicy = point => SCOPE_POLICIES[point?.scope || SNAPSHOT_SCOPES.household];
+const allowKey = SCOPE_POLICIES[SNAPSHOT_SCOPES.household];
+/** @param {Record<string, string>} records @param {(key: string) => boolean} [policy] */
+const select = (records, policy = allowKey) => Object.fromEntries(Object.entries(records).filter(([key]) => policy(key)));
 const parse = raw => raw ? JSON.parse(raw) : null;
-/**
- * @param snapshot Wert für den bestehenden Aufrufvertrag.
- * @returns {boolean} Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
- */
-export function isFullImportRecoverySnapshot(snapshot) {
-    return snapshot?.kind === SNAPSHOT_KINDS.newBeginningBefore || snapshot?.kind === SNAPSHOT_KINDS.fullBackupImportRecovery
-        || (snapshot?.restoreScope?.profileRegistryMode === 'replace-all-rollback'
-            && snapshot?.restoreScope?.profileLiveDataMode === 'replace-all-rollback');
-}
-/**
- * @param snapshot Wert für den bestehenden Aufrufvertrag.
- * @returns {void} Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
- */
-export function validateSnapshotWealthHistory(snapshot) {
+
+/** Die Vermögensverläufe des Punkts müssen lesbar sein, sonst bleibt der heutige Stand. @param {{records: Record<string, string>}} snapshot */
+function validateSnapshotWealthHistory(snapshot) {
     assertBalanceWealthHistory(parse(snapshot.records[CONFIG.STORAGE.LS_KEY]));
     Object.values(parse(snapshot.records[P.registry])?.profiles || {}).forEach(profile => {
         assertBalanceWealthHistory(parse(profile.data?.[CONFIG.STORAGE.LS_KEY]));
     });
 }
 
-/** Reiner Plan: dieselbe Recordmenge dient Vorschau, Recovery und Zielwrite.
- *
- * @param input Eingabe des Aufrufers.
- * @param currentRecords Wert für den bestehenden Aufrufvertrag.
- * @param options Optionen des Aufrufers.
- * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
- */
-export function buildSnapshotRestorePlan(input, currentRecords, { importRollback = false } = {}) {
+/** SV-1c: Umfang, Art und Anlass müssen zusammenpassen. Einen eigenen Umfang (`import`, `all`) tragen nur Punkte vor dem Ersetzen
+ * aus dieser Version; Monats- und Jahrespunkte und Punkte früherer Versionen halten den Haushalt. „Vor Neu beginnen“ und „Vor
+ * Übernahme der Spielkopie“ halten immer den ganzen Hauptspeicher. Ein Record außerhalb des Umfangs passt ebenfalls nicht.
+ * @param {{kind: string, label: string, scope?: string, origin?: string, records: Record<string, string>}} snapshot @returns {string|null} */
+function scopeDamage(snapshot) {
+    const scope = snapshot.scope || SNAPSHOT_SCOPES.household;
+    const replaces = snapshot.kind === SNAPSHOT_KINDS.fullBackupImportRecovery && snapshot.origin === SNAPSHOT_ORIGIN;
+    const expected = !replaces ? [SNAPSHOT_SCOPES.household]
+        : /** @type {string[]} */ ([IMPORT_POINT_LABELS.newBeginning, IMPORT_POINT_LABELS.playTransfer]).includes(snapshot.label) ? [SNAPSHOT_SCOPES.all]
+            : Object.values(SNAPSHOT_SCOPES);
+    if (!/** @type {string[]} */ (expected).includes(scope)) return `Der Umfang ${scope} passt nicht zu diesem Punkt.`;
+    if (scope === SNAPSHOT_SCOPES.household) return null;
+    const policy = restorePointKeyPolicy(snapshot), outside = Object.keys(snapshot.records).find(key => !policy(key));
+    return outside ? `Der Record ${outside} liegt außerhalb des Umfangs ${scope}.` : null;
+}
+
+/** SV-1b: Alle Records des Punkts durchlaufen dieselbe Domänenprüfung wie das Einspielen einer Vollsicherung. Ein Punkt mit einem
+ * ungültigen Record gilt als beschädigt und lässt sich nicht zurückholen. SV-1c: ohne vorherige Typumwandlung, und der Umfang muss
+ * zum Punkt passen.
+ * @param input gelesener Punkt @returns {string|null} Grund oder `null` für einen unversehrten Punkt */
+export function restorePointDamage(input) {
+    try {
+        const typeDamage = storedRecordTypeDamage(input);
+        if (typeDamage) return typeDamage;
+        const snapshot = validateSnapshot(input);
+        const mismatch = scopeDamage(snapshot);
+        if (mismatch) return mismatch;
+        const records = select(snapshot.records, restorePointKeyPolicy(snapshot));
+        // Wie beim Erstellen einer Vollsicherung ohne Personengrenze: Ein eigener Altbestand mit drei Mitgliedern bleibt zurückholbar.
+        const domain = validatePersistenceDomainRecords(select(records, key => isAllowedPersistenceImportKey(key)), { householdLimit: false });
+        // AP-1b: Die Meldung zur alten Außenperson nennt hier den Wiederherstellungspunkt statt der Sicherung.
+        if (!domain.ok) return domain.message === OUTSIDE_PERSON_IMPORT_MESSAGE ? OUTSIDE_PERSON_RESTORE_POINT_MESSAGE : domain.message;
+        validateSnapshotWealthHistory({ records });
+        return null;
+    } catch (error) { return /** @type {Error} */ (error)?.message || String(error); }
+}
+
+/** Reiner Plan: dieselbe Recordmenge dient dem Punkt „Vor dem Zurückholen“ und dem Zielwrite.
+ * @param input gelesener Punkt @param {Record<string, string>} currentRecords heutiger Bestand */
+export function buildSnapshotRestorePlan(input, currentRecords) {
     const snapshot = validateSnapshot(input);
-    if (snapshot.kind === SNAPSHOT_KINDS.probelaufBefore) throw new Error('Diesen Rückkehrpunkt ausschließlich über Spielbereich beenden zurückholen.');
+    if (!isVisibleRestorePoint(snapshot)) throw new Error('Dieser Punkt lässt sich hier nicht zurückholen.');
     validateSnapshotWealthHistory(snapshot);
-    const scope = snapshot.restoreScope;
-    const registry = parse(currentRecords[P.registry]);
-    const full = isFullImportRecoverySnapshot(snapshot);
-    const mode = full ? (scope.liveKeyMode || (snapshot.kind === SNAPSHOT_KINDS.newBeginningBefore ? 'new-beginning' : snapshot.kind === SNAPSHOT_KINDS.fullBackupImportRecovery ? 'full-import' : 'snapshot-full')) : 'standard';
-    if (!['standard', 'full-import', 'snapshot-full', 'new-beginning', 'play-transfer'].includes(mode)
-        || (!full && !['preserve-by-default', 'restore-target-profile'].includes(scope.profileRegistryMode))) {
-        throw new Error('Unbekannter Wiederherstellungsumfang. Dieser Punkt bleibt erhalten.');
-    }
-    const targetProfileId = scope.targetProfileId || snapshot.activeProfileId;
-    const allowKey = ['new-beginning', 'play-transfer'].includes(mode) ? isNewBeginningRecordKey : mode === 'full-import' ? isAllowedPersistenceImportKey
-        : mode === 'snapshot-full' ? key => isAllowedSnapshotRestoreLiveKey(key, { mode: 'full' })
-            : key => key === P.registry || isAllowedSnapshotRestoreLiveKey(key, { mode: 'standard', snapshotActiveProfileId: targetProfileId, currentRegistry: registry });
-    // Der interne Importrollback behält seinen historischen profilfreien Vollfallback.
-    if (!full && !registry?.profiles?.[targetProfileId]) {
-        if (importRollback) return buildSnapshotRestorePlan({ ...snapshot, restoreScope: { ...scope,
-            profileRegistryMode: 'replace-all-rollback', profileLiveDataMode: 'replace-all-rollback', liveKeyMode: 'snapshot-full' } }, currentRecords);
-        throw new StorageError(`Das Snapshot-Profil "${targetProfileId || 'unbekannt'}" existiert in der aktuellen Profil-Registry nicht mehr.`);
-    }
-    const before = select(currentRecords, allowKey);
-    const records = select(snapshot.records, allowKey);
-    if (!full) {
-        const nextRegistry = structuredClone(registry);
-        if (scope.profileRegistryMode === 'restore-target-profile') {
-            const oldProfile = parse(snapshot.records[P.registry])?.profiles?.[targetProfileId];
-            if (!oldProfile) throw new Error('Profilzuordnung des Rückkehrpunkts fehlt.');
-            nextRegistry.profiles[targetProfileId] = oldProfile;
-        } else {
-            nextRegistry.profiles[targetProfileId] = { ...nextRegistry.profiles[targetProfileId],
-                data: Object.fromEntries(Object.entries(snapshot.records).filter(([key]) => isProfileScopedKey(key) && allowKey(key))) };
-            records[P.current] = targetProfileId;
-            records[P.active] = targetProfileId;
-        }
-        records[P.registry] = scope.profileRegistryMode === 'restore-target-profile'
-            && JSON.stringify(nextRegistry) === JSON.stringify(parse(snapshot.records[P.registry]))
-            ? snapshot.records[P.registry] : JSON.stringify(nextRegistry);
-    }
-    const keys = [...new Set([...Object.keys(before), ...Object.keys(records)])].sort();
-    const changes = keys.filter(key => before[key] !== records[key]).map(key => ({ key, before: before[key] ?? null,
-        after: records[key] ?? null, action: !(key in records) ? 'removed' : !(key in before) ? 'added' : 'changed' }));
-    return { snapshot, mode, targetProfileId, allowKey, before, records, changes,
-        identity: recordIdentity({ snapshot: JSON.stringify(snapshot), current: recordIdentity(select(currentRecords, key => key !== 'rs_snapshot_archive_v1')) }) };
+    const damage = restorePointDamage(snapshot);
+    if (damage) throw Object.assign(new Error(`Dieser Punkt ist beschädigt und lässt sich nicht zurückholen. ${damage}`), { code: 'restore_point_damaged' });
+    const policy = restorePointKeyPolicy(snapshot);
+    const before = select(currentRecords, policy), records = select(snapshot.records, policy);
+    const changes = [...new Set([...Object.keys(before), ...Object.keys(records)])].sort().filter(key => before[key] !== records[key])
+        .map(key => ({ key, action: !(key in records) ? 'removed' : !(key in before) ? 'added' : 'changed' }));
+    return { snapshot, allowKey: policy, scope: snapshot.scope, before, records, changes,
+        identity: recordIdentity({ snapshot: JSON.stringify(snapshot), current: recordIdentity(before) }) };
 }
 
 /**
  * @param {string} id
  * @param {{persistence?: typeof PersistenceFacade; archive?: typeof SnapshotArchive; navigationOperation?: import("../../typcheck/speicher-integration.js").Operation}} [options]
- * @returns Ergebnis der bestehenden Projektion.
  */
 export async function previewSnapshotRestore(id, { persistence = PersistenceFacade, archive = SnapshotArchive, navigationOperation } = {}) {
     if (await persistence.flush({ navigationOperation }) === false) throw new Error('PERSISTENCE_FLUSH_FAILED');
-    const snapshot = await archive.readSnapshot(id, { storage: persistence });
+    // SV-1c: Rohwerte vor der Umwandlung prüfen; ein Wert, den die Vollsicherung ablehnt, macht den Punkt beschädigt.
+    const snapshot = await archive.readSnapshot(id, { storage: persistence, checkStoredTypes: true });
     const records = await persistence.readPersistedRecords();
     if (records[PROBELAUF_STATE_KEY]) throw new Error('Zurückholen während des Spielbereichs gesperrt. Beende ihn zuerst über das Spielbereichsband.');
     return buildSnapshotRestorePlan(snapshot, records);
 }
 
+export const ROLLBACK_FAILED_MESSAGE = 'Zurückholen und Rücknahme sind unbestätigt. Bitte lade die Seite neu und hole unter Daten & Sicherung den Punkt „Vor dem Zurückholen“ zurück.';
+export const HOUSEHOLD_RESTORE_NOTICE = 'Monatsausgaben, erfasste Vermögensstände und der Haushaltsplan gehen für alle Personen auf diesen Stand zurück.';
 const activeRestores = new WeakSet();
-/** Recovery zuerst dauerhaft zurücklesen; anschließend optimistischer, transaktionaler Replace.
- *
- * @param preview Wert für den bestehenden Aufrufvertrag.
- * @param options Optionen des Aufrufers.
- * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
- */
+/** Erst den Punkt „Vor dem Zurückholen“ dauerhaft zurücklesen, dann den ganzen Haushalt in einer Transaktion ersetzen.
+ * Scheitert etwas vor dem Ersetzen, bleibt der heutige Stand; die Transaktion selbst nimmt sich bei einem Fehler zurück.
+ * @param preview Plan aus `previewSnapshotRestore` @param options Optionen des Aufrufers */
 export async function executeSnapshotRestore(preview, options = {}) {
     const persistence = options.persistence || PersistenceFacade, archive = options.archive || SnapshotArchive;
     if (activeRestores.has(persistence)) return { status: 'in_flight' };
@@ -123,28 +123,26 @@ export async function executeSnapshotRestore(preview, options = {}) {
                 operation.check();
                 const fresh = await previewSnapshotRestore(preview.snapshot.id, { persistence, archive, navigationOperation: operation });
                 operation.check();
-                if (fresh.identity !== preview.identity) throw new Error('Der Bestand oder Punkt hat sich seit der Vorschau geändert. Bitte die Vorschau erneut öffnen.');
-                release = persistence.blockSyncWrites([], message, { predicate: ['new-beginning', 'play-transfer'].includes(fresh.mode) ? fresh.allowKey : isAllowedPersistenceImportKey });
-                const full = fresh.mode !== 'standard';
+                if (fresh.identity !== preview.identity) throw new Error('Der Bestand oder Punkt hat sich seit der Bestätigung geändert. Bitte erneut zurückholen.');
+                release = persistence.blockSyncWrites([], message, { predicate: isAllowedPersistenceImportKey });
+                const activeId = fresh.before[P.current] || fresh.before[P.active] || '';
                 const recovery = await archive.createSnapshot({ id: `before_restore_${globalThis.crypto.randomUUID()}`,
-                    label: 'vor Zurückholen', kind: SNAPSHOT_KINDS.beforeRestoreRecovery, records: fresh.before,
-                    activeProfileId: fresh.before[P.current] || fresh.before[P.active] || '',
-                    activeProfileName: parse(fresh.before[P.registry])?.profiles?.[fresh.before[P.current] || fresh.before[P.active]]?.meta?.name || '',
-                    restoreScope: full ? { profileRegistryMode: 'replace-all-rollback', profileLiveDataMode: 'replace-all-rollback', liveKeyMode: fresh.mode }
-                        : { profileRegistryMode: 'restore-target-profile', profileLiveDataMode: 'restore-previous-live', targetProfileId: fresh.targetProfileId }
+                    label: IMPORT_POINT_LABELS.restore, kind: SNAPSHOT_KINDS.fullBackupImportRecovery, records: fresh.before, scope: fresh.scope,
+                    activeProfileId: activeId, activeProfileName: parse(fresh.before[P.registry])?.profiles?.[activeId]?.meta?.name || ''
                 }, { storage: persistence, navigationOperation: operation });
                 const verified = await archive.readSnapshot(recovery.id, { storage: persistence });
                 operation.check();
-                if (JSON.stringify(verified) !== JSON.stringify(recovery)) throw new Error('Der Punkt vor Zurückholen konnte nicht bytegleich bestätigt werden.');
+                if (JSON.stringify(verified) !== JSON.stringify(recovery)) throw new Error('Der Punkt „Vor dem Zurückholen“ konnte nicht bytegleich bestätigt werden.');
                 const rechecked = await previewSnapshotRestore(preview.snapshot.id, { persistence, archive, navigationOperation: operation });
                 operation.check();
-                if (rechecked.identity !== preview.identity) throw new Error('Der Bestand oder Punkt hat sich während der Sicherung geändert. Bitte erneut prüfen.');
+                if (rechecked.identity !== preview.identity) throw new Error('Der Bestand oder Punkt hat sich während der Sicherung geändert. Bitte erneut zurückholen.');
                 recoverySnapshotId = recovery.id;
                 await persistence.replaceRecordsTransactional(fresh.records, { allowKey: fresh.allowKey,
                     expectedRecords: fresh.before, navigationOperation: operation });
                 written = true;
-                if (fresh.mode === 'new-beginning') await persistence.resetNewBeginningBrowserStorage?.({
-                    window: options.window, records: fresh.records, navigationOperation: operation });
+                // Erst nach dem bestätigten Ersetzen kürzen; der Quellpunkt bleibt geschützt.
+                await pruneRestorePoints(SNAPSHOT_KINDS.fullBackupImportRecovery, { storage: persistence, archive,
+                    protectedIds: [preview.snapshot.id, recovery.id], records: fresh.records, navigationOperation: operation });
             }, flush: () => persistence.flush(),
             reload: () => {
                 const reload = options.reload || (() => globalThis.location?.reload?.());
@@ -157,29 +155,17 @@ export async function executeSnapshotRestore(preview, options = {}) {
         return { status: navigated ? 'restored' : 'cancelled', recoverySnapshotId };
     } catch (error) {
         if (written) return { status: 'reload_required', message, error, recoverySnapshotId };
-        if (error.code !== 'rollback_failed') release?.();
+        release?.();
+        // SV-1b: Ist auch die Rücknahme unbestätigt, bleibt die Seite gesperrt; der Punkt „Vor dem Zurückholen“ bleibt zum Zurückholen.
+        if (error.code === 'rollback_failed') persistence.blockSyncWrites([], ROLLBACK_FAILED_MESSAGE, { predicate: isAllowedPersistenceImportKey });
         if (recoverySnapshotId) error.recoverySnapshotId = recoverySnapshotId;
         throw error;
     } finally { activeRestores.delete(persistence); }
 }
 
-/** Interner Importrollback, ohne zusätzlichen Benutzer-Rückkehrpunkt.
- *
- * @param snapshot Wert für den bestehenden Aufrufvertrag.
- * @param navigationOperation Wert für den bestehenden Aufrufvertrag.
- * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
- */
-export async function restoreImportRecoverySnapshot(snapshot, navigationOperation) {
-    const records = Object.fromEntries(Array.from({ length: persistenceStorage.length }, (_, i) => persistenceStorage.key(i))
-        .filter(Boolean).map(key => [key, persistenceStorage.getItem(key)]));
-    const plan = buildSnapshotRestorePlan(snapshot, records, { importRollback: true });
-    return PersistenceFacade.replaceRecordsTransactional(plan.records, { allowKey: plan.allowKey, navigationOperation });
-}
-
 /**
- * @param id Wert für den bestehenden Aufrufvertrag.
+ * @param id Kennung des Punkts.
  * @param options Optionen des Aufrufers.
- * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
 export async function restoreSnapshotById(id, options = {}) {
     const lifecycle = createNavigationOperationLifecycle({ guard: options.guard });

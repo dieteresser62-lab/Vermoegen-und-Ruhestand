@@ -3,7 +3,6 @@ import { inputs as fixtureInputs } from './extended/parity-replay-fixture.mjs';
 import { initMcRunState, makeDefaultCareMeta, simulateOneYear } from '../app/simulator/simulator-engine-wrapper.js';
 import { createMonteCarloLifeState, updateMonteCarloLifeEventsForYear } from '../app/simulator/mc-life-events.js';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
-import { createStressReplayCaptureRequest } from '../app/simulator/stress-replay-path-materializer.js';
 import { rng } from '../app/simulator/simulator-utils.js';
 
 const inputs = { ...structuredClone(fixtureInputs), startAlter: 85, startFloorBedarf: 40000,
@@ -16,7 +15,7 @@ const year = { jahr: 2000, inflation: 0, rendite: 0, gold_eur_perf: 0, zinssatz:
 const activeCare = () => ({ ...makeDefaultCareMeta(true), active: true, triggered: true, grade: 2 });
 
 // Beide Todesrichtungen: die gepflegte Person überlebt, der andere Partner stirbt.
-// Sweep und Auto-Optimize verwenden genau diesen Lebensereignispfad.
+// Die Monte-Carlo-Läufe verwenden genau diesen Lebensereignispfad.
 for (const deceased of [0, 1, 2]) {
     const life = createMonteCarloLifeState(inputs, rng(42));
     const care = deceased === 1 ? life.careMetaP2 : life.careMetaP1;
@@ -50,41 +49,33 @@ for (const deceased of [0, 1, 2]) {
     assertEqual(result.logData.floor_brutto, 100000, 'Hinterbliebenenhaushalt erreicht den maximalen Pflege-Floor');
 }
 
-// Echter MC einschließlich Replay-Schattenpfad nach Ruin: Jahresanker folgt dem
-// Personenstatus. Im Schatten fehlt der finanzielle Zustand, nicht die Lebenshistorie.
-for (const ruin of [false, true]) {
-    const runInputs = { ...inputs, ...(ruin ? { startVermoegen: 150000, depotwertAlt: 150000,
-        einstandAlt: 150000, tagesgeld: 0, geldmarktEtf: 0, detailledTranches: [],
-        simulationPeople: undefined, goldStrategyDiagnostics: undefined, renteMonatlich: 0,
-        partner: { ...inputs.partner, monatsrente: 0 }, startFlexBedarf: 0, minimumFlexAnnual: 0 } : {}) };
-    const chunk = await runMonteCarloChunk({ inputs: runInputs, widowOptions: inputs.widowOptions,
+// Echter MC: Jahresanker im Protokoll folgt dem Personenstatus.
+{
+    const chunk = await runMonteCarloChunk({ inputs, widowOptions: inputs.widowOptions,
         monteCarloParams: { anzahl: 20, maxDauer: 12, methode: 'regime_markov', seed: 12345 },
         logIndices: Array.from({ length: 20 }, (_, i) => i),
-        stressReplayCapture: createStressReplayCaptureRequest(Array.from({ length: 20 }, (_, i) => i)),
         useCapeSampling: false, engine: EngineAPI });
     assertEqual(chunk.financialMetricsValid, true, 'MC-Deckelprobe bleibt auswertbar');
-    let survivorCareYears = 0, deathCareYears = 0, shadowCareYears = 0;
+    let survivorCareYears = 0, deathCareYears = 0;
     for (const meta of chunk.runMeta) {
-        let previouslyJointAlive = true, factor = 1;
-        for (const record of meta.stressReplayCapture.years) {
-            const event = record.householdEvents[0];
-            const singleAlive = event.p1Alive !== event.p2Alive;
+        let previouslyJointAlive = true;
+        for (const row of meta.logDataRows.filter(entry => entry.recordType === 'financial_year')) {
+            const singleAlive = row.Person1Alive !== row.Person2Alive;
             const floorFactor = singleAlive ? previouslyJointAlive ? .85 : .7 : 1;
-            if (event.p1Alive || event.p2Alive) for (const care of [event.careMetaP1, event.careMetaP2]) {
-                if (!care?.active) continue;
-                assertClose(care.log_floor_anchor, 40000 * factor * floorFactor, 2,
-                    'MC und Schattenpfad verwenden den Jahresbedarf; Euro-Rundung bleibt erhalten');
-                assertClose(care.log_cap_zusatz, Math.max(0, 100000 * factor - care.log_floor_anchor), 1e-6,
+            // Das Protokoll summiert Anker und Deckel über die gepflegten Personen.
+            const careCount = Number(Boolean(row.CareP1_Active)) + Number(Boolean(row.CareP2_Active));
+            if ((row.Person1Alive || row.Person2Alive) && careCount) {
+                const factor = row.inflation_factor_cum;
+                assertClose(row.pflege_floor_anchor, careCount * 40000 * factor * floorFactor, 2 * careCount,
+                    'MC verwendet den Jahresbedarf; Euro-Rundung bleibt erhalten');
+                assertClose(row.pflege_cap_zusatz, careCount * Math.max(0, 100000 * factor - row.pflege_floor_anchor / careCount), 1e-6,
                     'Deckel und Diagnose nutzen dieselbe tatsächliche Preisbasis');
                 if (singleAlive) {
                     if (previouslyJointAlive) deathCareYears++; else survivorCareYears++;
-                    if (record.continuation) shadowCareYears++;
                 }
             }
-            previouslyJointAlive = event.p1Alive && event.p2Alive;
-            factor *= 1 + record.inflationPct / 100;
+            previouslyJointAlive = Boolean(row.Person1Alive && row.Person2Alive);
         }
     }
     assert(deathCareYears > 0 && survivorCareYears > 0, 'Fester Seed belegt Sterbejahr und Hinterbliebenenpflege');
-    if (ruin) assert(shadowCareYears > 0, 'Deckelprobe erreicht die Hinterbliebenenpflege nach Ruin');
 }

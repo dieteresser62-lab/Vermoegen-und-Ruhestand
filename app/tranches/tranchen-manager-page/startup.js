@@ -3,17 +3,16 @@ import { getActiveProfileId, getCurrentProfileId, getProfileRecoveryFromError, g
 import { state, RECONCILIATION_INPUT_IDS, PROFILE_INPUT_IDS } from './state.js';
 import { loadTranchesFromStorage } from '../tranchen-manager-state.js';
 import { clearReconciliationPreview } from './reconciliation.js';
-import { byId, managerInputSignature, flushManagerHouseholdPlan } from './helpers.js';
+import { byId, managerInputSignature } from './helpers.js';
 import { applyLoadResult } from './recovery.js';
-import { applyProfileAssetValuesToDom, loadProfileAssetValues, readProfileAssetValuesFromDom } from '../../profile/profile-asset-values.js';
+import { applyProfileAssetValuesToDom, loadProfileAssetValues } from '../../profile/profile-asset-values.js';
 import { updateActiveProfileLabel, renderDepotHistory, render } from './rendering.js';
 import { getPageNavigationGuard } from '../../shared/navigation-guard-dialog.js';
 import { createNavigationOperationLifecycle } from '../../shared/navigation-guard.js';
 import { setManagerControlsBlocked, processingIsBlocked, managerSelectionIsBlocked, managerFieldsBlocked } from './controls.js';
-import { flushManagerCashInput, saveProfileValues, bindProfileValueInputs } from './profile-values.js';
+import { flushManagerProfileInputs, bindProfileValueInputs } from './profile-values.js';
 import { bindManagerHistoryStartUI, bindTrancheHistoryUI } from '../tranchen-history-ui.js';
 import { saveManagerHistoryStart } from './history.js';
-import { bindManagerWealthCapture } from '../tranchen-history-wealth-capture.js';
 import { refreshManagerProfiles } from '../tranchen-manager-profiles.js';
 import { bindControls } from './bindings.js';
 import { createManagerHouseholdPlan } from '../tranchen-manager-household-plan.js';
@@ -112,11 +111,11 @@ export function initTranchenManagerPage(options = {}) {
         state.plannedExpenses?.dispose(); state.plannedExpenses = null;
         state.navigationRegistration?.unregister();
         state.navigationControlSubscription?.();
-        state.cashBeforeLeaveSubscription?.();
+        state.profileBeforeLeaveSubscription?.();
         const guard = getPageNavigationGuard(document);
         state.navigationLifecycle = createNavigationOperationLifecycle({ guard, message: 'Manager schreibt – bitte warten.' });
         state.navigationControlSubscription = guard.subscribe(() => setManagerControlsBlocked(processingIsBlocked()));
-        state.cashBeforeLeaveSubscription = guard.registerBeforeLeave(flushManagerCashInput);
+        state.profileBeforeLeaveSubscription = guard.registerBeforeLeave(flushManagerProfileInputs);
         let lastInputs = null, revision = 0;
         state.navigationRegistration = guard.register('manager-retry-inputs', { read: () => {
             const inputs = JSON.stringify([managerInputSignature(RECONCILIATION_INPUT_IDS), managerInputSignature(PROFILE_INPUT_IDS),
@@ -138,18 +137,6 @@ export function initTranchenManagerPage(options = {}) {
             state.historyStartDraft = value;
             state.navigationRegistration?.notify();
         } });
-        if (byId('managerCaptureWealthBtn')) bindManagerWealthCapture(document, { refresh: () => refreshManagerProfiles(document, state.profileId),
-            blocked: () => processingIsBlocked() || managerSelectionIsBlocked(),
-            beforeCapture: async () => {
-                if (!await flushManagerHouseholdPlan()) return false;
-                const values = readProfileAssetValuesFromDom();
-                if (state.profileSaveTimer !== null) clearTimeout(state.profileSaveTimer);
-                state.profileSaveTimer = null;
-                if (state.pendingProfileValues || managerInputSignature(PROFILE_INPUT_IDS) !== state.profileBaseline) {
-                    if (!await saveProfileValues(state.pendingProfileValues || values)) return false;
-                }
-                return true;
-            } });
         bindProfileValueInputs();
         bindControls();
         state.historyUI = bindTrancheHistoryUI(document, { render: renderDepotHistory, blocked: processingIsBlocked });
@@ -211,7 +198,7 @@ export async function startTranchenManagerPage() {
         if (target) await openManagerOverviewTarget(window.location, { ready });
         else {
             const profiles = Object.entries(loadProfileRegistry().value?.profiles || {});
-            const first = profiles.find(([, profile]) => profile.meta.belongsToHousehold !== false) || profiles[0];
+            const first = profiles[0];
             if (ready && first) {
                 if (first[0] === state.profileId) {
                     renderManagerView(document, { kind: 'person', profileId: first[0] });

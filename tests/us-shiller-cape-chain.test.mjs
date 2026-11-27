@@ -7,9 +7,13 @@ import {
     US_SHILLER_CAPE_BY_RETURN_YEAR,
     US_SHILLER_CAPE_CHAIN
 } from '../app/simulator/us-shiller-cape-chain.js';
-import { annualData, HISTORICAL_DATA, HISTORICAL_DATA_MANIFEST } from '../app/simulator/simulator-data.js';
+import { annualData, HISTORICAL_DATA, HISTORICAL_DATA_MANIFEST, HISTORICAL_DATENSTAND } from '../app/simulator/simulator-data.js';
 import { canonicalizeHistoricalContractValue, createHistoricalBacktestContractProvider } from '../app/simulator/historical-backtest-contract.js';
 import { SIMULATION_DATA_INVENTORY } from '../app/simulator/simulation-data-inventory.js';
+
+// JD-1: Endjahr und Jahresanzahl kommen aus dem Datenstand; Werte bis 2025 bleiben fest.
+const DATA_END_YEAR = HISTORICAL_DATENSTAND.endYear;
+const DATA_YEAR_COUNT = DATA_END_YEAR - HISTORICAL_DATENSTAND.startYear + 1;
 
 console.log('--- US Shiller CAPE Decision Chain Tests ---');
 
@@ -43,7 +47,7 @@ console.log('✓ identity, source and timing OK');
 
 console.log('Test 2: all 101 December decision signals are contiguous and projected once');
 const provider = createHistoricalBacktestContractProvider();
-for (let returnYear = 1925; returnYear <= 2025; returnYear += 1) {
+for (let returnYear = 1925; returnYear <= DATA_END_YEAR; returnYear += 1) {
     const value = US_SHILLER_CAPE_BY_RETURN_YEAR[returnYear];
     const source = US_SHILLER_CAPE_CHAIN.observationsByReturnYear[returnYear];
     const record = provider.getRecord(Math.max(returnYear, provider.bounds.startYear));
@@ -59,7 +63,7 @@ for (let returnYear = 1925; returnYear <= 2025; returnYear += 1) {
         assertEqual(record.decisionAsOf.capeRatio.value, value, `${returnYear} historical contract should not add a second lag`);
     }
 }
-assertEqual(Object.keys(US_SHILLER_CAPE_BY_RETURN_YEAR).length, 101, 'CAPE chain should contain 101 years');
+assertEqual(Object.keys(US_SHILLER_CAPE_BY_RETURN_YEAR).length, DATA_YEAR_COUNT, `CAPE chain should contain ${DATA_YEAR_COUNT} years`);
 console.log('✓ contiguous no-double-lag projection OK');
 
 console.log('Test 3: independent source markers lock observation month and year mapping');
@@ -90,11 +94,12 @@ assertJsonEqual(
     inventorySeries.qualitySegments.map(({ startYear, endYear, evidenceClass }) => ({ startYear, endYear, evidenceClass })),
     [
         { startYear: 1925, endYear: 1935, evidenceClass: 'estimated' },
-        { startYear: 1936, endYear: 2025, evidenceClass: 'backtested' }
+        { startYear: 1936, endYear: DATA_END_YEAR, evidenceClass: 'backtested' }
     ],
     'CAPE quality should delimit the interpolation-affected vintage'
 );
-const runtimeSource = fs.readFileSync(path.join(projectRoot, 'app', 'simulator', 'simulator-data.js'), 'utf8');
+const runtimeSource = ['simulator-data.js', 'historical-data-records.js']
+    .map(file => fs.readFileSync(path.join(projectRoot, 'app', 'simulator', file), 'utf8')).join('\n');
 assertEqual(/cape:\s*-?\d/.test(runtimeSource), false, 'Runtime history should not retain numeric CAPE literals');
 console.log('✓ hashes and metadata alignment OK');
 

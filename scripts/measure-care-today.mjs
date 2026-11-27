@@ -26,8 +26,6 @@ const load = file => import(pathToFileURL(resolve(source, file)));
 const { inputs: fixture, runFixture } = await load('tests/extended/parity-replay-fixture.mjs');
 const { readCareInputs } = await load('app/simulator/simulator-input-care.js');
 const { runMonteCarloChunk } = await load('app/simulator/monte-carlo-runner.js');
-const { runSweepChunk } = await load('app/simulator/sweep-runner.js');
-const { createStressReplayCaptureRequest } = await load('app/simulator/stress-replay-path-materializer.js');
 const { EngineAPI } = await load('engine/index.mjs');
 const html = readFileSync(resolve(source, 'Simulator.html'), 'utf8');
 const defaults = readCareInputs({ doc: { getElementById(id) {
@@ -45,23 +43,19 @@ let outputBytes = 0;
 for (let start = 0; start < params.anzahl; start += 50) {
     const indices = Array.from({ length: 50 }, (_, i) => start + i);
     const chunk = await runMonteCarloChunk({ inputs, monteCarloParams: params, widowOptions: inputs.widowOptions,
-        useCapeSampling: true, runRange: { start, count: 50 }, logIndices: new Set(indices),
-        stressReplayCapture: createStressReplayCaptureRequest(indices), engine: EngineAPI });
+        useCapeSampling: true, runRange: { start, count: 50 }, logIndices: new Set(indices), engine: EngineAPI });
     if (!chunk.financialMetricsValid || chunk.batchStatus !== 'completed') throw new Error('Technischer Messfehler.');
     const bytes = JSON.stringify(chunk); digest.update(bytes); outputBytes += Buffer.byteLength(bytes);
     for (const [i, meta] of chunk.runMeta.entries()) {
         let p1LifeYears = params.maxDauer, censored = true, careYears = 0, careCostReal = 0, inflationFactor = 1;
-        for (const year of meta.stressReplayCapture.years) {
-            const event = year.householdEvents[0];
-            if (event && (event.p1Alive === 0 || event.p1Alive === false) && censored) { p1LifeYears = year.yearIndex + .5; censored = false; }
+        // MC-Protokollzeilen bis Ruin bzw. letztem Tod; seit dem Wegfall des Stresspfad-Replays ohne Schattenjahre.
+        for (const row of meta.logDataRows) {
+            if (row.Person1Alive === 0 && censored) { p1LifeYears = row.jahr - .5; censored = false; }
             for (const p of [1, 2]) {
-                const care = event?.[`careMetaP${p}`];
-                if (!care?.active) continue;
-                const weight = event[`p${p}Alive`] ? 1 : .5;
-                careYears += weight;
-                careCostReal += care.zusatzFloorZiel * weight / inflationFactor;
+                if (row[`CareP${p}_Active`]) careYears += row[`Person${p}Alive`] ? 1 : .5;
             }
-            inflationFactor *= 1 + year.inflationPct / 100;
+            careCostReal += (row.pflege_zusatz_floor || 0) / inflationFactor;
+            inflationFactor *= 1 + (row.inflation || 0) / 100;
         }
         paths.push({ index: meta.index, failed: meta.failed, realEnd: chunk.pathSummaries.finalValueRealEur[i],
             careYears, careCostReal, p1LifeYears, p1DeathAge: 60 + p1LifeYears, censored });
@@ -78,12 +72,9 @@ const checks = {};
 for (const couple of [false, true]) {
     const probeInputs = structuredClone(inputs); delete probeInputs.careToday;
     if (!couple) probeInputs.partner = { aktiv: false };
-    const combo = { liquidityRunwayYears: 3, goldRebalancingBand: 20, maxSkimPct: 10, maxBearRefillPct: 5, goldTargetPct: 0 };
     const results = { backtest: runFixture({ input: probeInputs, selectedPeriod: { startYear: 2000, endYear: 2011 } }),
         mc: await runMonteCarloChunk({ inputs: probeInputs, monteCarloParams: probeParams,
-            logIndices: new Set([0, 1, 2, 3]), widowOptions: probeInputs.widowOptions, useCapeSampling: false, engine: EngineAPI }),
-        sweep: runSweepChunk({ baseInputs: probeInputs, paramCombinations: [combo], sweepConfig: { anzahlRuns: 4, maxDauer: 12, blockSize: 1,
-            baseSeed: 91827, methode: 'block', rngMode: 'per-run-seed', startYearMode: 'UNIFORM' }, engine: EngineAPI }) };
+            logIndices: new Set([0, 1, 2, 3]), widowOptions: probeInputs.widowOptions, useCapeSampling: false, engine: EngineAPI }) };
     for (const [runner, result] of Object.entries(results)) checks[`${couple ? 'couple' : 'single'}-${runner}`] = createHash('sha256').update(JSON.stringify(result)).digest('hex');
 }
 const result = { runtime: { node: process.version, platform: process.platform, arch: process.arch }, variant, sensitivity, params, inputs,

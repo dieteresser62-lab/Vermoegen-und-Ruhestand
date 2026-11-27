@@ -1,4 +1,4 @@
-/** @import {SimulatorInputs,SimulationState,SimulationPortfolio,SimulationLog,HistoricalYear,Random,CareMeta,HouseholdContext,LifeLogContext,MonteCarloLifeState,WidowOptions,DeathLogContext,TailRiskOverlay,ReplayAnnualRecord,ReplayHouseholdEvent,YearOutcome,YearSuccess,YearRuin,TechnicalInventory,NumericBuffers,SamplingDiagnostics} from '../../typcheck/rechenkern' */
+/** @import {SimulatorInputs,SimulationState,SimulationPortfolio,SimulationLog,HistoricalYear,Random,CareMeta,HouseholdContext,LifeLogContext,MonteCarloLifeState,WidowOptions,DeathLogContext,TailRiskOverlay,YearOutcome,YearSuccess,YearRuin,TechnicalInventory,NumericBuffers,SamplingDiagnostics} from '../../typcheck/rechenkern' */
 import {
     calcCareCost,
     computeCareMortalityMultiplier,
@@ -17,7 +17,7 @@ import { assignOfficialCareDraws, priceResidentialCare, replacesHomeFloor, updat
 import {
     computeMarriageYearsCompleted,
     normalizeWidowOptions
-} from './simulator-sweep-utils.js';
+} from './simulator-run-utils.js';
 
 export const MAX_SIMULATOR_COUNTER_VALUE = 0xFFFFFFFF;
 
@@ -119,53 +119,7 @@ export function createMonteCarloLifeState(inputs, rand, widowOptions = null) {
     };
 }
 
-
-
-/** @template T
- * @param {T} value
- * @returns {T|null} */
-function cloneCareMeta(value) {
-    return value == null ? null : JSON.parse(JSON.stringify(value));
-}
-
-/**
- * Rehydrates the exogenous household state after source ruin. Random streams
- * are derived from the separately seeded shadow generator, not forked from the
- * already consumed source-run generator.
- */
-/** @param {SimulatorInputs} inputs
- * @param {Random} shadowRand
- * @param {{widowOptions?:unknown;p1Alive?:boolean;p2Alive?:boolean;careMetaP1?:CareMeta|null;careMetaP2?:CareMeta|null;p1CareYears?:number;p2CareYears?:number;bothCareYears?:number;triggeredAgeP2?:number|null;widowBenefitActiveForP1?:boolean;widowBenefitActiveForP2?:boolean}} options */
-export function createMonteCarloPostRuinLifeState(inputs, shadowRand, {
-    widowOptions = null,
-    p1Alive = true,
-    p2Alive = inputs?.partner?.aktiv === true,
-    careMetaP1 = null,
-    careMetaP2 = null,
-    p1CareYears = 0,
-    p2CareYears = 0,
-    bothCareYears = 0,
-    triggeredAgeP2 = null,
-    widowBenefitActiveForP1 = false,
-    widowBenefitActiveForP2 = false
-} = {}) {
-    const state = createMonteCarloLifeState(inputs, shadowRand, widowOptions);
-    state.careMetaP1 = cloneCareMeta(careMetaP1) ?? state.careMetaP1;
-    state.careMetaP2 = cloneCareMeta(careMetaP2) ?? state.careMetaP2;
-    state.p1Alive = p1Alive === true;
-    state.p2Alive = state.hasPartner && p2Alive === true;
-    state.p1CareYears = Number(p1CareYears) || 0;
-    state.p2CareYears = Number(p2CareYears) || 0;
-    state.bothCareYears = Number(bothCareYears) || 0;
-    state.triggeredAgeP2 = Number.isFinite(triggeredAgeP2) ? triggeredAgeP2 : null;
-    state.widowBenefitActiveForP1 = widowBenefitActiveForP1 === true;
-    state.widowBenefitActiveForP2 = widowBenefitActiveForP2 === true;
-    state.householdContext.p1Alive = state.p1Alive;
-    state.householdContext.p2Alive = state.p2Alive;
-    return state;
-}
-
-/** Preisabschluss ohne weitere Zufallsziehungen; auch für den Schattenpfad nach Ruin.
+/** Preisabschluss ohne weitere Zufallsziehungen.
  * Reihenfolge nach FR-72 Punkt 16: Grad und Tod stehen fest, dann Angehörigenausfall,
  * tatsächliche Form (Heimzustand) und zuletzt die Preise. */
 /** @param {SimulatorInputs} inputs
@@ -354,7 +308,7 @@ export function updateMonteCarloLifeEventsForYear(
         };
     }
 
-    // Die Jahresrechnung und Replay behalten die Pflege vor dem Tod.
+    // Die Jahresrechnung behält die Pflege vor dem Tod.
     // Der fortlaufende Lebenszustand wird dagegen sofort bereinigt.
     const yearCareP1 = !lifeState.p1Alive && careMetaP1?.active ? { ...careMetaP1 } : careMetaP1;
     const yearCareP2 = !lifeState.p2Alive && careMetaP2?.active ? { ...careMetaP2 } : careMetaP2;

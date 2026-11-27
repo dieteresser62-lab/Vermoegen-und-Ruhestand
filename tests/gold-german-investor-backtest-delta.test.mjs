@@ -1,3 +1,5 @@
+// JD-2a: Der Delta-Beleg ist eingefroren und gilt dem Grundbestand 1925–2025 (jahresrobust).
+import { grundbestandWerteHash } from './helpers/grundbestand-sicht.mjs';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -115,8 +117,8 @@ assertEqual(sha256(beforeBytes), fixture.beforeTarget.sha256, 'Post-Slice-04 tar
 assertEqual(sha256(afterBytes), fixture.afterTarget.sha256, 'Post-Slice-05 target should match its pinned hash');
 assertEqual(
     fixture.afterTarget.goldAnnualReturnHash,
-    GOLD_GERMAN_INVESTOR_CHAIN.hashes.annualReturnHash,
-    'Delta fixture should pin the active gold chain'
+    grundbestandWerteHash(GOLD_GERMAN_INVESTOR_CHAIN.annualReturnsPct),
+    'Delta fixture should pin the active gold chain (1925-2025 base)'
 );
 assert(
     fixture.beforeTarget.goldAnnualReturnHash !== fixture.afterTarget.goldAnnualReturnHash,

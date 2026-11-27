@@ -18,8 +18,8 @@ const previous = { document: globalThis.document, window: globalThis.window };
 
 function recordsFor(current, single = false) {
     const profiles = {};
-    for (const id of single ? ['a'] : ['a', 'b', 'outside']) profiles[id] = {
-        id, meta: { id, name: id === 'a' ? 'Max Mustermann' : 'Erika Mustermann', belongsToHousehold: id !== 'outside' },
+    for (const id of single ? ['a'] : ['a', 'b']) profiles[id] = {
+        id, meta: { id, name: id === 'a' ? 'Max Mustermann' : 'Erika Mustermann', belongsToHousehold: true },
         data: { profile_person_schema_version: '1', profile_geburtsdatum: '1958-03-14',
             sim_mcSeed: `${id}-alt`, sim_pflegeStufe1Zusatz: '6000', sim_pflegeKostenStaffelPreset: 'custom' }
     };
@@ -276,7 +276,7 @@ try {
         if (play) assertEqual(f.realBytes(), beforeReal, `${kind}/${current}/${exit}: echte Daten bleiben bytegleich`);
     }
     for (const kind of ['localstorage', 'tauri']) for (const play of [false, true]) {
-        for (const [current, single] of [['a', true], ['a', false], ['b', false], ['outside', false]]) {
+        for (const [current, single] of [['a', true], ['a', false], ['b', false]]) {
             const f = await fixture({ current, single, play, kind }), beforeReal = f.realBytes();
             f.edit(f.seed, '111'); await f.advance(200);
             assertEqual(f.registry().profiles[current].data.sim_mcSeed, `${current}-alt`, 'Eingabe wartet auf die Entprellung');
@@ -286,9 +286,9 @@ try {
             await f.advance(249);
             assertEqual(f.registry().profiles[current].data.sim_mcSeed, `${current}-alt`, 'Weitere Eingabe startet die Wartezeit neu');
             await f.advance(1);
-            const profiles = f.registry().profiles, careOwner = current === 'outside' ? 'outside' : 'a';
+            const profiles = f.registry().profiles, careOwner = 'a';
             assertEqual(profiles[current].data.sim_mcSeed, '222', 'Letzte Simulator-Eingabe liegt im richtigen Personenstand');
-            assertEqual(profiles[careOwner].data.sim_pflegeStufe1Zusatz, '1234', 'Gemeinsame Pflegewerte liegen auf dem Haushaltsprofil, Außenperson bleibt getrennt');
+            assertEqual(profiles[careOwner].data.sim_pflegeStufe1Zusatz, '1234', 'Gemeinsame Pflegewerte liegen auf dem Haushaltsprofil');
             assertEqual(profiles[careOwner].data.sim_pflegeKostenStaffelPreset, 'amtlich', 'Die Pflege-Voreinstellung wird beim richtigen Eigentümer gesichert');
             if (!single) {
                 const other = current === 'a' ? 'b' : 'a';

@@ -953,20 +953,6 @@ input[aria-invalid="true"] {
     stroke-width: 1px;
 }
 
-#heatmap-summary {
-    margin-top: 10px;
-    display: flex;
-    justify-content: space-around;
-    font-size: var(--text-dense);
-    background: var(--background-color);
-    padding: 10px;
-    border-radius: 8px;
-}
-
-#heatmap-summary strong {
-    color: var(--text-main);
-}
-
 /* Tab Navigation */
 .tab-buttons {
     display: flex;
@@ -1169,344 +1155,16 @@ fieldset.collapsible legend .legend-text {
     color: var(--tranchen-warning-color);
 }
 
-.stress-replay-step {
-    min-width: 0;
-    margin-top: 20px;
-    padding: 24px 0 0;
-    border-top: 1px solid var(--border);
-}
-
-.stress-replay-step > h5,
-.stress-replay-step aside > h5 {
-    margin-top: 0;
-}
-
-.stress-replay-step h5 > span {
-    font-family: var(--font-sans);
-    font-variant-numeric: tabular-nums;
-    display: inline-flex;
-    width: 36px;
-    height: 36px;
-    align-items: center;
-    justify-content: center;
-    margin-right: 6px;
-    border-radius: 50%;
-    background: var(--surface-sunken);
-    color: var(--accent);
-    border: 1px solid var(--border-strong);
-}
-
-.stress-replay-selection-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    gap: 12px;
-    align-items: end;
-}
-
-.stress-replay-selected-scenario {
-    min-width: 0;
-    padding: 10px 12px;
-    border-radius: 8px;
-    background: var(--surface-sunken);
-}
-
-.stress-replay-selected-scenario > p {
-    margin: 0;
-    color: var(--text-secondary);
-}
-
-.stress-replay-selected-scenario dl {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 8px 12px;
-    margin: 0;
-}
-
-.stress-replay-selected-scenario dl[hidden] {
-    display: none;
-}
-
-.stress-replay-selected-scenario dl > div {
-    min-width: 0;
-}
-
-.stress-replay-selected-scenario dt {
-    color: var(--text-secondary);
-    font-size: var(--text-dense);
-}
-
-.stress-replay-selected-scenario dd {
-    margin: 2px 0 0;
-    overflow-wrap: anywhere;
-    font-weight: 600;
-}
-#stressReplaySelectedScenarioWealth { font: 500 var(--value-md)/1.3 var(--font-serif); }
-
-.stress-replay-selection-row > button {
-    width: auto;
-    margin: 0 0 15px;
-}
-
-.scenario-selector {
-    display: flex;
-    min-width: 0;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 15px;
-}
-
-.scenario-selector select {
-    min-width: 0;
-    max-width: 100%;
-    flex: 1 1 280px;
-    padding: 8px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    font-size: var(--text-dense);
-}
-
-.stress-replay-key-facts,
-.stress-replay-diagnostics dl {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 10px;
-    margin: 10px 0;
-}
-
-.stress-replay-key-facts div,
-.stress-replay-diagnostics dl div {
-    min-width: 0;
-    padding: 9px;
-    border-radius: 6px;
-    background: var(--surface-sunken);
-}
-
-.stress-replay-key-facts dd,
-.stress-replay-diagnostics dd {
-    overflow-wrap: anywhere;
-    margin: 4px 0 0;
-}
-
-.stress-replay-diagnostics > summary {
-    cursor: pointer;
-    font-weight: 600;
-}
-
-.stress-replay-variant-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
-    gap: 16px;
-    align-items: start;
-}
-
-.stress-replay-editor-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-    gap: 12px;
-    margin-bottom: 12px;
-}
-
-.stress-replay-editor-grid label {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-}
-
-.stress-replay-editor-grid [data-active-when][hidden] {
-    display: none;
-}
-
-.stress-replay-editor-grid small,
-.stress-replay-variant-list small {
-    color: var(--text-light);
-}
-
-.stress-replay-expert-toggle {
-    margin-bottom: 12px;
-}
-
-.stress-replay-expert-fields {
-    padding: 12px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    margin-bottom: 12px;
-}
-
-.stress-replay-expert-fields > p {
-    margin-top: 0;
-}
-
-.stress-replay-patch-preview,
-.stress-replay-interpretation,
-.stress-replay-message {
-    padding: 10px 12px;
-    border-left: 4px solid var(--primary-color);
-    background: var(--surface-sunken);
-    margin: 12px 0;
-}
-
-.stress-replay-message-error {
-    border-left-color: var(--bad);
-    color: var(--bad);
-    background: var(--bad-soft);
-}
-
-.stress-replay-message-warning {
-    border-left-color: var(--warn);
-    color: var(--warn);
-    background: var(--warn-soft);
-}
-
-.stress-replay-highlights > ul {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 12px;
-    padding: 0;
-    list-style: none;
-}
-
-.stress-replay-highlight {
-    padding: 12px;
-    border: 1px solid var(--border-color);
-    border-left: 4px solid var(--text-main);
-    border-radius: 8px;
-}
-
-.stress-replay-highlight h5,
-.stress-replay-highlight p {
-    margin-top: 0;
-}
-
-.stress-replay-highlight dl {
-    display: grid;
-    gap: 6px;
-    margin-bottom: 0;
-}
-
-.stress-replay-highlight dl div {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.stress-replay-highlight dd {
-    font: 500 var(--value-md)/1.3 var(--font-serif);
-    margin: 0;
-    text-align: right;
-}
-
-.stress-replay-comparison-tabs {
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    margin: 18px 0 12px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.stress-replay-comparison-tabs [role="tab"] {
-    width: auto;
-    flex: 0 0 auto;
-    margin: 0;
-    border-radius: 7px 7px 0 0;
-}
-
-.stress-replay-comparison-tabs [role="tab"][aria-selected="true"] {
-    background: var(--text-main);
-    color: var(--surface);
-}
-
-[data-stress-replay-comparison-panel][hidden] {
-    display: none;
-}
-
-.stress-replay-variant-list {
-    list-style: none;
-    padding: 0;
-}
-
-.stress-replay-variant-list > li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.stress-replay-variant-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.stress-replay-table-scroll {
-    max-width: 100%;
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-    margin-bottom: 18px;
-}
-
-.stress-replay-table-scroll table {
-    width: max-content;
-    min-width: 100%;
-    border-collapse: collapse;
-}
-
-.stress-replay-table-scroll th,
-.stress-replay-table-scroll td {
-    min-width: 150px;
-    padding: 8px 10px;
-    border: 1px solid var(--border-color);
-    text-align: left;
-    vertical-align: top;
-}
-
-.stress-replay-table-scroll td small {
-    display: block;
-    margin-top: 3px;
-    color: var(--text-light);
-}
-
-@media (max-width: 620px) {
-    .stress-replay-variant-list > li {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-}
-
-@container simulator-panel (max-width: 899px) {
-    .stress-replay-selection-row,
-    .stress-replay-variant-layout {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    .stress-replay-selection-row > button {
-        width: 100%;
-        margin-top: 0;
-    }
-}
-
 @media print {
     #mcSetupDisclosure,
     #mcSetupDisclosure > .mc-setup-content,
-    .mc-view-panel[hidden],
-    [data-stress-replay-comparison-panel][hidden] {
+    .mc-view-panel[hidden] {
         display: block !important;
-    }
-
-    .stress-replay-diagnostics > dl {
-        display: grid !important;
     }
 
     .mc-view-nav,
     .tab-buttons,
-    .mc-settings-actions,
-    .stress-replay-comparison-tabs,
-    .stress-replay-expert-toggle,
-    #mcShowReplayButton,
-    #mcShowScenarioLogsButton {
+    .mc-settings-actions {
         display: none !important;
     }
 
@@ -1515,8 +1173,7 @@ fieldset.collapsible legend .legend-text {
     .mc-view-panel,
     #monteCarloResults,
     #simulationLog,
-    #scenarioLogOutput,
-    .stress-replay-table-scroll {
+    #scenarioLogOutput {
         width: auto !important;
         max-width: 100% !important;
         height: auto !important;
@@ -1529,8 +1186,7 @@ fieldset.collapsible legend .legend-text {
     }
 
     #simulationLog table,
-    #scenarioLogOutput table,
-    .stress-replay-table-scroll table {
+    #scenarioLogOutput table {
         width: 100% !important;
         min-width: 0 !important;
         table-layout: auto;
@@ -1539,27 +1195,17 @@ fieldset.collapsible legend .legend-text {
     #simulationLog th,
     #simulationLog td,
     #scenarioLogOutput th,
-    #scenarioLogOutput td,
-    .stress-replay-table-scroll th,
-    .stress-replay-table-scroll td {
+    #scenarioLogOutput td {
         min-width: 0 !important;
         white-space: normal !important;
         overflow-wrap: anywhere;
     }
 }
 
-/* Werkzeugausgaben: alte Hosts und Geometrien bleiben erhalten. */
-.ds-tool-output { min-width: 0; max-width: 100%; overflow-x: auto; color: var(--text-main); }
-.ds-tool-output svg { max-width: 100%; height: auto; font-family: var(--font-sans); }
-.ds-tool-output table { width: 100%; }
-.ao-parameter-block { min-width: 0; color: var(--text-main); background: var(--surface); }
-.ao-preset-btn { color: var(--text-main); }
-
 
 /* Neue Spalten richten sich nach der verfügbaren Panelfläche. */
 .form-grid > *, .form-grid-three-col > *, .form-grid-four-col > *,
-.summary-grid > *, .kpi-grid > *, .ao-parameter-block, .profilverbund-profile-row,
-.ds-sensitivity-chart, #optimizationResults, #sensitivityResults, #paretoResults {
+.summary-grid > *, .kpi-grid > *, .profilverbund-profile-row {
     min-width: 0;
     overflow-wrap: anywhere;
 }
@@ -1570,14 +1216,13 @@ fieldset.collapsible legend .legend-text {
 }
 .ds-portfolio-svg { min-width: 820px; }
 .heatmap-v4-svg { min-width: 980px; }
-.ds-pareto-svg { min-width: 800px; }
 .ds-chart-scroll, #portfolioCompositionChart { max-width: 100%; min-width: 0; overflow-x: auto; }
-.ds-chart-scroll, .ds-sensitivity-chart, #optimizationResults, #ao_result {
+.ds-chart-scroll {
     font-variant-numeric: tabular-nums;
 }
 @media print {
     .ds-chart-scroll, #portfolioCompositionChart { overflow: visible; }
-    .heatmap-v4-svg, .ds-pareto-svg, .ds-portfolio-svg { min-width: 0; max-width: 100%; height: auto; }
+    .heatmap-v4-svg, .ds-portfolio-svg { min-width: 0; max-width: 100%; height: auto; }
 }
 
 /* Paket 4, Slice 1: Inhaltsfläche und Ergebnis. Bestandsformulare folgen später. */
@@ -1600,6 +1245,8 @@ fieldset.collapsible legend .legend-text {
 .sim-result-grid p { line-height: 1.5; }
 .sim-hero-amount { font: 500 var(--value-lg)/1.15 var(--font-serif); margin: 16px 0 8px; color: var(--text-main); }
 .sim-mc-answers { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); margin-bottom: var(--space-4); }
+#mcPersonOutcomes { margin-bottom: var(--space-4); }
+#mcPersonOutcomes td, #mcPersonOutcomes th { vertical-align: top; }
 .sim-mc-answer { min-width: 0; overflow-wrap: anywhere; }
 .sim-answer-count { font: 500 var(--value-md)/1.4 var(--font-serif); margin: var(--space-2) 0; }
 .sim-mc-answer .sim-hero-amount { font-size: var(--value-lg); }
@@ -1617,8 +1264,6 @@ fieldset.collapsible legend .legend-text {
 .sim-result-grid .ds-row { gap: 12px; align-items: flex-start; flex-wrap: wrap; font-size: var(--text-base); }
 .sim-result-grid .ds-row strong { text-align: right; overflow-wrap: anywhere; }
 .sim-result-grid .ds-kpi-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 20px 0; }
-.sim-workshop-panel { min-width: 0; }
-.sim-workshop-panel[hidden] { display: none; }
 @container simulator-content (min-width: 2300px) {
     .sim-result-main { grid-column: span 8; }
     .sim-result-side { grid-column: span 4; }
@@ -1786,12 +1431,14 @@ fieldset.collapsible legend .legend-text {
 
 #mcSetupDisclosure .household-plan-field { grid-template-columns: minmax(0, 1fr) minmax(6rem, 14rem); margin-block: var(--space-3); }
 /* GH-1 Punkt 7: Beschriftungen brechen nur zwischen Wörtern („Simulationsmethode“ bei 1280 px nicht mitten im Wort); die Auswahl nimmt den Rest. */
-#mcSetupDisclosure .household-plan-field > label { white-space: normal; overflow-wrap: normal; word-break: normal; }
+#mcSetupDisclosure .household-plan-field > label, #mcSetupDisclosure .mc-field-heading > label { white-space: normal; overflow-wrap: normal; word-break: normal; }
 #mcSetupDisclosure .household-plan-field:has(> select:not([hidden])) { grid-template-columns: minmax(min-content, 1fr) minmax(8rem, 18rem); }
 #mcSetupDisclosure .mc-range-control { min-width: 0; }
 #mcSetupDisclosure .ds-unit-frame > input { height: 100%; }
 #mcSetupDisclosure .mc-range-control { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-#mcSetupDisclosure .mc-range-control > input { flex: 1; width: 0; min-width: 0; }
+/* JD-1 (Nutzertest EXE): Der Schieber nimmt die Breite ein, der Wert steht als kurze Zahl ohne Feldrahmen daneben. */
+#mcSetupDisclosure .mc-range-control > input { flex: 1 1 auto; width: auto; min-width: 200px; }
+#mcSetupDisclosure .mc-range-control > output { flex: 0 0 auto; width: auto; min-width: 4ch; min-height: 0; padding: 0; border: 0; background: transparent; }
 /* GH-1 Punkt 4: von „Startjahre nach CAPE“ überstimmte Felder ausgegraut (wie deaktivierte Designsystem-Felder). */
 #mcSetupDisclosure .mc-field-overruled label, #mcSetupDisclosure .mc-field-overruled output, #mcSetupDisclosure .mc-field-overruled span { color: var(--text-muted); }
 #mcSetupDisclosure .mc-range-control > output { font: 500 var(--text-base)/1.3 var(--font-sans); }
@@ -1809,6 +1456,8 @@ fieldset.collapsible legend .legend-text {
 #mcSetupDisclosure .mc-large-run-confirmation { flex-basis: 100%; }
 #mcSetupDisclosure .mc-large-run-confirmation input { width: 16px; }
 #mcSetupDisclosure .ds-info { margin-top: var(--space-2); }
+/* MS-1: ⓘ steht neben der Beschriftung „Simulationsmethode“ wie bei der Pflegekostenstaffel. */
+#mcSetupDisclosure .mc-field-heading .ds-info { margin-top: 0; }
 #mcSetupDisclosure legend .ds-info { margin: 0 0 0 var(--space-2); vertical-align: middle; }
 #mcSetupDisclosure .ds-info-button { width: 30px; height: 30px; padding: 0; }
 #mcSetupDisclosure .ds-info-pop { font-size: var(--text-sm); }
@@ -1910,19 +1559,13 @@ fieldset.collapsible legend .legend-text {
     .mc-more-metrics > :not(summary) { display: block !important; }
     .mc-more-metrics::details-content { display: contents !important; content-visibility: visible !important; }
     #tab-montecarlo .ds-info, .mc-settings-actions, #mcRunHead button, #mcSetupDisclosure #mcRecalculateButton { display: none !important; }
-    .sim-workshop-cards { display: none !important; }
     .ds-portfolio-svg.ds-portfolio-calendar { width: 100%; max-width: 100%; }
-    /* Alle Werkzeuginhalte drucken, ohne die dokumentlokale Auswahl zu ändern. */
-    #tab-montecarlo, #tab-werkstatt, #workshopReplayPanel[hidden], #workshopReplayPanel, #tab-sweep, #tab-sweep[hidden], #tab-auto-optimize, #tab-auto-optimize[hidden] { display: block !important; }
-    #tab-werkstatt > .sim-page-head, #tab-werkstatt button { display: none !important; }
-    #stressReplayExpertFields[hidden] { display: grid !important; }
-    #tab-werkstatt .ds-table-scroll, #tab-werkstatt .ds-tool-output { overflow: visible !important; max-height: none !important; }
-    #mcSetupDisclosure::details-content, .stress-replay-diagnostics::details-content { display: contents !important; content-visibility: visible !important; }
+    #tab-montecarlo { display: block !important; }
+    #mcSetupDisclosure::details-content { display: contents !important; content-visibility: visible !important; }
     #mcSetupDisclosure:not([open]) > .mc-setup-content > :not(button) { display: block !important; }
     #mcSetupDisclosure:not([open]) > .mc-setup-content { display: grid !important; }
     .sim-mc-risk, .sim-backtest-grid .ds-card { break-inside: auto; }
     .ds-info-pop { display: none !important; }
-    .stress-replay-table-scroll th { position: static !important; }
 }
 
 #tab-montecarlo .summary-item, #tab-montecarlo .kpi-card { text-align: left; border-radius: 14px; }
@@ -2006,59 +1649,12 @@ fieldset.collapsible legend .legend-text {
     .backtest-notice-value { text-align: left; }
 }
 
-/* Paket 4b, Slice 3: Werkzeuge behalten einen einzigen Controller-/Ergebnishost. */
-.sim-workshop-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin: 24px 0; }
-.sim-tool-card { align-items: flex-start; }
-.sim-tool-card .sim-card-heading { flex: 1; }
-#tab-werkstatt .sim-tool-card h2 { margin-bottom: 6px; }
-.sim-tool-card p { margin: 0; color: var(--text-muted); }
-.sim-tool-card.is-active { background: var(--accent-soft); border-color: var(--accent-line); }
-.sim-workshop-note { display: flex; align-items: flex-start; gap: 12px; background: var(--surface-sunken); }
-.sim-workshop-note p { margin: 0; }
-.sim-workshop-note svg { flex: 0 0 20px; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
-.sim-tool-tags { display: flex; flex-wrap: wrap; gap: 8px; }
-#tab-werkstatt { font-size: var(--balance-body); line-height: 1.5; }
-#tab-werkstatt h2 { font-size: var(--balance-h2); margin: 0 0 12px; padding: 0; border: 0; text-align: left; }
-#tab-werkstatt h3, #tab-werkstatt h4, #tab-werkstatt h5, #tab-werkstatt h6 { font-size: var(--balance-h3); text-align: left; }
-#tab-werkstatt label { font-size: var(--balance-body); line-height: 1.4; }
-#tab-werkstatt small, #tab-werkstatt dt { font-size: var(--balance-help); color: var(--text-muted); }
-#tab-werkstatt .ds-button { width: auto; margin: 0; }
-#tab-werkstatt .ds-note:empty { display: none; }
+/* Gruppierte Felder ohne eigene Kartenfläche. */
 .ds-control-group { min-width: 0; margin: 0; padding: 0; border: 0; background: transparent; }
 .ds-control-group legend { padding: 0; margin-bottom: 16px; color: var(--text-main); font: 600 var(--balance-h3)/1.4 var(--font-sans); }
-.sim-workshop-panel > .ds-field { max-width: 360px; margin: 20px 0; }
-.sim-optimize-section { margin-bottom: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
-.sim-optimize-section:first-of-type { padding-top: 0; border-top: 0; }
-.sim-optimize-section h4 { margin: 0; }
-.ao-parameter-block { padding: 16px; margin: 12px 0; border-radius: var(--plan-radius); }
-.sim-optimize-parameter-grid { grid-template-columns: minmax(240px, 2fr) repeat(3, minmax(100px, 1fr)); }
-.sim-sweep-ranges { min-width: 640px; }
-.sim-sweep-ranges th { width: 50%; }
-.sim-sweep-ranges .ds-input { width: 100%; }
-.stress-replay-editor-grid { gap: 20px 24px; }
-.stress-replay-variant-layout { grid-template-columns: minmax(0, 1fr); }
-.stress-replay-selected-scenario { padding: 16px; }
-.stress-replay-highlight { padding: 20px; }
-.sim-champion { margin-top: 24px; }
-.sim-champion-parameters { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-.sim-champion-metric-grid > div > span { font: 500 var(--value-md)/1.3 var(--font-serif); }
-.sim-champion-param, .sim-champion-metrics { padding: 20px; border-radius: var(--plan-radius); }
-.sim-champion-metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 /* Native Scrollkapseln verhindern eine Verkleinerung der SVG-Beschriftung. */
 .chart-svg, .chart-svg .ref-label, .chart-svg .tooltip-text,
 .heatmap-svg, .heatmap-svg .heatmap-cell-text, .heatmap-svg .legend-text { font-size: var(--balance-help); }
-@container simulator-content (max-width: 70rem) {
-    .sim-workshop-cards { grid-template-columns: minmax(0, 1fr); }
-    .sim-optimize-parameter-grid, #tab-werkstatt .ds-field-grid, .sim-champion-metric-grid { grid-template-columns: minmax(0, 1fr); }
-    .stress-replay-selection-row { grid-template-columns: minmax(0, 1fr); }
-}
-
-#tab-werkstatt .ds-info-button { font-size: var(--balance-help); padding: 0; }
-#tab-werkstatt .ds-info-pop { font-size: var(--balance-help); line-height: 1.5; }
-#tab-werkstatt .ds-info-pop[hidden] { display: none; }
-#tab-werkstatt .ds-button-primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
-#tab-werkstatt .ds-info-button { width: 30px; height: 30px; min-height: 30px; }
-
 /* Paket 4c, Slice 1: Ergebnis und die vorhandenen Annahmencontrols. */
 .sim-result-grid p { margin: 0; }
 .sim-card-status { display: flex; align-items: center; gap: 10px; margin-left: auto; }
@@ -2089,7 +1685,7 @@ fieldset.collapsible legend .legend-text {
 .sim-parameter-count { color: var(--text-muted); }
 .sim-profile-heading { margin: 18px 0 6px; font: 500 var(--balance-help)/1.4 var(--font-sans); }
 .sim-allocation-title, .sim-tranche-status, .tranchen-hint { font-size: var(--balance-help); color: var(--text-muted); }
-.sim-allocation-legend, .mc-setup-summary, #sweepGridSize { font-size: var(--text-base); }
+.sim-allocation-legend, .mc-setup-summary { font-size: var(--text-base); }
 .sim-allocation-title { margin: 0 0 8px; }
 .sim-allocation-bar { display: flex; height: 12px; background: var(--surface-sunken); border-radius: 999px; overflow: hidden; }
 .sim-allocation-0 { background: var(--accent); }
@@ -2130,10 +1726,10 @@ fieldset.collapsible legend .legend-text {
 .sim-assumption-step .sim-care-duration { display: flex; gap: 8px; }
 .sim-care-duration > .ds-field { flex: 1; }
 .sim-care-duration .ds-unit-frame { min-width: 0; }
-.sim-care-field-heading { display: flex; align-items: center; gap: 6px; }
-.sim-care-field-heading label { margin: 0; }
-.sim-care-field-heading .ds-info-button { width: 24px; height: 24px; min-height: 24px; }
-.sim-care-field-heading .ds-info-pop { left: 0; right: auto; }
+.sim-care-field-heading, .mc-field-heading { display: flex; align-items: center; gap: 6px; }
+.sim-care-field-heading label, .mc-field-heading label { margin: 0; }
+.sim-care-field-heading .ds-info-button, .mc-field-heading .ds-info-button { width: 24px; height: 24px; min-height: 24px; }
+.sim-care-field-heading .ds-info-pop, .mc-field-heading .ds-info-pop { left: 0; right: auto; }
 .sim-care-table-scroll { overflow-x: auto; max-width: 100%; margin-top: 18px; border: 1px solid var(--border); border-radius: 12px; }
 .sim-care-table { width: 100%; border-collapse: collapse; font-size: var(--balance-help); }
 .sim-care-table th { background: var(--surface-sunken); color: var(--text-muted); font-weight: 500; text-align: left; }
@@ -2175,6 +1771,10 @@ fieldset.collapsible legend .legend-text {
 .protocol-metrics .ds-metric { flex: 1; text-align: right; display: flex; flex-direction: column; gap: var(--space-1); padding: 0; border: 0; background: transparent; }
 .protocol-metrics .ds-metric-value { font: 700 var(--value-lg)/1.2 var(--font-serif); font-variant-numeric: tabular-nums; }
 .protocol-metrics .ds-metric-label { font: 400 var(--text-sm)/var(--leading-body) var(--font-sans); color: var(--text-muted); }
+/* HP-3: „davon Geldvermögen … · Immobilien …“ rechtsbündig wie die Kachel; Umbruch nur zwischen den Teilen, die Kachel wächst bei Bedarf. */
+.protocol-metrics .ds-metric { min-width: min-content; }
+.protocol-metrics .sim-money-detail { text-align: right; }
+.protocol-metrics .sim-money-part { white-space: nowrap; }
 .protocol-chip-ended { color: var(--text-main); background: var(--year-soft); }
 .protocol-chip-complete { color: var(--good); background: var(--good-soft); }
 .protocol-chip-cut { color: var(--warn); background: var(--warn-soft); }
@@ -2196,6 +1796,7 @@ fieldset.collapsible legend .legend-text {
 #simulationLog .protocol-table td.protocol-cashflow, #scenarioLogOutput .protocol-table td.protocol-cashflow { position: relative; padding-right: 32px; }
 .protocol-cashflow > .ds-info { position: absolute; right: 4px; top: 9px; }
 .protocol-cashflow .ds-info-pop { left: 0; right: auto; width: 360px; box-sizing: border-box; }
+.protocol-cashflow .ds-info-pop > .ds-help { display: block; }
 .protocol-inheritance-info .ds-info-pop { position: fixed; right: auto; width: 420px; box-sizing: border-box; }
 .protocol-cashflow-line { display: flex; justify-content: space-between; gap: 16px; padding-block: 3px; }
 .protocol-cashflow-line > span:last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -2206,6 +1807,10 @@ fieldset.collapsible legend .legend-text {
 #simulationLog .protocol-table small, #scenarioLogOutput .protocol-table small { display: block; color: var(--text-muted); font-size: var(--text-dense); font-weight: 400; }
 #simulationLog .protocol-year, #scenarioLogOutput .protocol-year { position: sticky; left: 0; z-index: 1; min-width: 128px; background: var(--surface); font-weight: 600; box-shadow: inset 4px 0 0 transparent, 1px 0 0 var(--border); }
 #simulationLog .protocol-table thead th:first-child, #scenarioLogOutput .protocol-table thead th:first-child { position: sticky; left: 0; z-index: 3; }
+/* HP-1: Feste Breite für Simulationsjahr und Alter zweier Personen; ein längerer Alterstext bricht um, statt die feste Spalte zu verbreitern. */
+#scenarioLogOutput .protocol-table td.protocol-year { width: 216px; max-width: 216px; min-width: 216px; text-wrap: balance; }
+/* HP-2: „Simulationsjahr N“ und „Alter …“ umbrechen nur zwischen den Teilen. */
+#simulationLog .protocol-year-part, #scenarioLogOutput .protocol-year-part { white-space: nowrap; }
 #simulationLog .protocol-table tr, #scenarioLogOutput .protocol-table tr { background: var(--surface); }
 #simulationLog .protocol-row-cut .protocol-year, #scenarioLogOutput .protocol-row-cut .protocol-year { box-shadow: inset 4px 0 0 var(--accent-line), 1px 0 0 var(--border); }
 #simulationLog .protocol-row-care .protocol-year, #scenarioLogOutput .protocol-row-care .protocol-year { box-shadow: inset 4px 0 0 var(--accent), 1px 0 0 var(--border); }
@@ -2274,13 +1879,14 @@ fieldset.collapsible legend .legend-text {
 .wealth-grid { stroke: var(--border); stroke-width: 1; }
 .scenario-list-group { margin-bottom: 16px; }
 .scenario-list-group h3 { font: 600 var(--text-dense) var(--font-sans); text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
-.scenario-list-item { display: grid; grid-template-columns: 20px minmax(0, 1fr) minmax(0, auto); width: 100%; min-width: 0; margin: 0 0 4px; gap: 8px; align-items: center; padding: 8px; border: 1px solid transparent; border-radius: 6px; background: var(--surface); text-align: left; color: var(--text-main); cursor: pointer; font: inherit; font-size: var(--text-dense); }
+.scenario-list-item { display: grid; grid-template-columns: 20px minmax(0, 1fr) minmax(0, auto); width: 100%; min-width: 0; margin: 0 0 4px; gap: var(--space-1) var(--space-2); align-items: center; padding: var(--space-1) var(--space-2); border: 1px solid transparent; border-radius: 6px; background: var(--surface); text-align: left; color: var(--text-main); cursor: pointer; font: inherit; font-size: var(--text-dense); }
 .scenario-list-item .scenario-name { min-width: 0; overflow-wrap: anywhere; hyphens: none; }
 .scenario-list-item small { min-width: 0; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .scenario-list-item .scenario-value { text-align: right; overflow-wrap: anywhere; }
 .scenario-list-item .scenario-details { grid-column: 2 / -1; white-space: normal; overflow-wrap: anywhere; hyphens: none; }
 .scenario-selection-pane { position: relative; min-height: 0; }
-.scenario-list { flex: 1; min-height: 0; max-height: 300px; overflow-y: auto; overflow-x: hidden; padding: 4px; scrollbar-gutter: stable; }
+/* HP-6: Höhe für mindestens sechs Einträge mit Personenmarken bei 1366 px, nicht höher als die Grafik daneben. */
+.scenario-list { flex: 1; min-height: 0; max-height: 480px; overflow-y: auto; overflow-x: hidden; padding: 4px; scrollbar-gutter: stable; }
 .scenario-list:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .scenario-list-hint { flex: 0 0 auto; margin: 0; color: var(--text-muted); font: var(--text-dense) var(--font-sans); }
 .scenario-outliers { font: var(--text-dense) var(--font-sans); }
@@ -2423,7 +2029,6 @@ fieldset.collapsible legend .legend-text {
 .heatmap-subtitle { margin: 12px 0; }
 .chart-native-svg text { font-variant-numeric: tabular-nums; }
 .heatmap-v4-svg .chart-tick-text { font-size: var(--text-dense); }
-.sweep-cell-text { font-variant-emoji: text; }
 .heatmap-v4-svg .chart-axis-title { font-size: var(--balance-help); }
 .heatmap-footer { display: flex; flex-wrap: wrap; gap: 16px 24px; margin-top: 16px; text-align: left; font-size: var(--balance-help); font-variant-numeric: tabular-nums; }
 .heatmap-footer-pair { display: flex; flex: 1 1 250px; align-items: baseline; gap: 8px; min-width: 0; }
@@ -2579,9 +2184,12 @@ input[data-plan-trial-readonly][type="text"] { text-align: right; }
 #tab-annahmen :is(.sim-person-details, .sim-model-assumptions, .sim-portfolio-details) > summary:focus:not(:focus-visible) { outline: none; }
 #tab-annahmen .sim-model-assumptions { margin-top: var(--space-3); }
 #tab-annahmen .sim-model-assumptions .sim-parameter-body { margin-top: var(--space-3); padding-top: 0; }
-#tab-annahmen #widowPensionSection { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#tab-annahmen :is(.sim-model-tax, #widowPensionSection) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#tab-annahmen .sim-model-tax { align-items: center; margin-block: 0; }
+#tab-annahmen .sim-model-tax > * { margin-block: 0; }
 #tab-annahmen #widowPensionSection[hidden] { display: none; }
-#tab-annahmen #widowPensionSection .household-plan-field { grid-template-columns: minmax(0, 1fr) minmax(6rem, 15rem); }
+#tab-annahmen :is(.sim-model-tax, #widowPensionSection) .household-plan-field { grid-template-columns: minmax(0, 1fr) minmax(6rem, 15rem); }
+.sim-survivor-floor-heading { display: flex; align-items: center; gap: var(--space-1); white-space: nowrap; }
 #tab-annahmen #widowPensionSection .household-plan-field > .ds-field-reason { grid-column: 1 / -1; }
 #tab-annahmen #widowPensionSection .ds-unit-frame:has([data-field-state="error"]) { border-color: var(--bad); }
 #tab-annahmen .sim-person-details h3 { margin: 0 0 var(--space-2); overflow-wrap: anywhere; }
@@ -2749,6 +2357,13 @@ input[data-plan-trial-readonly][type="text"] { text-align: right; }
 .sim-risk-row-body { margin-top: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
 #tab-montecarlo .sim-risk-row-body .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
 .sim-risk-row-body #stressKpiResults { margin: 0; padding: 0; border: 0; box-shadow: none; }
+#stressKpiResults { container: stress-kpis / inline-size; }
+#tab-montecarlo #stressKpiResults > .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+@container stress-kpis (min-width: 42rem) {
+    #tab-montecarlo #stressKpiResults > .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+#stressKpiResults .kpi-card { justify-content: flex-start; }
+#stressKpiResults .sim-metric-heading { gap: var(--space-1); }
 @container simulator-content (max-width: 1500px) {
     .sim-risk-pair, .sim-risk-split { grid-template-columns: minmax(0, 1fr); }
     .sim-risk-figures:not([hidden]) { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--space-3); }
@@ -2767,8 +2382,6 @@ input[data-plan-trial-readonly][type="text"] { text-align: right; }
 .scenario-selection-pane .sim-card-heading { align-items: center; }
 .scenario-selection-pane .scenario-list { border: 1px solid var(--border); border-radius: 12px; }
 .scenario-selection-pane .scenario-selected-bar { margin-top: 0; }
-.scenario-replay-link { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); margin-bottom: var(--space-3); }
-.scenario-replay-link .ds-button { width: auto; margin: 0; }
 .scenario-selection-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .scenario-selection-actions .ds-button { width: auto; margin: 0; }
 .scenario-comparison-panel { margin-bottom: 16px; }
@@ -2841,33 +2454,6 @@ input[data-plan-trial-readonly][type="text"] { text-align: right; }
     background: var(--accent-soft)
 }
 
-.dev-only {
-    display: none
-}
-
-.dev-on .dev-only {
-    display: block
-}
-
-.debug-link {
-    font-size: var(--text-dense);
-    padding: .1rem .3rem;
-    border: 1px solid var(--border);
-    border-radius: .4rem;
-    color: var(--accent);
-    text-decoration: none
-}
-
-.debug-link:hover {
-    background: var(--accent-soft)
-}
-
-.section-title {
-    display: flex;
-    align-items: center;
-    justify-content: space-between
-}
-
 /* Log Export Buttons - wie toggle-btn */
 .log-export-buttons {
     display: flex;
@@ -2899,17 +2485,6 @@ input[data-plan-trial-readonly][type="text"] { text-align: right; }
 .log-export-buttons button:hover {
     border-color: var(--accent);
     background-color: var(--border);
-}
-
-/* Auto-Optimize Preset Buttons */
-.ao-preset-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-card);
-    border-color: var(--secondary-color) !important;
-}
-
-.ao-preset-btn:active {
-    transform: translateY(0);
 }
 
 .profilverbund-profile-list {

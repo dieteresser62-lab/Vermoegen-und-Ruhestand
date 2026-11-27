@@ -1,23 +1,16 @@
 import { appNow } from '../shared/app-clock.js';
 import { marketPriceAdapter, isSyntheticPriceMode } from '../shared/market-price-adapter.js';
-import { personReferenceYear } from '../profile/profile-person-data.js';
-import { formatDisplayPercentValue } from '../shared/shared-formatting.js';
 /**
  * Module: Balance Annual Inflation
- * Purpose: Fetches one validated calendar-year inflation value and applies it atomically to Balance needs.
- * Usage: Used by balance-binder-annual.js and balance-binder.js during annual updates and manual adjustments.
- * Dependencies: balance-config.js, balance-utils.js, balance-renderer.js, balance-storage.js,
- *               balance-annual-period.js
+ * Purpose: Lesender Inflationsabruf (ECB, World Bank), Prüfung des Ergebnisses und Fortschreibung der Bedarfe.
+ * Usage: Used by shared/annual-marketdata.js, balance-annual-preview.js, balance-annual-storage.js and balance-next-year-budget.js.
+ * Dependencies: balance-config.js, balance-utils.js, balance-annual-period.js
  */
 "use strict";
 
 import { AppError } from './balance-config.js';
 import { UIUtils } from './balance-utils.js';
-import { UIRenderer } from './balance-renderer.js';
-import { StorageManager } from './balance-storage.js';
 import { deriveCompletedCalendarYear } from './balance-annual-period.js';
-import { BALANCE_UPDATE_MODE } from './balance-update-pipeline.js';
-import { createAnnualNavigationLifecycle } from './balance-annual-orchestrator.js';
 
 export const INFLATION_RESULT_METRIC = 'consumer_prices_all_items_annual_average_growth_pct';
 
@@ -219,164 +212,6 @@ export function prepareAnnualNeeds(inputs, rateValue) {
         return [{ id, element, nextAmount, formattedValue: UIUtils.formatNumber(nextAmount) }];
     });
     return { rate, factor, entries };
-}
-
-/** @param {import('../../typcheck/balance-ui.js').InflationHandlerOptions} options @returns Handler und lesender Inflationsabruf. */
-export function createInflationHandlers({
-    dom,
-    update,
-    debouncedUpdate,
-    fetchImpl = (...args) => globalThis.fetch(.../** @type {Parameters<typeof fetch>} */ (args)),
-    now = appNow,
-    timeoutMs = DEFAULT_TIMEOUT_MS,
-    setTimeoutImpl = (...args) => globalThis.setTimeout(.../** @type {Parameters<typeof setTimeout>} */ (args)),
-    clearTimeoutImpl = timeoutId => globalThis.clearTimeout(timeoutId),
-    navigationLifecycle = createAnnualNavigationLifecycle()
-}) {
-    const { prepareInflation } = createInflationReaders({ fetchImpl, now, timeoutMs, setTimeoutImpl, clearTimeoutImpl });
-
-    const prepareNeedMutation = rateValue => prepareAnnualNeeds(dom.inputs, rateValue);
-
-    const prepareInflationState = () => {
-        const currentAge = Number.parseInt(dom.inputs.aktuellesAlter?.value, 10);
-        if (!Number.isSafeInteger(currentAge) || currentAge < 0) {
-            throw new AppError('Das aktuelle Alter ist fuer die Inflationsanpassung ungueltig.');
-        }
-        const state = StorageManager.loadState() || {};
-        return { state, currentAge };
-    };
-
-    /** @param {ReturnType<typeof prepareNeedMutation>} mutation @param {{inflationInputValue?: string, inflationMeta?: import('../../typcheck/balance-ui.js').InflationResult}} [options] */
-    const commitNeedMutation = (mutation, { inflationInputValue, inflationMeta } = {}) => {
-        const { state, currentAge } = prepareInflationState();
-
-        if (inflationInputValue !== undefined) {
-            dom.inputs.inflation.value = inflationInputValue;
-        }
-        mutation.entries.forEach(entry => {
-            entry.element.value = entry.formattedValue;
-        });
-        state.needsAdjustedForInflationYear = personReferenceYear(state.annualPeriodMetadata, now());
-        if (inflationMeta) {
-            state.annualMarketDataMeta = { ...state.annualMarketDataMeta, inflation: inflationMeta };
-        }
-        StorageManager.saveState(state);
-        update({ mode: BALANCE_UPDATE_MODE.PERSIST_INPUTS });
-    };
-
-    const applyInflationToBedarfe = rateOverride => {
-        const rateValue = rateOverride === undefined ? dom.inputs.inflation?.value : rateOverride;
-        const mutation = prepareNeedMutation(rateValue);
-        commitNeedMutation(mutation);
-        return mutation;
-    };
-
-    const applyAnnualInflation = () => {
-        const state = StorageManager.loadState();
-        if (!state || !state.lastState) return;
-
-        const currentAge = Number.parseInt(dom.inputs.aktuellesAlter?.value, 10);
-        if (!Number.isSafeInteger(currentAge) || currentAge < 0) {
-            throw new AppError('Das aktuelle Alter ist fuer die kumulierte Inflation ungueltig.');
-        }
-        const currentYear = personReferenceYear(state.annualPeriodMetadata, now());
-        const lastAppliedYear = Number(state.lastInflationAppliedAtYear) || 0;
-
-        if (currentYear > lastAppliedYear) {
-            const rate = assertInflationRate(dom.inputs.inflation?.value);
-            const oldFactor = Number(state.lastState.cumulativeInflationFactor ?? 1);
-            if (!Number.isFinite(oldFactor) || oldFactor <= 0) {
-                throw new AppError('Der bisherige kumulierte Inflationsfaktor ist ungueltig.');
-            }
-            const nextFactor = oldFactor * (1 + rate / 100);
-            if (!Number.isFinite(nextFactor) || nextFactor <= 0) {
-                throw new AppError('Der neue kumulierte Inflationsfaktor ist ungueltig.');
-            }
-            state.lastState.cumulativeInflationFactor = nextFactor;
-            state.lastInflationAppliedAtYear = currentYear;
-            StorageManager.saveState(state);
-            UIRenderer.toast(`Kumulierte Inflation für Planungsjahr ${currentYear} fortgeschrieben.`);
-        } else {
-            UIRenderer.toast(`Inflation für Planungsjahr ${currentYear} wurde bereits angewendet.`, 'info');
-        }
-    };
-
-    // Interne Absicherung direkter Handleraufrufe, kein zusätzlicher Balance-Nutzerpfad.
-    // Der nested-Fehler bleibt an der bestehenden Grenze des Jahresschritts.
-    let fetchInFlight = false;
-    /** @param {{nested?: boolean, preparedResult?: import('../../typcheck/balance-ui.js').InflationResult}} [options] @param {import("../../typcheck/speicher-integration.js").Operation} [navigationOperation] */
-    const executeFetchInflation = async ({ nested = false, preparedResult } = {}, navigationOperation) => {
-        if (fetchInFlight) {
-            if (nested) {
-                throw new AppError(
-                    'Der Inflationsdaten-Abruf läuft bereits. Der Jahresschritt kann nicht parallel ausgeführt werden.',
-                    { code: 'inflation_fetch_in_flight' }
-                );
-            }
-            return;
-        }
-        fetchInFlight = true;
-        if (!nested) UIRenderer.clearActionError('annual');
-        const btn = dom.controls.btnFetchInflation;
-        const originalText = btn?.innerHTML;
-
-        try {
-            if (btn) {
-                btn.disabled = true;
-                btn.innerHTML = '⏳ Lade...';
-            }
-
-            const synthetic = isSyntheticPriceMode();
-            const targetYear = deriveCompletedCalendarYear(synthetic ? appNow() : now());
-            if (!Number.isInteger(targetYear)) {
-                throw new AppError('Das Zieljahr fuer die Inflation konnte nicht bestimmt werden.');
-            }
-            if (btn) UIRenderer.toast(`Versuche Inflationsdaten fuer ${targetYear} abzurufen...`, 'info');
-
-            const validatedResult = preparedResult
-                ? validateInflationResult(preparedResult, targetYear)
-                : await prepareInflation({ targetYear, signal: navigationOperation.controller.signal });
-
-            const mutation = prepareNeedMutation(validatedResult.rate);
-            navigationOperation.commit();
-            commitNeedMutation(mutation, { inflationInputValue: validatedResult.rate.toFixed(1),
-                inflationMeta: synthetic ? validatedResult : undefined });
-            debouncedUpdate();
-
-            if (btn) {
-                const formattedRate = formatDisplayPercentValue(
-                    validatedResult.rate,
-                    { fractionDigits: 1, invalid: 'n/a' }
-                );
-                UIRenderer.toast(
-                    `✅ Inflation ${targetYear}: ${formattedRate} (Quelle: ${validatedResult.source})\n`
-                    + 'Bedarfe automatisch angepasst'
-                );
-            }
-            return validatedResult;
-        } catch (err) {
-            if (err?.name === 'AbortError') throw err;
-            console.error('Inflation API Fehler:', err);
-            UIRenderer.handleActionError(new AppError('Inflationsdaten-Abruf fehlgeschlagen.', { originalError: err }), 'annual');
-            throw err;
-        } finally {
-            fetchInFlight = false;
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-            }
-        }
-    };
-
-    const handleFetchInflation = (options = {}) => fetchInFlight
-        ? executeFetchInflation(options, null)
-        : navigationLifecycle.run(options, operation => executeFetchInflation(options, operation));
-    return {
-        applyInflationToBedarfe,
-        applyAnnualInflation,
-        handleFetchInflation,
-        prepareInflation
-    };
 }
 
 /** Lesender Abrufvertrag, unabhängig von Formularen und Navigation. */

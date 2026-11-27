@@ -1,5 +1,5 @@
 import { installRealClock } from './helpers/fixed-real-clock.mjs';
-import { buildPersonMigrationDraft, applyPersonMigrationChoices, migratePersonData, LEGACY_PERSON_KEYS } from '../app/profile/profile-person-migration.js';
+import { buildPersonMigrationDraft, applyPersonMigrationChoices, migratePersonData, LEGACY_PERSON_KEYS, MIGRATION_NEW_PERSON_LIMIT_MESSAGE } from '../app/profile/profile-person-migration.js';
 import { CONFIG } from '../app/balance/balance-config.js';
 import { PersistenceFacade } from '../app/shared/persistence-facade.js';
 import { SnapshotArchive, SNAPSHOT_KINDS } from '../app/shared/snapshot-archive.js';
@@ -11,12 +11,12 @@ import { captureProfileData } from '../app/profile/profile-live-storage.js';
 import { exportProfilesBundle, importProfilesBundle, switchProfile, saveCurrentProfileFromLocalStorage } from '../app/profile/profile-storage.js';
 import { buildFullPersistenceBackup, normalizeFullPersistenceBackup } from '../app/shared/persistence-backup.js';
 import { PERSON_VALUE_KEYS } from '../app/profile/profile-person-data.js';
-import { readHouseholdPersonStatus, showPersonDataStatus } from '../app/shared/person-data-status.js';
+import { showPersonDataStatus } from '../app/shared/person-data-status.js';
 
 const snapshot = records => JSON.stringify(Object.entries(records).sort());
 function records(data = {}, other = null) {
     const profiles = { a: { meta: { id: 'a', name: 'Synthetische Person A', belongsToHousehold: true }, data } };
-    if (other) profiles.b = { meta: { id: 'b', name: 'Synthetische Person B', belongsToHousehold: false }, data: other };
+    if (other) profiles.b = { meta: { id: 'b', name: 'Synthetische Person B' }, data: other };
     return { rs_profiles_v1: JSON.stringify({ version: 1, profiles }), rs_current_profile: 'a', rs_active_profile: 'a', ...data };
 }
 {
@@ -53,13 +53,38 @@ for (const data of [{ profile_aktuelles_alter: '67', profile_rente_monatlich: '1
 {
     const input = records({ sim_p1StartAlter: '67', sim_r2StartAlter: '65', sim_r2Brutto: '12000' }, { profile_aktuelles_alter: '65' });
     const draft = buildPersonMigrationDraft(input, { referenceYear: 2026 });
-    assertEqual(draft.pendingAssignments.length, 1, 'Außenperson ist kein automatisch belegter Partner');
-    const assigned = buildPersonMigrationDraft(input, { referenceYear: 2026, partnerTargets: { a: 'b' } });
-    const migrated = applyPersonMigrationChoices(assigned);
+    assertEqual(draft.pendingAssignments.length, 0, 'Die zweite Haushaltsperson ist automatisch der Partner');
+    const migrated = applyPersonMigrationChoices(draft);
     const registry = JSON.parse(migrated.rs_profiles_v1);
     assertEqual(Object.keys(registry.profiles).length, 2, 'Keine doppelte Person');
     assertEqual(registry.profiles.b.data.profile_rente_monatlich, '1000', 'Jahresbetrag nutzt bestehende Monatsumrechnung');
-    assertEqual(registry.profiles.b.meta.belongsToHousehold, false, 'Keine automatische Mitgliedschaft');
+    assert(!Object.hasOwn(registry.profiles.b.meta, 'belongsToHousehold'), 'Zuordnung schreibt kein Mitgliedsfeld');
+    // Ohne zweite Person: ausdrückliche Zuordnung, „Als neue Person übernehmen“ legt die zweite Haushaltsperson an.
+    const alone = records({ sim_p1StartAlter: '67', sim_r2StartAlter: '65', sim_r2Brutto: '12000' });
+    assertEqual(buildPersonMigrationDraft(alone, { referenceYear: 2026 }).pendingAssignments.length, 1, 'Ohne zweite Person verlangt der Partner eine Zuordnung');
+    const created = JSON.parse(applyPersonMigrationChoices(buildPersonMigrationDraft(alone, { referenceYear: 2026, partnerTargets: { a: '__new__' } })).rs_profiles_v1);
+    assertEqual(Object.keys(created.profiles).length, 2, 'Neue Partnerperson wird zweite Haushaltsperson');
+    assertEqual(created.profiles['legacy-partner-a'].meta.belongsToHousehold, true, 'Neue Partnerperson ist Haushaltsperson');
+}
+// AP-1b: Hat der Haushalt schon zwei Personen, bietet der Dialog „Als neue Person übernehmen“ nicht an; der Entwurf lehnt es mit klarem Satz ab.
+{
+    const pair = records({ sim_p1StartAlter: '67', sim_r2StartAlter: '65' }, { profile_aktuelles_alter: '65' });
+    let refused = null;
+    try { buildPersonMigrationDraft(pair, { referenceYear: 2026, partnerTargets: { a: '__new__' } }); } catch (error) { refused = error; }
+    assertEqual(refused?.message, MIGRATION_NEW_PERSON_LIMIT_MESSAGE, 'Neue Partnerperson überschreitet die Haushaltsgrenze nicht');
+    const three = records({ sim_p1StartAlter: '67', sim_r2StartAlter: '65' }, { profile_aktuelles_alter: '65' });
+    const registry = JSON.parse(three.rs_profiles_v1);
+    registry.profiles.c = { meta: { id: 'c', name: 'Synthetische Person C' }, data: { profile_aktuelles_alter: '60' } };
+    three.rs_profiles_v1 = JSON.stringify(registry);
+    for (const [initial, offered] of [[records({ sim_p1StartAlter: '67', sim_r2StartAlter: '65' }), true], [three, false]]) {
+        const f = fixture(initial); await install(f);
+        let mapping = null;
+        const result = await migratePersonData({ doc: null, win: null, now: 2026, decide: async ({ rows }) => { mapping = rows.find(row => row.id === 'mapping:a'); return null; } });
+        assertEqual(result.status, 'cancelled', 'Später schreibt nichts');
+        assertEqual(mapping?.options.some(option => option.value === '__new__'), offered,
+            offered ? 'Allein: „Als neue Person übernehmen“ wird angeboten' : 'Altbestand mit drei Personen: nur vorhandene Personen zur Wahl');
+        PersistenceFacade.resetPersistenceRuntimeForTests();
+    }
 }
 
 function fixture(initial, fault = '') {
@@ -159,7 +184,7 @@ async function install(f) {
         calls++; return Object.fromEntries(rows.map(row => [row.id, row.id.startsWith('mapping:') ? 'b' : '0']));
     } };
     const result = await migratePersonData(options);
-    assertEqual(snapshot(JSON.parse(f.backend().rs_profiles_v1).profiles.b.data), snapshot(completed), 'Aktuelles Außenprofil wird durch alte Partnerkopie nicht neu migriert');
+    assertEqual(snapshot(JSON.parse(f.backend().rs_profiles_v1).profiles.b.data), snapshot(completed), 'Aktuelles Partnerprofil wird durch alte Partnerkopie nicht neu migriert');
     const saved = Object.fromEntries(Object.values(PERSON_VALUE_KEYS).map(key => [key, f.backend()[key]]));
     const captured = captureProfileData();
     for (const key of Object.keys(saved)) assertEqual(captured[key], saved[key], 'Capture erhält ' + key);
@@ -172,23 +197,19 @@ async function install(f) {
     const backup = buildFullPersistenceBackup({ storage: PersistenceFacade });
     assert(normalizeFullPersistenceBackup(backup).ok, 'Vollbackup mit Personenschlüsseln ist wieder importierbar');
     for (const key of Object.keys(saved)) assertEqual(backup.records[key], saved[key], 'Vollbackup erhält ' + key);
-    const archiveBefore = [...f.archive].map(([id, point]) => [id, JSON.stringify(point)]);
-    const guard = createNavigationGuard({ decide: async () => true });
-    const restored = await StorageManager.restoreSnapshot(result.snapshotId, null, { guard, reload: () => true });
-    assertEqual(restored.status, 'restored', 'Produktiver Balance-Snapshot-Restore nimmt Personen-Recovery an');
-    assertEqual(snapshot(f.backend()), snapshot(initial), 'Recovery stellt Registry, Außenprofil und Livealtkeys bytegleich wieder her');
-    assert(PersistenceFacade.hasSyncWriteBlocks(), 'Restore hält das alte Dokument bis zum tatsächlichen Neustart schreibgesperrt');
-    assertEqual(f.snapshots(), 2, 'Restore ergänzt genau einen bestätigten Rückkehrpunkt');
-    for (const [id, bytes] of archiveBefore) assertEqual(JSON.stringify(await SnapshotArchive.readSnapshot(id)), bytes, 'Restore erhält vorhandene Archivbytes');
-    const returnPoint = await SnapshotArchive.readSnapshot(restored.recoverySnapshotId);
-    assertEqual(returnPoint.kind, SNAPSHOT_KINDS.beforeRestoreRecovery, 'Personen-Recovery erzeugt Punkt vor Zurückholen');
-    assertEqual(snapshot(returnPoint.records), snapshot(backup.records), 'Rückkehrpunkt enthält den vollständigen Bestand vor Restore');
-    // Ein Reload-Doppel tauscht das Dokument nicht aus; denselben Backendbestand
-    // deshalb vor der nächsten Migration in eine neue Persistenzgeneration laden.
+    // SV-1: Die Rücksicherung der Umstellung ist intern; sie lässt sich nicht über Daten & Sicherung zurückholen.
+    let refused = false;
+    try { await StorageManager.restoreSnapshot(result.snapshotId, { guard: createNavigationGuard({ decide: async () => true }), reload: () => true }); } catch { refused = true; }
+    assert(refused, 'Interne Rücksicherung der Personenumstellung ist kein sichtbarer Punkt');
+    assertEqual((await SnapshotArchive.readSnapshot(result.snapshotId)).kind, SNAPSHOT_KINDS.internalRecovery, 'Umstellung sichert sich intern');
+    // SV-1b: Interne Punkte haben keinen eigenen Rückholweg. Die Rücksicherung hält den Altbestand bytegleich; für die weitere
+    // Prüfung kommt er wie aus einer Vollsicherung zurück.
+    assertEqual(snapshot((await SnapshotArchive.readSnapshot(result.snapshotId)).records), snapshot(initial), 'Rücksicherung hält Registry, Partnerprofil und Livealtkeys bytegleich');
+    for (const key of Object.keys(f.backend())) delete f.backend()[key];
+    Object.assign(f.backend(), initial);
     await install(f);
     assertEqual((await migratePersonData(options)).status, 'migrated', 'Genau der wiederhergestellte Altbestand wird neu geprüft');
-    assertEqual(f.snapshots(), 3, 'Neustart nach Restore erlaubt genau eine neue Rohsicherung');
-    assertEqual(JSON.stringify(await SnapshotArchive.readSnapshot(returnPoint.id)), JSON.stringify(returnPoint), 'Erneute Migration erhält Rückkehrpunkt bytegleich');
+    assertEqual(f.snapshots(), 2, 'Neue Prüfung erlaubt genau eine neue Rohsicherung');
     const legacyBundle = { version: 1, exportedAt: '2026-01-01T00:00:00.000Z', registry: JSON.parse(initial.rs_profiles_v1), currentProfileId: 'a', globals: {} };
     const imported = importProfilesBundle(legacyBundle);
     assert(imported.ok, 'Altbundleimport lädt den alten Personenbestand: ' + imported.message);
@@ -196,8 +217,8 @@ async function install(f) {
     assertEqual(persistenceStorage.getItem('sim_p1Monatsrente'), '1000', 'Altbundle behält Personenquelle bis zur Sicherung');
     assertEqual(JSON.parse(persistenceStorage.getItem(CONFIG.STORAGE.LS_KEY)).inputs.aktuellesAlter, 67, 'Altbundle behält eigene Balance-Alteingaben bis zur gesicherten Übernahme');
     assertEqual((await migratePersonData(options)).status, 'migrated', 'Altbundle wird trotz früher abgeschlossenem Koordinator erneut geprüft');
-    assertEqual(snapshot(JSON.parse(f.backend().rs_profiles_v1).profiles.b.data), snapshot(completed), 'Altbundle lässt bereits aktuelles Außenprofil unverändert');
-    assertEqual(calls, 3, 'Je neuem Altbestand genau eine explizite Partnerzuordnung');
+    assertEqual(snapshot(JSON.parse(f.backend().rs_profiles_v1).profiles.b.data), snapshot(completed), 'Altbundle lässt bereits aktuelles Partnerprofil unverändert');
+    assertEqual(calls, 0, 'Automatische Partnerzuordnung braucht keine Rückfrage');
     PersistenceFacade.resetPersistenceRuntimeForTests();
 }
 {
@@ -219,7 +240,7 @@ for (const fault of ['', 'backup', 'backup-read', 'write', 'readback', 'rollback
     let calls = 0, failed = false, result;
     const decide = async options => {
         calls++; assertEqual(f.snapshots(), 1, 'Vor jeder Nachfrage steht eine dauerhafte Sicherung');
-        assertEqual(snapshot([...f.archive.values()][0].records), snapshot(initial), 'Sicherung umfasst Außenprofil und Rohaltkeys bytegleich');
+        assertEqual(snapshot([...f.archive.values()][0].records), snapshot(initial), 'Sicherung umfasst Partnerprofil und Rohaltkeys bytegleich');
         if (fault === 'dialog') throw new Error('synthetischer Dialogfehler');
         if (fault === 'cancel') return null;
         if (fault === 'changed') PersistenceFacade.setItemSync('rs_current_profile', 'b');
@@ -244,6 +265,14 @@ for (const fault of ['', 'backup', 'backup-read', 'write', 'readback', 'rollback
         assert(failed, fault + ': Fehler wird sichtbar abgewiesen');
         if (fault === 'rollback') {
             assert(PersistenceFacade.hasSyncWriteBlocks(), 'Unbestätigter Rollback sperrt weitere Writes bis Reload/Recovery');
+            // SV-1b: produktiver Fehlerpfad statt Rückholhelfer: Die interne Rücksicherung bleibt, die Meldung verweist auf Neuladen
+            // und die letzte Vollsicherung.
+            const kept = [...f.archive.values()];
+            assert(kept.length === 1 && kept[0].kind === SNAPSHOT_KINDS.internalRecovery && snapshot(kept[0].records) === snapshot(initial),
+                'Unbestätigte Rücknahme behält die interne Rücksicherung mit dem Altbestand');
+            let blocked = null;
+            try { PersistenceFacade.setItemSync('profile_tagesgeld', '1'); } catch (error) { blocked = error; }
+            assert(/neu laden/.test(blocked?.message || '') && /letzte Vollsicherung/.test(blocked?.message || ''), 'Sperre verweist auf Neuladen und die letzte Vollsicherung');
         }
         if (fault === 'backend-changed') {
             assertEqual(f.writes(), 0, 'Geänderter Backendbestand verhindert den ersten Migrationswrite');
@@ -302,85 +331,6 @@ for (const fault of ['', 'backup', 'backup-read', 'write', 'readback', 'rollback
         if (scenario === 'automatic') assertEqual(calls, 0, 'Automatische Umstellung zeigt keinen Folgehinweis');
         PersistenceFacade.resetPersistenceRuntimeForTests();
     }
-}
-
-// Vollständiger produktiver Übersichtsstart: Migration und anschließende Bereitschaft.
-{
-    const { createSelectionDocument, addField } = await import('./designsystem-selection-dom.mjs');
-    const { initOverview } = await import('../app/overview/overview-main.js');
-    const { getPageNavigationGuard } = await import('../app/shared/navigation-guard-dialog.js');
-    const previous = { document: globalThis.document, window: globalThis.window, Date: globalThis.Date };
-    const makeDocument = () => {
-        const doc = createSelectionDocument(), create = doc.createElement;
-        doc.addEventListener = doc.body.addEventListener.bind(doc.body);
-        doc.removeEventListener = doc.body.removeEventListener.bind(doc.body);
-        doc.contains = node => node.isConnected;
-        doc.querySelector = selector => doc.body.querySelector(selector);
-        doc.createElement = tag => {
-            const node = create(tag); node.append = (...children) => children.forEach(child => node.appendChild(child));
-            node.focus = () => { doc.activeElement = node; }; node.showModal = () => { node.open = true; };
-            node.close = () => { node.open = false; node.dispatchEvent({ type: 'close' }); }; return node;
-        };
-        addField(doc, 'overviewHouseholdNames');
-        return doc;
-    };
-    const assertNotice = (doc, label) => {
-        const notice = doc.getElementById('personDataNotice');
-        assert(notice?.isConnected && !notice.hidden && notice.children[0].textContent.includes('Synthetische Person B'), label + ': Außenname nach abgeschlossenem Start sichtbar');
-        assertEqual(notice.children[1].href, 'depot-tranchen-manager.html#personendaten', label + ': tatsächlicher Ergänzungslink');
-    };
-    try {
-        globalThis.Date = class extends previous.Date { constructor(...args) { super(...(args.length ? args : ['2026-10-07T12:00:00Z'])); } };
-        for (const scenario of ['confirmed', 'current', 'automatic']) {
-            const household = { profile_person_schema_version: '1', profile_geburtsdatum: '1958-03-14', depot_tranchen: '[]' };
-            const outside = { depot_tranchen: '[]', ...(scenario === 'current' ? { profile_person_schema_version: '1' }
-                : { profile_rente_monatlich: '1000', ...(scenario === 'confirmed' ? { sim_p1Monatsrente: '1100' } : {}) }) };
-            const f = fixture(records(household, outside)); await install(f);
-            const doc = makeDocument(), win = { addEventListener() {}, removeEventListener() {}, name: '', location: { href: 'http://localhost/index.html', hash: '' } };
-            globalThis.document = doc; globalThis.window = win;
-            // Reine alte Bereitschaft muss ohne bestätigte Übernahme verschwinden.
-            showPersonDataStatus({ ready: false, message: 'Veraltete Sperrbegründung' }, doc);
-            const start = initOverview(doc, win);
-            if (scenario === 'confirmed') {
-                for (let i = 0; i < 200 && !doc.getElementById('pageChoiceDialog'); i++) await new Promise(resolve => setImmediate(resolve));
-                assert(doc.getElementById('pageChoiceDialog')?.open, 'Produktiver Lifecycle öffnet echten Übernahmedialog');
-                doc.body.querySelectorAll('*').find(node => node.dataset.pageChoiceAccept !== undefined).dispatchEvent({ type: 'click' });
-            }
-            assertEqual(await start, true, scenario + ': initOverview vollständig abgeschlossen');
-            assert(doc.getElementById('overviewHouseholdNames').textContent.includes('Synthetische Person A'), 'Übersicht wurde nach Profilbootstrap gerendert');
-            assertEqual(readHouseholdPersonStatus({ win }).ready, true, 'Haushalt ohne Altalter ist vollständig; Außenperson sperrt nicht');
-            const outsideData = JSON.parse(persistenceStorage.getItem('rs_profiles_v1')).profiles.b.data;
-            assert(!outsideData.profile_geburtsdatum && !outsideData.profile_aktuelles_alter, 'Außenperson besitzt weder Geburtstag noch Altalter');
-            const points = await SnapshotArchive.listSnapshots();
-            assertEqual(points.filter(point => point.label === 'Vor Umstellung Haushalt & Plan').length, 1, scenario + ': Planumstellung besitzt einen eigenen Wiederherstellungspunkt');
-            assertEqual(points.filter(point => point.kind === SNAPSHOT_KINDS.personDataMigrationRecovery).length, scenario === 'current' ? 0 : 1, scenario + ': Personenumstellung bleibt getrennt gesichert');
-            if (scenario !== 'confirmed') {
-                assertEqual(doc.getElementById('personDataNotice'), null, scenario + ': kein Folgehinweis ohne ausdrückliche Übernahme');
-                assertEqual(f.snapshots(), scenario === 'automatic' ? 2 : 1, 'Personen- und Planumstellung benötigen jeweils ihre eigene Sicherung');
-                continue;
-            }
-            assertNotice(doc, 'Start');
-            const bytes = snapshot(PersistenceFacade.exportAllSync().records), writes = f.writes(), snapshots = f.snapshots();
-            const ready = readHouseholdPersonStatus({ win });
-            for (let i = 0; i < 3; i++) { showPersonDataStatus(ready, doc); assertNotice(doc, 'Wiederholung'); }
-            doc.getElementById('personDataNotice').remove();
-            showPersonDataStatus(ready, doc); assertNotice(doc, 'Neu gerenderter Hinweis');
-            showPersonDataStatus({ ready: true, persons: [{ name: 'Altalterperson', status: 'legacy-age' }] }, doc);
-            assertNotice(doc, 'Zusätzliches Altalter');
-            assert(doc.getElementById('personDataNotice').children[0].textContent.includes('Altalterperson'), 'Altalterbegründung bleibt neben Außenhinweis vorhanden');
-            const blocker = 'Für die Rechnung fehlt das Geburtsdatum von Unvollständiger Haushalt';
-            showPersonDataStatus({ ready: false, message: blocker }, doc); assertNotice(doc, 'Unvollständiger Haushalt');
-            assert(doc.getElementById('personDataNotice').children[0].textContent.includes(blocker), 'Notwendige Sperrbegründung bleibt erhalten');
-            showPersonDataStatus(ready, doc);
-            assert(!doc.getElementById('personDataNotice').children[0].textContent.includes(blocker), 'Nur die veraltete Sperrbegründung wird entfernt');
-            const fresh = makeDocument(); showPersonDataStatus(ready, fresh);
-            assertEqual(fresh.getElementById('personDataNotice'), null, 'Frisches Dokument erbt keinen bestätigten Hinweis');
-            assertEqual(snapshot(PersistenceFacade.exportAllSync().records), bytes, 'Hinweisdarstellung schreibt keine Records');
-            assertEqual(f.writes(), writes, 'Hinweisdarstellung erzeugt keinen Backendwrite');
-            assertEqual(f.snapshots(), snapshots, 'Hinweisdarstellung erzeugt keine weitere Sicherung');
-            assertEqual(getPageNavigationGuard(doc, win).reasons().length, 0, 'Abgeschlossener Start und Hinweise halten keinen Navigationsschutz offen');
-        }
-    } finally { Object.assign(globalThis, previous); PersistenceFacade.resetPersistenceRuntimeForTests(); }
 }
 
 // Produktiver Seiten-Lifecycle nach Aufschub: kein Bootstrap, keine verwaiste Lease.
@@ -498,19 +448,11 @@ for (const choice of [0, 1, null]) for (const live of [false, true]) {
     assertEqual(snapshot(await f.adapter.loadAll()), durable, 'Historischer Reload erhält Fachbytes');
     assertEqual(f.writes(), writes, 'Historischer Reload schreibt nicht erneut');
     assertEqual(f.snapshots(), backups, 'Historischer Reload sichert nicht erneut');
-    const archiveBefore = [...f.archive].map(([id, point]) => [id, JSON.stringify(point)]);
-    const recoveryRecords = Object.fromEntries(Object.entries(actual)
-        .filter(([key]) => isAllowedSnapshotRestoreLiveKey(key, { mode: 'full' })));
-    const restored = await StorageManager.restoreSnapshot(result.snapshotId, null, {
-        guard: createNavigationGuard({ decide: async () => true }), reload: () => true
-    });
-    assertEqual(restored.status, 'restored', 'Personen-Recoveryrestore akzeptiert historische Profildaten');
-    assertEqual(snapshot(await f.adapter.loadAll()), snapshot(initial), 'Personen-Recoveryrollback erhält gesamte Registry und ausgeschlossene Livebytes');
-    assertEqual(f.archive.size, backups + 1, 'Personen-Recoveryrestore erhält Archivbestand und ergänzt genau einen Rückkehrpunkt');
-    for (const [id, bytes] of archiveBefore) assertEqual(JSON.stringify(await SnapshotArchive.readSnapshot(id)), bytes, 'Personen-Recoveryrestore erhält sämtliche bisherigen Archivbytes');
-    const returnPoint = await SnapshotArchive.readSnapshot(restored.recoverySnapshotId);
-    assertEqual(returnPoint.kind, SNAPSHOT_KINDS.beforeRestoreRecovery, 'Historische Personen-Recovery erzeugt bestätigten Punkt vor Zurückholen');
-    assertEqual(snapshot(returnPoint.records), snapshot(recoveryRecords), 'Historischer Rückkehrpunkt enthält vollständigen vorherigen Wiederherstellungsumfang');
+    // SV-1: Die Rücksicherung der Umstellung ist intern und stellt den historischen Altbestand vollständig her.
+    const point = await SnapshotArchive.readSnapshot(result.snapshotId);
+    assertEqual(point.kind, SNAPSHOT_KINDS.internalRecovery, 'Historische Umstellung sichert sich intern');
+    assertEqual(snapshot(point.records), snapshot(Object.fromEntries(Object.entries(initial).filter(([key]) => isAllowedSnapshotRestoreLiveKey(key)))),
+        'Personen-Rücksicherung hält die gesamte Registry und alle Haushaltsschlüssel bytegleich');
     PersistenceFacade.resetPersistenceRuntimeForTests();
 }
 for (const failure of ['preflight', 'cancel']) {
@@ -550,7 +492,7 @@ for (const failure of ['preflight', 'cancel']) {
 }
 
 // Derselbe produktive Budgetweg für Entwurf, gesicherte Übernahme und Backendreload.
-async function assertMigrationBudget(f, { monthly = 0, perPerson = monthly, names = [''], outside = false, profileIds = outside ? [] : ['a'] } = {}) {
+async function assertMigrationBudget(f, { monthly = 0, perPerson = monthly, names = [''], profileIds = ['a'] } = {}) {
     const { createProfileSyncHandlers } = await import('../app/balance/balance-main-profile-sync.js');
     const { createProfilverbundHandlers } = await import('../app/balance/balance-main-profilverbund.js');
     const { UIReader, initUIReader } = await import('../app/balance/balance-reader.js');
@@ -582,13 +524,11 @@ async function assertMigrationBudget(f, { monthly = 0, perPerson = monthly, name
             const input = UIReader.readAllInputs(), profiles = loadProfilverbundProfiles();
             assertEqual(input.renteMonatlich, perPerson, 'Echter Reader erhält je Person ausschließlich laufendes Einkommen');
             assertEqual(input.renteAktiv, monthly > 0, 'Sonstige Einkünfte halten die Einkommensbrücke aktiv');
-            assertEqual(profiles.length, outside ? 0 : names.length, 'Nur ausgewählte Personen bilden den Haushaltsumfang');
+            assertEqual(profiles.length, names.length, 'Die Personen des Haushalts bilden den Haushaltsumfang');
             assertEqual(profiles.map(profile => profile.profileId).sort().join(','), profileIds.join(','), 'Geöffnetes Profil ersetzt keine ausgewählte Person');
             for (const profile of profiles) assertEqual(profile.inputs.renteMonatlich, perPerson, 'Geladener Personeninput enthält ausschließlich laufendes Einkommen');
-            if (!outside) {
-                assertEqual(aggregateProfilverbundInputs(profiles).totalRenteJahr, monthly * 12, 'Haushaltsaggregation wahrt den Budgetvertrag');
-                createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS: { mode: 'synthetic-mode' } }).updateProfilverbundGlobals(profiles, input);
-            }
+            assertEqual(aggregateProfilverbundInputs(profiles).totalRenteJahr, monthly * 12, 'Haushaltsaggregation wahrt den Budgetvertrag');
+            createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS: { mode: 'synthetic-mode' } }).updateProfilverbundGlobals(profiles, input);
             assertEqual(input.renteMonatlich, monthly, 'Produktive Haushaltsbrücke erhält das vollständige laufende Einkommen');
             const view = createPresentationTestDocument(), create = view.createElement;
             view.createElement = tag => { const node = create.call(view, tag); node.dataset = {}; return node; };
@@ -643,23 +583,16 @@ async function assertMigrationBudget(f, { monthly = 0, perPerson = monthly, name
     } finally { PersistenceFacade.resetPersistenceRuntimeForTests(); }
 }
 
-// Sonstige Einkünfte zählen je ausgewählter Person; ohne Auswahl rechnet A allein.
-for (const scope of ['single', 'household', 'outside', 'outside-selected']) for (const otherIncome of [0, 100]) {
+// Sonstige Einkünfte zählen je Person des Haushalts; allein rechnet A allein.
+for (const scope of ['single', 'household']) for (const otherIncome of [0, 100]) {
     const old = { profile_geburtsdatum: '1958-03-14', profile_rente_monatlich: '0', sim_p1Monatsrente: '1000',
         sim_p1StartInJahren: '2', profile_sonstige_einkuenfte: String(otherIncome) };
-    const selectedOutside = scope === 'outside-selected';
-    const partner = selectedOutside ? { ...old, profile_sonstige_einkuenfte: String(otherIncome + 75) } : old;
-    const initial = records(old, scope === 'single' ? null : partner);
-    const registry = JSON.parse(initial.rs_profiles_v1);
-    registry.profiles.a.meta.belongsToHousehold = !['outside', 'outside-selected'].includes(scope);
-    if (registry.profiles.b) registry.profiles.b.meta.belongsToHousehold = scope !== 'outside';
-    initial.rs_profiles_v1 = JSON.stringify(registry);
+    const initial = records(old, scope === 'single' ? null : old);
     const migrated = applyPersonMigrationChoices(buildPersonMigrationDraft(initial, { referenceYear: 2026 }));
     const f = fixture(migrated), household = scope === 'household';
-    const perPerson = selectedOutside ? otherIncome + 75 : otherIncome;
-    const expected = { monthly: perPerson * (household ? 2 : 1), perPerson,
-        names: household ? ['Synthetische Person A', 'Synthetische Person B'] : [''], outside: scope === 'outside',
-        profileIds: household ? ['a', 'b'] : selectedOutside ? ['b'] : scope === 'outside' ? [] : ['a'] };
+    const expected = { monthly: otherIncome * (household ? 2 : 1), perPerson: otherIncome,
+        names: household ? ['Synthetische Person A', 'Synthetische Person B'] : [''],
+        profileIds: household ? ['a', 'b'] : ['a'] };
     try {
         await install(f); await assertMigrationBudget(f, expected);
         await install(f); await assertMigrationBudget(f, expected);
@@ -953,4 +886,13 @@ for (const outcome of ['later', 'accepted', 'readback', 'flush']) {
         assert(!dialog.isConnected, 'Fehlerhinweis kann anschließend mit Cleanup geschlossen werden');
         PersistenceFacade.resetPersistenceForTests();
     }
+}
+
+// ST6-FIX (P2-2): Beschädigter Balance-Stand führt zur Wiederherstellung, nicht zu einem SyntaxError, und schreibt nichts.
+for (const broken of ['{', 'null', '[]']) {
+    const input = records({ profile_aktuelles_alter: '67', [CONFIG.STORAGE.LS_KEY]: broken });
+    const before = snapshot(input);
+    const error = (() => { try { buildPersonMigrationDraft(input, { referenceYear: 2026, inspectOnly: true }); } catch (caught) { return caught; } return null; })();
+    assert(error && error.name === 'ProfileRecoveryError' && error.code === 'PROFILE_LOAD_LIVE_BALANCE_CORRUPT', `Beschädigter Balance-Stand (${broken}) führt zur Wiederherstellung`);
+    assertEqual(snapshot(input), before, 'inspectOnly schreibt nichts');
 }

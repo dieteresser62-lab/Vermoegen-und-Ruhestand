@@ -55,7 +55,8 @@ try {
     for (const source of ['mc', 'backtest']) for (const moneyBasis of ['nominal', 'real']) {
         const entry = source === 'mc' ? row : { jahr: 2001, row, inflationVJ: 25 };
         const opts = { source, moneyBasis };
-        const factor = moneyBasis === 'nominal' ? 1 : source === 'mc' ? 2 : 2.5;
+        // ST7-A: Verkäufe sind Zahlungen des Jahres, real in beiden Quellen mit dem Faktor am Jahresanfang.
+        const factor = moneyBasis === 'nominal' ? 1 : 2;
         const euro = value => `${Math.round(value / factor).toLocaleString('de-DE')} €`;
         const short = plain(protocolActionShortText(entry, opts)), info = plain(protocolActionExplanation(entry, opts));
         assertEqual(short, `Aktien verkauft ${euro(13083.43)} · davon ${euro(6601.43)} für die Entnahme dieses Jahres`, `${source}/${moneyBasis}: Gesamtverkauf und Teilbetrag getrennt`);

@@ -96,7 +96,7 @@ async function finding4() {
         adopted: { ...outcome, snapshot: { plan: structuredClone(PLAN_DEFAULTS), inflation: 2, ageByPerson: { muster_a: 67 } } } }).raw;
     const store = storeWith(Object.fromEntries(Array.from({ length: 12 }, (_, i) => [i + 1, { profiles: { muster_a: record(-1800) } }])));
     fixture.records[EXPENSES_STORAGE_KEY] = JSON.stringify(store);
-    const project = () => projectOverview({ registry: JSON.parse(fixture.records.rs_profiles_v1), activeId: 'muster_a', liveData: fixture.records, now, balanceSingleFallback: true });
+    const project = () => projectOverview({ registry: JSON.parse(fixture.records.rs_profiles_v1), activeId: 'muster_a', liveData: fixture.records, now });
     const model = project();
     assertEqual(model.annual.budget, 1500, 'QS-G 4: Übersicht liest den Jahresbeleg');
     const prepared = projectAnnualClosePreparation(model, { store, annualBudgetSummary: summary });

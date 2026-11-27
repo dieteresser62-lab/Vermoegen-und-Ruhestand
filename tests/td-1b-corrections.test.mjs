@@ -135,7 +135,7 @@ const f = await playFixture('localstorage', { ...storage.copy });
 let controller = await f.boot();
 const backup = buildFullPersistenceBackup();
 assert(normalizeFullPersistenceBackup(backup).ok, 'Vollsicherung akzeptiert Korrekturliste');
-const snapshot = await SnapshotArchive.createSnapshot({ label: 'Korrekturen', records: backup.records, activeProfileId: profileId });
+const snapshot = await SnapshotArchive.createSnapshot({ kind: 'monthly-close-pre-mutation', label: 'Korrekturen', records: backup.records, activeProfileId: profileId });
 await commitSaleFlowWrite(await prepareTrancheDetailWrite({ profileId, tranche: correctedTranche(lot(persistenceStorage), 60, 'depotauszug'), correction: true, correctionReason: 'depotauszug' }));
 assertEqual(lot(persistenceStorage).correctionHistory.length, 3, 'Produktiver Commit schreibt Liste');
 assert((await importFullPersistenceBackup(JSON.parse(JSON.stringify(backup)))).ok, 'Vollsicherung lässt sich einspielen');

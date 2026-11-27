@@ -1,6 +1,6 @@
 // Hält die Seite für Funklöcher bereit: erst Netz, sonst Zwischenspeicher. Kurse (/api/) nie zwischenspeichern.
 const SPEICHER = 'depot-v2';
-const SEITE = ['./', 'index.html', 'app.css', 'app.js', 'code.js', 'manifest.webmanifest', 'icons/icon.svg',
+const SEITE = ['./', 'index.html', 'app.css', 'app.js', 'code.js', 'verlauf.js', 'manifest.webmanifest', 'icons/icon.svg',
   'fonts/newsreader-latin-500-normal.woff2', 'fonts/ibm-plex-sans-latin-400-normal.woff2',
   'fonts/ibm-plex-sans-latin-500-normal.woff2', 'fonts/ibm-plex-sans-latin-600-normal.woff2'];
 

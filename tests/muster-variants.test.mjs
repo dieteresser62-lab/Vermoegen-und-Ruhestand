@@ -1,3 +1,5 @@
+import { readDM1References } from './helpers/dm-1-expectations.mjs';
+import { readVS2References } from './helpers/vs-2-expectations.mjs';
 import { readGU1References } from './helpers/gu-1-expectations.mjs';
 // LE-1 (FR-75) und KO-2 (Ergänzung FR-76) in einem Leser; Paare, die beide ändern, sind für den vereinten Stand gemessen.
 import { readLE1KO2References } from './helpers/le-1-ko-2-expectations.mjs';
@@ -11,6 +13,7 @@ import { createMusterHaushaltRecords as create } from '../app/demo/muster-hausha
 import { MUSTER_HAUSHALTE, musterVarianten } from '../app/demo/muster-haushalte.js';
 import { musterSteckbrief } from '../app/demo/muster-steckbrief.js';
 import { readImmobilien, IMMOBILIEN_KEY } from '../app/profile/profile-immobilien.js';
+import { PARTNERSHIP_KEY, readPartnership, inheritancePercent } from '../app/profile/household-partnership.js';
 import { incomeFromRecord, effectiveIncomeFromRecord, fixedMonthlyIncome } from '../app/profile/profile-income.js';
 import { projectPersonPension } from '../app/profile/profile-person-data.js';
 import { measurementInputs } from './helpers/ek-1b-measurement.mjs';
@@ -20,6 +23,7 @@ import { simulateOneYear } from '../app/simulator/simulator-engine-direct.js';
 import { EngineAPI } from '../engine/index.mjs';
 import { PersistenceFacade as P } from '../app/shared/persistence-facade.js';
 import { setAppTestDate } from '../app/shared/app-clock.js';
+import { readKR1bReferences } from './helpers/kr-1b-expectations.mjs';
 const date = '2026-10-23', stateKey = 'ruhestandsmodellValues_v29_guardrails';
 const plan = records => Object.values(JSON.parse(records.household_plan_v1).entries)[0].values;
 const profiles = records => Object.values(JSON.parse(records.rs_profiles_v1).profiles);
@@ -27,7 +31,7 @@ const before = JSON.parse(fs.readFileSync(new URL('./fixtures/mu-2-households-be
 const previousTZ = process.env.TZ;
 try {
     process.env.TZ = 'Europe/Berlin';
-    for (const [id, hash] of Object.entries(before)) assertEqual(createHash('sha256').update(JSON.stringify(withoutExampleNeeds(create(date, id)))).digest('hex'), readLE1KO2References(readGU1References(readGA2References(readQSCReferences(readVF2EReferences(hash))))), `${id}: vollständige Records, Drei-Töpfe-Korrekturen gesondert belegt`);
+    for (const [id, hash] of Object.entries(before)) assertEqual(createHash('sha256').update(JSON.stringify(withoutExampleNeeds(create(date, id)))).digest('hex'), readDM1References(readKR1bReferences(readVS2References(readLE1KO2References(readGU1References(readGA2References(readQSCReferences(readVF2EReferences(hash)))))))), `${id}: vollständige Records, Drei-Töpfe-Korrekturen gesondert belegt`);
 } finally { if (previousTZ === undefined) delete process.env.TZ; else process.env.TZ = previousTZ; }
 const mp = create(date, 'martin-petra'), [martin, petra] = profiles(mp);
 for (const [person, birth, pensionStart, pension, cash, equity] of [
@@ -57,7 +61,6 @@ assertEqual(projectPersonPension(petra.data, 2031).renteImJahr, 1200 * 7, 'Rente
 // Vollständiger Vergleich aller nicht betroffenen Records und Teilrecords.
 function unchangedProjection(records, id) {
     const r = structuredClone(records), registry = JSON.parse(r.rs_profiles_v1);
-    delete r.rs_household_wealth_captures_v1; // Varianten ändern diese abgeleiteten Personen- und Haushaltssummen.
     const personal = data => {
         const d = { ...data }, state = JSON.parse(d[stateKey]);
         if (id === 'renate') {
@@ -110,6 +113,11 @@ function unchangedProjection(records, id) {
 }
 for (const h of MUSTER_HAUSHALTE) for (const v of musterVarianten(h.id)) {
     const base = create(date, h.id), r = create(date, h.id, v.id), ps = profiles(r), p = plan(r);
+    if (['max-erika', 'jan-lena', 'helga-werner'].includes(h.id)) {
+        const partnership = readPartnership(r[PARTNERSHIP_KEY], { forInheritance: true });
+        assertEqual(partnership.status, 'married', `${h.id}/${v.id}: gespeicherter Ehestatus`);
+        for (const { meta } of ps) assertEqual(inheritancePercent(partnership, meta.id), 100, `${h.id}/${v.id}: Erbanteil von ${meta.name}`);
+    }
     const brief = musterSteckbrief(r, h.id, date, v.id, v.id === 'grund' ? null : base), n = brief.numbers;
     assertClose(n.wealth, ps.reduce((s, person) => s + Number(person.data.profile_tagesgeld) + JSON.parse(person.data.depot_tranchen).reduce((s, l) => s + l.marketValue, 0), 0), 1e-7, `${h.id}/${v.id}: Steckbrief-Geld aus Records`);
     assertEqual(n.totalNeed, p.floorBedarf + p.flexBedarf, `${h.id}/${v.id}: Bedarf aus Records`);

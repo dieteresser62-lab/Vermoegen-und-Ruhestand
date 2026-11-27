@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createParityCase, replayParityCase, sealParityCase, validateParityCase } from '../../app/balance/parity-case.js';
 import { compareParityYear, parityPrePayoutEvidence, parityLegacyTqfOptions, parityTaxSourcePriceTie, parityTaxWithdrawalPriceTie, parityReplayLotIds } from '../../app/balance/parity-year-comparison.js';
 import { calculateWithdrawalDistribution } from '../../app/profile/profilverbund-balance.js';
+import { INCOME_KEY, writeIncome } from '../../app/profile/profile-income.js';
 import { createParityReplayCollector } from '../../app/simulator/parity-replay-collector.js';
 import { sealParityReplayLog, restoreParityReplayValue } from '../../app/simulator/parity-replay-contract.js';
 import { canonicalParityAction, canonicalParityLots, compareParityField, compareParityTree, parityMeasurement,
@@ -219,7 +220,10 @@ export function testParityComparison() {
     equal(legacy.summary.status, 'UNVOLLSTAENDIG');
     equal(legacy.source.sourceHash, null, 'Altexport erhält keine erfundene Herkunft');
     equal(replayParityCase(legacy, { engineApi: EngineAPI }).reproduced, true);
-    const extraIncome = JSON.parse(logBytes); extraIncome.initialRecords.profile_sonstige_einkuenfte = '7';
+    const extraIncome = JSON.parse(logBytes);
+    // Sonstige Einkünfte werden aus der aktuellen Liste gelesen; Altbeträge haben keinen Vorrang.
+    extraIncome.initialRecords[INCOME_KEY] = writeIncome([{ id: 'extra-income', art: 'sonstige',
+        bezeichnung: 'Zusatz', betragMonat: 7, ab: null, bis: null, anpassung: 'keine' }]);
     const fr7Case = createParityCase(sealParityReplayLog(extraIncome), 0, { engineApi: EngineAPI });
     equal(fr7Case.fields.find(row => row.id === 'input.annualPension').status, 'AUSGEKLAMMERT');
     equal(fr7Case.fields.find(row => row.id === 'decision.monthlyBudget').status, 'AUSGEKLAMMERT');

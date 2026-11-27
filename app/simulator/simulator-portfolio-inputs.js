@@ -100,6 +100,7 @@ export function getCommonInputs() {
         tailRiskHorizonYears: Number.parseInt(readDomValue('mcDauer', ''), 10),
         ...trancheInputs
     });
+    if (readDomValue('simulatedEquityPurchases') === 'separate') result.simulatedEquityPurchases = 'separate';
 
     if (typeof window !== 'undefined' && window.__profilverbundMinFlexProfilesOverride) {
         result.minimumFlexProfiles = window.__profilverbundMinFlexProfilesOverride;
@@ -121,6 +122,11 @@ export function getCommonInputs() {
     const personInputs = readDocumentPersonInputs();
     if (personInputs) {
         bindPersonDataContext(result, personInputs.context);
+        const { combined } = personInputs;
+        if (combined.healthBucket?.enabled) {
+            Object.assign(result, Object.fromEntries(Object.entries(combined)
+                .filter(([key]) => key.startsWith('healthBucket'))));
+        }
         const rawPartnership = persistenceStorage.getItem(PARTNERSHIP_KEY);
         const partnership = readPartnership(rawPartnership);
         if (rawPartnership && personInputs.combined.simulationPeople.length === 2) result.partnership = partnership;
@@ -129,8 +135,9 @@ export function getCommonInputs() {
             result.homeReferenceYear = personInputs.context.referenceYear;
         }
         result.simulationPeople = personInputs.combined.simulationPeople.map(person => ({ ...person }));
-        if (result.simulationPeople.some(person => hasTestament(partnership, person.profileId,
-            hasInheritanceHomes(result.home, person.profileId)) && testamentRule(partnership, person.profileId).home === 'residence')) {
+        // VB-1: Auch der Versorgungsfreibetrag (§ 17 ErbStG) braucht das vollendete Alter am modellierten Todestag, bei jeder Ehe.
+        if ((partnership.status === 'married' && result.simulationPeople.length === 2) || result.simulationPeople.some(person => hasTestament(partnership, person.profileId,
+            hasInheritanceHomes(result.home, person.profileId)) && ['residence', 'rent-bequest'].includes(testamentRule(partnership, person.profileId).home || 'money'))) {
             result.residenceReferenceYear = personInputs.context.referenceYear;
             for (const person of result.simulationPeople) {
                 const birth = personInputs.entries.find(entry => entry.profileId === person.profileId)?.data.profile_geburtsdatum;

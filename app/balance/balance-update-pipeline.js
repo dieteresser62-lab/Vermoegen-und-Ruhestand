@@ -381,13 +381,13 @@ function buildBalanceLifecycleMetadata(persistentState, periodId, fingerprints =
 export function createEngineHandshake(engineApi, requiredVersionPrefix) {
     if (!engineApi || typeof engineApi.getVersion !== 'function') {
         throw new EngineGateError(
-            'EngineAPI (engine.js) konnte nicht geladen werden oder ist ungültig.',
+            'Der Rechenkern konnte nicht geladen werden oder ist ungültig.',
             'missing_engine'
         );
     }
     if (typeof engineApi.simulateSingleYear !== 'function') {
         throw new EngineGateError(
-            'EngineAPI.simulateSingleYear() fehlt. Berechnungen wurden blockiert.',
+            'Die Funktion zur Jahresberechnung fehlt. Berechnungen wurden blockiert.',
             'missing_simulation'
         );
     }
@@ -397,20 +397,20 @@ export function createEngineHandshake(engineApi, requiredVersionPrefix) {
         version = engineApi.getVersion();
     } catch (error) {
         throw new EngineGateError(
-            'EngineAPI.getVersion() konnte nicht ausgeführt werden.',
+            'Die Version des Rechenkerns konnte nicht gelesen werden.',
             'version_read_failed',
             { originalError: normalizeError(error) }
         );
     }
     if (!version || typeof version.api !== 'string' || typeof version.build !== 'string') {
         throw new EngineGateError(
-            'EngineAPI.getVersion() liefert ein ungültiges Format.',
+            'Die Versionsangabe des Rechenkerns ist ungültig.',
             'invalid_version'
         );
     }
     if (!version.api.startsWith(requiredVersionPrefix)) {
         throw new EngineGateError(
-            `Inkompatible Engine-Version erkannt (Geladen: ${version.api}, Erwartet: ${requiredVersionPrefix}x). Berechnungen wurden blockiert.`,
+            `Inkompatible Version des Rechenkerns erkannt (Geladen: ${version.api}, Erwartet: ${requiredVersionPrefix}x). Berechnungen wurden blockiert.`,
             'incompatible_version',
             { actualApi: version.api, requiredVersionPrefix }
         );
@@ -432,7 +432,7 @@ export function createEngineHandshake(engineApi, requiredVersionPrefix) {
 export function assertActiveEngineHandshake(handshake, currentEngineApi) {
     if (!handshake) {
         throw new EngineGateError(
-            'Kein erfolgreicher Engine-Handshake vorhanden. Berechnungen wurden blockiert.',
+            'Die Startprüfung des Rechenkerns fehlt oder ist fehlgeschlagen. Berechnungen wurden blockiert.',
             'handshake_missing'
         );
     }
@@ -442,7 +442,7 @@ export function assertActiveEngineHandshake(handshake, currentEngineApi) {
         currentEngineApi?.simulateSingleYear !== handshake.simulateSingleYear
     ) {
         throw new EngineGateError(
-            'Der Engine-Vertrag wurde nach dem Handshake verändert. Berechnungen wurden blockiert.',
+            'Die Schnittstelle zum Rechenkern hat sich seit der Startprüfung geändert. Berechnungen wurden blockiert.',
             'contract_changed'
         );
     }
@@ -577,7 +577,7 @@ export function projectBalancePlanHistory(persistentState, profiles, plan, { pro
     const current = projectPlanToBalance(plan.entry.values);
     const source = profiles[0]?.balanceState || persistentState;
     // Ohne Lifecyclebeleg gelten die bisherigen Eingaben der Rechenauswahl.
-    // Eine geöffnete Außenperson liefert keine Planhistorie des Haushalts.
+    // Gehört die geöffnete Person nicht zu den Rechenprofilen, liefert sie keine Planhistorie des Haushalts.
     const ownInputs = profileId && profiles.length && !profiles.some(profile => profile.profileId === profileId)
         ? {} : persistentState.inputs;
     const legacy = { ...source.inputs, ...source.profilverbundHouseholdInputs, ...ownInputs };
@@ -596,7 +596,7 @@ export function projectBalancePlanHistory(persistentState, profiles, plan, { pro
  */
 export function enrichBalanceDiagnosisPayload({ formattedDiagnosis, modelResult = /** @type {Partial<import("../../typcheck/rechenkern.js").EngineSuccess>} */ ({}), inputData = /** @type {import("../../typcheck/balance-ui.js").Input} */ ({}), threeBucketDiagnosis = null }) {
     if (!formattedDiagnosis) return formattedDiagnosis;
-    if (!inputData.goldAktiv && !(inputData.goldWert > 0) && Array.isArray(formattedDiagnosis.decisionTree)) {
+    if (!(inputData.goldWert > 0) && Array.isArray(formattedDiagnosis.decisionTree)) {
         formattedDiagnosis.decisionTree = formattedDiagnosis.decisionTree.map(item => item.step === 'Verwendung (Restbetrag)'
             ? { ...item, impact: item.impact.replace('Investitionsziele (Aktien/Gold)', 'Investitionsziele (Aktien)') } : item);
     }
@@ -687,8 +687,7 @@ export function persistBalanceUpdate({
         profilverbundHandlers.persistProfilverbundProfileStates(profilverbundRuns, {
             lifecycle
         });
-        // Der geöffnete Außenbereich gehört nicht zwingend zu den Runs.
-        // Die haushaltsweite Planevidenz bestätigt trotzdem den beschlossenen Plan.
+        // Die haushaltsweite Planevidenz bestätigt den beschlossenen Plan auch im geöffneten Stand.
         if (householdPlan) {
             const current = storageManager.loadState();
             storageManager.saveState({ ...current, [BALANCE_STATE_LIFECYCLE_KEY]: {

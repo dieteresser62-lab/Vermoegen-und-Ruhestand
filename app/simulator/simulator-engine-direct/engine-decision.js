@@ -2,6 +2,7 @@ import { projectCareLiquidityYear } from '../simulator-care-projection.js';
 // @ts-check
 /** @import {EngineSuccess,YearOutcome} from '../../../typcheck/rechenkern' */
 import { simulatorPlannedExpenseYear } from '../../profile/household-planned-expenses.js';
+import { checkExpenseTotal } from '../simulator-planned-expense-items.js';
 import { calculateFixedIncomeForYear, creditFixedIncomeSurplus, decidedIncomeFlex, nextFixedIncomeWageFactor } from '../simulator-fixed-income.js';
 import { personalProfiles, personalWithdrawalPlan } from '../simulator-personal-accounts.js';
 import { applyGuardrailPlanChange, prepareGuardrailPlanInputs, shouldResetGuardrailState } from '../../shared/guardrail-history.js';
@@ -19,6 +20,7 @@ import { restoreEngineBoundaryPortfolio, alignEngineInflationContract } from './
 import { carrierYear, carrierHoldings } from './action-plan.js';
 import { activeCarrier } from '../../profile/household-withdrawal-mode.js';
 import { carrierTransactionView } from '../../profile/household-carrier-action.js';
+import { moneyAssets } from '../simulator-home-sale.js';
 /** @typedef {import('./year-market.js').YearContext & NonNullable<ReturnType<typeof decideYear>['state']>} YearContext */
 /** @param {import('./year-market.js').YearContext} context */
 export function decideYear(context) {
@@ -30,7 +32,7 @@ export function decideYear(context) {
         baseMinimumFlexAnnual, temporaryMinimumFlexFactor, baseFlexBudgetAnnual, baseFlexBudgetRecharge,
         resolvedCapeRatio, preparedGuardrailPlan, lastState, replayYear, pflegeMeta, careFloorAddition,
         householdContext, is3Bucket, unmarried, engine, engineBoundaryPortfolio, balanceTrace,
-        depotTranchesAktien, depotTranchesGold, hasLifeEvents, unmarriedShares
+        depotTranchesAktien, depotTranchesGold, hasLifeEvents, unmarriedShares, yearNeed
     } = context;
 
     // ==========================================
@@ -56,11 +58,19 @@ export function decideYear(context) {
         inflationFactor: cumulativeInflationFactor, household: householdCtx,
         care: { p1: careP1, p2: careP2 },
         deathThisYear: survivorYear?.deathThisYear === true });
+    // FR-84: Geldvermögen des Haushalts (vor angelegten Einkünften) gegen den Grundbedarf ohne Pflege nach Renten und Einkünften.
+    const careNeed = Math.max(0, (yearNeed?.total || 0) - (yearNeed?.homeFloor || 0));
+    const incomeAnnual = pensionResult.pensionAnnual + (fixedIncome?.total || 0);
+    const basicCoverage = { money: moneyAssets(portfolio), need: Math.max(0, effectiveBaseFloor - careNeed - incomeAnnual), careNeed,
+        p1Alive, p2Alive, deathThisYear: survivorYear?.deathThisYear === true, unmarried: Boolean(unmarried), lockedReserve: 0 };
+    // NK-2b: ungekappter Bedarf für die Heimregel (nicht aufzählbar, ändert kein Ergebnis).
+    Object.defineProperty(basicCoverage, 'rawNeed', { value: effectiveBaseFloor - careNeed - incomeAnnual, enumerable: false });
     let incomeLog = /** @type {import('../../../typcheck/rechenkern-integration').CreditFixedIncomeSurplus} */ (creditFixedIncomeSurplus)(portfolio, fixedIncome, pensionResult, effectiveBaseFloor,
         baseFlex * temporaryFlexFactor, inputs.dynamicFlex, inputs);
+    // KR-1c (NG-5): initialLiqStart bleibt der Stand am Jahresanfang vor dem Zins (year-market.js). Der Einkommensüberschuss
+    // kommt nach dem Zins in die Liquidität und verzinst sich wie jede Bewegung der Entscheidung erst im Folgejahr.
     if (incomeLog) {
         liquiditaet = portfolio.liquiditaet;
-        initialLiqStart = euros(liquiditaet);
         if (incomeLog.einkuenfte_gespart > 0) snapshotBalance(balanceTrace, depotTranchesAktien, depotTranchesGold, liquiditaet, 'after_income_surplus', { incomeSurplus: incomeLog.einkuenfte_gespart });
     }
     const {
@@ -89,7 +99,9 @@ export function decideYear(context) {
 
     const profilesAtDecision = personalProfiles(portfolio, inputs);
     // FR-43: Feste geplante Ausgaben stecken schon im Grundbedarf (year-preparation); hier nur einmalige.
-    const plannedExpense = simulatorPlannedExpenseYear(inputs, yearIndex, cumulativeInflationFactor).once;
+    const requestedExpense = simulatorPlannedExpenseYear(inputs, yearIndex, cumulativeInflationFactor).once;
+    const checkedExpenses = checkExpenseTotal(inputs, yearIndex, cumulativeInflationFactor, requestedExpense);
+    const plannedExpense = checkedExpenses?.total ?? requestedExpense;
     const { engineInput, detailedTranches } = /** @type {{engineInput:import('../../../typcheck/rechenkern').NormalizedEngineInput & {personalCashInvestmentCapacity?:number};detailedTranches:import('../../../typcheck/rechenkern').EngineTranche[]}} */ (buildSimulatorEngineInput({
         preserveInputShape: Boolean(replayCollector),
         inputs,
@@ -161,7 +173,7 @@ export function decideYear(context) {
             restoreEngineBoundaryPortfolio(portfolio, engineBoundaryPortfolio);
             return { outcome: /** @type {YearOutcome} */ (buildTechnicalErrorOutcome(
                 SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_EXECUTION_EXCEPTION,
-                `Die Simulations-Engine konnte das Jahr nicht berechnen (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_EXECUTION_EXCEPTION}).`,
+                `Der Rechenkern konnte das Jahr nicht berechnen (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_EXECUTION_EXCEPTION}).`,
                 cause
             )) };
         }
@@ -172,7 +184,7 @@ export function decideYear(context) {
             restoreEngineBoundaryPortfolio(portfolio, engineBoundaryPortfolio);
             return { outcome: /** @type {YearOutcome} */ (buildTechnicalErrorOutcome(
                 SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_ERROR,
-                `Die Simulations-Engine hat das Jahr abgewiesen (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_ERROR}).`,
+                `Der Rechenkern hat das Jahr abgewiesen (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_ERROR}).`,
                 result.error
             )) };
         }
@@ -184,7 +196,7 @@ export function decideYear(context) {
             restoreEngineBoundaryPortfolio(portfolio, engineBoundaryPortfolio);
             return { outcome: /** @type {YearOutcome} */ (buildTechnicalErrorOutcome(
                 SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID,
-                `Die Simulations-Engine lieferte ein unvollständiges Ergebnis (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID}).`,
+                `Der Rechenkern lieferte ein unvollständiges Ergebnis (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID}).`,
                 result
             )) };
         }
@@ -201,7 +213,7 @@ export function decideYear(context) {
         restoreEngineBoundaryPortfolio(portfolio, engineBoundaryPortfolio);
         return { outcome: /** @type {YearOutcome} */ (buildTechnicalErrorOutcome(
             SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID,
-            `Die Simulations-Engine lieferte keine eindeutige geplante Jahresentnahme (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID}).`,
+            `Der Rechenkern lieferte keine eindeutige geplante Jahresentnahme (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID}).`,
             null,
             {
                 contract: 'planned_annual_withdrawal',
@@ -222,7 +234,6 @@ export function decideYear(context) {
         incomeLog = /** @type {import('../../../typcheck/rechenkern-integration').CreditFixedIncomeSurplus} */ (creditFixedIncomeSurplus)(portfolio, fixedIncome, pensionResult, effectiveBaseFloor,
             decidedFlex, false, inputs, incomeLog);
         liquiditaet = portfolio.liquiditaet;
-        initialLiqStart = euros(liquiditaet);
         if (/** @type {NonNullable<typeof incomeLog>} */ (incomeLog).einkuenfte_gespart > creditedBeforeDecision) snapshotBalance(balanceTrace, depotTranchesAktien, depotTranchesGold, liquiditaet, 'after_income_surplus_final', {
             incomeSurplus: /** @type {NonNullable<typeof incomeLog>} */ (incomeLog).einkuenfte_gespart - creditedBeforeDecision });
     }
@@ -255,10 +266,10 @@ export function decideYear(context) {
         survivorYear, effectiveBaseFloor, baseFlex, temporaryFlexFactor, fixedIncome, currentState, portfolio,
         cumulativeInflationFactor, careP1, careP2, incomeLog, liquiditaet, initialLiqStart, rente1, rente2,
         renteSum, pensionAnnual, inflatedFloor, inflatedFlex, depotwertGesamt, profilesAtDecision,
-        plannedExpense, engineInput, detailedTranches, marketDataCurrentYear, marketDataHist, yearData,
+        plannedExpense, checkedExpenses, engineInput, detailedTranches, marketDataCurrentYear, marketDataHist, yearData,
         baseMinimumFlexAnnual, baseFlexBudgetAnnual, baseFlexBudgetRecharge, resolvedCapeRatio,
         guardrailPlanInputs, pflegeMeta, careFloorAddition, is3Bucket, unmarried, fullResult,
         engineBoundaryPortfolio, plannedWithdrawalResolution, balanceTrace, depotTranchesAktien,
-        depotTranchesGold, deathYearView
+        depotTranchesGold, deathYearView, basicCoverage
     } };
 }

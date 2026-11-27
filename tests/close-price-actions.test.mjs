@@ -22,7 +22,8 @@ for (const entry of ['month', 'annual']) {
     const gate = deferred();
     const actions = createClosePriceActions({ doc, guard, getModel: () => model, source: () => ({}), waitStartup: async () => {},
         publish: () => publications++, onReport: report => { model = { ...model, priceReport: report }; },
-        coordinator: async ({ operation, valid, progress }) => {
+        coordinator: async ({ operation, valid, progress, singleExchange }) => {
+            assertEqual(singleExchange, true, entry + ': Der Abschlussabruf verwendet das eingetragene Kürzel ohne Kurswahl');
             calls++; progress({ status: 'running', completed: 0, total: 1, results: [] });
             await gate.promise; operation.check(); assert(valid(), 'Aktueller Dialog besitzt weiterhin den Kursauftrag');
             operation.commit();

@@ -3,16 +3,19 @@ import { CONFIG } from '../balance/balance-config.js';
 import { createAnnualPeriodMetadata, preflightAnnualPeriod } from '../balance/balance-annual-period.js';
 import { readAnnualPlanRecord } from '../profile/annual-plan-record.js';
 import { readWealthHistory } from '../../types/wealth-history-contract.js';
-import { captureCurrentRecords, SnapshotArchive, SNAPSHOT_KINDS, validateSnapshot } from './snapshot-archive.js';
+import { SnapshotArchive, SNAPSHOT_KINDS, validateSnapshot } from './snapshot-archive.js';
 
 /**
  * @param {Pick<import("../../typcheck/datenvertraege.js").Snapshot, "kind"|"activeProfileId"|"createdAt">} point
  * @param {import("../../typcheck/shared-annual.js").EvidenceOptions} [options]
  * @returns {boolean} Passender Jahresvorabpunkt.
  */
-export function isAnnualClosePrePoint(point, { targetYear, activeId } = {}) {
+export function isAnnualClosePrePoint(point, { targetYear, activeId, scope } = {}) {
+    // JW-1a (Neon P2-4): Der Punkt gilt für den ganzen Haushalt, auch wenn ihn die andere Person angelegt hat.
+    // Ein nachgeholter Abschluss legt seinen Punkt später an als im Folgejahr.
     return point?.kind === SNAPSHOT_KINDS.annualClosePreMutation
-        && point.activeProfileId === activeId && new Date(point.createdAt).getFullYear() === targetYear + 1;
+        && (point.activeProfileId === activeId || Boolean(point.activeProfileId) && Boolean(scope?.ids?.includes(point.activeProfileId)))
+        && new Date(point.createdAt).getFullYear() > targetYear;
 }
 
 /** Nur passende Payloads lesen; ein Indexeintrag ist weder Vorabstand noch Erfolgsbeleg.
@@ -20,7 +23,7 @@ export function isAnnualClosePrePoint(point, { targetYear, activeId } = {}) {
  * @param {import("../../typcheck/shared-annual.js").SnapshotReadOptions} [options]
  * @returns Ergebnis der bestehenden Projektion.
  */
-export async function readAnnualCloseSnapshots({ archive = SnapshotArchive, targetYear, activeId,
+export async function readAnnualCloseSnapshots({ archive = SnapshotArchive, targetYear, activeId, scope,
     excludeSnapshotId, check = () => {} } = {}) {
     check();
     const points = await archive.listSnapshots();
@@ -28,11 +31,11 @@ export async function readAnnualCloseSnapshots({ archive = SnapshotArchive, targ
     if (!Array.isArray(points)) throw new Error('Das Jahresarchiv ist nicht lesbar.');
     const snapshots = [];
     for (const point of points.filter(point => point?.id !== excludeSnapshotId
-        && isAnnualClosePrePoint(point, { targetYear, activeId }))) {
+        && isAnnualClosePrePoint(point, { targetYear, activeId, scope }))) {
         const snapshot = validateSnapshot(await archive.readSnapshot(point.id));
         check();
-        if (snapshot.id !== point.id || !isAnnualClosePrePoint(snapshot, { targetYear, activeId })
-            || snapshot.createdAt !== point.createdAt || snapshot.records.rs_current_profile !== activeId) {
+        if (snapshot.id !== point.id || !isAnnualClosePrePoint(snapshot, { targetYear, activeId, scope })
+            || snapshot.createdAt !== point.createdAt || snapshot.records.rs_current_profile !== snapshot.activeProfileId) {
             throw new Error('Der Jahresvorabpunkt passt nicht zur Archivprüfung.');
         }
         snapshots.push(snapshot);
@@ -131,14 +134,11 @@ export function deriveAnnualCloseEvidence({ targetYear, scope, activeId, records
             source.ageAdjustedForInflation != null && source.ageAdjustedForInflation !== false
             || source.lastState?.lastInflationAppliedAtAge != null
             || Number(source.lastState?.cumulativeInflationFactor ?? 1) !== 1);
-        const captured = captureCurrentRecords({ keys: Object.keys(records), getItem: key => records[key] });
-        const points = snapshots.filter(point => isAnnualClosePrePoint(point, { targetYear, activeId }));
-        // Ein vollständig zurückgeladener Quellsatz ist wieder der offene Vorabstand,
-        // auch wenn ältere, abweichende Vorabpunkte im Archiv erhalten bleiben.
-        const restoredPrePoint = points.some(point => point.records?.rs_current_profile === activeId
-            && Object.keys(point.records).length === Object.keys(captured).length
-            && Object.keys(captured).every(key => point.records[key] === captured[key]));
-        const prePoint = points.length > 0 && !restoredPrePoint;
+        // JW-1a (Fable P2-2): Der eigene Vorabpunkt hält den Stand vor dem Abschluss fest. Hatte er keine
+        // Jahresmetadaten (Erstabschluss) und fehlen sie live ebenso, ist das Jahr offen, auch nach späteren
+        // Kurswrites. Unklar bleibt es nur, wenn live Metadaten fehlen, die der Punkt noch hatte.
+        const prePoint = snapshots.some(point => isAnnualClosePrePoint(point, { targetYear, activeId, scope })
+            && JSON.parse(point.records?.[CONFIG.STORAGE.LS_KEY] || '{}')?.annualPeriodMetadata != null);
         if (partial || prePoint || legacyMarkers) return {
             ...uncertain('Einzelne Anpassungsmarker oder ein Vorabpunkt belegen keinen vollständigen Jahresabschluss. Bitte den Jahresstand vor einer erneuten Anpassung klären.'),
             // Undatierte Altmarker und isolierte Vorabpunkte dürfen offen sein. Dagegen lässt sich eine

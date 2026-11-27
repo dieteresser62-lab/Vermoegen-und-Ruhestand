@@ -12,6 +12,13 @@ html[data-suite-page="manager"] .pv-heading h1, html[data-suite-page="manager"] 
 .pv-tabs { display: flex; flex-wrap: wrap; gap: 0.75rem; }
 .pv-context-pill { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.3em; min-height: 2.25rem; padding: 0.375rem 0.75rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
 .pv-context-pill strong { color: var(--text-main); font-weight: 500; }
+/* OP-3 Punkt 3: Die Kursanzeige ist der Knopf für die manuelle Kursaktualisierung; im Spielbereich reiner Text. */
+.pv-quote-refresh { display: inline-flex; align-items: center; gap: 0.3em; padding: 0; border: 0; border-radius: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.pv-quote-refresh svg { width: 1rem; height: 1rem; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.pv-quote-refresh:hover:not(:disabled) { color: var(--accent); text-decoration: underline; }
+.pv-quote-refresh:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--radius-sm); }
+.pv-quote-refresh:disabled { cursor: default; color: inherit; }
+.pv-quote-refresh[data-play-area="true"] svg { display: none; }
 .pv-quote-context .ds-info-button { width: 1.5rem; height: 1.5rem; min-width: 1.5rem; min-height: 1.5rem; padding: 0; }
 .pv-quote-context .ds-info-pop { left: 0; right: auto; }
 .pv-quote-context .ds-info-pop > span { display: block; }
@@ -193,6 +200,7 @@ html[data-suite-page="manager"] .pv-heading h1, html[data-suite-page="manager"] 
 .pv-tranche-choices > button { font-size: var(--balance-help); min-height: 2.75rem; }
 .pv-tranche-choices > button[hidden] { display: none; }
 .pv-depot-table .pv-quote-date { white-space: normal; }
+.pv-quote-exchange-time { white-space: nowrap; }
 
 /* Verkaufsschritte und Personenverwaltung behalten native Formularfelder. */
 .pv-sale-progress { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); list-style: none; gap: 1rem; margin-block: 1rem; padding: 0; font-size: var(--balance-help); }
@@ -206,9 +214,6 @@ html[data-suite-page="manager"] .pv-heading h1, html[data-suite-page="manager"] 
 .personen-vermoegen-page .pv-people-dialog { max-width: 47.5rem; width: calc(100% - 2rem); padding: 1.75rem 2rem; }
 .pv-person-row { display: flex; align-items: start; justify-content: space-between; gap: 1rem; padding-block: 1rem; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
 .pv-person-row .reconciliation-actions { align-items: start; flex-wrap: nowrap; }
-.pv-membership { display: grid; gap: var(--space-1); max-width: 220px; }
-.pv-person-row label { display: flex; align-items: center; gap: 0.5rem; font-size: var(--balance-help); }
-.pv-person-row input { width: auto; }
 .pv-sales { padding: 1.5rem; }
 .pv-sales h2 { font-family: var(--font-serif); font-size: var(--balance-h2); font-weight: 500; }
 .personen-vermoegen-page .ds-note[data-kind="error"] { color: var(--bad); background: var(--bad-soft); }
@@ -350,7 +355,7 @@ html[data-suite-page="manager"] .pv-heading h1, html[data-suite-page="manager"] 
 .pv-plan-scope { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-block: .75rem; }
 #haushalt-plan:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
 .pv-plan-scope, .pv-plan-note { font-size: var(--text-base); color: var(--text-muted); }
-#haushalt-plan, #managerDepotTitle, #managerHousehold { scroll-margin-block-start: 1rem; }
+#haushalt-plan, #managerDepotTitle, #managerHousehold { scroll-margin-block-start: calc(var(--suite-inhalt-oben) + 1rem); }
 
 
 .pv-plan-comparison-card { margin: 0; padding: var(--space-4); }
@@ -379,15 +384,16 @@ html[data-suite-page="manager"] .pv-heading h1, html[data-suite-page="manager"] 
 .manager-wealth-history .history-axis, .manager-wealth-history .history-event { font-size: var(--balance-help); }
 .manager-wealth-history .history-legend { list-style: none; padding: 0; margin: var(--space-2) 0; }
 .manager-history-group-title { margin: 0; font: 500 var(--balance-h3)/1.4 var(--font-serif); }
-.manager-daily-history { display: grid; gap: var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--border); }
-.manager-daily-history .wealth-metrics { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.manager-daily-history { display: grid; gap: var(--space-2); }
+.manager-daily-history .wealth-metrics { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+/* OP-2 (Punkt 1): Bei schmalen PC-Fenstern stehen die sechs Kacheln in zwei Zeilen zu je drei (Grenze wie bei den festen Einkünften). */
+@media (max-width: 1599px) {
+    /* Nachtrag 2 (P3-1): Trennlinien wie in der ersten Zeile; die zweite Zeile beginnt ohne Linie am Rahmen und hat oben eine Linie. */
+    .manager-daily-history .wealth-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
+    .manager-daily-history .wealth-metrics > .ds-kpi:nth-child(3n + 1) { border-inline-start: 0; }
+    .manager-daily-history .wealth-metrics > .ds-kpi:nth-child(n + 4) { border-block-start: 1px solid var(--border); }
+}
 .manager-daily-history .history-measurement { display: inline; }
-.manager-daily-allocation { display: grid; gap: var(--space-2); color: var(--text-muted); font-size: var(--text-base); }
-.manager-daily-allocation b { font: 500 var(--value-md)/1.4 var(--font-serif); color: var(--text-main); font-variant-numeric: tabular-nums; }
-.manager-closure-key { color: var(--accent); }
-.manager-wealth-history .history-closure path { stroke: var(--accent); stroke-width: 2; }
-.manager-wealth-history .history-closure-annual path { fill: var(--accent); }
-.manager-wealth-history .history-closure-manual path { fill: var(--surface); }
 
 .manager-wealth-chart .wealth-history-svg { height: 100%; }
 
@@ -544,7 +550,6 @@ details[open] > summary .pv-disclosure-action > span:last-child { display: inlin
 /* Schmale Personenzeile und Tagesgeld als vorhandener Profilwert. */
 .pv-person-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-1) 2px 0; }
 .pv-person-toolbar p { margin: 0; font-size: var(--text-base); }
-.pv-person-toolbar .ds-button { min-height: 36px; white-space: nowrap; }
 .pv-depot .stats > .pv-total-metric { background: var(--surface-sunken); border-radius: var(--radius-md) 0 0 var(--radius-md); }
 .pv-depot .stats :is(.pv-total-metric, .pv-cash-metric) .stat-value { font-size: var(--value-lg); }
 .pv-depot .stats .stat-label { min-height: 30px; display: flex; align-items: center; }
@@ -635,8 +640,10 @@ details[open] > summary .pv-disclosure-action > span:last-child { display: inlin
 .pv-inheritance-share label { flex: 1; margin: 0; }
 .pv-inheritance-share .ds-unit-frame { width: 140px; }
 .pv-testament { display: grid; gap: var(--space-2); margin-block: var(--space-3); }
+.pv-testament-limits { margin: 0; }
 .pv-testament .pv-inheritance-share > input { width: 140px; flex: 0 0 140px; }
-.pv-testament > select { width: 100%; min-height: 40px; background: var(--surface); }
+.pv-testament-home-fields { display: contents; }
+.pv-testament > select, .pv-testament-home-fields > select { width: 100%; min-height: 40px; background: var(--surface); }
 .pv-inheritance-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); padding-block: var(--space-3); border-top: 1px solid var(--border); }
 .pv-inheritance-preview-head { display: flex; align-items: start; gap: var(--space-2); margin-bottom: var(--space-3); }
 .pv-inheritance-summary { flex: 1; font: 400 var(--text-base)/var(--leading-body) var(--font-sans); }
@@ -754,13 +761,6 @@ details[open] > summary .pv-disclosure-action > span:last-child { display: inlin
 .pv-care-allowance { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .pv-care-foot { display: flex; align-items: center; gap: var(--space-2); }
 #managerCarePanel .pv-editor-save-hint { margin: 0; }
-/* UR-1: Erfasste Vermögensstände als Aufklappzeile; die Tabelle scrollt nach etwa neun Zeilen im Kasten, die Kopfzeile bleibt stehen. */
-.manager-wealth-records { margin-top: var(--space-4); }
-.manager-wealth-records[hidden], .manager-wealth-records-body[hidden] { display: none; }
-.manager-wealth-records-body { border-top: 1px solid var(--border); }
-.personen-vermoegen-page .manager-wealth-records-body > .ds-table-scroll { max-height: 452px; overflow-y: auto; border: 0; border-radius: 0 0 var(--radius-md) var(--radius-md); }
-.manager-wealth-records-body thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-sunken); }
-.manager-wealth-records-body caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /* UR-2: Pflegegeld je Grad und Heim-Bestandteile als Felder im Reiter Pflege. */
 .pv-care-record-fields { display: grid; gap: var(--space-4); min-width: 0; }
 .pv-care-heim-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }

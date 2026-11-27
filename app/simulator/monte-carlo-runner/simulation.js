@@ -10,7 +10,7 @@ import { buildMonteCarloAggregates } from '../monte-carlo-aggregates.js';
  * Erwartet alle UI-Daten als Parameter und liefert Aggregationen sowie Szenario-Metadaten zurück.
  * Fortschritts-Updates und Szenario-Logging werden über Callbacks injiziert, um maximale Trennung zu erreichen. */
 /** @param {import('../../../typcheck/rechenkern').MonteCarloChunkOptions & {scenarioAnalyzer?:ScenarioAnalyzer|null}} options */
-export async function runMonteCarloSimulation({ inputs, monteCarloParams, widowOptions, useCapeSampling, onProgress = () => { }, scenarioAnalyzer = null, engine = null }) {
+export async function runMonteCarloSimulation({ inputs, monteCarloParams, widowOptions, useCapeSampling, onProgress = () => { }, scenarioAnalyzer = null, engine = null, collectPersonOutcomes = false }) {
     const normalizedParameters = normalizeMonteCarloParametersV1(monteCarloParams, {
         inputs,
         historicalRecordCount: annualData.length || null
@@ -26,6 +26,7 @@ export async function runMonteCarloSimulation({ inputs, monteCarloParams, widowO
         onProgress,
         engine,
         collectWealthFan: true,
+        collectPersonOutcomes,
         runRange: { start: 0, count: anzahl }
     });
 
@@ -48,10 +49,10 @@ export async function runMonteCarloSimulation({ inputs, monteCarloParams, widowO
         totals: chunk.totals,
         lists: chunk.lists,
         allRealWithdrawalsSample: chunk.allRealWithdrawalsSample,
-        wealthFan: chunk.wealthFan, displayHomeValueFan: chunk.displayHomeValueFan,
+        wealthFan: chunk.wealthFan, displayHomeValueFan: chunk.displayHomeValueFan, careAid: chunk.careAid || null, droppedExpense: chunk.droppedExpense || null,
         pathSummaries: chunk.pathSummaries,
         pathMissingness: chunk.pathMissingness
-    }), chunk.technicalInventory);
+    }), chunk.technicalInventory, chunk.personOutcomeCounts);
 
     onProgress(100);
 

@@ -14,14 +14,13 @@ const originalFlush = PersistenceFacade.flush;
 const lot = { schemaVersion: 2, trancheId: 'person-a-lot', name: 'Synthetischer Bestand A', shares: 2,
     purchasePrice: 80, currentPrice: 120, ticker: 'TEST.DE', isin: '', purchaseDate: '',
     category: 'equity', type: 'aktien_neu', tqf: 0.3, taxExempt: false, notes: '' };
-async function setup({ outside = false, extraData = {} } = {}) {
+async function setup({ single = false, extraData = {} } = {}) {
     const doc = createTranchenPageDom();
     addManagerDialogDom(doc);
-    for (const id of ['managerWealthHistory', 'managerWealthTitle', 'managerWealthChart', 'managerWealthContext', 'managerWealthMetrics', 'managerWealthTable', 'managerWealthHint', 'managerWealthPersonHint', 'managerWealthLegend', 'managerWealthDailyNote', 'managerWealthStatus', 'managerCaptureWealthBtn']) doc.register(new MockElement(id));
-    doc.getElementById('managerWealthPersonHint').innerHTML = '<a href="#verlauf" data-manager-view="history" data-manager-history-scope="household">Zur Haushaltsansicht →</a>';
+    for (const id of ['managerWealthHistory', 'managerWealthTitle', 'managerWealthChart', 'managerWealthContext', 'managerWealthLegend', 'managerWealthDailyNote']) doc.register(new MockElement(id));
     for (const id of ['managerProfileRecovery', 'suiteProfileContext']) doc.register(new MockElement(id));
     doc.getElementById('managerProfileRecovery').hidden = true;
-    for (const id of ['managerBirthSupplement', 'managerBirthDate', 'managerBirthApply', 'managerBirthSuggestion', 'managerBirthError', 'profilePersonDateStatus', 'managerPensionStatus', 'managerPersonSummary', 'managerAssetsSummary', 'managerCareSummary', 'managerCardsToggleAll', ...['Person', 'Assets', 'Care'].flatMap(card => [`manager${card}Toggle`, `manager${card}Body`])]) doc.register(new MockElement(id));
+    for (const id of ['managerBirthSupplement', 'managerBirthDate', 'managerBirthApply', 'managerBirthSuggestion', 'managerBirthError', 'profilePersonDateStatus', 'managerPensionStatus', 'managerPersonSummary', 'managerAssetsSummary', 'managerCareSummary', ...['Person', 'Assets', 'Care'].flatMap(card => [`manager${card}Toggle`, `manager${card}Body`])]) doc.register(new MockElement(id));
     installGlobals(doc, createLocalStorageMock());
     for (const id of ['navigationGuardDialog', 'navigationGuardStay', 'navigationGuardLeave', 'navigationGuardTitle', 'navigationGuardDescription']) doc.register(new MockElement(id));
     const dialog = doc.getElementById('navigationGuardDialog');
@@ -48,12 +47,13 @@ async function setup({ outside = false, extraData = {} } = {}) {
     await PersistenceFacade.init();
     const registry = { version: 1, profiles: {
         a: { meta: { id: 'a', name: 'Person A' }, data: { profile_person_schema_version: '1', depot_tranchen: JSON.stringify([lot]), profile_tagesgeld: '100', profile_aktuelles_alter: '67', ...extraData } },
-        b: { meta: { id: 'b', name: 'Person B', belongsToHousehold: !outside }, data: { profile_person_schema_version: '1', depot_tranchen: JSON.stringify([{ ...lot, trancheId: 'person-b-lot', name: 'Synthetischer Bestand B', currentPrice: 90 }]), profile_tagesgeld: '200', profile_aktuelles_alter: '64' } }
+        b: { meta: { id: 'b', name: 'Person B' }, data: { profile_person_schema_version: '1', depot_tranchen: JSON.stringify([{ ...lot, trancheId: 'person-b-lot', name: 'Synthetischer Bestand B', currentPrice: 90 }]), profile_tagesgeld: '200', profile_aktuelles_alter: '64' } }
     } };
+    if (single) delete registry.profiles.b;
     for (const profile of Object.values(registry.profiles)) profile.data = migrateIncomeRecord(profile.data);
     for (const [key, value] of Object.entries(registry.profiles.a.data)) persistenceStorage.setItem(key, value);
     persistenceStorage.setItem('rs_profiles_v1', JSON.stringify(registry));
-    const scopes = [...new Map(Object.keys(registry.profiles).map(id => { const scope = registry.profiles[id].meta.belongsToHousehold === false ? planScope('single', [id]) : planScope('household', Object.keys(registry.profiles).filter(member => registry.profiles[member].meta.belongsToHousehold !== false)); return [scope.key, scope]; })).values()];
+    const scopes = [planScope('household', Object.keys(registry.profiles))];
     persistenceStorage.setItem(HOUSEHOLD_PLAN_KEY, buildPlanRecord(null, scopes.map(scope => ({ scope, values: structuredClone(PLAN_DEFAULTS) }))).raw);
     persistenceStorage.setItem('rs_current_profile', 'a'); persistenceStorage.setItem('rs_active_profile', 'a');
     await originalFlush.call(PersistenceFacade);
@@ -112,16 +112,14 @@ try {
     {
         const { doc, registry } = await setup();
         registry.profiles.c = { meta: { id: 'c', name: 'Clara „C“' }, data: { ...registry.profiles.a.data } };
-        registry.profiles.outside = { meta: { id: 'outside', name: 'Außen < & >', belongsToHousehold: false }, data: { ...registry.profiles.a.data } };
-        registry.profiles = { outside: registry.profiles.outside, a: registry.profiles.a, b: registry.profiles.b, c: registry.profiles.c };
         registry.profiles.a.meta.name = 'Anna & Änne'; registry.profiles.b.meta.name = 'Béla <B>';
         persistenceStorage.setItem('rs_profiles_v1', JSON.stringify(registry));
-        const scopes = [planScope('household', ['a', 'b', 'c']), planScope('single', ['outside'])];
+        const scopes = [planScope('household', ['a', 'b', 'c'])];
         persistenceStorage.setItem(HOUSEHOLD_PLAN_KEY, buildPlanRecord(null, scopes.map(scope => ({ scope, values: structuredClone(PLAN_DEFAULTS) }))).raw);
         await originalFlush.call(PersistenceFacade);
         initTranchenManagerPage({ profileId: 'a' });
         const nav = doc.getElementById('managerSectionNav');
-        assertEqual(nav.children.map(tab => tab.dataset.managerProfile || tab.dataset.managerView).join(','), 'plan,care,a,b,c,outside,history', 'Ansichtsreiter ordnen Haushalt stabil vor einer zuerst registrierten Außenperson');
+        assertEqual(nav.children.map(tab => tab.dataset.managerProfile || tab.dataset.managerView).join(','), 'plan,care,a,b,c,history', 'Ansichtsreiter folgen der Registryreihenfolge');
         assert(nav.children[2].textContent.includes('Anna & Änne') && nav.children[3].textContent.includes('Béla <B>'), 'Sonderzeichennamen werden im echten Reiter-DOM als Namen dargestellt');
         assertEqual(await choose(doc, 'b'), true, 'Vor dem nächsten Start lässt sich Person 2 bestätigt öffnen');
         globalThis.window.location.hash = '#verlauf';
@@ -129,7 +127,7 @@ try {
         await startTranchenManagerPage();
         assertEqual(getManagerView(doc).profileId, 'b', 'Frischer Verlaufseinstieg erhält übergebenes Profil B');
         assert(doc.getElementById('managerWealthContext').textContent.includes('Béla'), 'Verlaufskarte erneuert den tatsächlichen Profilbezug');
-        assertEqual(doc.getElementById('managerCaptureWealthBtn').listeners.click.length, 1, 'Produktiver Seitenstart bindet den Captureknopf genau einmal');
+        assertEqual(doc.getElementById('managerCaptureWealthBtn'), null, 'VS-2: Verlauf hat keinen Knopf „Stand jetzt erfassen“ mehr');
         globalThis.window.location.hash = '';
         await startTranchenManagerPage();
         assertEqual(getManagerView(doc).profileId, 'a', 'Frischer Start ohne Ziel öffnet Person 1 nach zuvor aktiver Person 2');
@@ -144,7 +142,7 @@ try {
         assertEqual(nav.children.filter(tab => tab.getAttribute('tabindex') === '0').length, 1, 'Rerender erhält genau einen roving Tabstopp');
     }
     {
-        const { doc, registry } = await setup({ outside: true });
+        const { doc, registry } = await setup();
         delete registry.profiles.a;
         registry.profiles.b.meta.name = 'Solo & Name';
         persistenceStorage.setItem('rs_profiles_v1', JSON.stringify(registry));
@@ -154,9 +152,9 @@ try {
         initTranchenManagerPage({ profileId: 'b' });
         await startTranchenManagerPage();
         const tabs = doc.getElementById('managerSectionNav').children;
-        assertEqual(tabs.length, 4, 'Einzelprofil ohne Haushalt erhält Plan, Pflege, Person und Verlauf');
-        assertEqual(tabs[0].textContent, 'Plan · Solo & Name', 'Einzelplanreiter verwendet denselben Profilnamen');
-        assertEqual(getManagerView(doc).profileId, 'b', 'Einzelprofil startet in seiner Personenansicht');
+        assertEqual(tabs.length, 4, 'Einpersonenhaushalt erhält Plan, Pflege, Person und Verlauf');
+        assertEqual(tabs[0].textContent, 'Haushalt & Plan', 'Planreiter heißt auch bei einer Person Haushalt & Plan');
+        assertEqual(getManagerView(doc).profileId, 'b', 'Einpersonenhaushalt startet in seiner Personenansicht');
     }
     {
         const { doc, backend } = await setup();
@@ -212,20 +210,12 @@ try {
         assertEqual(getManagerView(doc).kind, 'history', 'Verlaufsreiter öffnet die eigene Ansicht');
         assert(!historyPanel.hidden && doc.getElementById('managerPersonPanel').hidden && doc.getElementById('managerPlanPanel').hidden, 'Verlauf ist das einzige sichtbare Panel');
         assert(doc.getElementById('managerHistorySwitch').innerHTML.includes('Haushalt'), 'Verlauf enthält die Haushaltswahl');
-        doc.getElementById('managerWealthStatus').textContent = 'Vermögensstand gesichert';
         await chooseHistory(doc, 'b');
         assertEqual(backend.get('rs_current_profile'), 'b', 'Verlaufsumschalter wechselt das dauerhafte aktive Profil');
         assertEqual(getManagerView(doc).historyScope, 'person', 'Personenwahl bleibt im Verlauf bei der Person');
-        assertEqual(doc.getElementById('managerWealthStatus').textContent, '', 'Personenwechsel leert die Statusmeldung');
-        doc.getElementById('managerWealthStatus').textContent = 'Vermögensstand gesichert';
         await chooseHistory(doc);
         assertEqual(getManagerView(doc).historyScope, 'household', 'Haushaltswahl zeigt die Haushaltslinie');
-        assertEqual(doc.getElementById('managerWealthStatus').textContent, '', 'Ansichtswechsel leert die Statusmeldung');
         assertEqual(backend.get('rs_current_profile'), 'b', 'Haushaltswahl erhält das aktive Profil');
-        await chooseHistory(doc, 'b');
-        await chooseHistory(doc, null, 'managerWealthPersonHint');
-        assertEqual(getManagerView(doc).historyScope, 'household', 'Verweis im Personenhinweis öffnet die Haushaltsansicht');
-        assertEqual(backend.get('rs_current_profile'), 'b', 'Hinweislink erhält das aktive Profil');
         for (const id of ['a', 'b', null]) {
             await selectManagerView({ kind: 'plan', profileId: 'b' });
             await chooseHistory(doc, id, 'managerHousehold');
@@ -291,7 +281,7 @@ try {
         const after = Object.fromEntries(backend), registry = JSON.parse(after.rs_profiles_v1);
         assertEqual(after.profile_geburtsdatum, '1960-02-29', 'Nur gewählte Person erhält Geburtsdatum');
         assertEqual(registry.profiles.a.data.profile_geburtsdatum, after.profile_geburtsdatum, 'Livebestand und Registry sind bestätigt identisch');
-        assertEqual(JSON.stringify(registry.profiles.b), JSON.stringify(JSON.parse(before.rs_profiles_v1).profiles.b), 'Außenprofilbytes bleiben erhalten');
+        assertEqual(JSON.stringify(registry.profiles.b), JSON.stringify(JSON.parse(before.rs_profiles_v1).profiles.b), 'Profilbytes der zweiten Person bleiben erhalten');
         for (const [key, raw] of Object.entries(before)) if (!['profile_geburtsdatum', 'rs_profiles_v1'].includes(key)) assertEqual(after[key], raw, 'Datumsergänzung erhält Backendrecord ' + key);
         const data = { ...registry.profiles.a.data }; delete data.profile_geburtsdatum;
         assertEqual(Object.keys(data).sort().join(','), Object.keys(originProfile.data).sort().join(','), 'Datumsergänzung legt keine Vermögens-/Historienkeys an');
@@ -299,15 +289,13 @@ try {
         assert(doc.getElementById('managerBirthSupplement').hidden && doc.activeElement.id === 'profileGeburtsdatum', 'Bestätigte Ergänzung fokussiert geöffnete Personkarte');
         assertEqual(doc.getElementById('managerPersonToggle').getAttribute('aria-expanded'), 'true', 'Erfolgsfokus steht in einer geöffneten Region');
         assert(!doc.getElementById('managerPersonBody').hidden && doc.getElementById('managerAssetsBody').hidden && doc.getElementById('managerCareBody').hidden, 'Geburtstagsergänzung öffnet genau die Personregion');
-        assertEqual(doc.getElementById('managerCardsToggleAll').getAttribute('aria-expanded'), 'false', 'Geburtstagsergänzung hält Gesamt-ARIA im gemischten Zustand');
-        assertEqual(doc.getElementById('managerCardsToggleAll').textContent, '▸ Alle Details zeigen', 'Geburtstagsergänzung aktualisiert Gesamttext anhand Regionen');
         const frozen = JSON.stringify(Object.fromEntries(backend));
-        await doc.getElementById('managerAssetsToggle').click(); await doc.getElementById('managerCardsToggleAll').click();
+        await doc.getElementById('managerAssetsToggle').click(); await doc.getElementById('managerCareToggle').click();
         await originalFlush.call(PersistenceFacade);
         assertEqual(JSON.stringify(Object.fromEntries(backend)), frozen, 'Reines Klappen ändert keine Backendbytes');
     }
     {
-        const { doc, backend } = await setup({ outside: true });
+        const { doc, backend } = await setup();
         persistenceStorage.setItem('rs_current_profile', 'b');
         await originalFlush.call(PersistenceFacade);
         doc.getElementById('managerBirthDate').value = '1958-03-14';
@@ -350,18 +338,18 @@ try {
     }
     console.log('Lesende Kartenprojektion und vollständiger Personenwechsel');
     {
-        const { doc, registry } = await setup({ outside: true });
+        const { doc, registry } = await setup();
         const before = persistenceStorage.getItem('rs_profiles_v1');
         const projection = projectManagerProfiles(registry, 'a');
-        assertEqual(projection.household.assets, 340, 'Vermögen zählt Tranchenmarktwert plus Tagesgeld');
-        assertEqual(projection.household.gain, 80, 'Buchgewinn bezieht sich ausschließlich auf den Bestand');
-        assertEqual(projection.profiles.length, 2, 'Auch Nichtmitglied besitzt einen Reiter');
+        assertEqual(projection.household.assets, 720, 'Vermögen zählt Tranchenmarktwert plus Tagesgeld beider Personen');
+        assertEqual(projection.household.gain, 100, 'Buchgewinn bezieht sich ausschließlich auf den Bestand');
+        assertEqual(projection.profiles.length, 2, 'Jede Person besitzt einen Reiter');
         assertEqual(persistenceStorage.getItem('rs_profiles_v1'), before, 'Kartenprojektion hat keine Speicherwirkung');
         renderManagerProfiles(doc, projection);
         assertEqual(persistenceStorage.getItem('rs_profiles_v1'), before, 'Kartenrendern hat keine Speicherwirkung');
         const switchedProjection = projectManagerProfiles(registry, 'b');
         assertEqual(switchedProjection.profiles[0].householdRole, 'Hauptprofil im Haushalt', 'Hauptprofilbezug ist von aktiver Auswahl unabhängig');
-        assertEqual(switchedProjection.profiles[1].householdRole, 'Außerhalb Haushalt', 'Nichtmitglied wird nicht durch Aktivierung zum Hauptprofil');
+        assertEqual(switchedProjection.profiles[1].householdRole, 'Partnerprofil', 'Zweite Person wird nicht durch Aktivierung zum Hauptprofil');
         const invalid = structuredClone(registry); invalid.profiles.a.data.profile_tagesgeld = 'kaputt';
         assertEqual(projectManagerProfiles(invalid, 'a').household, null, 'Ungültige Werte ergeben keine scheinbar vollständige Haushaltssumme');
         const invalidFallback = structuredClone(registry);
@@ -369,12 +357,9 @@ try {
         invalidFallback.profiles.a.data[CONFIG.STORAGE.LS_KEY] = JSON.stringify({ inputs: { tagesgeld: 'kaputt' } });
         assertEqual(projectManagerProfiles(invalidFallback, 'a').household, null, 'Ungültiger bestehender Inputfallback wird nicht zur Vollsumme normalisiert');
         const overflow = structuredClone(registry);
-        for (const profile of Object.values(overflow.profiles)) {
-            profile.meta.belongsToHousehold = true;
-            profile.data.profile_tagesgeld = String(Number.MAX_VALUE);
-        }
+        for (const profile of Object.values(overflow.profiles)) profile.data.profile_tagesgeld = String(Number.MAX_VALUE);
         assertEqual(projectManagerProfiles(overflow, 'a').household, null, 'Überlauf der Haushaltssumme bleibt ausdrücklich unvollständig');
-        assert(doc.getElementById('managerHousehold').innerHTML.includes('Außerhalb Haushalt'), 'Haushaltsmitgliedschaft ist vom aktiven Profil getrennt');
+        assert(doc.getElementById('managerHousehold').innerHTML.includes('Partnerprofil'), 'Haushaltsrolle ist vom aktiven Profil getrennt');
     }
     {
         const { doc, backend, holds, hold, release } = await setup();
@@ -413,9 +398,23 @@ try {
         assertEqual(backend.get('rs_profiles_v1'), before, 'Öffnen und Abbruch bleiben schreibfrei');
     }
     {
-        const { doc, backend, holds, hold, release } = await setup({ outside: true });
+        const { doc, backend, holds, hold, release } = await setup();
         await doc.getElementById('managePeopleBtn').click();
-        const inactiveBefore = JSON.stringify(JSON.parse(backend.get('rs_profiles_v1')).profiles.b.data);
+        const rowAction = (kind, id) => {
+            const button = new MockElement('', 'button'); button.dataset.personAction = kind; button.dataset.personId = id;
+            return doc.getElementById('managerPeopleList').listeners.click[0]({ target: button });
+        };
+        rowAction('rename', 'b'); doc.getElementById('managerPersonName').value = 'Person B neu';
+        doc.getElementById('managerPersonName').dispatchEvent({ type: 'input' });
+        assert((window.listeners.beforeunload || []).includes(getPageNavigationGuard(doc).beforeUnload), 'Namensentwurf registriert den Navigationsschutz');
+        await doc.getElementById('managerPersonRenameBtn').click();
+        assertEqual(JSON.parse(backend.get('rs_profiles_v1')).profiles.b.meta.name, 'Person B neu', 'Personendialog benennt das gewählte Profil um');
+        assertEqual(getPageNavigationGuard(doc).reasons().length, 0, 'Gespeichertes Umbenennen hinterlässt keinen Schutzgrund im offenen Dialog');
+        assertEqual((window.listeners.beforeunload || []).includes(getPageNavigationGuard(doc).beforeUnload), false, 'Nach gespeichertem Umbenennen ist kein beforeunload-Navigationsschutz registriert');
+        assertEqual(await completePageDialog(rowAction('delete', 'b'), doc, 'cancel'), false, 'Abgelehnte Löschbestätigung erhält die Person');
+        assertEqual(await completePageDialog(rowAction('delete', 'b'), doc), true, 'Bestätigte Löschung entfernt die zweite Person');
+        assertEqual(JSON.parse(backend.get('rs_profiles_v1')).profiles.b, undefined, 'Gelöschte Person ist dauerhaft entfernt');
+        // Nach dem Löschen ist Platz für eine zweite Person.
         input(doc, 'profileTagesgeld', '333');
         doc.getElementById('managerPersonName').value = 'Neue Person';
         hold();
@@ -433,33 +432,14 @@ try {
         assertEqual(window.tranchen.length, 0, 'Neue Person erbt keinen alten Tranchenbestand');
         assertEqual(String(doc.getElementById('profileTagesgeld').value), '0', 'Neue Person erhält neue Formularwerte');
         assertEqual(getPageNavigationGuard(doc).reasons().length, 0, 'Anlegen bestätigt neue Baselines ohne alte Entwürfe');
-        assertEqual(JSON.stringify(JSON.parse(backend.get('rs_profiles_v1')).profiles.b.data), inactiveBefore, 'Verwaltung schreibt keine inaktiven Finanzwerte');
-        assertEqual(await choose(doc, 'b'), true, 'Reiterwechsel nach Anlegen lädt bestehenden Zielbestand');
         await doc.getElementById('managePeopleBtn').click();
-        const rowAction = (kind, id) => {
-            const button = new MockElement('', 'button'); button.dataset.personAction = kind; button.dataset.personId = id;
-            return doc.getElementById('managerPeopleList').listeners.click[0]({ target: button });
-        };
-        rowAction('rename', 'b'); doc.getElementById('managerPersonName').value = 'Person B neu';
-        doc.getElementById('managerPersonName').dispatchEvent({ type: 'input' });
-        assert((window.listeners.beforeunload || []).includes(getPageNavigationGuard(doc).beforeUnload), 'Namensentwurf registriert den Navigationsschutz');
-        await doc.getElementById('managerPersonRenameBtn').click();
-        assertEqual(JSON.parse(backend.get('rs_profiles_v1')).profiles.b.meta.name, 'Person B neu', 'Personendialog benennt das gewählte Profil um');
-        assertEqual(getPageNavigationGuard(doc).reasons().length, 0, 'Gespeichertes Umbenennen hinterlässt keinen Schutzgrund im offenen Dialog');
-        assertEqual((window.listeners.beforeunload || []).includes(getPageNavigationGuard(doc).beforeUnload), false, 'Nach gespeichertem Umbenennen ist kein beforeunload-Navigationsschutz registriert');
-        const member = new MockElement('', 'input'); member.dataset.personMembership = 'b'; member.checked = false;
-        await completePageDialog(doc.getElementById('managerPeopleList').listeners.change[0]({ target: member }), doc);
-        assertEqual(JSON.parse(backend.get('rs_profiles_v1')).profiles.b.meta.belongsToHousehold, false, 'Personendialog setzt die bestehende Haushaltsmitgliedschaft');
-        assertEqual(await completePageDialog(rowAction('delete', 'b'), doc, 'cancel'), false, 'Abgelehnte Löschbestätigung erhält die Person');
-        assertEqual(await completePageDialog(rowAction('delete', 'b'), doc), true, 'Bestätigte Löschung lädt den Speicherfallback');
+        assertEqual(await completePageDialog(rowAction('delete', createdId), doc), true, 'Bestätigte Löschung der aktiven Person lädt den Speicherfallback');
         assertEqual(window.tranchen[0].trancheId, lot.trancheId, 'Löschen des aktiven Profils lädt tatsächlich den Fallbackbestand');
         assertEqual(String(doc.getElementById('profileTagesgeld').value), '333', 'Fallback lädt seine eigenen Profilwerte');
-        assertEqual(await choose(doc, createdId), true, 'Reiterwechsel nach Löschen bleibt vollständig');
-        assertEqual(window.tranchen.length, 0, 'Reiter nach Löschen zeigt keine alten Bestände');
-        assertEqual(getPageNavigationGuard(doc).reasons().length, 0, 'Nach Löschen und Wechsel bleiben neue Baselines sauber');
+        assertEqual(getPageNavigationGuard(doc).reasons().length, 0, 'Nach Löschen bleiben neue Baselines sauber');
     }
     {
-        const { doc, backend } = await setup({ outside: true });
+        const { doc, backend } = await setup({ single: true });
         await doc.getElementById('managePeopleBtn').click();
         const submit = () => doc.getElementById('managerPeopleForm').listeners.submit[0]({ preventDefault() {} });
         const before = backend.get('rs_profiles_v1');
@@ -497,15 +477,20 @@ try {
         const { doc, backend } = await setup();
         const requests = [];
         globalThis.fetch = url => new Promise(resolve => requests.push({ url, resolve }));
-        const batch = doc.getElementById('updatePricesBtn').click();
-        await waitFor(() => requests.length === 1, 'Kursjob gestartet');
+        const batch = doc.getElementById('managerQuoteRefresh').click();
+        // KF-1: Ein .DE-Tageskurs fragt Xetra und die drei Zusatzbörsen ab.
+        await waitFor(() => requests.length === 4, 'Kursjob gestartet');
+        const symbols = requests.map(request => String(request.url).match(/[?&]symbol=([^&]+)/)?.[1]);
+        assertEqual(symbols.join(','), 'TEST.DE,TEST.SG,TEST.DU,TEST.MU', 'Kursjob fragt Xetra und die drei Zusatzbörsen ab');
         let ended = false;
         const switching = choose(doc, 'b').then(value => { ended = true; return value; });
         await waitFor(() => doc.getElementById('navigationGuardDialog').open, 'Kursabbruchentscheidung geöffnet');
         await answer(doc, true);
         for (let i = 0; i < 12; i++) await Promise.resolve();
         assertEqual(ended, false, 'Wechsel wartet auch bei ignoriertem AbortSignal auf Jobende');
-        requests[0].resolve({ ok: true, json: async () => ({ symbol: 'TEST.DE', price: 999, currency: 'EUR', asOf: Math.floor(Date.now() / 1000), source: 'synthetic' }) });
+        // Alle gehaltenen Abfragen antworten spät mit einem gültigen Kurs; keiner darf übernommen werden.
+        requests.forEach((request, index) => request.resolve({ ok: true, json: async () => ({ symbol: symbols[index], price: 999, currency: 'EUR',
+            asOf: Math.floor(Date.now() / 1000), source: 'synthetic' }) }));
         await batch;
         assertEqual(await switching, true, 'Personenwechsel nach bestätigtem Kursabbruch');
         assertEqual(window.tranchen[0].currentPrice, 90, 'Keine späte Kursübernahme des alten Profils');
@@ -537,17 +522,17 @@ try {
     }
     // BT-6c: vollständiger Managerstart mit Personenziel und fehlendem Geburtsdatum.
     {
-        const { doc } = await setup({ outside: true });
+        const { doc } = await setup();
         await choose(doc, 'b');
         doc.getElementById('managerPersonToggle').click();
         window.location.search = '?person=b'; window.location.hash = '#personendaten';
         await startTranchenManagerPage();
-        assertEqual(getManagerView(doc).profileId, 'b', 'Personendirektstart erhält Außenperson B');
+        assertEqual(getManagerView(doc).profileId, 'b', 'Personendirektstart erhält Person B');
         assert(!doc.getElementById('managerPersonBody').hidden, 'Personendirektstart öffnet Personkarte');
         assertEqual(doc.activeElement.id, 'managerBirthDate', 'Personendirektstart fokussiert fehlendes Geburtsdatum');
     }
-    // Sichtbarer Knopf ist noch kein dauerhaft abgeschlossener Profilbootstrap.
-    // Derselbe Ladeflush wird mit und ohne abgebrochene Reparatur beobachtet.
+    // Sichtbarer Knopf und Reparaturabbruch bei unverändertem Start, mit und ohne abgebrochene Reparatur.
+    // SP-1: Der Start ohne Änderung schreibt nichts; früher entstand hier ein gehaltener Ladeflush.
     for (const removed of [false, true]) for (const cancel of [false, true]) {
         const { captureWealthLots, PROFILE_WEALTH_LOTS_KEY, PROFILE_CASH_HISTORY_KEY } = await import('../app/profile/profile-wealth-history.js');
         const { doc, backend, hold, release, holds, batches } = await setup();
@@ -574,14 +559,14 @@ try {
         try {
             await startTranchenManagerPage();
             assert(doc.getElementById('managerHousehold').innerHTML.includes('data-history-recovery='), 'Reparaturknopf sichtbar vor dauerhaftem Ladeflush');
-            assert(writes.includes('rs_profiles_v1'), 'Regulärer Profilbootstrap schreibt die aktive Registrykopie');
+            // SP-1 (H-BOOTSTRAP-WRITE): Ein Start ohne Änderung schreibt die Registry nicht mehr; kein Ladebatch kann die Seite überholen.
+            assert(!writes.includes('rs_profiles_v1'), 'SP-1: Profilbootstrap ohne Änderung schreibt die Registry nicht');
             const loadedRegistry = persistenceStorage.getItem('rs_profiles_v1');
-            assert(loadedRegistry !== early.rs_profiles_v1, 'Ladebootstrap aktualisiert Registry vor der Nachfrage im Cache');
+            assertEqual(loadedRegistry, early.rs_profiles_v1, 'SP-1: Registry im Cache bleibt samt updatedAt bytegleich');
             loadingFlush = originalFlush.call(PersistenceFacade);
-            await waitFor(() => holds.length > 0, 'Regulärer Ladeflush erreicht die kontrollierte Adapterbarriere');
             const batchCount = batches.length;
-            assertEqual(JSON.stringify(snapshot()), JSON.stringify(early), 'Gehaltene Ladeschreibung ist noch nicht im Backend angekommen');
-            assertEqual(JSON.stringify(holds[0].batch.upserts.map(([key]) => key)), '["rs_profiles_v1"]', 'H-1b Verzögerter Ladebatch bestätigt nur die Registry und schreibt keine Ladebasis');
+            assertEqual(JSON.stringify(snapshot()), JSON.stringify(early), 'Start ohne Änderung hinterlässt keine Ladeschreibung im Backend');
+            assertEqual(holds.length, 0, 'SP-1: kein gehaltener Ladebatch');
             writes.length = 0;
             const request = { trancheId: lot.trancheId, kind: removed ? 'discard' : 'correct' };
             if (cancel) assertEqual(await repairManagerHistory(request, { confirmCorrection: () => false }), false, 'Abbruch während Ladeflush bleibt erfolglos');

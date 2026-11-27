@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="900" viewBox="0 0 1120 900" role="img" aria-labelledby="title desc" data-source-sha256="e69aad048075c76af07eb89abceb16dba71e93f766271ec2bd721b9b18854bd9">
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="900" viewBox="0 0 1120 900" role="img" aria-labelledby="title desc" data-source-sha256="8569b06d028c1054c24045a1dcbc4a5b5858cc6af1ba985a27a4b28925a8a935">
 <title id="title">Heimverkauf und Notverkauf</title>
 <desc id="desc">Verkäufliches Eigentum wird regulär verkauft, wenn alle Lebenden ab Pflegegrad 4 im Heim sind. Sonst kann eine Geldlücke einen einzelnen Notverkauf auslösen. Beide liefern 90 Prozent Erlös; nur Notverkauf bei Selbstnutzung ergänzt Wohnmiete.</desc>
 <rect width="1120" height="900" rx="12" fill="#f1f2ee"/>
@@ -10,7 +10,7 @@
 <rect x="40" y="400" width="300" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
 <text x="190.0" y="447.0" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="190.0" dy="0">Heimverkauf</tspan></text>
 <rect x="780" y="400" width="300" height="80" rx="10" fill="#f2e9d4" stroke="#b8954f" stroke-width="2"/>
-<text x="930.0" y="434.0" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="930.0" dy="0">Geldlücke oder</tspan><tspan x="930.0" dy="27">drohender Ruin?</tspan></text>
+<text x="930.0" y="434.0" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="930.0" dy="0">Geldlücke oder Vermögen</tspan><tspan x="930.0" dy="27">sonst aufgebraucht?</tspan></text>
 <rect x="780" y="580" width="300" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
 <text x="930.0" y="627.0" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="930.0" dy="0">Einzelner Notverkauf</tspan></text>
 <rect x="410" y="580" width="300" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
@@ -26,7 +26,7 @@
 <text x="225" y="324" text-anchor="start" font-family="sans-serif" font-size="17" fill="#1d2830"><tspan x="225" dy="0">Ja, außerhalb</tspan><tspan x="225" dy="27">des Todesjahrs</tspan></text>
 <polyline points="710,255 930,255 930,400" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
 <polygon points="930,400 935.0,389.0 925.0,389.0" fill="#7a5a1f"/>
-<text x="740" y="324" text-anchor="start" font-family="sans-serif" font-size="17" fill="#1d2830"><tspan x="740" dy="0">Nein oder vor Ruin</tspan><tspan x="740" dy="27">im Todesjahr</tspan></text>
+<text x="700" y="324" text-anchor="start" font-family="sans-serif" font-size="17" fill="#1d2830"><tspan x="700" dy="0">Nein oder im Todesjahr,</tspan><tspan x="700" dy="27">bevor das Vermögen</tspan><tspan x="700" dy="27">aufgebraucht ist</tspan></text>
 <polyline points="930,480 930,580" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
 <polygon points="930,580 935.0,569.0 925.0,569.0" fill="#7a5a1f"/>
 <text x="950" y="535" text-anchor="middle" font-family="sans-serif" font-size="17" fill="#1d2830"><tspan x="950" dy="0">Ja</tspan></text>

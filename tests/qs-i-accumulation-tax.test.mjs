@@ -27,6 +27,8 @@ for (const jointAssessment of [true, false]) for (const invest of [true, false])
         assertEqual(result.kind, 'success', 'QS-I 1: Paar-Ansparjahr ist berechenbar');
         const expectedTax = invest ? Math.max(0, 4000 - carry - input.startSPB) * .26375 : 0;
         assertClose(result.totalTaxesThisYear, expectedTax, .000001, 'QS-I 1: nur realisierte Gewinne werden besteuert');
+        assertClose(result.logData.liqEnd, invest ? 0 : 104000, .01,
+            'Ansparjahr: Jahresendliquidität enthält die Zukäufe und steht vor dem Steuerverkauf');
         assertClose(result.logData.portfolio_total_end, 104000 - expectedTax, .01, 'QS-I 1: Steuer mindert Endvermögen');
         assertClose(result.logData.portfolio_flow_delta, 0, .01, 'QS-I 1: Steuerfinanzierung wahrt Vermögensfluss');
         if (!personal) assertEqual(result.newState.lastState.taxState.lossCarry, invest ? Math.max(0, carry - 4000) : carry,

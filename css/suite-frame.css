@@ -1,7 +1,9 @@
 /* Die äußere Breite entscheidet automatisch; darüber gilt die Gerätepräferenz. */
+/* KS-1: Der Seitenkopf klebt oben, der Spielbereich-Streifen direkt darunter (Höhen: --suite-kopf-hoehe, --suite-streifen-hoehe in tokens.css).
+   Der Schatten in Seitenfarbe deckt beim Scrollen runde Ecken und Abstand ab und ist im Ruhezustand unsichtbar. */
 html[data-suite-page] body { font-family: var(--font-sans); background: var(--page); color: var(--text-main); display: block; padding: var(--space-4); margin: 0; }
 .suite-shell { container: suite-shell / inline-size; width: 100%; min-width: 0; }
-.suite-header { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); min-height: 56px; box-sizing: border-box; padding: var(--space-2) var(--space-4); margin-bottom: var(--space-2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.suite-header { position: sticky; top: 0; z-index: 15; display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); min-height: 56px; box-sizing: border-box; line-height: normal; padding: var(--space-2) var(--space-4); margin-bottom: var(--space-2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: 0 0 0 var(--space-2) var(--page); }
 .suite-context-row { flex: 1 1 30rem; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; font-size: var(--balance-help); }
 .suite-context-details { display: contents; }
 .suite-context-row > * { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
@@ -33,7 +35,7 @@ html[data-suite-page] .ds-help-link { box-sizing: border-box; display: inline-fl
 .suite-sidebar-toggle[data-collapsed="true"] [data-suite-icon="panel-left"] { display: inline-flex; }
 .suite-sidebar-toggle:focus-visible { outline: 2px solid var(--text-main); outline-offset: 3px; }
 .suite-layout { display: grid; grid-template-columns: 12rem minmax(0, 1fr); gap: var(--space-4); align-items: start; }
-.suite-navigation { position: sticky; align-self: start; top: var(--space-4); max-height: calc(100dvh - 2 * var(--space-4)); overflow-y: auto; box-sizing: border-box; display: grid; gap: var(--space-2); padding: var(--space-2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.suite-navigation { position: sticky; align-self: start; top: calc(var(--suite-kopf-hoehe) + var(--space-4)); max-height: calc(100dvh - var(--suite-kopf-hoehe) - 2 * var(--space-4)); overflow-y: auto; box-sizing: border-box; display: grid; gap: var(--space-2); padding: var(--space-2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
 .suite-navigation a { display: flex; align-items: center; gap: var(--space-2); min-width: 0; padding: var(--space-2); color: var(--text-main); border-radius: var(--radius-sm); text-decoration: none; overflow-wrap: anywhere; }
 .suite-navigation a[aria-current="page"] { background: var(--surface-sunken); font-weight: 700; }
 .suite-navigation a:hover { background: var(--surface-sunken); }
@@ -42,6 +44,9 @@ html[data-suite-page] .ds-help-link { box-sizing: border-box; display: inline-fl
 .suite-shell[data-sidebar-collapsed="true"] .suite-navigation a { justify-content: center; }
 [data-suite-icon] { display: inline-flex; flex: 0 0 1.25rem; width: 1.25rem; }
 .suite-content { container: suite-content / inline-size; min-width: 0; max-width: 100%; }
+#suiteMain { scroll-margin-top: calc(var(--suite-kopf-hoehe) + var(--space-2)); }
+/* KS-1d: Sprungziele im Inhalt landen unter Kopf und Streifen. Ohne Spezifität, damit eigene Regeln (Handbuch, Personen & Vermögen) vorgehen. */
+:where(.suite-content [id], .suite-content :target) { scroll-margin-top: calc(var(--suite-inhalt-oben) + var(--space-2)); }
 .suite-content > * { min-width: 0; }
 .suite-skip { position: absolute; top: -10rem; left: var(--space-4); padding: var(--space-2); background: var(--surface); color: var(--text-main); z-index: 1000; }
 .suite-skip:focus { top: var(--space-4); }
@@ -77,19 +82,23 @@ html[data-suite-page] .ds-help-link { box-sizing: border-box; display: inline-fl
     justify-content: space-between;
     gap: var(--space-3, 12px);
     flex-wrap: wrap;
+    position: sticky;
+    top: calc(var(--suite-kopf-hoehe) + var(--space-2));
+    z-index: 14;
+    box-shadow: 0 0 0 var(--space-1) var(--page);
 }
 .probelauf-band[hidden] { display: none; }
 .probelauf-band .ds-actions { flex-wrap: wrap; }
 #probelaufTimeLapseProgress { font: 400 var(--text-base)/1.5 var(--font-sans); }
 .probelauf-band button:focus-visible { outline: 2px solid var(--warn); outline-offset: 3px; }
 @media print {
-    html[data-suite-page] .suite-content > .probelauf-band { display: block; border: 2px solid currentColor; print-color-adjust: exact; }
+    html[data-suite-page] .suite-content > .probelauf-band { display: block; position: static; border: 2px solid currentColor; print-color-adjust: exact; }
     html[data-suite-page] .suite-content > .probelauf-band[hidden], .probelauf-band .ds-actions { display: none; }
 }
 
 /* Kopfzugang und Meldungen bleiben auch bei schmalen Fenstern erreichbar. */
-.suite-probelauf-start { margin-inline-start: auto; width: auto; max-width: 100%; white-space: normal; }
-.suite-probelauf-start[hidden], .suite-probelauf-status[hidden] { display: none; }
+.suite-probelauf-start, .suite-probelauf-end { margin-inline-start: auto; width: auto; max-width: 100%; white-space: normal; }
+.suite-probelauf-start[hidden], .suite-probelauf-end[hidden], .suite-probelauf-status[hidden] { display: none; }
 .suite-probelauf-status { padding: var(--space-4); margin-bottom: var(--space-4); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow-wrap: anywhere; }
 /* HV-1: Haushalt im Kopf jeder Seite, Wechselmenü und Band für weitere Haushalte (Entwurf „stein“). */
 .household-switch { position: relative; display: inline-flex; }
@@ -121,6 +130,8 @@ html[data-suite-page] .ds-help-link { box-sizing: border-box; display: inline-fl
 .data-households-table td[data-warning="true"] { color: var(--warn); }
 .data-household-delete { color: var(--bad); }
 .data-households-status { color: var(--bad); }
+.data-households-status[data-kind="ok"] { color: var(--good); }
+.data-households-status[data-kind="info"] { color: var(--text-muted); }
 .household-dialog-warning { border-color: var(--warn); background: var(--warn-soft); }
 /* HV-3: Übergabe und Start aus Datei. */
 .household-dialog-start { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }

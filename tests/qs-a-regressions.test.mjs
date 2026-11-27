@@ -117,28 +117,6 @@ await caseRun(4, async () => {
     assertEqual(local.getItem('profile_tagesgeld'), 'unlesbar', 'QS-A 4: unlesbarer Rohbetrag bleibt erhalten');
 });
 
-await caseRun(5, async () => {
-    const indexedDb = fakeAreaIndexedDB({ strictTransactions: true });
-    const adapter = createIndexedDbAdapter({ indexedDB: indexedDb }); await adapter.open();
-    const key = 'ruhestandsmodell_snapshot_2026-01-20T11:48:21.709Z--Muster';
-    const legacy = { snapshotType: 'full-localstorage', timestamp: '2026-01-20T11:48:21.709Z', localStorage: { ...seed(), profile_tagesgeld: '30000' } };
-    await adapter.saveBatch({ upserts: [[key, JSON.stringify(legacy)]], deletes: [] });
-    const report = await adapter.migrateLegacySnapshotsIfNeeded();
-    assertEqual(report.errors.length, 0, 'QS-A 5: Migration ohne abgelaufene Transaktion');
-    assertEqual(report.migratedCount, 1, 'QS-A 5: alter Snapshot migriert');
-    const points = await adapter.listSnapshots();
-    assertEqual(points.length, 1, 'QS-A 5: altes Archiv sichtbar');
-    assertEqual((await adapter.readSnapshot(points[0].id)).records.profile_tagesgeld, '30000', 'QS-A 5: alter Bestand erhalten');
-    // Auch readSnapshot muss nach Migration einen frischen Store benutzen.
-    const secondDb = fakeAreaIndexedDB({ strictTransactions: true });
-    const second = createIndexedDbAdapter({ indexedDB: secondDb }); await second.open();
-    await second.saveBatch({ upserts: [[key, JSON.stringify(legacy)]], deletes: [] });
-    assertEqual((await second.readSnapshot(key)).records.profile_tagesgeld, '30000', 'QS-A 5: direkter alter Snapshotabruf');
-    second.migrateLegacySnapshotsIfNeeded = async () => ({ errors: [{ key, message: 'synthetischer Migrationsfehler' }] });
-    let rejected = false; try { await second.listSnapshots(); } catch { rejected = true; }
-    assert(rejected, 'QS-A 5: Migrationsfehler erscheint nicht als leeres Archiv');
-});
-
 await caseRun(6, async () => {
     const records = seed(), ids = Object.keys(JSON.parse(records.rs_profiles_v1).profiles);
     records.rs_current_profile = ids[0]; records.rs_active_profile = ids[1];
@@ -195,7 +173,7 @@ await caseRun(8, async () => {
     const result = await importFullPersistenceBackup(legacyBackup, { guard: createNavigationGuard() });
     assert(result.ok, 'QS-A Altstand: Schema-1-Sicherung im ersten Versuch importiert');
     const persisted = await P.readPersistedRecords();
-    assert(persisted[legacyKey] === records[legacyKey], 'QS-A Altstand: alter Snapshotkey für anschließende Archivmigration erhalten');
+    assert(persisted[legacyKey] === records[legacyKey], 'QS-A Altstand: alter Snapshotkey wird unverändert eingespielt (ohne Übernahme ins Archiv)');
     assertEqual(persisted.ui_probe, undefined, 'QS-A Altstand: alter technischer Livekey ausgeschlossen');
     const after = JSON.parse(persisted.rs_profiles_v1).profiles[records.rs_current_profile].data;
     assertEqual(after[legacyKey], historical[legacyKey], 'QS-A Altstand: historischer Snapshotstring in Registry erhalten');

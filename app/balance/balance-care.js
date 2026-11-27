@@ -10,10 +10,13 @@ import { officialCareCosts } from '../shared/household-care-values.js';
 import { defaultCareForm } from '../shared/care-benefits.js';
 import { careTodayFromRecord } from '../profile/profile-care.js';
 import { projectPerson } from '../profile/profile-person-data.js';
+import { estimateCareAidNet } from '../shared/care-aid.js';
+import { activeCarrier } from '../profile/household-withdrawal-mode.js';
 import { annualOtherIncome, effectiveIncomeFromRecord } from '../profile/profile-income.js';
 import { computeRentAdjRate, householdPensionAdjustment } from '../shared/income-adjustment.js';
-import { CARE_FLEX_DEFAULT_PERCENT } from '../simulator/simulator-care-flex.js';
+import { CARE_FLEX_DEFAULT_PERCENT, CARE_FLEX_FIELD_KEYS, CARE_FLEX_MIGRATION_KEY, migrateCareFlexRecord } from '../simulator/simulator-care-flex.js';
 import { appNow, localCalendarDate } from '../shared/app-clock.js';
+import { readImmobilien, IMMOBILIEN_KEY } from '../profile/profile-immobilien.js';
 
 const GRADES = [1, 2, 3, 4, 5];
 const PERSON_KEYS = /** @type {const} */ (['p1', 'p2']);
@@ -72,17 +75,19 @@ export function projectBalanceCareNeeds({ status, storage, values, referenceYear
     const persons = entries.map((entry, index) => ({ profileId: entry.profileId, name: entry.name || entry.profileId,
         key: PERSON_KEYS[index], care: careTodayFromRecord(entry.data, settings) }));
     if (!persons.some(person => person.care.grade > 0)) return null;
-    const legacy = careSettingsStorage(storage, status.calculationProfileId ?? entries[0].profileId);
+    const legacy = careSettingsStorage(storage);
     const read = key => legacy.getItem(key);
-    const number = (key, fallback) => {
-        const raw = read(key), parsed = Number(String(raw ?? '').replace(',', '.'));
+    // HL-1 (H-FLEX-ALT): Alte Flex-Vorgabe ohne Marke nur projizieren wie `care-price-fields.js` und der Simulator; nichts wird geschrieben.
+    const flex = migrateCareFlexRecord(Object.fromEntries([...CARE_FLEX_FIELD_KEYS, CARE_FLEX_MIGRATION_KEY].map(key => [key, read(key)])));
+    const number = (key, fallback, source = read) => {
+        const raw = source(key), parsed = Number(String(raw ?? '').replace(',', '.'));
         return raw == null || String(raw).trim() === '' || !Number.isFinite(parsed) ? fallback : parsed;
     };
-    const prices = resolveCarePrices(settings.careValues, legacy, { shared: !status.singleProfile });
+    const prices = resolveCarePrices(settings.careValues, legacy);
     const official = settings.preset === 'amtlich' ? officialCareCosts(settings.careValues) : null;
     const pflegeGradeConfigs = Object.fromEntries(GRADES.map(grade => [grade, {
         zusatz: official ? official[grade] : prices.costs[grade],
-        flexCut: Math.min(1, Math.max(0, number(`sim_pflegeStufe${grade}FlexCut`, CARE_FLEX_DEFAULT_PERCENT[grade]) / 100)),
+        flexCut: Math.min(1, Math.max(0, number(`sim_pflegeStufe${grade}FlexCut`, CARE_FLEX_DEFAULT_PERCENT[grade], key => flex[key]) / 100)),
         mortalityFactor: 0, ...(settings.forms[grade] !== defaultCareForm(grade) ? { careForm: settings.forms[grade] } : {}) }]));
     let floorPercent = 75;
     try { floorPercent = survivorFloorPercent(read('sim_survivorFloorPercent')); } catch { /* ungültiger Altwert: Vorgabe */ }
@@ -112,7 +117,10 @@ export function projectBalanceCareNeeds({ status, storage, values, referenceYear
     const rates = { inflationPercent: Number(inflationPercent) || 0, wagePercent: Number(wagePercent) || 0 };
     // Gutachten PFA-5 B1: Im Haushalt gilt für beide Renten die Rentenanpassung des Hauptprofils (wie Profilkombination im Simulator).
     const adjustment = projectPerson(entries[0].data, planYear + 1, balanceCareSettings(status, entries[0].profileId));
-    const nextIncomeAnnual = entries.reduce((sum, entry) => sum + nextYearIncome(entry.data, planYear, balanceCareSettings(status, entry.profileId), rates, adjustment), 0);
+    // NK-2b (Gutachten NK2C Befund 3): Folgejahreseinkünfte auch je Person (Hilfeschätzung Unverheirateter), Summe für das Liquiditätsziel.
+    const nextIncomes = entries.map(entry => nextYearIncome(entry.data, planYear, balanceCareSettings(status, entry.profileId), rates, adjustment));
+    const nextIncomeAnnual = nextIncomes.reduce((sum, value) => sum + value, 0);
+    rows.forEach((row, index) => { /** @type {any} */ (row).nextIncome = nextIncomes[index] || 0; });
     return { referenceDate, referenceYear: reference.careReferenceYear, inflationPercent: Number(inflationPercent) || 0, prices: { origin: prices.origin, priceYear: prices.priceYear },
         preset: settings.preset || null, plan: base, persons: rows, current: totals(needs.current), next: { ...totals(needs.next), incomeAnnual: nextIncomeAnnual } };
 }
@@ -169,4 +177,87 @@ export function careHintPersons(careNeeds) {
  */
 export function personalCareCosts(careNeeds) {
     return Object.fromEntries((careNeeds?.persons || []).map(person => [person.profileId, person.personal]));
+}
+
+/** NK-2 (FR-84 Punkt 18): Lebt genau eine von zwei Personen im Heim, die Person zu Hause; sonst null.
+ * @param {any} careNeeds Pflegeprojektion. @param {boolean} [following] Folgejahr statt Planjahr. @returns {string|null} */
+export function homeAloneCarrier(careNeeds, following = false) {
+    const persons = careNeeds?.persons || [];
+    const inHome = persons.map((/** @type {any} */ person) => ((following ? person.next : person)?.residentialCosts || 0) > 0);
+    return persons.length === 2 && inHome.filter(Boolean).length === 1 ? persons[inHome.indexOf(false)].profileId : null;
+}
+
+/** FR-84 Punkt 11, NK-2 (Codex 4 und 6): Hilfe zur Pflege im Planjahr aus der Pflegeprojektion, dem Geldvermögen netto (wie im
+ * Simulator nach Verkaufssteuer) und den Einkünften je Person. Mit `nextYear` für das Folgejahr (Liquiditätsziel): Pflege und
+ * Einkünfte des Folgejahrs; wer im Planjahr schon Hilfe bekommt, hat danach kein eigenes Geld mehr, sonst bleibt das Geld nach den
+ * Ausgaben des Planjahrs aus dem Vermögen. `inputData.floorBedarf` ist dann schon um die Hilfe des Planjahrs gemindert.
+ * @param {{careNeeds: any, profiles: any[], inputData: Record<string, any>, unmarried: boolean, mode: string, lossCarry?: number,
+ *   nextYear?: {currentAid: import('../shared/care-aid.js').CareAidEstimate|null}|null}} options
+ * @returns {import('../shared/care-aid.js').CareAidEstimate|null} */
+export function estimateBalanceCareAid({ careNeeds, profiles, inputData, unmarried, mode, lossCarry = 0, nextYear = null }) {
+    const careOf = (/** @type {any} */ need) => (need?.homeCareAddition || 0) + (need?.residentialCosts || 0) + (need?.residentialOwnExpenses || 0);
+    const need = nextYear ? careNeeds?.next || {} : careNeeds?.current || {};
+    const careTotal = careOf(need);
+    if (!(careTotal > 0.005)) return null;
+    const personal = (/** @type {string} */ id, /** @type {boolean} */ following) => {
+        const person = (careNeeds.persons || []).find((/** @type {any} */ row) => row.profileId === id);
+        return (following ? person?.next?.personal : person?.personal) || 0;
+    };
+    const income = (/** @type {any} */ values) => values?.renteAktiv ? (Number(values.renteMonatlich) || 0) * 12 : 0;
+    const lotsOf = (/** @type {any} */ values, /** @type {any[]|undefined} */ tranches) => tranches?.length ? tranches : [
+        { marketValue: Number(values?.depotwertAlt) || 0, costBasis: Number(values?.costBasisAlt) || 0, tqf: Number(values?.tqfAlt) || 0 },
+        { marketValue: Number(values?.depotwertNeu) || 0, costBasis: Number(values?.costBasisNeu) || 0, tqf: Number(values?.tqfNeu) || 0 },
+        { marketValue: Number(values?.goldWert) || 0, costBasis: Number(values?.goldCost) || 0, taxExempt: values?.goldSteuerfrei === true },
+        { marketValue: Number(values?.geldmarktEtf) || 0, costBasis: Number(values?.geldmarktEtf) || 0 }];
+    const source = profiles.length ? profiles.map(entry => ({ profileId: entry.profileId, name: entry.name, inputs: entry.inputs, tranches: entry.tranches,
+        lossCarry: entry.balanceState?.lastState?.taxState?.lossCarry })) : [{ profileId: careNeeds.persons?.[0]?.profileId || 'haushalt', name: undefined,
+        inputs: inputData, tranches: inputData.detailledTranches, lossCarry }];
+    // Personen eines Jahres: Pflege und Einkünfte des Plan- oder Folgejahres; gemeinsame Kasse mit den Einkünften des ganzen Haushalts.
+    const build = (/** @type {boolean} */ following) => {
+        const list = source.map(entry => {
+            const lots = lotsOf(entry.inputs, entry.tranches), cash = Number(entry.inputs?.tagesgeld) || 0;
+            const row = (careNeeds.persons || []).find((/** @type {any} */ item) => item.profileId === entry.profileId);
+            const money = cash + lots.reduce((sum, lot) => sum + (Number(lot.marketValue) || 0), 0);
+            return { profileId: entry.profileId, ...(entry.name ? { name: entry.name } : {}), cash, lots, money, shareBasis: money,
+                income: following && Number.isFinite(row?.nextIncome) ? row.nextIncome : income(entry.inputs),
+                sparerPauschbetrag: entry.inputs?.sparerPauschbetrag, kirchensteuerSatz: entry.inputs?.kirchensteuerSatz, lossCarry: entry.lossCarry,
+                care: profiles.length ? personal(entry.profileId, following) : careOf(following ? careNeeds.next : careNeeds.current) };
+        });
+        if (!unmarried || list.length < 2) {
+            const household = following ? Number(careNeeds.next?.incomeAnnual) || 0 : income(inputData);
+            list.forEach((person, index) => { person.income = index === 0 ? household : 0; });
+        }
+        // NK-2 (FR-84 Punkt 18): Ist eine von zwei unverheirateten Personen im Heim, trägt die andere den Grundbedarf zu Hause allein; NK-2c: die
+        // Einkünfte der Person im Heim zahlen zuerst ihr Heim (`inHome`).
+        const atHome = unmarried && list.length === 2 ? homeAloneCarrier(careNeeds, following) : null;
+        for (const person of list) if (atHome && person.profileId !== atHome) Object.assign(person, { inHome: true });
+        return { list, carrierId: atHome || activeCarrier(mode, profiles) };
+    };
+    const jointAssessment = inputData.jointAssessment === true;
+    const planFloor = (Number(inputData.floorBedarf) || 0) + (nextYear?.currentAid?.total || 0) - careOf(careNeeds.current);
+    const plan = build(false);
+    if (!nextYear) return estimateCareAidNet({ persons: plan.list, basicFloor: planFloor, unmarried, carrierId: plan.carrierId, jointAssessment });
+    // NK-2c (Gutachten NK2C2 Befund 2): Das Folgejahr beginnt mit dem echten Bestand nach dem Planjahr (bezahlte Verkaufssteuer, übrige Tranchen
+    // mit Einstand), nicht mit dem Rest als steuerfreiem Bargeld.
+    // NK-2d (Gutachten NK2C3 Befunde 4–6): mit bezahltem Flex des Planjahres, fortgeschriebenem Steuerzustand und den Anteilen am Grundbedarf
+    // aus dem Bestand danach.
+    const after = estimateCareAidNet({ persons: plan.list, basicFloor: planFloor, unmarried, carrierId: plan.carrierId, jointAssessment, withRemainder: true,
+        flex: Math.max(0, Number(inputData.flexBedarf) || 0) });
+    const next = build(true);
+    for (const person of next.list) {
+        Object.assign(person, after?.remainder?.get(person.profileId) || { cash: 0, lots: [], lossCarry: 0 });
+        person.money = person.shareBasis = person.cash + person.lots.reduce((/** @type {number} */ sum, /** @type {any} */ lot) => sum + (Number(lot.marketValue) || 0), 0);
+    }
+    return estimateCareAidNet({ persons: next.list, basicFloor: (Number(need.total) || 0) - careTotal, unmarried, carrierId: next.carrierId, jointAssessment });
+}
+
+
+/** NK-2 (FR-84 Punkt 20, Nachtrag 17): Eigene Immobilie, die vor der Hilfe zur Pflege verkauft wird: vermietet, oder selbst genutzt, wenn
+ * niemand mehr darin wohnt (alle Personen im Heim). Unlesbare Immobilienlisten gelten als keine.
+ * @param {{profileId: string, data?: Record<string, string>}[]} entries @param {any} careNeeds @param {string} profileId @returns {boolean} */
+export function saleableHome(entries, careNeeds, profileId) {
+    let homes = [];
+    try { homes = readImmobilien(entries.find(entry => entry.profileId === profileId)?.data?.[IMMOBILIEN_KEY]); } catch { homes = []; }
+    const allInHome = (careNeeds?.persons || []).length > 0 && careNeeds.persons.every((/** @type {any} */ person) => (person.residentialCosts || 0) > 0);
+    return homes.some(home => home.nutzung === 'vermietet' || (home.nutzung === 'selbst' && allInHome));
 }

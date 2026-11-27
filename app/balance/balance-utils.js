@@ -32,12 +32,13 @@ function numberParseFailure(code, message) {
  * Parst ein vollstaendiges deutsches oder englisches Zahlenformat.
  * Einzelne Separatoren mit exakt drei Nachkommastellen gelten aus
  * Kompatibilitaetsgruenden als Tausendertrenner (z. B. 1.234 / 1,234).
+ * Mit singleSeparatorAsDecimal ist ein einzelner Trenner ein Dezimalzeichen.
  *
  * @param {unknown} rawValue - Zu pruefender Rohwert.
- * @param {{ required?: boolean, allowCurrencySymbol?: boolean }} options - Parseroptionen.
+ * @param {{ required?: boolean, allowCurrencySymbol?: boolean, singleSeparatorAsDecimal?: boolean }} options - Parseroptionen.
  * @returns {{ valid: boolean, value: number|null, error: { code: string, message: string }|null }}
  */
-export function parseLocalizedNumber(rawValue, { required = true, allowCurrencySymbol = true } = {}) {
+export function parseLocalizedNumber(rawValue, { required = true, allowCurrencySymbol = true, singleSeparatorAsDecimal = false } = {}) {
     if (typeof rawValue === 'number') {
         return Number.isFinite(rawValue)
             ? { valid: true, value: rawValue, error: null }
@@ -116,7 +117,7 @@ export function parseLocalizedNumber(rawValue, { required = true, allowCurrencyS
                 normalized = parts.join('');
             } else {
                 const [integerPart, fractionPart] = parts;
-                const isLegacyThousands = integerPart !== '0'
+                const isLegacyThousands = !singleSeparatorAsDecimal && integerPart !== '0'
                     && integerPart.length <= 3
                     && !integerPart.startsWith('0')
                     && fractionPart.length === 3;
@@ -264,16 +265,16 @@ export const UIUtils = {
         const normalized = sourceKey.trim().toLowerCase();
         const staticMap = {
             input: {
-                label: 'Manueller Input',
-                description: 'Runway-Ziel wurde direkt in den Profil-Inputs definiert.'
+                label: 'Manuelle Eingabe',
+                description: 'Zielreichweite wurde direkt in den Profileingaben festgelegt.'
             },
             fallback: {
-                label: 'Fallback (Minimum)',
-                description: 'Es wurde auf den minimalen Runway-Wert des Profils zurückgegriffen.'
+                label: 'Ersatzwert (Minimum)',
+                description: 'Es wurde auf die minimale Reichweite des Profils zurückgegriffen.'
             },
             'profil:smoothed': {
                 label: 'Profil (geglättet)',
-                description: 'Runway-Ziel wurde zwischen Profil-Stützwerten anhand der Regime-Severity interpoliert.'
+                description: 'Zielreichweite wurde zwischen Profil-Stützwerten anhand der Schwere des Marktregimes interpoliert.'
             },
             unknown: fallback,
             legacy: fallback
@@ -300,7 +301,7 @@ export const UIUtils = {
         const formatM = (value, digits = 0) => formatMonths(value, { fractionDigits: digits, invalid: 'n/a', suffix: 'Monate' });
         const empty = {
             label: 'Keine Glättung',
-            explanation: 'Runway-Ziel stammt aus dem diskreten Profil- oder Eingabewert.',
+            explanation: 'Zielreichweite stammt aus dem diskreten Profil- oder Eingabewert.',
             detail: '',
             active: false
         };
@@ -319,8 +320,8 @@ export const UIUtils = {
 
         if (smoothing.smoothingActive) {
             return {
-                label: smoothing.smoothingApplied ? 'Runway-Ziel geglättet' : 'Runway-Glättung aktiv',
-                explanation: `Runway-Ziel: ${target} (${severityPct}% Drawdown-Severity zwischen ${lower} und ${upper}; Rohziel ${raw}). Harte Mindestgrenze: ${min}, nicht geglättet.`,
+                label: smoothing.smoothingApplied ? 'Zielreichweite geglättet' : 'Glättung der Zielreichweite aktiv',
+                explanation: `Zielreichweite: ${target} (${severityPct}% Schwere des Rückgangs zwischen ${lower} und ${upper}; Rohziel ${raw}). Harte Mindestgrenze: ${min}, nicht geglättet.`,
                 detail: `${severityPct}% zwischen Normalziel ${lower} und Stressziel ${upper}`,
                 active: true
             };
@@ -329,12 +330,12 @@ export const UIUtils = {
         if (smoothing.smoothingFallback) {
             const reasonLabels = {
                 invalid_discrete_target: 'diskretes Ziel ungültig',
-                invalid_severity: 'Severity nicht berechenbar',
+                invalid_severity: 'Schwere nicht berechenbar',
                 incomplete_support_targets: 'Profil-Stützwerte unvollständig'
             };
-            const reason = reasonLabels[smoothing.fallbackReason] || smoothing.fallbackReason || 'Fallback aktiv';
+            const reason = reasonLabels[smoothing.fallbackReason] || smoothing.fallbackReason || 'Ersatzwert aktiv';
             return {
-                label: 'Runway-Glättung im Fallback',
+                label: 'Glättung der Zielreichweite mit Ersatzwert',
                 explanation: `Glättung wurde nicht angewandt (${reason}); verwendet wird das Rohziel ${raw}. Harte Mindestgrenze: ${min}, nicht geglättet.`,
                 detail: reason,
                 active: false

@@ -49,9 +49,7 @@ export function renderExpensesPage(doc, view, { corrupt = false, occasion = null
         ? finalBalance ? 'Jahressaldo · alle 12 Monate vollständig erfasst' : missingNote || 'Budget minus bestätigte Ausgaben'
         : `für ${view.remainingCalendarMonths} ${view.remainingCalendarMonths === 1 ? 'Monat' : 'Monate'}${missingNote ? ` · ${missingNote}` : ''} · Budget minus bestätigte Ausgaben` : 'Daten nicht lesbar');
     const difference = view.stats.annualForecast - view.annualBudget;
-    const forecastMonths = view.personId
-        ? view.stats.monthsWithData === 1 ? 'positivem Ausgabenmonat' : 'positiven Ausgabenmonaten'
-        : view.stats.monthsWithData === 1 ? 'Monat' : 'Monaten';
+    const forecastMonths = view.stats.monthsWithData === 1 ? 'Monat' : 'Monaten';
     const forecastBasis = `Mittelwert aus ${view.stats.monthsWithData} ${forecastMonths} × 12`;
     const hasForecast = available && view.stats.monthsWithData > 0;
     put('expensesForecastNote', hasForecast ? forecastBasis : 'Noch keine Hochrechnung');
@@ -61,24 +59,35 @@ export function renderExpensesPage(doc, view, { corrupt = false, occasion = null
     doc.getElementById('expensesRemaining')?.classList.toggle('expense-positive', available && view.annualBudget !== null && view.stats.annualRemaining >= 0);
     doc.getElementById('expensesRemaining')?.classList.toggle('expense-negative', available && view.annualBudget !== null && view.stats.annualRemaining < 0);
     put('expensesCategoriesTitle', `Wofür? ${view.year} nach Kategorien${planned ? ' · einschließlich Geplanter Ausgaben' : ''}`);
-    const split = available && !view.personId && view.needs?.monthsWithBreakdown > 0;
+    const split = available && !view.personId && view.categoryHasBreakdown;
     const legend = doc.getElementById('expensesCategoriesLegend');
     if (legend) { legend.hidden = !split; legend.replaceChildren(createExpenseNeedsLegend(doc)); }
+    const labels = { floor: 'Grundbedarf', flex: 'Flex', unallocated: 'ohne Aufteilung' };
+    const keys = Object.keys(labels);
+    const sum = (rows, key) => rows.reduce((total, row) => total + (row[key] || 0), 0);
+    const segments = split ? view.categories.map(category => {
+        const parts = view.categorySegments.get(category.name);
+        return { floor: parts?.floor ?? 0, flex: parts?.flex ?? 0, unallocated: Math.max(0, category.unallocated || 0) };
+    }) : [];
+    const positiveUnallocated = sum(segments, 'unallocated');
+    if (positiveUnallocated > 0) {
+        // Wie im Jahresvergleich zählt der ungeteilte Saldo erst nach der Saldierung mindestens null.
+        const factor = Math.max(0, sum(view.categories, 'unallocated')) / positiveUnallocated;
+        for (const row of segments) row.unallocated *= factor;
+    }
     const totals = doc.getElementById('expensesCategoriesNeeds');
     if (totals) {
         totals.hidden = !split;
-        const sum = key => view.categories.reduce((total, row) => total + (row[key] || 0), 0);
-        const all = sum('floor') + sum('flex') + sum('unallocated');
+        const amounts = keys.map(key => ({ label: labels[key], amount: sum(segments, key) }));
+        const all = amounts.reduce((total, { amount }) => total + amount, 0);
         const portion = amount => all > 0 ? (amount / all * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 }) : '—';
-        totals.textContent = split ? Object.entries({ floor: 'Floor', flex: 'Flex', unallocated: 'ohne Aufteilung' })
-            .map(([key, label]) => ({ label, amount: sum(key) }))
-            .filter(({ amount }) => amount !== 0)
+        totals.textContent = amounts.filter(({ amount }) => amount > 0)
             .map(({ label, amount }) => `${label} ${euro(amount)} (${portion(amount)} %)`)
-            .join(' · ') : '';
+            .join(' · ');
     }
     const host = doc.getElementById('expensesCategories'); host.replaceChildren();
     const largestCategory = view.categories.reduce((maximum, category) => Math.max(maximum, category.amount), 0);
-    if (available && view.categories.length) for (const category of view.categories) {
+    if (available && view.categories.length) for (const [index, category] of view.categories.entries()) {
         const row = doc.createElement('div'); row.className = 'expense-category';
         const name = doc.createElement('span'); name.textContent = category.name + (category.amount < 0 ? ' · Erstattung' : '');
         const track = doc.createElement('span'); track.className = 'expense-category-track'; track.setAttribute('aria-hidden', 'true');
@@ -87,10 +96,12 @@ export function renderExpensesPage(doc, view, { corrupt = false, occasion = null
         if (split) {
             bar.className = 'expense-category-parts';
             track.removeAttribute('aria-hidden');
-            track.title = `Floor ${euro(category.floor)} · Flex ${euro(category.flex)} · ohne Aufteilung ${euro(category.unallocated)}`;
-            for (const key of ['floor', 'flex', 'unallocated']) {
+            const parts = segments[index];
+            track.title = keys.map(key => `${labels[key]} ${euro(parts[key])}`).join(' · ');
+            const partsTotal = keys.reduce((total, key) => total + parts[key], 0);
+            for (const key of keys) {
                 const part = doc.createElement('span'); part.className = `expense-category-${key}`;
-                part.style.width = `${category.amount > 0 ? Math.max(0, category[key]) / category.amount * 100 : 0}%`; bar.append(part);
+                part.style.width = `${partsTotal > 0 ? parts[key] / partsTotal * 100 : 0}%`; bar.append(part);
             }
         }
         track.appendChild(bar);

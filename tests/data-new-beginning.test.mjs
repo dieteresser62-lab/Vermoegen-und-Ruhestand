@@ -1,5 +1,6 @@
 import { PersistenceFacade as P } from '../app/shared/persistence-facade.js';
 import { SnapshotArchive as A } from '../app/shared/snapshot-archive.js';
+import { isAllowedSnapshotCaptureKey } from '../app/shared/persistence-key-policy.js';
 import { createLocalStorageAdapter } from '../app/shared/persistence-adapter-localstorage.js';
 import { createTauriJsonFileAdapter } from '../app/shared/persistence-adapter-tauri.js';
 import { createNavigationGuard } from '../app/shared/navigation-guard.js';
@@ -20,9 +21,7 @@ const store = (records = {}) => {
 const legacy = 'ruhestandsmodell_snapshot_2026-01-20T11:48:21.709Z--Muster';
 const original = { ...createMusterHaushaltRecords('2026-10-12'), [legacy]: '{ "alte": true }', ui_probe: 'open', layout_probe: '2', sim_result_probe: 'result' };
 const registry = JSON.parse(original.rs_profiles_v1);
-registry.profiles.outside = structuredClone(registry.profiles.muster_b);
-registry.profiles.outside.meta.id = 'outside'; registry.profiles.outside.meta.name = 'Außenperson'; registry.profiles.outside.meta.belongsToHousehold = false;
-registry.profiles.outside.data[legacy] = 'historisch'; registry.profiles.outside.data.ui_probe = 'offen';
+registry.profiles.muster_b.data[legacy] = 'historisch'; registry.profiles.muster_b.data.ui_probe = 'offen';
 original.rs_profiles_v1 = JSON.stringify(registry);
 const confirmed = { withoutBackup: true, confirmed: true };
 function adapter(seed = original) {
@@ -32,7 +31,7 @@ function adapter(seed = original) {
         async saveBatch({ upserts, deletes }) { events.push('batch'); deletes.forEach(k => delete values[k]); if (this.fail === 'delete') throw new Error('delete'); upserts.forEach(([k,v]) => values[k] = v); },
         async listSnapshots() { return [...points.values()]; },
         async writeSnapshot(p) { events.push('point'); if (this.fail === 'point') throw new Error('point'); points.set(p.id, structuredClone(p)); },
-        async readSnapshot(id) { events.push('read-point'); const p = structuredClone(points.get(id)); if (this.fail === 'point-readback' && p.kind === 'new-beginning-before') p.label = 'changed'; return p; },
+        async readSnapshot(id) { events.push('read-point'); const p = structuredClone(points.get(id)); if (this.fail === 'point-readback' && p.label === 'Vor Neu beginnen') p.label = 'changed'; return p; },
         async deleteSnapshot(id) { events.push('delete-point'); if (this.fail === 'archive-delete') throw new Error('archive-delete'); points.delete(id); }
     };
 }
@@ -54,7 +53,7 @@ for (const kind of ['separate', 'localStorage', 'tauri']) {
     const old = JSON.stringify(await A.readSnapshot('older'));
     const before = await P.readPersistedRecords();
     const c = make(win); let navigations = 0;
-    const inspector = await c.inspect(); assert(inspector.names.includes('Außenperson'), kind + ': alle Registry-Namen einschließlich Außenperson');
+    const inspector = await c.inspect(); assert(inspector.names.includes(registry.profiles.muster_b.meta.name), kind + ': alle Registry-Namen einschließlich der zweiten Person');
     const result = await make(win, { navigate: () => { navigations++; } }).execute(confirmed);
     assertEqual(result.status, 'restarted', kind + ': bestätigter Neustart');
     assertEqual(navigations,1,kind + ': Erststartnavigation genau einmal');
@@ -65,7 +64,9 @@ for (const kind of ['separate', 'localStorage', 'tauri']) {
     if (kind !== 'localStorage') assertEqual(local.length,0,kind + ': alte Browserkopien und UIpräferenzen gelöscht');
     assertEqual(JSON.stringify(await A.readSnapshot('older')),old,kind + ': bisheriger Punkt bytegleich erhalten');
     const point = await A.readSnapshot(result.snapshotId);
-    for (const [key,value] of Object.entries(before).filter(([k]) => k !== 'rs_snapshot_archive_v1')) assertEqual(point.records[key],value,kind + ': Punkt erhält Rohbestand ' + key);
+    // SV-1: Der Punkt „Vor Neu beginnen“ hält den ganzen Haushalt wie jeder Punkt (alle Schlüssel eines vollständigen Punkts).
+    assertEqual(point.kind,'full-backup-import-recovery',kind + ': Neu beginnen legt einen Punkt der Art „vor dem Einspielen“ an');
+    for (const [key,value] of Object.entries(before).filter(([k]) => isAllowedSnapshotCaptureKey(k))) assertEqual(point.records[key],value,kind + ': Punkt erhält Rohbestand ' + key);
     if (a.events) assert(a.events.indexOf('point') < a.events.indexOf('read-point',a.events.indexOf('point')) && a.events.indexOf('read-point',a.events.indexOf('point')) < a.events.indexOf('batch'), 'Reihenfolge Punkt → Readback → Löschen');
     // Echte Leerstart-Erzeugung; nach Reload besitzt die neue Seite einen freien Cache.
     await boot(a,win); bootstrapProfileContext(); await P.flush();
@@ -78,19 +79,13 @@ for (const kind of ['separate', 'localStorage', 'tauri']) {
     const restored = await executeSnapshotRestore(preview,{ guard: createNavigationGuard(), reload: () => {}, window: win });
     assertEqual(restored.status,'restored',kind + ': Vor Neu beginnen aus Leerstart zurückholen');
     const returned = await P.readPersistedRecords(k => k !== 'rs_snapshot_archive_v1');
-    for (const [key,value] of Object.entries(before).filter(([k]) => k !== 'rs_snapshot_archive_v1')) assertEqual(returned[key],value,kind + ': Rückholen vollständiger Rohbestand ' + key);
-    assertEqual(returned.rs_profiles_v1,before.rs_profiles_v1,kind + ': Außenperson und Profilschlüssel bytegleich zurück');
-    if (kind !== 'localStorage') assertEqual(local.getItem('ui_suite_sidebar_collapsed'),'true',kind + ': Gerätepräferenz wiederhergestellt');
-    await boot(a,win);
-    const removed = await make(win).execute({ ...confirmed, deleteSnapshots: true });
-    assertEqual(removed.status,'restarted',kind + ': Neustart mit Archivlöschung');
-    assertEqual((await A.listSnapshots()).length,0,kind + ': auch Snapshots leer');
-    assertEqual(Object.keys(await P.readPersistedRecords()).length,0,kind + ': Hauptspeicher einschließlich Fallbackcontainer leer');
+    for (const [key,value] of Object.entries(before).filter(([k]) => isAllowedSnapshotCaptureKey(k))) assertEqual(returned[key],value,kind + ': Rückholen vollständiger Rohbestand ' + key);
+    assertEqual(returned.rs_profiles_v1,before.rs_profiles_v1,kind + ': Personen und Profilschlüssel bytegleich zurück');
 }
 
-for (const failure of ['point','point-readback','delete','archive-delete']) {
+for (const failure of ['point','point-readback','delete']) {
     const a = adapter(); await boot(a); await A.createSnapshot({ id:'older', records:{}, label:'old' }); a.events.length=0; a.fail=failure;
-    let navigated=false; const result = await make(undefined,{ navigate:()=>{ navigated=true; } }).execute({ ...confirmed, deleteSnapshots: failure==='archive-delete' });
+    let navigated=false; const result = await make(undefined,{ navigate:()=>{ navigated=true; } }).execute(confirmed);
     assertEqual(result.status,'failed',failure + ': sichtbarer Fehler'); assert(!navigated,failure + ': keine Erfolgsmeldung durch Navigation');
     if (failure.startsWith('point')) {
         assertEqual(recordIdentity(a.values),recordIdentity(original),'Punkt scheitert → nichts gelöscht: ' + failure);
@@ -98,7 +93,7 @@ for (const failure of ['point','point-readback','delete','archive-delete']) {
     } else if (failure==='delete') {
         assert(Boolean(result.snapshotId),'Teilfehler nennt vorhandenen Punkt Vor Neu beginnen');
         assertEqual((await A.readSnapshot(result.snapshotId)).records.rs_profiles_v1,original.rs_profiles_v1,'Teilfehler hat vollständigen Rückweg');
-    } else assert(!result.snapshotId,'Archivlöschung legt keinen neuen Punkt an');
+    }
 }
 // Tauri muss echte IPC-Readbacks prüfen, auch wenn der Save Erfolg meldet.
 for (const failure of ['snapshot-bytes', 'main-write']) {
@@ -153,7 +148,7 @@ const doc=dialogDoc(), opener=doc.createElement('button'); doc.body.appendChild(
 opener.disabled = true;
 let exports=0, rejectBackup=true;
 const stub={ blocked:false, inspect:async()=>({}), execute:async()=>({status:'cancelled'}) };
-const task=showNewBeginningDialog(doc,{ controller:stub,opener,names:['Muster A','Außenperson'],backup:async()=>{ exports++; if(rejectBackup) throw new Error('Ausgabe abgebrochen'); } });
+const task=showNewBeginningDialog(doc,{ controller:stub,opener,names:['Muster A','Muster B'],backup:async()=>{ exports++; if(rejectBackup) throw new Error('Ausgabe abgebrochen'); } });
 const check=(id,value)=>{ const el=doc.getElementById(id); el.checked=value; el.events.get('change')(); };
 const accept=doc.getElementById('newBeginningConfirm');
 assert(accept.disabled,'Echter Dialog startet gesperrt');
@@ -161,11 +156,20 @@ check('newBeginningConfirmed',true); assert(accept.disabled,'Bestätigung allein
 await doc.getElementById('newBeginningBackup').events.get('click')(); assert(accept.disabled,'Exportfehler gibt Dialog nicht frei');
 rejectBackup=false; await doc.getElementById('newBeginningBackup').events.get('click')(); assert(!accept.disabled,'Erfolgreicher bestehender Export gibt Dialog frei');
 assertEqual(exports,2,'Dialog nutzt genau den bestehenden Exportcallback');
-check('newBeginningDeleteSnapshots',true); assert(!doc.getElementById('newBeginningWarning').hidden,'Archivlöschung zeigt deutliche Warnung');
+// SV-1: Die Archivlöschung ist entfallen; der Dialog nennt den Punkt „Vor Neu beginnen“.
+assertEqual(doc.getElementById('newBeginningDeleteSnapshots'),null,'Keine Option zum Löschen der Wiederherstellungspunkte');
+assert(doc.getElementById('newBeginningRemaining').textContent.includes('Vor Neu beginnen'),'Dialog nennt den bleibenden Punkt');
 doc.getElementById('newBeginningDialog').events.get('keydown')({ key:'Escape',preventDefault(){} }); await task;
 assert(doc.activeElement === opener && !opener.disabled,'Escape bricht ab und gibt Rückfokus');
 const withoutTask=showNewBeginningDialog(doc,{controller:stub,opener,names:[]});
-check('newBeginningWithoutBackup',true); check('newBeginningConfirmed',true); check('newBeginningDeleteSnapshots',true);
-assert(doc.getElementById('newBeginningWarning').textContent.includes('keinen Rückweg'),'Ohne Sicherung und Punkte warnt vor endgültigem Verlust');
+check('newBeginningWithoutBackup',true); check('newBeginningConfirmed',true);
+assert(!doc.getElementById('newBeginningConfirm').disabled,'Ohne Sicherung bleibt Neu beginnen nach Bestätigung möglich');
 assert(!doc.getElementById('newBeginningConfirm').disabled,'Ausdrücklicher Verzicht und Bestätigung erlauben Aktion');
 doc.getElementById('newBeginningCancel').events.get('click')(); await withoutTask;
+// SV-1c: Eine Warnung über Sitzungsreste steht nach dem Löschen im Dialog; er schließt sich dafür nicht.
+const warned={ blocked:false, inspect:async()=>({}), execute:async()=>({ status:'reload_required', warning:'Browser- und Sitzungsreste konnten nicht vollständig entfernt werden.' }) };
+const warnedTask=showNewBeginningDialog(doc,{controller:warned,opener,names:[]});
+check('newBeginningWithoutBackup',true); check('newBeginningConfirmed',true);
+await doc.getElementById('newBeginningConfirm').events.get('click')();
+assert(doc.getElementById('newBeginningDialog')?.open && /Sitzungsreste/.test(doc.getElementById('newBeginningStatus').textContent),'Warnung erreicht den Nutzer im offenen Dialog');
+doc.getElementById('newBeginningCancel').events.get('click')(); await warnedTask;

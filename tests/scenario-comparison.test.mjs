@@ -43,7 +43,7 @@ assertEqual(context.sourceLine, '2 Pfade · Ausgewogen', 'Herkunft aus Laufaggre
 assertEqual(context.chips[0].text, 'Grundbedarf in allen 2 Pfaden gedeckt', 'Inventar hat Vorrang vor Legacyzählern');
 assertEqual(context.chips[1].text, '1 von 2 Pfaden zeitweise unter Mindest-Flex', 'FR-6-Aggregat zählt Pfade; Gleichheit zählt nicht als Unterschreitung');
 assertEqual(context.chips[2].text, 'Pflege nicht simuliert', 'Pflegeannahme aus Laufinputs');
-assert(buildComparisonContext({ results: { ...results, outcomeInventory: { ...results.outcomeInventory, ruin: 1, floorCoveredCount: 1 } } }).chips[0].text.includes('Ruin in 1 von 2 Pfaden'), 'Ruinanteil nennt Zähler und Nenner');
+assert(buildComparisonContext({ results: { ...results, outcomeInventory: { ...results.outcomeInventory, ruin: 1, floorCoveredCount: 1 } } }).chips[0].text.includes('Vermögen aufgebraucht in 1 von 2 Pfaden'), 'Ruinanteil nennt Zähler und Nenner');
 const missing = buildComparisonContext();
 assert(missing.chips.every(chip => chip.text.includes('unbekannt')), 'Fehlende Aggregate und Pflegeannahme bleiben unbekannt');
 assert(missing.sourceLine.includes('Voreinstellung unbekannt'), 'Kein aktuelles Formular ersetzt die Voreinstellung des Laufs');

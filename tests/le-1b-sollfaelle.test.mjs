@@ -1,5 +1,5 @@
 // LE-1b: Nachschritt zu LE-1/KO-2 nach dem Gutachten Fable (P2-2, P3-5, P3-9). P2-1 und P3-3 stehen in
-// target-mortality.test.mjs und auto-optimizer.test.mjs, P3-4 in german-demography-care-survivor-contract.test.mjs.
+// target-mortality.test.mjs (P3-3 entfiel mit Auto-Optimize), P3-4 in german-demography-care-survivor-contract.test.mjs.
 import { createHash } from 'node:crypto';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { overviewScope } from '../app/overview/overview-storage.js';
@@ -14,6 +14,7 @@ import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input
 import { planScope, HOUSEHOLD_PLAN_KEY } from '../app/profile/household-plan.js';
 import { createMonteCarloLifeState, updateMonteCarloLifeEventsForYear } from '../app/simulator/mc-life-events.js';
 import { rng, makeRunSeed } from '../app/simulator/simulator-utils.js';
+import { readKR1bReferences } from './helpers/kr-1b-expectations.mjs';
 
 console.log('--- LE-1b Sollfälle ---');
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -50,7 +51,6 @@ const hash = value => createHash('sha256').update(JSON.stringify(value)).digest(
 {
     const MEASURED_BEFORE = {
         'max-erika': { montecarlo: '3fa8e67623dc4fe14d36cd417856f6c6d6a2b41564bf8c024b8c3709c851016a',
-            workshop: '364de253df833ffef92bad59c0e1255eefe108651ca026ce8d1154fea21c8e97',
             backtest: 'ed7d4183706c87752b5a07aef36f79c248e8d84e40a08ed1fcf6c16635160f9f' },
         'jan-lena': { backtest: '45a3d3e60c490624c95946d827b77cb38225c6a08e783ae9b2d8c0c3d59edd24' }
     };
@@ -63,7 +63,6 @@ const hash = value => createHash('sha256').update(JSON.stringify(value)).digest(
     const me = context('max-erika');
     const fp = (ctx, kind) => sourceFingerprint({ registry: ctx.registry, activeId: ctx.records.rs_current_profile, liveData: ctx.records, scope: ctx.scope, kind });
     assert(fp(me, 'montecarlo') !== MEASURED_BEFORE['max-erika'].montecarlo, 'P2-2: Monte-Carlo-Fingerprint mit altem Modellstand ist ungleich dem neuen');
-    assert(fp(me, 'workshop') !== MEASURED_BEFORE['max-erika'].workshop, 'P2-2: Werkstatt-Fingerprint mit altem Modellstand ist ungleich dem neuen');
     assertEqual(fp(me, 'backtest'), MEASURED_BEFORE['max-erika'].backtest, 'P2-2: Backtest ohne Dynamic Flex kennt keinen Tod und bleibt gültig');
     assert(fp(context('jan-lena'), 'backtest') !== MEASURED_BEFORE['jan-lena'].backtest, 'P2-2: Backtest mit Dynamic Flex (Horizont aus der Zieltafel) gilt als veraltet');
 
@@ -124,7 +123,7 @@ const hash = value => createHash('sha256').update(JSON.stringify(value)).digest(
         const zero = balance(0), standard = balance(undefined);
         assertEqual(zero.dynamicFlex, true, 'P3-9: Jan und Lena rechnen mit Dynamic Flex');
         assertEqual(zero.input, LE1_ONLY.input, 'P3-9: k = 0 ergibt die Balance-Eingabe von LE-1 allein');
-        assertEqual(zero.result, LE1_ONLY.result, 'P3-9: k = 0 ergibt das Balance-Ergebnis von LE-1 allein');
+        assertEqual(zero.result, readKR1bReferences(LE1_ONLY.result), 'P3-9: k = 0 ergibt das Balance-Ergebnis von LE-1 allein');
         assert(standard.result !== LE1_ONLY.result, 'P3-9: Mit der Vorgabe 0,5 % wirkt KO-2 zusätzlich');
     } finally { setAppTestDate(null); }
 }

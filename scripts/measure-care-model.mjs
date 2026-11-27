@@ -14,7 +14,6 @@ const load = file => import(pathToFileURL(resolve(source, file)));
 const { inputs: fixture } = await load('tests/extended/parity-replay-fixture.mjs');
 const { readCareInputs } = await load('app/simulator/simulator-input-care.js');
 const { runMonteCarloChunk } = await load('app/simulator/monte-carlo-runner.js');
-const { createStressReplayCaptureRequest } = await load('app/simulator/stress-replay-path-materializer.js');
 const { EngineAPI } = await load('engine/index.mjs');
 const html = readFileSync(resolve(source, 'Simulator.html'), 'utf8');
 const defaults = readCareInputs({ doc: { getElementById(id) {
@@ -36,21 +35,18 @@ for (let start = 0; start < params.anzahl; start += 50) {
     const indices = Array.from({ length: 50 }, (_, i) => start + i);
     const chunk = await runMonteCarloChunk({ inputs, monteCarloParams: params,
         widowOptions: inputs.widowOptions, useCapeSampling: true, runRange: { start, count: 50 },
-        logIndices: new Set(indices), stressReplayCapture: createStressReplayCaptureRequest(indices), engine: EngineAPI });
+        logIndices: new Set(indices), engine: EngineAPI });
     if (!chunk.financialMetricsValid || chunk.batchStatus !== 'completed') throw new Error('Technischer Messfehler.');
     const bytes = JSON.stringify({ ...chunk, wealthFan: chunk.wealthFan });
     digest.update(bytes); outputBytes += Buffer.byteLength(bytes);
     comparisonDigest.update(JSON.stringify(withLegacyCareProvenance({ ...chunk, wealthFan: chunk.wealthFan })));
     for (const [i, meta] of chunk.runMeta.entries()) {
-        for (const year of meta.stressReplayCapture.years) {
-            if (year.continuation) continue; // Gleicher Horizont wie runMeta.totalCareYears, vor Schattenfortsetzung.
-            for (const event of year.householdEvents) for (const p of [1, 2]) {
-                const care = event[`careMetaP${p}`];
-                if (!care?.active) continue;
-                const weight = event[`p${p}Alive`] ? 1 : .5;
-                gradeYears += weight;
-                if (care.grade >= 4) highGradeYears += weight;
-            }
+        // MC-Protokollzeilen; die Zeile des letzten Todes trägt keinen Pflegezustand mehr.
+        for (const row of meta.logDataRows) for (const p of [1, 2]) {
+            if (!row[`CareP${p}_Active`]) continue;
+            const weight = row[`Person${p}Alive`] ? 1 : .5;
+            gradeYears += weight;
+            if (row[`CareP${p}_Grade`] >= 4) highGradeYears += weight;
         }
         paths.push({ index: meta.index, failed: meta.failed, care: meta.careEverActive,
             realEnd: chunk.pathSummaries.finalValueRealEur[i], careYears: meta.totalCareYears,
@@ -65,7 +61,8 @@ const quantile = (values, q) => {
 };
 const carePaths = paths.filter(path => path.care), wealth = paths.map(path => path.realEnd);
 const totalCareYears = paths.reduce((sum, path) => sum + path.careYears, 0);
-if (paths.length !== 2000 || Math.abs(gradeYears - totalCareYears) > 1e-8) {
+// Gradjahre aus dem Protokoll ohne halbes Jahr des letzten Todes: höchstens die gezählten Pflegejahre.
+if (paths.length !== 2000 || gradeYears > totalCareYears + 1e-8) {
     throw new Error(`Unvollständige Messung: ${paths.length} Pfade; Gradjahre ${gradeYears} gegen ${totalCareYears}.`);
 }
 const result = { runtime: { node: process.version, platform: process.platform, arch: process.arch },

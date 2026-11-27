@@ -26,6 +26,10 @@ export function protocolAnnualTotals(row) {
  */
 export function protocolCashflowBreakdown(entry, options = {}) {
     const backtest = options.source === 'backtest', row = backtest ? entry?.row : entry;
+    // NK-2 (Punkt 7): Die Hilfe zur Pflege aus der Auszahlung zahlt der Staat, nicht das Vermögen (die Entnahme ist schon die gezahlte);
+    // ihr Steueranteil („Steuer aus Verkäufen oder Zinsen für die Pflege“) ist keine Ausgabe des Jahres. Einnahmen, Entnahme und Hilfe
+    // ergeben so in Jahren mit Hilfe die Ausgaben.
+    const taxAid = amount(row?.hilfe_zur_pflege_steuer), payoutAid = Math.max(0, amount(row?.hilfe_zur_pflege) - taxAid);
     const withdrawal = amount(entry?.entscheidung?.jahresEntnahme ?? row?.entscheidung?.jahresEntnahme)
         + amount(row?.geplante_ausgaben) + amount(row?.wohnrechtsteuer);
     const totals = protocolAnnualTotals(row);
@@ -53,8 +57,11 @@ export function protocolCashflowBreakdown(entry, options = {}) {
         personAmounts(incomes, row.pflegegeld, row.pflegegeld_personen,
             person => `Pflegegeld${person ? ` ${personName(person.profileId)}` : ''}`);
         const allowanceByPerson = new Map((row.pflegegeld_personen || []).map(person => [person.profileId, person.amount]));
-        personAmounts(incomes, amount(row.sonstige_einkuenfte) - amount(row.pflegegeld),
-            row.sonstige_einkuenfte_personen?.map(person => ({ ...person, amount: person.amount - (allowanceByPerson.get(person.profileId) || 0) })),
+        const bequestIncome = amount(row.rente_aus_erbe);
+        if (bequestIncome) add(incomes, `Rente aus dem Erbe · ${personName(row.rente_aus_erbe_person)}`, bequestIncome);
+        personAmounts(incomes, amount(row.sonstige_einkuenfte) - amount(row.pflegegeld) - bequestIncome,
+            row.sonstige_einkuenfte_personen?.map(person => ({ ...person, amount: person.amount - (allowanceByPerson.get(person.profileId) || 0)
+                - (person.profileId === row.rente_aus_erbe_person ? bequestIncome : 0) })),
             person => `Sonstige Einkünfte${person ? ` ${personName(person.profileId)}` : ''}`);
         personAmounts(incomes, row.zufluss, row.zufluss_personen,
             person => `Einmalige Einkünfte${person?.label ? ` (${person.label})` : ''}`);
@@ -67,31 +74,109 @@ export function protocolCashflowBreakdown(entry, options = {}) {
         const residential = amount(row.pflege_heimkosten);
         const ownExpenses = amount(row.pflege_heim_eigene_ausgaben);
         const rent = amount(row.wohnmiete);
-        add(expenses, residential ? 'Grundbedarf zu Hause' : 'Grundbedarf', floor - care - residential - ownExpenses - rent);
+        const bequestRent = amount(row.miete_aus_erbe), saleRent = amount(row.miete_nach_erbfall);
+        add(expenses, residential ? 'Grundbedarf zu Hause' : 'Grundbedarf', floor - care - residential - ownExpenses - rent - bequestRent - saleRent);
         const offset = backtest ? entry.jahr - options.startYear : entry.jahr - 1;
         const year = inputs.plannedExpensesReferenceYear + offset;
         const priced = Number.isInteger(year) && Number.isFinite(row.inflation_factor_cum);
         // FR-43: Feste geplante Ausgaben stecken im Grundbedarf; die Zeile nennt nur ihren Anteil.
         const fixedPlanned = priced ? plannedExpensesForYear((inputs.plannedExpenses || []).filter(isFixedExpense), year, row.inflation_factor_cum) : 0;
         if (Math.abs(fixedPlanned) / divisor >= 0.5) expenses.push({ label: 'davon feste geplante Ausgaben', amount: fixedPlanned, detail: true });
+        // FR-84: Pflegekosten, die das Geldvermögen nicht mehr trägt, zahlt der Staat (Hilfe zur Pflege). NK-2 (Befund 2143): Die Zeile steht
+        // direkt unter „Heimkosten“ (ohne Heim unter „Pflege“); deckt sie mehr als die Zeile darüber, sagt der Text, wofür.
+        // KR-1c-b: Besteht die Hilfe nur aus der Steuer, steht sie in derselben Zeile (Zinssteuer auf Geld, das ganz ins Heim fließt).
+        const aidLine = (/** @type {number} */ above) => {
+            const aid = payoutAid / divisor >= 0.5 ? payoutAid : taxAid;
+            if (!(aid / divisor >= 0.5)) return;
+            const label = aid <= above + 0.5 ? 'davon Hilfe zur Pflege (zahlt der Staat)'
+                : residential && aid <= residential + ownExpenses + 0.5 ? 'Hilfe zur Pflege für Heimkosten und eigene Ausgaben im Heim (zahlt der Staat)'
+                    : 'Hilfe zur Pflege für alle Pflegekosten des Jahres (zahlt der Staat)';
+            expenses.push({ label, amount: aid, detail: true });
+        };
         add(expenses, residential ? 'Pflege zu Hause' : 'Pflege', care);
+        if (!residential) aidLine(care);
         add(expenses, 'Heimkosten', residential);
+        if (residential) aidLine(residential);
         add(expenses, 'Eigene Ausgaben im Heim', ownExpenses);
         add(expenses, 'Miete nach Notverkauf', rent);
+        add(expenses, 'Miete aus dem Erbe', bequestRent);
+        add(expenses, 'Miete nach Verkauf im Erbfall', saleRent);
         add(expenses, 'Flex', householdFlex(row));
-        add(expenses, 'Steuer Wohnrecht (§ 23)', row.wohnrechtsteuer);
+        add(expenses, row.residenceTaxPayment?.rentBequest ? 'Steuer auf die Rente aus dem Erbe (§ 23)' : 'Steuer Wohnrecht (§ 23)', row.wohnrechtsteuer);
 
         const planned = priced
-            ? (inputs.plannedExpenses || []).filter(item => !isFixedExpense(item)).map(item => ({ label: item.bezeichnung,
+            ? (inputs.plannedExpenses || []).filter(item => !isFixedExpense(item)
+                && !row.geplante_ausgaben_abgelehnt?.some((/** @type {{id: string}} */ rejected) => rejected.id === item.id)).map(item => ({ label: item.bezeichnung,
                 amount: plannedExpensesForYear([item], year, row.inflation_factor_cum) })) : [];
-        personAmounts(expenses, row.geplante_ausgaben, planned,
-            item => `Geplante Ausgaben${item?.label ? ` (${item.label})` : ''}`);
+        // OP-1 (Punkt 4): Ein entfallener Posten behält seine Zeile mit dem bezahlten Betrag, auch bei 0 €. Darunter stehen eingerückt
+        // „geplant“ und „davon entfällt“. Die Posten kommen aus der Liste der entfallenen Posten; die nicht eingerückten Zeilen ergeben die Summe.
+        // Nachtrag 3: Rundungsreste unter 0,50 € sind kein Wegfall (P3-1); die Zuordnung geht je Posten, nie mit negativem bezahltem Betrag (P2-2).
+        const dropped = droppedExpenses(row).filter(entry => entry.amount / divisor >= 0.5);
+        const plannedLabel = (/** @type {string} */ label) => `Geplante Ausgaben${label ? ` (${label})` : ''}`;
+        /** @type {Map<number, {label: string, amount: number}>} Plan-Posten (Index) → zugeordneter entfallener Betrag */
+        const assigned = new Map();
+        const open = (/** @type {{label: string, amount: number}} */ entry) => planned.map((item, index) => ({ item, index }))
+            .filter(({ item, index }) => !assigned.has(index) && amount(item.amount) > 0 && (item.label || '') === entry.label);
+        const close = (/** @type {number} */ a, /** @type {number} */ b) => Math.abs(a - b) <= 0.01;
+        /** @type {(entry: {label: string, amount: number}) => boolean} Gleicher Name und gleicher Betrag. */
+        const exact = entry => {
+            const hit = open(entry).find(({ item }) => close(item.amount, entry.amount));
+            if (hit) assigned.set(hit.index, { label: entry.label, amount: entry.amount });
+            return Boolean(hit);
+        };
+        /** @type {(entry: {label: string, amount: number}) => boolean} Eine Summe ohne Liste (alle Posten ohne Namen) verteilt sich auf passende Posten. */
+        const subset = entry => {
+            const candidates = open(entry).slice(0, 12);
+            for (let mask = 1; mask < 1 << candidates.length; mask++) {
+                const chosen = candidates.filter((_, bit) => mask & 1 << bit);
+                if (chosen.length < 2 || !close(chosen.reduce((sum, { item }) => sum + item.amount, 0), entry.amount)) continue;
+                for (const { item, index } of chosen) assigned.set(index, { label: entry.label, amount: item.amount });
+                return true;
+            }
+            return false;
+        };
+        /** @type {(entry: {label: string, amount: number}) => boolean} Sonst der kleinste gleichnamige Posten, der den Betrag tragen kann. */
+        const covering = entry => {
+            const hit = open(entry).filter(({ item }) => item.amount + 0.01 >= entry.amount).sort((a, b) => a.item.amount - b.item.amount)[0];
+            if (hit) assigned.set(hit.index, { label: entry.label, amount: Math.min(entry.amount, hit.item.amount) });
+            return Boolean(hit);
+        };
+        const unmatched = dropped.filter(entry => !exact(entry)).filter(entry => !subset(entry)).filter(entry => !covering(entry));
+        /** @returns {{label: string, amount: number, keep?: boolean, detail?: boolean}[]} */
+        const droppedRows = (/** @type {string} */ label, /** @type {number} */ plannedAmount, /** @type {number} */ droppedAmount) => {
+            const paid = plannedAmount - droppedAmount;
+            return [{ label: label ? plannedLabel(label) : 'Geplante Ausgabe', amount: paid > 0.01 ? paid : 0, keep: true },
+                { label: 'geplant', amount: plannedAmount, detail: true }, { label: 'davon entfällt', amount: -droppedAmount, detail: true }];
+        };
+        /** @type {{label: string, amount: number, keep?: boolean, detail?: boolean}[]} */
+        const items = planned.flatMap((item, index) => {
+            const entry = assigned.get(index);
+            return entry ? droppedRows(entry.label, amount(item.amount), entry.amount) : [{ label: plannedLabel(item.label), amount: item.amount }];
+        });
+        // Ohne passenden Plan-Posten: Jeder Posten entfällt ganz oder gar nicht, geplant war also der entfallene Betrag.
+        items.push(...unmatched.flatMap(entry => droppedRows(entry.label, entry.amount, entry.amount)));
+        let paidSum = 0;
+        for (const item of items) {
+            if (item.detail) { expenses.push(item); continue; }
+            paidSum += amount(item.amount);
+            // Ausnahme von der 0,50-€-Regel nur für die Zeile eines entfallenen Postens.
+            if (item.keep) expenses.push({ label: item.label, amount: item.amount });
+            else add(expenses, item.label, item.amount);
+        }
+        add(expenses, plannedLabel(''), amount(row.geplante_ausgaben) - paidSum);
     }
-    return { incomes, expenses, totals, saved: amount(row?.einkuenfte_gespart), withdrawal };
+    return { incomes, expenses, totals, saved: amount(row?.einkuenfte_gespart), withdrawal, careAid: { payout: payoutAid, tax: taxAid } };
 }
 
-/** Teiler von nominal zu heutigen Euro für Jahresflüsse, wie ihn die Geldspalten des Protokolls verwenden
- * (`protocol-columns.js`: Monte Carlo kumulierte Inflation zu Jahresbeginn, Backtest einschließlich des Jahres).
+/** Entfallene Einmalausgaben des Jahres: benannte Posten, sonst die entfallene Summe als ein Posten ohne Namen.
+ * @param {any} row - Jahreszeile. @returns {{label: string, amount: number}[]} */
+function droppedExpenses(row) {
+    if (row.geplante_ausgaben_entfallen?.length) return row.geplante_ausgaben_entfallen.map((/** @type {any} */ item) => ({ label: item.label || '', amount: amount(item.amount) }));
+    return amount(row.geplante_ausgaben_gekuerzt) > 0 ? [{ label: '', amount: row.geplante_ausgaben_gekuerzt }] : [];
+}
+
+/** Teiler von nominal zu realen Euro für Jahresflüsse, wie ihn die Geldspalten des Protokolls verwenden
+ * (`protocol-columns.js`): kumulierte Inflation zu Jahresbeginn, im Backtest wie in Monte Carlo (ST7-A).
  * In nominaler Anzeige 1.
  *
  * @param entry - Protokolleintrag.
@@ -100,9 +185,7 @@ export function protocolCashflowBreakdown(entry, options = {}) {
  */
 export function protocolMoneyDivisor(entry, options = {}) {
     if (options.moneyBasis !== 'real') return 1;
-    const backtest = options.source === 'backtest', row = (backtest ? entry?.row : entry) || {};
-    const start = row.inflation_factor_cum, inflation = backtest ? entry?.inflationVJ : row.inflation;
-    const factor = backtest ? Number.isFinite(inflation) ? start * (1 + inflation / 100) : NaN : start;
+    const factor = ((options.source === 'backtest' ? entry?.row : entry) || {}).inflation_factor_cum;
     return Number.isFinite(factor) && factor > 0 ? factor : 1;
 }
 
@@ -111,7 +194,7 @@ export const CARE_COLUMN_EXPLANATIONS = Object.freeze({
     'floor-brutto': 'Jahresbedarf vor Einkünften: verbleibender Grundbedarf zu Hause mit festen geplanten Ausgaben, Pflegezusatz zu Hause, Heimkosten, eigene Ausgaben im Heim und Miete nach Notverkauf, in nominalen Euro.',
     'pflege-zusatz-floor': 'Pflegezusatz zu Hause aller Personen nach Staffel, Deckel und Rampe, in nominalen Euro. Im Heim 0; die Heimkosten stehen bei den Pflegekosten je Person.',
     'pflege-zusatz-floor-delta': 'Anstieg des Pflegezusatzes zu Hause gegenüber dem Vorjahr, in nominalen Euro, nie negativ. Heimkosten sind nicht enthalten; ihre Änderung, auch nach unten, steht im ⓘ bei „Ausgaben“.',
-    'pflege-cap-zusatz': 'Deckel für den Pflegezusatz zu Hause: maximaler Pflege-Floor minus Grundbedarf, je Person, in nominalen Euro. Heimkosten sind nicht gedeckelt.',
+    'pflege-cap-zusatz': 'Deckel für den Pflegezusatz zu Hause: maximaler Grundbedarf mit Pflege minus Grundbedarf, je Person, in nominalen Euro. Heimkosten sind nicht gedeckelt.',
     pflege: 'Summe der Pflegekosten beider Personen in nominalen Euro: Zusatz zu Hause, im Heim Heimkosten und eigene Ausgaben. Der eingesparte Grundbedarf ist nicht abgezogen.',
     'carep1-cost': 'Pflegekosten von Person 1 in nominalen Euro: Zusatz zu Hause, im Heim Heimkosten und eigene Ausgaben; im Todesjahr die Hälfte. Der eingesparte Grundbedarf ist nicht abgezogen.',
     'carep2-cost': 'Pflegekosten von Person 2 in nominalen Euro: Zusatz zu Hause, im Heim Heimkosten und eigene Ausgaben; im Todesjahr die Hälfte. Der eingesparte Grundbedarf ist nicht abgezogen.'
@@ -170,9 +253,12 @@ export function protocolCareNotes(entry, options = {}, money = value => `${Math.
         if (!care) continue;
         const name = options.personDisplayContext?.persons?.[index]?.name || inputs.simulationPeople?.[index]?.name || `Person ${index + 1}`;
         const percent = `${Math.round(amount(care.subsidy) * 100)}\u00a0%`, change = protocolResidentialCostChange(entry, index, options);
+        // FR-84 Punkt 6 (NK-1c): Grund des Heimeintritts im Jahr des Wechsels, etwa „im Heim (laut Staffel)“.
+        const why = options.residentialEntry?.(entry, index);
+        const home = why ? `im Heim (${String(why).replace(/^Heim \(?/, '').replace(/\)$/, '')})` : 'im Heim';
         const form = care.form !== 'residential' ? care.form ? CARE_FORMS[care.form] : 'Form im amtlichen Durchschnitt enthalten'
             : care.bestand ? 'heute schon im Heim, die Heimkosten stecken im Grundbedarf'
-                : Number(care.heimJahr) > 0 ? `im Heim, Heimjahr ${care.heimJahr}, ${amount(care.subsidy) > 0 ? `Zuschuss der Kasse ${percent} auf den Pflegeanteil` : 'ohne Zuschuss der Kasse'}` : 'im Heim';
+                : Number(care.heimJahr) > 0 ? `${home}, Heimjahr ${care.heimJahr}, ${amount(care.subsidy) > 0 ? `Zuschuss der Kasse ${percent} auf den Pflegeanteil` : 'ohne Zuschuss der Kasse'}` : home;
         notes.push(`${name}: Grad ${care.grade}, ${form}${change === null ? '' : `, Heimkosten ${change > 0 ? '+' : ''}${money(change)} gegenüber dem Vorjahr`}.`);
     }
     return notes;

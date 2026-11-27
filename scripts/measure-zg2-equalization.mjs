@@ -72,8 +72,9 @@ async function observe(runIndex, deathYearIndex) {
         // Die Initialisierung darf eine JSDoc-Zusicherung tragen; der Haltepunkt bleibt dieselbe Deklaration.
         ['after_returns', marketFile, 'const balanceTrace ='],
         ['before_payout', payoutFile, 'const personalPayout = unmarried'],
-        // FR-81: Die Entnahme kann bei Unverheirateten nach einer Flex-Kürzung kleiner sein; der Haltepunkt bleibt dieselbe Deklaration.
-        ['after_payout', payoutFile, 'const jahresEntnahmeEffektiv = flexCut'],
+        // FR-81/FR-84: Die Entnahme kann bei Unverheirateten nach Flex-Kürzung oder Hilfe zur Pflege kleiner sein; der Haltepunkt bleibt
+        // dieselbe Deklaration.
+        ['after_payout', payoutFile, 'let jahresEntnahmeEffektiv = personalShortfall'],
         ['before_inheritance', inheritanceFile, 'const rule = testamentRule(inputs.partnership, deceasedProfileId);']
     ];
     try {
@@ -153,15 +154,19 @@ export async function measureZG2({ search = false } = {}) {
     const exemptHome = max.endHome;
     const homeReductionFactor = (max.endAssets - exemptHome) / max.endAssets;
     const allowance = rawAllowance * homeReductionFactor;
-    const taxableWith = Math.max(0, acquisition - exemptHome - 500000 - allowance);
-    const taxableWithout = Math.max(0, acquisition - exemptHome - 500000);
+    // VB-1: Der Versorgungsfreibetrag (§ 17 ErbStG, eigene Prüfung in tests/vb-1-versorgungsfreibetrag.test.mjs) wirkt in beiden Rechnungen gleich.
+    const pensionRelief = death.inheritance.pensionAllowance?.amount || 0;
+    // HP-4: Der steuerpflichtige Erwerb wird auf volle 100 € abgerundet (§ 10 Abs. 1 Satz 6 ErbStG).
+    const roundDown = value => Math.floor(value / 100) * 100;
+    const taxableWith = roundDown(Math.max(0, acquisition - exemptHome - 500000 - allowance - pensionRelief));
+    const taxableWithout = roundDown(Math.max(0, acquisition - exemptHome - 500000 - pensionRelief));
     // Unabhängiger Tarif für diesen Sollfall: 19 %, Gegenprobe Härteausgleich ab 600.000.
     if (![taxableWith, taxableWithout].every(value => value > 600000 && value <= 6000000)) {
         throw new Error('Musterpfad verlässt das festgelegte Tarifintervall.');
     }
     const manualTax = value => Math.min(value * .19, 90000 + (value - 600000) * .5);
     const codeAllowance = equalizationAllowance(inputs.partnership, { ...gains, acquisition, exemptHome });
-    const codeTaxWithout = inheritanceTax(acquisition, { status: 'married', exemptHome });
+    const codeTaxWithout = inheritanceTax(acquisition, { status: 'married', exemptHome, pensionAllowance: pensionRelief });
     const close = (a, b) => Math.abs(a - b) < 1e-7;
     const checks = {
         unchangedLog: JSON.stringify(original.logDataRows) === JSON.stringify(meta.logDataRows),
@@ -180,7 +185,7 @@ export async function measureZG2({ search = false } = {}) {
         parameters, searchRuns: search ? 50 : 1, runIndex: original.index, pathNumber: original.index + 1,
         scenarioLabel: selected.label, simulationYear: death.jahr, calendarYear: 2026 + death.jahr - 1,
         historicalYear: death.histJahr, inflationFactor: factor, people,
-        handCalculation: { acquisition, exemptHome, rawAllowance, homeReductionFactor, allowance,
+        handCalculation: { acquisition, exemptHome, rawAllowance, homeReductionFactor, allowance, pensionRelief,
             taxableWith, taxableWithout, taxWith: manualTax(taxableWith), taxWithout: manualTax(taxableWithout) },
         code: { gains, allowance: codeAllowance, loggedAllowance: death.inheritance.exemptGain,
             taxWith: death.erbschaftsteuer, taxWithout: codeTaxWithout },
@@ -196,9 +201,9 @@ export async function measureZG2({ search = false } = {}) {
             formula: 'app/profile/household-partnership.js:69', tooltip: 'app/simulator/protocol-renderer.js:307' },
         ui: ['Spielbereich starten: Max und Erika, „Haus und vermietete Wohnung“, Spielkurse, Testdatum 28.10.2026.',
             'Partnerschaft: verheiratet, Zugewinngemeinschaft, beide Erbanteile 100 %, keine Testamentbegrenzung; Musterplan unverändert.',
-            'Simulator → Monte Carlo → Einstellungen: 50 Läufe, 35 Jahre, Seed 12345, „Marktregime mit Übergängen“, „Alle Jahre gleich“.',
-            'CAPE-Startjahre, geschätzte Daten ausschließen, Stressmodus und Tail-Risk aus; Erweitert → „Seed je Lauf (reproduzierbar)“.',
-            `Simulation starten → Szenario-Logs → „Nominal · Kontowert“ → Stichprobe → „${selected.label}“.`,
+            'Simulator → Monte Carlo → Einstellungen: 50 Läufe, 35 Jahre, Zufallsstartwert 12345, „Marktregime mit Übergängen“, „Alle Jahre gleich“.',
+            'CAPE-Startjahre, geschätzte Daten ausschließen, Stressmodus und Tail-Risk aus; Erweitert → „Zufallsstartwert je Lauf (reproduzierbar)“.',
+            `Simulation starten → Szenario-Protokolle → „Nominal · Kontowert“ → Stichprobe → „${selected.label}“.`,
             `Im Jahresprotokoll Jahr ${death.jahr} (${2026 + death.jahr - 1}) → Erbe-ⓘ: „Todesfall Max“, „steuerfrei als Zugewinnausgleich“.`]
     };
 }

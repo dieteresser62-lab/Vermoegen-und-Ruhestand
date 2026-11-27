@@ -1,0 +1,33 @@
+{
+  "reason": "NG-14 bestimmt das Vorzeichen je Person und Kalenderjahr und begrenzt erst den Jahresbedarf. Monats- und Nettosummen behalten die Erstattungen.",
+  "changes": [
+    {
+      "test": "tests/balance-expenses.test.mjs",
+      "field": "Jahresverbrauch, Monatsmittel, Abweichung und Hochrechnung im gemischten Bestand",
+      "old": { "annualUsed": 110, "avgMonthly": 110, "ytdDelta": 10, "annualForecast": 1320 },
+      "new": { "annualUsed": 50, "avgMonthly": 50, "ytdDelta": -50, "annualForecast": 600 },
+      "reason": "Der negative Kategoriesaldo des ausgeblendeten Profils im zweiten Monat legt den Jahresfaktor fest. Die +30 € desselben Profils im ersten Monat sind deshalb eine Erstattung."
+    },
+    {
+      "test": "tests/expenses-model.test.mjs",
+      "field": "Haushaltsverbrauch, Restbudget, Kategoriesumme, Median, Monatsmittel, Hochrechnung und Personenverbrauch",
+      "old": { "annualUsed": 1200, "annualRemaining": -600, "categorySum": 1200, "medianMonthly": 200, "avgMonthly": 400, "annualForecast": 4800, "personAnnualUsed": 1180 },
+      "new": { "annualUsed": 800, "annualRemaining": -200, "categorySum": 800, "medianMonthly": 100, "avgMonthly": 266.6666666666667, "annualForecast": 3200, "personAnnualUsed": 780 },
+      "reason": "Alvas +200 € in Monat 2 sind im gemischten Jahr eine Erstattung. Belas durchgehend positiver Altimport zählt weiter als Ausgabe."
+    },
+    {
+      "test": "tests/fl-1-expenses-display.test.mjs",
+      "field": "Jahressegmente und Verhältnis zum Jahressaldo",
+      "old": { "floor": 240, "flex": 40, "unallocated": 200, "annualUsed": 480, "segmentSum": 480 },
+      "new": { "floor": 240, "flex": 60, "unallocated": 200, "annualUsed": 480, "segmentSum": 500 },
+      "reason": "Die reine Erstattungskategorie steht im Jahressegment bei null. Im Jahressaldo bleibt die Erstattung von 20 € enthalten."
+    },
+    {
+      "test": "tests/fl-1-expenses-display.test.mjs",
+      "field": "Text zur Hochrechnungsbasis in der Personenansicht",
+      "old": "Mittelwert aus 3 positiven Ausgabenmonaten × 12",
+      "new": "Mittelwert aus 3 Monaten × 12",
+      "reason": "Vollständige Netto-Erstattungsmonate zählen ebenfalls in der Hochrechnung."
+    }
+  ]
+}

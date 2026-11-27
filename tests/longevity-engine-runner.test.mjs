@@ -2,8 +2,6 @@ import { EngineAPI } from '../engine/index.mjs';
 import { prepareHistoricalDataOnce } from '../app/simulator/simulator-engine-helpers.js';
 import { resolveDynamicFlexRunnerHorizon } from '../app/simulator/dynamic-flex-runner-horizon.js';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
-import { buildSweepInputs } from '../app/simulator/sweep-runner.js';
-import { SWEEP_ALLOWED_KEYS } from '../app/simulator/simulator-sweep-utils.js';
 
 console.log('--- Longevity Engine/Runner Integration Tests ---');
 
@@ -191,26 +189,6 @@ const runnerBaseInputs = {
     assertEqual(firstRow.vpw.longevityMode, 'quantile_shift', 'MC VPW payload should expose longevity mode');
     assert(firstRow.vpw.horizonYears >= firstRow.vpw.horizonYearsRaw, 'MC effective horizon should not be below raw horizon');
     assertClose(firstRow.vpw.longevityAppliedShift, 0.05, 1e-12, 'MC payload should expose applied shift');
-}
-
-// Test 6: Sweep/Optimizer V1 does not expose Longevity as variable parameters.
-{
-    assert(!SWEEP_ALLOWED_KEYS.has('longevityMode'), 'longevityMode should not be sweepable in V1');
-    assert(!SWEEP_ALLOWED_KEYS.has('longevityBufferYears'), 'longevityBufferYears should not be sweepable in V1');
-    const inputs = buildSweepInputs(
-        { ...runnerBaseInputs, longevityMode: 'buffer_years', longevityBufferYears: 2 },
-        {
-            runwayMin: 18,
-            runwayTarget: 30,
-            targetEq: 60,
-            rebalBand: 5,
-            maxSkimPct: 10,
-            maxBearRefillPct: 5,
-            goldTargetPct: 0,
-            longevityBufferYears: 8
-        }
-    );
-    assertEqual(inputs.longevityBufferYears, 2, 'buildSweepInputs should not override longevityBufferYears');
 }
 
 console.log('--- Longevity Engine/Runner Integration Tests Completed ---');

@@ -19,7 +19,7 @@
         <header class="suite-header">
             <a class="suite-brand" href="index.html" data-profile-handoff><span data-suite-icon="landmark" aria-hidden="true"></span><span>Vermögen &amp; Ruhestand</span></a>
             <div id="suiteContext" class="suite-context-row" aria-label="Seitenkontext"><span id="suiteProfileContext" class="suite-context" role="status" aria-live="polite" hidden></span><span id="expensesContext" class="expenses-chip" hidden>Haushalt wird geladen</span><a href="Balance.html" data-profile-handoff class="expenses-chip" id="expensesBudgetSource">Budget aus dem Plan</a></div>
-            <button id="probelaufStart" type="button" class="suite-probelauf-start ds-button ds-button-secondary" aria-describedby="probelaufStatus" disabled>Spielbereich starten …</button>
+            <button id="probelaufStart" type="button" class="suite-probelauf-start ds-button ds-button-secondary" aria-describedby="probelaufStatus" disabled>Spielbereich starten …</button><button id="probelaufEnd" type="button" class="suite-probelauf-end ds-button ds-button-secondary" data-probelauf-action="end" hidden>Spielbereich beenden</button>
         </header>
         <div id="probelaufStatus" class="suite-probelauf-status" role="status" aria-live="polite" hidden></div>
         <div id="suiteNavigationStatus" class="suite-navigation-status" role="alert" hidden></div>
@@ -43,7 +43,6 @@
                         <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="day">+1 Tag</button>
                         <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="month">+1 Monat</button>
                         <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="date">Datum wählen …</button>
-                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="end">Spielbereich beenden</button>
                     </div>
                 </aside>
 
@@ -67,9 +66,9 @@
         </section>
         <section class="ds-card expenses-card expenses-categories-card" aria-labelledby="expensesCategoriesTitle"><h2 id="expensesCategoriesTitle">Wofür? Nach Kategorien</h2><div id="expensesCategoriesLegend" class="expenses-note" hidden></div><div class="expenses-categories-scroll"><div id="expensesCategories"></div></div><p id="expensesCategoriesNeeds" class="expenses-note" hidden></p><p class="expenses-note">Summe der importierten Kategorien im gewählten Jahr und Bereich. Erstattungen sind enthalten.</p></section>
     </div>
-    <section id="expensesNeeds" class="ds-card expenses-card" hidden><details id="expensesNeedsMonths"><summary>Monate mit Floor und Flex anzeigen</summary></details></section>
+    <section id="expensesNeeds" class="ds-card expenses-card" hidden><details id="expensesNeedsMonths"><summary>Monate mit Grundbedarf und Flex anzeigen</summary></details></section>
     <section class="ds-card expenses-card" aria-labelledby="expensesHistoryTitle"><h2 id="expensesHistoryTitle">Ausgaben je Jahr</h2><p class="expenses-note">Alle Personen · Beträge ohne Inflationsbereinigung.</p><p id="expensesHistoryHint" role="status" aria-live="polite"></p><div id="expensesHistoryLegend" class="expenses-legend" hidden></div><div id="expensesHistoryChart" class="expenses-table-region" tabindex="0" role="region" aria-label="Jahresdiagramm"></div><details><summary id="expensesYearsToggle">Einzelne Jahre anzeigen</summary><div id="expensesHistoryTable" class="expenses-table-region" tabindex="0" role="region" aria-label="Jahreswerte" aria-describedby="expensesHistoryScrollHint"></div><p id="expensesHistoryScrollHint" hidden>Die Tabelle kann seitlich gescrollt werden.</p></details></section>
-    <div id="overviewMonthStatus" role="status" aria-live="polite"></div><div id="overviewAnnualStatus" role="status" aria-live="polite"></div><button id="overviewAnnualLog" type="button" class="ds-button ds-button-secondary" hidden>Abschlussprotokoll anzeigen</button><div id="overviewExampleExpensesStatus" role="status"></div><div id="overviewExpensesWealthStatus" role="status"></div>
+    <div id="overviewMonthStatus" role="status" aria-live="polite"></div><div id="overviewAnnualStatus" role="status" aria-live="polite"></div><button id="overviewAnnualLog" type="button" class="ds-button ds-button-secondary" hidden>Abschlussprotokoll anzeigen</button><div id="overviewExampleExpensesStatus" role="status"></div>
     <input type="file" id="expensesCsvInput" accept=".csv,text/csv" hidden>
     <dialog id="expensesDetailDialog" class="expenses-detail-dialog ds-card" aria-labelledby="expensesDetailTitle"><h2 id="expensesDetailTitle"></h2><div id="expensesDetailBody"></div><div class="ds-actions"><button id="expensesDetailDelete" type="button" class="ds-button ds-button-danger">Monatsdaten löschen</button><button id="expensesDetailClose" type="button" class="ds-button ds-button-secondary" autofocus>Schließen</button></div></dialog>
 </div>

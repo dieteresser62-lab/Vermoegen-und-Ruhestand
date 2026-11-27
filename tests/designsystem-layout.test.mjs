@@ -1,27 +1,19 @@
 import { readSources, validateDataLayout, createPresentationTestDocument } from './designsystem-source-contract.mjs';
 import { syncSelectionText } from '../app/shared/designsystem-selection-text.js';
 import strict from 'node:assert/strict';
-import { readdirSync } from 'node:fs';
-import { createSelectionDocument, addField, SelectionSelect, selectionVariant, functionSource, source, installSelectionMeasurements } from './designsystem-selection-dom.mjs';
+import { createSelectionDocument, addField, SelectionSelect, selectionVariant, source, installSelectionMeasurements } from './designsystem-selection-dom.mjs';
 
 const sources = readSources();
 assertEqual(validateDataLayout(sources).join('\n'), '', 'Container, Scrollregionen und sichtbarer Auswahlvolltext erfüllen den Anzeigevertrag');
 for (const [path, before, after] of [
     ['css/balance.css', '.form-column {\n    min-width: 0;', '.form-column {'],
     ['css/overview.css', 'grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);', 'grid-template-columns: 320px 1fr;'],
-    ['css/balance.css', 'max-width: 100%; overflow-x: auto;', 'max-width: 100%; overflow-x: visible;'],
     ['css/components.css', 'white-space: normal;', 'white-space: nowrap;'],
-    ['depot-tranchen-manager.html', 'id="managerWealthTable" class="ds-table-scroll ds-table-box" tabindex="0"', 'id="managerWealthTable" class="ds-table-scroll ds-table-box"'],
     ['Ausgaben.html', 'id="expensesHistoryChart" class="expenses-table-region" tabindex="0"', 'id="expensesHistoryChart" class="expenses-table-region"'],
-    ['app/balance/balance-wealth-history-renderer.js', 'width="${width}"', 'width="100%"'],
-    ['app/balance/balance-wealth-history-renderer.js', 'preserveAspectRatio="xMidYMid meet"', 'preserveAspectRatio="none"'],
     ['app/balance/balance-expenses-history-renderer.js', 'preserveAspectRatio="xMidYMid meet"', 'preserveAspectRatio="none"'],
-    ['css/balance.css', 'min-width: 640px; max-width: none;', 'min-width: 640px; height: 180px;'],
     ['css/balance.css', '.balance-page #expensesHistoryHint:empty { margin: 0; }', '.balance-page #expensesHistoryHint:empty { display: none; }'],
     ['css/balance.css', '.balance-page #expensesHistoryHint:empty { margin: 0; }', '.balance-page #expensesHistoryHint:empty { visibility: hidden; }'],
     ['Ausgaben.html', '<p id="expensesHistoryHint"', '<p hidden id="expensesHistoryHint"'],
-    ['app/balance/balance-wealth-history-metrics.js', 'rows.length * 100', '100'],
-    ['css/balance.css', '.wealth-area { fill: var(--accent-soft); }', '.wealth-area { fill: none; }'],
     ['Ausgaben.html', '<select id="expensesYearSelect" class="ds-select" hidden', '<select id="expensesYearSelect" class="ds-select"']
 ]) {
     assert(sources[path].includes(before), `${path}: Gegenprobe trifft die echte Quelle`);
@@ -79,7 +71,7 @@ for (const [path, before, after, diagnostic] of [
     assert(validateCompletePresentation({ ...sources, [path]: changed }).some(error => error.includes(diagnostic)), `Vollständiger Vertrag bindet ${diagnostic} ein`);
 }
 assert(PAGES.every(path => SOURCE_PATHS.includes(path)) && !SOURCE_PATHS.some(path => path.startsWith('docs/design/')), 'Fünf Seiten erfasst, Referenzbild und Prototyp ausgeschlossen');
-for (const path of ['app/balance/balance-storage.js', 'app/simulator/simulator-optimizer.js', 'app/profile/profilverbund-balance-ui.js']) assert(SOURCE_PATHS.includes(path), `Zusätzlicher tatsächlicher Consumer im Manifest: ${path}`);
+for (const path of ['app/balance/balance-storage.js']) assert(SOURCE_PATHS.includes(path), `Zusätzlicher tatsächlicher Consumer im Manifest: ${path}`);
 for (const page of PAGES) {
     const mutated = { ...sources, [page]: sources[page].replace('</head>', '<style>.probe-parent { opacity: .8; }</style></head>') };
     assert(validateCompletePresentation(mutated).length > 0, `${page}: beliebige Texteltern mit Deckkraft werden erkannt`);
@@ -96,8 +88,7 @@ for (const [path, before, after] of [
     ['Simulator.html', 'observeSelectionText(document.body)', 'void document.body'],
     ['Simulator.html', 'id="scenarioLogOutput" class="ds-table-scroll" tabindex="0" role="region"', 'id="scenarioLogOutput" class="ds-table-scroll"'],
     ['app/simulator/simulator-results.js', 'onSelect: renderSelectedScenario', 'onSelect: () => {}'],
-    ['Simulator.html', 'id="scenarioList" class="scenario-list" role="listbox"', 'id="scenarioList" class="scenario-list" role="region"'],
-    ['app/simulator/stress-replay-renderer.js', 'role="region" tabindex="0"', 'tabindex="-1"']
+    ['Simulator.html', 'id="scenarioList" class="scenario-list" role="listbox"', 'id="scenarioList" class="scenario-list" role="region"']
 ]) {
     assert(sources[path].includes(before), `Simulatorgegenprobe trifft Original: ${path}`);
     assert(validateSimulatorLayout({ ...sources, [path]: sources[path].replaceAll(before, after) }).length > 0, `Simulatorgegenprobe scheitert: ${path}`);
@@ -187,25 +178,6 @@ assert(brokenIndex.selectedIndex === 1 && brokenIndex.value === 'b', 'Indexgegen
 assertEqual(selectionDoc.getElementById('broken-index-fulltext').textContent, 'Erste Option', 'Indexgegenprobe lässt alten Volltext stehen');
 assert(strict.throws(() => equalSelection(brokenIndex), strict.AssertionError) === undefined, 'Nur fehlender Indexrefresh scheitert an derselben Gleichheitsassertion');
 
-// Optionsauswahl und Reset umgehen Propertysetter. Echte Funktionsketten
-// müssen daher ihren bestehenden expliziten Refresh selbst erreichen.
-const originalDocument = globalThis.document;
-try {
-    globalThis.document = selectionDoc;
-    const valueVariant = await selectionVariant('value-off');
-    const profiles = addField(selectionDoc, 'profileSelect', 'old', [['old', 'Vorheriges Profil']]);
-    valueVariant.syncSelectionText(profiles);
-    const renderProfiles = new Function('listProfiles', 'syncSelectionText', `${functionSource('app/profile/profile-manager.js', 'renderProfiles')}\nreturn renderProfiles;`)(
-        () => [{ id: 'first', name: 'Erstes Profil' }, { id: 'active', name: 'Aktives zweites Profil' }], valueVariant.syncSelectionText);
-    renderProfiles(profiles, 'active');
-    assertEqual(profiles.value, 'active', 'Produkt-renderProfiles wählt über option.selected das zweite Profil');
-    assertEqual(profiles.selectedIndex, 1, 'Optionsrendern erhält Auswahl abseits der ersten Option');
-    equalSelection(profiles);
-    assertEqual(selectionDoc.getElementById('profileSelect-fulltext').textContent, profiles.selectedOptions[0].textContent, 'Expliziter Produktrefresh zeigt unmittelbar das ausgewählte Profil');
-
-    // FR-79: Die Tranchenwahl des alten Verkaufsdialogs entfällt; der geführte Verkauf nennt die Tranche in Klartext.
-} finally { if (originalDocument === undefined) delete globalThis.document; else globalThis.document = originalDocument; }
-
 // Manager-Modalresets sind angebunden; Simulator-Strategiefelder behalten ihren ID-Vertrag.
 const managerHtml = source('depot-tranchen-manager.html');
 const trancheForm = managerHtml.match(/<form id="trancheForm"[^>]*>([\s\S]*?)<\/form>/)[1];
@@ -214,15 +186,6 @@ assert(sources['css/components.css'].includes('.ds-selection-text[hidden] { disp
 const managerSources = ['tranchen-manager-page/startup.js', 'tranchen-manager-modal.js', 'tranchen-manager-renderer.js'].map(p => source(`app/tranches/${p}`)).join('\n');
 assert(managerSources.includes('observeSelectionText(document.body)'), 'Manager bindet alle statischen und dynamischen Auswahlen');
 assert(validateDataLayout({ ...sources, 'app/tranches/tranchen-manager-page/startup.js': sources['app/tranches/tranchen-manager-page/startup.js'].replace('observeSelectionText(document.body)', 'void document.body') }).length > 0, 'Entfernter Manageranschluss scheitert am Quellvertrag');
-const simulatorHtml = source('Simulator.html');
-const editor = simulatorHtml.match(/<form id="stressReplayVariantEditor">([\s\S]*?)<\/form>/)[1];
-const editorSelects = [...editor.matchAll(/<select\b([^>]*)>/g)];
-assertEqual(editorSelects.length, 5, 'Bestandsprüfung umfasst alle fünf Strategie-Selects');
-assert(editorSelects.every(m => !/\bid=/.test(m[1])), 'Varianteneditor-Selects besitzen keine IDs');
-const replaySources = ['stress-replay-ui.js', 'stress-replay-renderer.js',
-    ...readdirSync('app/simulator/stress-replay-ui').filter(p => p.endsWith('.js')).map(p => `stress-replay-ui/${p}`)
-].map(p => source(`app/simulator/${p}`)).join('\n');
-assert(!/\.id\s*=|setAttribute\(\s*['"]id['"]|syncSelectionText|observeSelectionText/.test(replaySources), 'Replay vergibt keine nachträglichen IDs oder zusätzlichen Volltextbindungen');
 
 // Tatsächliche Messwerte und Observerzustellungen, unabhängig von der Jahreszahl.
 {

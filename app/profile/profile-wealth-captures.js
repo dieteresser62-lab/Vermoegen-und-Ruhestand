@@ -29,10 +29,7 @@ export function prepareWealthCapture({ storage, registry, activeId, entry, input
     const record = readWealthCaptures(storage.getItem(WEALTH_CAPTURES_KEY));
     const existing = record.captures.find(capture => capture.household.id === entry.id);
     if (entry.reason === 'annual_close' && existing) return JSON.stringify(record);
-    const selected = Object.entries(registry.profiles).filter(([, profile]) => profile.meta?.belongsToHousehold !== false);
-    // Wie der bestehende Balance-Pfad: ohne Verbund bildet das aktive Profil
-    // den Einzelhaushalt.
-    const members = selected.length ? selected : [[activeId, registry.profiles[activeId]]];
+    const members = Object.entries(registry.profiles);
     const identity = { id: entry.id, asOf: entry.asOf, reason: entry.reason, periodId: entry.periodId };
     const people = Object.fromEntries(members.map(([id, profile]) => {
         const data = { ...profile.data };

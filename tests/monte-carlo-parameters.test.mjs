@@ -1,12 +1,9 @@
 import fs from 'node:fs';
 import {
     MONTE_CARLO_PARAMETER_LIMITS,
-    SWEEP_REQUEST_VERSION,
-    SWEEP_SAMPLING_METHOD_RESOLUTION,
     estimateMonteCarloResourcesV1,
     normalizeMonteCarloParametersV1,
     normalizeMonteCarloResourceConfigV1,
-    normalizeSweepRequestV1,
     resolveMonteCarloDurationMaximumV1,
     resolveMonteCarloWorkerCountV1
 } from '../app/simulator/monte-carlo-parameters.js';
@@ -117,6 +114,9 @@ const validParameters = Object.freeze({
     const defaults = normalizeMonteCarloParametersV1();
     assertEqual(defaults.anzahl, 10000, 'central MC fallback uses 10,000 runs');
     assertEqual(defaults.maxDauer, 35, 'central MC fallback retains 35 years');
+    // MS-1: Vorgabe Stationary Bootstrap mit Blocklänge 5 (vorher regime_markov).
+    assertEqual(defaults.methode, 'stationary', 'central MC fallback uses Stationary Bootstrap');
+    assertEqual(defaults.blockSize, 5, 'central MC fallback uses block length 5');
     assert(Object.isFrozen(defaults), 'normalized MC parameters are immutable');
 
     const boundary = normalizeMonteCarloParametersV1({
@@ -129,120 +129,42 @@ const validParameters = Object.freeze({
 }
 
 {
-    const sweepRequest = normalizeSweepRequestV1({
-        schemaVersion: SWEEP_REQUEST_VERSION,
-        monteCarloParameters: {
-            ...validParameters,
-            anzahl: 12,
-            maxDauer: 10,
-            seed: 0,
-            methode: 'stationary',
-            startYearMode: 'FILTER',
-            startYearFilter: 1980,
-            excludeEstimatedHistory: true
-        },
-        useCapeSampling: true
+    const filtered = normalizeMonteCarloParametersV1({
+        ...validParameters,
+        anzahl: 12,
+        maxDauer: 10,
+        seed: 0,
+        methode: 'stationary',
+        startYearMode: 'FILTER',
+        startYearFilter: 1980,
+        excludeEstimatedHistory: true
     }, {
         inputs: { startAlter: 65, partner: { aktiv: false } }
     });
-    assertEqual(sweepRequest.schemaVersion, SWEEP_REQUEST_VERSION, 'Sweep request is explicitly versioned');
-    assertEqual(sweepRequest.monteCarloParameters.seed, 0, 'Sweep request preserves explicit seed zero');
-    assertEqual(sweepRequest.monteCarloParameters.startYearMode, 'FILTER', 'Sweep request transports start-year mode');
-    assertEqual(sweepRequest.monteCarloParameters.startYearFilter, 1980, 'Sweep request transports start-year filter');
-    assertEqual(sweepRequest.monteCarloParameters.excludeEstimatedHistory, true, 'Sweep request transports estimated-history exclusion');
-    assertEqual(sweepRequest.requestedSamplingMethod, 'stationary', 'Sweep request records requested method');
-    assertEqual(sweepRequest.appliedSamplingMethod, 'stationary', 'Sweep request records applied method');
-    assertEqual(
-        sweepRequest.samplingMethodResolution,
-        SWEEP_SAMPLING_METHOD_RESOLUTION,
-        'Sweep request records that unsupported sampling methods are rejected instead of substituted'
-    );
-    assertEqual(sweepRequest.useCapeSampling, true, 'Sweep request transports CAPE sampling');
-    assert(Object.isFrozen(sweepRequest), 'normalized Sweep request is immutable');
-
-    const legacyRequest = normalizeSweepRequestV1({
-        anzahlRuns: 7,
-        maxDauer: 8,
-        blockSize: 3,
-        baseSeed: 0,
-        methode: 'block',
-        rngMode: 'per-run-seed'
-    }, {
-        inputs: { startAlter: 65, partner: { aktiv: false } }
-    });
-    assertEqual(legacyRequest.monteCarloParameters.anzahl, 7, 'legacy Sweep run count maps into canonical MC parameters');
-    assertEqual(legacyRequest.monteCarloParameters.seed, 0, 'legacy Sweep seed zero maps without a falsy default');
-
-    const renormalizedRequest = normalizeSweepRequestV1(sweepRequest, {
-        inputs: { startAlter: 65, partner: { aktiv: false } }
-    });
-    assertEqual(
-        JSON.stringify(renormalizedRequest),
-        JSON.stringify(sweepRequest),
-        'normalizing an already canonical Sweep request preserves method provenance byte-for-byte'
-    );
+    assertEqual(filtered.seed, 0, 'MC parameters preserve explicit seed zero');
+    assertEqual(filtered.methode, 'stationary', 'MC parameters keep the requested sampling method');
+    assertEqual(filtered.startYearMode, 'FILTER', 'MC parameters keep start-year mode');
+    assertEqual(filtered.startYearFilter, 1980, 'MC parameters keep start-year filter');
+    assertEqual(filtered.excludeEstimatedHistory, true, 'MC parameters keep estimated-history exclusion');
 }
 
 {
-    const invalidSweepFixtures = [
+    const invalidCodeFixtures = [
         ['run count', { anzahl: 0 }, 'MC_PARAMETER_BELOW_MINIMUM'],
         ['duration', { maxDauer: 0 }, 'MC_PARAMETER_BELOW_MINIMUM'],
         ['block length', { blockSize: 31 }, 'MC_PARAMETER_ABOVE_MAXIMUM'],
         ['method', { methode: 'unknown' }, 'MC_PARAMETER_ENUM_INVALID'],
         ['seed', { seed: -1 }, 'MC_PARAMETER_BELOW_MINIMUM']
     ];
-    for (const [name, override, expectedCode] of invalidSweepFixtures) {
+    for (const [name, override, expectedCode] of invalidCodeFixtures) {
         let thrown = null;
         try {
-            normalizeSweepRequestV1({
-                schemaVersion: SWEEP_REQUEST_VERSION,
-                monteCarloParameters: { ...validParameters, ...override }
-            });
+            normalizeMonteCarloParametersV1({ ...validParameters, ...override });
         } catch (error) {
             thrown = error;
         }
-        assertEqual(thrown?.code, expectedCode, `Sweep request rejects invalid ${name} through the MC contract`);
+        assertEqual(thrown?.code, expectedCode, `MC contract rejects invalid ${name} with a stable code`);
     }
-
-    let versionError = null;
-    try {
-        normalizeSweepRequestV1({
-            schemaVersion: 'SweepRequestV0',
-            monteCarloParameters: validParameters
-        });
-    } catch (error) {
-        versionError = error;
-    }
-    assertEqual(versionError?.code, 'SWEEP_REQUEST_VERSION_INVALID', 'Sweep request rejects unknown contract versions');
-
-    let missingRequestError = null;
-    try {
-        normalizeSweepRequestV1();
-    } catch (error) {
-        missingRequestError = error;
-    }
-    assertEqual(
-        missingRequestError?.code,
-        'SWEEP_REQUEST_OBJECT_REQUIRED',
-        'Sweep normalization rejects a missing request instead of applying the 10,000-run MC default'
-    );
-
-    let provenanceError = null;
-    try {
-        normalizeSweepRequestV1({
-            schemaVersion: SWEEP_REQUEST_VERSION,
-            requestedSamplingMethod: 'stationary',
-            appliedSamplingMethod: 'regime_markov',
-            monteCarloParameters: validParameters
-        });
-    } catch (error) {
-        provenanceError = error;
-    }
-    assertEqual(
-        provenanceError?.code,
-        'SWEEP_REQUEST_METHOD_PROVENANCE_MISMATCH',
-        'Sweep normalization rejects inconsistent requested/applied method provenance'
-    );
 }
 
 {
@@ -267,11 +189,17 @@ const validParameters = Object.freeze({
         );
     }
 
+    // MS-1 (NG-9): feste Blöcke laufen zirkulär; die Blocklänge ist nur durch die feste Obergrenze 30 begrenzt.
+    assertEqual(normalizeMonteCarloParametersV1({ ...validParameters, methode: 'block', blockSize: 4 }, {
+        historicalRecordCount: 3
+    }).blockSize, 4, 'fixed block length may exceed the historical record count because blocks wrap circularly');
     expectRejected(
-        () => normalizeMonteCarloParametersV1({ ...validParameters, methode: 'block', blockSize: 4 }, {
-            historicalRecordCount: 3
-        }),
-        'fixed block length cannot exceed the eligible historical record count'
+        () => normalizeMonteCarloParametersV1({ ...validParameters, methode: 'block', blockSize: 31 }, { historicalRecordCount: 101 }),
+        'fixed block length keeps the fixed maximum of 30'
+    );
+    expectRejected(
+        () => normalizeMonteCarloParametersV1({ ...validParameters, methode: 'block', blockSize: 4 }, { historicalRecordCount: 0 }),
+        'an invalid historical record count is still rejected'
     );
 }
 
@@ -395,7 +323,6 @@ class MockDocument {
     const documentRef = new MockDocument();
     const values = {
         mcAnzahl: '100001',
-        sweepRuns: '500',
         mcDauer: '35',
         mcBlockSize: '5',
         mcSeed: '12345',
@@ -427,21 +354,9 @@ class MockDocument {
         const uiParameters = readMonteCarloParameters({ startAlter: 65, partner: { aktiv: false } });
         assertEqual(uiParameters.anzahl, 100001, 'UI consumer returns centrally normalized parameters');
         documentRef.getElementById('mcAnzahl').value = 'ungueltig';
-        const sweepParameters = readMonteCarloParameters(
-            { startAlter: 65, partner: { aktiv: false } },
-            { runsElementId: 'sweepRuns' }
-        );
-        assertEqual(sweepParameters.anzahl, 500, 'Sweep liest seine eigene Laufzahl trotz ungueltigem MC-Feld');
         expectRejected(() => readMonteCarloParameters({ startAlter: 65, partner: { aktiv: false } }),
             'MC liest weiterhin sein eigenes Feld');
         documentRef.getElementById('mcAnzahl').value = '100001';
-        documentRef.getElementById('sweepRuns').value = '';
-        expectRejected(() => readMonteCarloParameters(null, { runsElementId: 'sweepRuns' }),
-            'Leere Sweep-Laufzahl wird nicht auf den MC-Default gesetzt');
-        documentRef.getElementById('sweepRuns').value = '500.5';
-        expectRejected(() => readMonteCarloParameters(null, { runsElementId: 'sweepRuns' }),
-            'Sweep-Laufzahl muss ganzzahlig sein');
-        documentRef.getElementById('sweepRuns').value = '500';
         initMonteCarloResourceControls();
         assert(estimate.textContent.includes('Laufjahre'), 'UI shows run-years before execution');
         assert(estimate.textContent.includes('Speicherklasse'), 'UI shows a memory class before execution');
@@ -576,7 +491,6 @@ class MockDocument {
 {
     const html = fs.readFileSync(new URL('../Simulator.html', import.meta.url), 'utf8');
     assert(/id="mcAnzahl" value="10000" min="1" max="1000000" step="1"/.test(html), 'HTML uses the reviewed 10,000 default and hard run bounds');
-    assert(/id="sweepRuns" value="500" min="1" max="1000000" step="1"/.test(html), 'Sweep hat einen eigenen Default mit denselben harten Grenzen');
     assert(/id="mc-progress-bar-container" role="progressbar"/.test(html), 'progress element has a semantic progressbar role');
     assert(/aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"/.test(html), 'progress element declares min, max and current values');
     assert(/id="mc-error-container"[\s\S]*?role="alert"/.test(html), 'error region has an alert role');

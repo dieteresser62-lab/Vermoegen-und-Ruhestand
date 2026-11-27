@@ -1,7 +1,7 @@
 import { EngineAPI } from '../engine/index.mjs';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input-storage.js';
-import { prepareMarketPreview, projectMarketPreview, compareMarketBudgets } from '../app/balance/balance-market-preview.js';
+import { prepareMarketPreview, projectMarketPreview } from '../app/balance/balance-market-preview.js';
 import { projectAnnualMarketReadings } from '../app/balance/balance-annual-market-preview.js';
 import { historyDay, emptyHistorySymbol, DAILY_PRICES_KEY } from '../app/tranches/tranchen-history-store.js';
 
@@ -20,49 +20,35 @@ const run = market => {
 };
 function project(options) {
     const p = prepareMarketPreview(options);
-    const results = { stored: run(options.inputs), rule: run(p.ruleInputs), high: run(p.highInputs) };
-    return { p, results, view: projectMarketPreview(p, results) };
+    return { p, view: projectMarketPreview(p, run(p.marketInputs)) };
 }
 const january = project({ inputs, dailyPrices: prices([['2026-07-14', 160], ['2026-12-30', 140], ['2027-01-14', 170]]),
     today: '2027-01-15', yearEndDate: '2025-12-31', hasAnnualClose: true });
 assertEqual(january.p.quote.asOf, '2026-12-30', 'Offener Abschluss verwendet letzten Schluss des Abschlussjahrs');
-assert(january.view.comparison.state !== 'not_reliable', '15. Januar: Kurs vom 30. Dezember bleibt zum Abschlussjahr belastbar');
+assertEqual(january.view.unreliableReason, null, '15. Januar: Kurs vom 30. Dezember bleibt zum Abschlussjahr belastbar');
+assertEqual(january.p.high.value, 160, 'Januarhoch des Folgejahrs zählt nicht, das Julihoch schon');
 for (const storedHighAsOf of [null, '2026-12-30']) {
     const equal = project({ inputs, dailyPrices: prices([['2026-12-30', 150], ['2027-03-01', 140]]),
         today: '2027-03-01', yearEndDate: '2026-12-31', hasAnnualClose: true, storedHighAsOf });
-    assertEqual(equal.p.highInputs.jahreSeitAth, equal.p.ruleInputs.jahreSeitAth, 'Gleiches Hoch verwendet immer Regelalter');
-    assertEqual(equal.view.comparison.state, 'same', 'ATH 150 vom 30. Dezember: am 1. März gleiche Varianten');
-    assertEqual(equal.view.rule.market.key, equal.view.high.market.key, 'Gleiches Hoch: gleiche Marktphase');
+    // Ohne belegtes Datum gilt das Regelalter; mit Datum zählt es bis zum Kursdatum (30.12.2026 bis 01.03.2027 = 61 Tage, Gutachten P2-3).
+    assertEqual(equal.p.marketInputs.jahreSeitAth, storedHighAsOf ? 61 / 365.2425 : 1, 'Gleiches Hoch am Jahresende: Regelalter nur ohne Datum');
+    // Gleicher Schluss am belegten Tag oder vor dem abgeleiteten 31.12.: das gespeicherte Hoch bleibt.
+    assertEqual(equal.p.high.origin, 'stored', 'Gleicher Schluss am 30.12. ändert das gespeicherte Hoch nicht');
 }
 const dated = prepareMarketPreview({ inputs: { ...inputs, ath: 170, jahreSeitAth: 2 }, storedHighAsOf: '2024-07-14',
     dailyPrices: prices([['2026-12-30', 150], ['2027-03-01', 140]]), today: '2027-03-01', yearEndDate: '2026-12-31', hasAnnualClose: true });
-assertEqual(dated.high.origin, 'stored_ath', 'Höheres gespeichertes ATH bleibt Hochreferenz');
-assertEqual(dated.highInputs.jahreSeitAth, dated.ruleInputs.jahreSeitAth, 'Auch belegtes ATH behält bei gleichem Wert das Regelalter');
+assertEqual(dated.high.origin, 'stored', 'Höheres gespeichertes Hoch bleibt');
+// Gutachten P2-3: 14.07.2024 bis 01.03.2027 = 960 Tage statt Regelalter 3.
+assertEqual(dated.marketInputs.jahreSeitAth, 960 / 365.2425, 'Belegtes Hoch zählt sein Alter bis zum Kursdatum');
 const gap = prepareMarketPreview({ inputs, dailyPrices: prices([['2026-12-30', 150], ['2027-03-01', 140]], [[historyDay('2027-03-01'), historyDay('2027-03-01')]]),
     today: '2027-03-01', yearEndDate: '2026-12-31', hasAnnualClose: true });
 assertEqual(gap.unreliableReason, 'Kursreihe hat ungeprüfte Tage – Kurse auf der Seite Daten & Sicherung holen', 'Lücke nennt Hilfe und zuständige Seite');
-const result = run(inputs);
-const baseBudget = result.input.renteMonatlich + result.ui.spending.monatlicheEntnahme;
-for (const [delta, expected] of [[0.49, 'same'], [0.51, 'budget_higher'], [-0.51, 'budget_lower']]) {
-    const high = structuredClone(result); high.ui.spending.monatlicheEntnahme += delta;
-    const comparison = compareMarketBudgets(result, high);
-    assertEqual(comparison.state, expected, 'Monatsrundung entscheidet: ' + delta);
-    for (const variant of [comparison.rule, comparison.high]) assertEqual(variant.annualBudget, variant.monthlyBudget * 12, 'Jahr gleich gerundetem Monat mal zwölf');
-    assertEqual(comparison.difference.annualBudget, comparison.difference.monthlyBudget * 12, 'Jahres- und Monatsdifferenz widersprechen sich nicht');
-}
-const belowFloor = structuredClone(result);
-belowFloor.ui.spending.monatlicheEntnahme -= baseBudget - (belowFloor.input.floorBedarf / 12 - 100);
-const affected = compareMarketBudgets(result, belowFloor);
-assertEqual(affected.state, 'budget_lower', 'Budget unter Grundbedarf ist niedriger');
-assert(affected.high.annualBudget < affected.high.floor, 'Probe liegt tatsächlich unter Grundbedarf');
-assert(affected.changedParts.includes('floor'), 'Budget unter Grundbedarf meldet floor');
 // Abruf ersetzt nur den Schluss seines Tags. Historie, Abdeckung und Records bleiben erhalten.
 records[DAILY_PRICES_KEY] = JSON.stringify(prices([['2025-12-31', 100], ['2026-07-14', 200], ['2026-12-31', 250]]));
 const before = JSON.stringify(records);
 const annual = await projectAnnualMarketReadings({ targetYear: 2026, quote: { price: 170, asOf: '2026-12-31' }, storage,
     engineLoader: { load: async () => EngineAPI } });
-assertEqual(annual.high.high.value, 200, 'Korrigierter Abrufkurs verdrängt falsches Hoch am Quote-Tag');
-assertEqual(annual.high.high.asOf, '2026-07-14', 'Früheres echtes Hoch bleibt erhalten');
-assertEqual(annual.rule.index, 170, 'Regel verwendet denselben Abrufkurs');
-assertEqual(annual.high.high.coverage.last, '2026-12-31', 'Abdeckung bleibt der gespeicherte letzte Tag');
+assertEqual(annual.high.value, 200, 'Korrigierter Abrufkurs verdrängt falsches Hoch am Quote-Tag');
+assertEqual(annual.high.asOf, '2026-07-14', 'Früheres echtes Hoch bleibt erhalten');
+assertEqual(annual.index, 170, 'Jahresende verwendet denselben Abrufkurs');
 assertEqual(JSON.stringify(records), before, 'Abrufkorrektur ist rein lesend');

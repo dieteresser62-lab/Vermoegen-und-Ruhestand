@@ -296,7 +296,7 @@ global.document = {
     assert(renderedText.includes('Steuern vor Verlusttopf:'), 'Should render tax-before-loss-carry row');
     assert(renderedText.includes('Steuern nach Verlusttopf:'), 'Should render tax-after-loss-carry row');
     assert(renderedText.includes('Steuerersparnis Verlusttopf:'), 'Should render tax-saved row');
-    assert(renderedText.includes('Steuern (final, Settlement)'), 'Should render final settlement tax row label');
+    assert(renderedText.includes('Steuern (abgerechnet)'), 'Should render final settlement tax row label');
     assert(renderedText.includes('Plan nach Zweck'), 'Should render purpose summary section');
     assert(renderedText.includes('Steuerzahlung'), 'Purpose summary should include tax payment');
 }
@@ -341,7 +341,7 @@ global.document = {
     assert(!renderedText.includes('Steuern vor Verlusttopf:'), 'Should hide tax-before row when value is 0');
     assert(!renderedText.includes('Steuern nach Verlusttopf:'), 'Should hide tax-after row when value is 0');
     assert(!renderedText.includes('Steuerersparnis Verlusttopf:'), 'Should hide tax-saved row when value is 0');
-    assert(!renderedText.includes('Steuern (final, Settlement)'), 'Should hide final settlement tax row when value is 0');
+    assert(!renderedText.includes('Steuern (abgerechnet)'), 'Should hide final settlement tax row when value is 0');
 }
 
 console.log('✅ Balance renderer action tests passed');
@@ -728,7 +728,7 @@ console.log('✅ Balance renderer action tests passed');
         assert(!nodes(purposeHost).some(node => node.tagName === 'td' && node.textContent.endsWith(':')), 'Zwecklabels haben keinen abschließenden Doppelpunkt');
         assertEqual(JSON.stringify({ action, input, context }), before, 'Rendern mutiert keine Eingangs- oder Ergebnisdaten');
         renderer.renderAction({ ...action, taxSettlement: {} });
-        assert(!collectText(host).includes('Quellen- und Steuerdetails') && collectText(host).includes('Steuern (final, Settlement)'), 'Settlementkennzeichnung allein erzeugt keine redundante Steuerbox');
+        assert(!collectText(host).includes('Quellen- und Steuerdetails') && collectText(host).includes('Steuern (abgerechnet)'), 'Settlementkennzeichnung allein erzeugt keine redundante Steuerbox');
         renderer.renderAction({ ...action, verwendungen: { gold: 100.25 } }, input, {}, undefined, context);
         assert(collectText(host).includes('LiquiditätszielNettoentnahme36 Monate') && renderer.getActionCopyText().includes('Liquiditätsziel | Nettoentnahme | 36 Monate'), 'Vorhandene Zielinformation bleibt auch ohne Liquiditätszufluss in der Karte');
         renderer.renderAction(action);

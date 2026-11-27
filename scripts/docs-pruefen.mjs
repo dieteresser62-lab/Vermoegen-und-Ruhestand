@@ -66,7 +66,7 @@ export const ACTIVE_FILES = Object.freeze([
     ...['TECHNICAL', 'FACHKONZEPT', 'DATENVERTRAEGE',
         'JAHRESBUDGET', 'HANDLUNGSANWEISUNG', 'WISSENSCHAFTLICHER_RAHMEN',
         'MARKTVERGLEICH', 'MARKTVERGLEICH_EVIDENZREGISTER',
-        'FORSCHUNGSABGLEICH_EVIDENZREGISTER', 'DATA_SOURCES', 'GESTALTUNGSGRUNDSAETZE',
+        'FORSCHUNGSABGLEICH_EVIDENZREGISTER', 'DATA_SOURCES', 'JAHRESDATEN', 'GESTALTUNGSGRUNDSAETZE',
         'DESIGNSYSTEM', 'ENTWICKLUNGSGRUNDSAETZE', 'SCHREIBREGELN',
         'TOD_UND_ERBE', 'PFLEGE', 'IMMOBILIEN', 'STEUERN', 'STRATEGIEN', 'SIMULATION_LESEN',
         'SICHERUNG', 'BEISPIELHAUSHALTE']
@@ -85,7 +85,7 @@ export const TRANSITION_FILES = Object.freeze([]);
 export const HANDBOOK_ANCHORS = Object.freeze([
     'erste-schritte', 'noch-nicht-im-ruhestand', 'monat-abschliessen', 'jahr-abschliessen', 'ausgaben', 'kauf',
     'verkauf', 'haushalt-plan', 'balance', 'monatsbetrag', 'warum-gekuerzt', 'vermoegensverlauf',
-    'simulator', 'monte-carlo', 'werkstatt', 'daten-sicherung', 'probelauf',
+    'simulator', 'monte-carlo', 'daten-sicherung', 'probelauf',
     'tod-und-erbe', 'pflege', 'immobilien', 'handlungsanweisung', 'haeufige-fragen', 'begriffe'
 ]);
 export const IMAGE_FILES = Object.freeze([
@@ -94,20 +94,19 @@ export const IMAGE_FILES = Object.freeze([
     'balance-ueberblick', 'balance-bedarf-strategie', 'balance-diagnose',
     'simulator-ergebnis', 'simulator-annahmen', 'simulator-backtest',
     'monte-carlo-einstellungen', 'monte-carlo-ueberblick', 'monte-carlo-risiko-verteilung',
-    'monte-carlo-pflege', 'monte-carlo-szenario-logs', 'werkstatt', 'werkstatt-replay',
-    'werkstatt-sweep', 'werkstatt-auto-optimize', 'daten-sicherung', 'daten-sicherung-punkte', 'probelauf-band', 'spielbereich-vergleich',
+    'monte-carlo-pflege', 'monte-carlo-szenario-logs', 'daten-sicherung', 'daten-sicherung-punkte', 'probelauf-band', 'spielbereich-vergleich',
     'handbuch-start',
     ...['01-faellig', '02-kurse', '03-ausgaben', '04-budget', '05-tagesgeld', '06-ergebnis']
         .map(name => `monatsabschluss/${name}`),
     ...['01-faellig', '02-kurse', '03-ausgaben', '04-budget', '05-tagesgeld',
-        '06-marktdaten', '07-pflegewerte', '08-plan', '09-ergebnis'].map(name => `jahresabschluss/${name}`),
+        '06-marktdaten', '07-pflegewerte', '07a-immobilienwerte', '08-plan', '09-ergebnis'].map(name => `jahresabschluss/${name}`),
     'personen-sophie', 'einkuenfte-offen', 'einkuenfte-geschlossen',
     'geplante-ausgaben-offen', 'geplante-ausgaben-geschlossen',
     'balance-geplante-posten', 'ausgaben-geplante-zuordnung',
     'protokoll-backtest', 'protokoll-backtest-details', 'protokoll-monte-carlo', 'protokoll-monte-carlo-details',
     'tagesgeld-bearbeiten', 'personen-pflegegrad',
     'partnerschaft-todesfall', 'personen-immobilien', 'simulator-hinterbliebene', 'partnerschaft-verheiratet',
-    'monte-carlo-vergleich', 'monte-carlo-zielwert', 'personen-pflege', 'verlauf-vermoegensstaende', 'personen-erika-einkuenfte',
+    'monte-carlo-vergleich', 'monte-carlo-zielwert', 'personen-pflege', 'personen-erika-einkuenfte',
     'simulator-fondskosten', 'personen-rente-wie-loehne', 'personen-fondskosten',
     ...['01-ueberblick', '02-verkaufen', '03-abrechnung', '03b-weniger', '04-gutschrift', '05-verteilen'].map(name => `verkauf/${name}`),
     ...['01-ueberblick', '02-kaufen', '03-abrechnung', '04-abbuchung'].map(name => `kauf/${name}`),

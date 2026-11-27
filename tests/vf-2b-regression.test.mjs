@@ -1,3 +1,4 @@
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
 import { readQSCReferences } from './helpers/qs-c-expectations.mjs';
 import { EngineAPI } from '../engine/index.mjs';
 import { settleTaxYear } from '../engine/tax-settlement.mjs';
@@ -126,9 +127,15 @@ for (const status of ['unmarried', 'married']) {
 // B9: Auszahlung verwendet die Bestände nach Verkäufen/Käufen und vor der Zahlung.
 for (const mode of ['proportional', 'runway_first']) {
     const inputs = inputsFor(); Object.assign(inputs, { accumulationPhase: { enabled: false }, householdWithdrawalMode: mode });
+    // FR-87: Unverheiratete zahlen nach Vermögensanteilen, unabhängig vom Modus; „Reichweite zuerst“ prüft daher den verheirateten Haushalt.
+    // Mit nur 10.000 € bei B verkauft A vor der Zahlung; vor und nach dem Verkauf ergäbe der Ausgleich verschiedene Anteile.
+    const runway = mode === 'runway_first';
+    if (runway) inputs.partnership = { status: 'married' };
     inputs.simulationPeople[0].tagesgeld = 0; inputs.detailledTranches = [equity('muster_a', 100000, 100000)];
-    inputs.tagesgeld = 100000;
-    const result = simulateOneYear(initMcRunState(inputs), inputs, year, 0, null, 0, { p1Alive: true, p2Alive: true }, 1, EngineAPI);
+    inputs.simulationPeople[1].tagesgeld = runway ? 10000 : 100000;
+    inputs.tagesgeld = inputs.simulationPeople[1].tagesgeld;
+    const state = initMcRunState(inputs), before = personalProfiles(structuredClone(state.portfolio), inputs);
+    const result = simulateOneYear(state, inputs, year, 0, null, 0, { p1Alive: true, p2Alive: true }, 1, EngineAPI);
     assertEqual(result.kind, 'success', 'B9: Auszahlung erfolgreich');
     const p = structuredClone(result.newState.portfolio), paid = result.logData.personalPayout;
     paid.items.forEach(item => { p.personAccounts.find(person => person.profileId === item.profileId).tagesgeld += item.amount; });
@@ -136,6 +143,11 @@ for (const mode of ['proportional', 'runway_first']) {
     const expected = reconcileWithdrawalLiquidity(personalWithdrawalPlan(personalProfiles(p, inputs), paid.total, mode), p.personAccounts);
     paid.items.forEach(item => close(item.planned, expected.items.find(row => row.profileId === item.profileId).withdrawalAmount,
         `B9/${mode}: aktuelle Bestände bestimmen Auszahlungsanteil`));
+    if (runway) {
+        const stale = personalWithdrawalPlan(before, paid.total, mode).items;
+        assert(paid.items.some(item => Math.abs(item.planned - stale.find(row => row.profileId === item.profileId).withdrawalAmount) > 1),
+            'B9/runway_first: Bestände vor dem Verkauf ergäben einen anderen Anteil');
+    }
 }
 // B10: Derselbe ergänzte Cashtransfer in Haushaltskarte, Personenzeilen und Spielausführung.
 for (const buy of [true, false]) {
@@ -185,11 +197,12 @@ for (const moneyBasis of ['nominal', 'real']) for (const fallback of [false, tru
     // Historische Referenz erhalten; nur das neue Anzeigefeld aus VF-2l ausnehmen.
     const hash = value => createHash('sha256').update(JSON.stringify(value, (key, item) => ['immobilien_wert_end', 'immobilien_selbst_end', 'immobilien_vermietet_end', 'displayWealth'].includes(key) || key.includes('displayHomeValue') ? undefined : item)).digest('hex');
     assertEqual(quiet.kind, 'success', 'Unbetroffener Paarfall ohne Immobilien und Tod erfolgreich');
-    assertEqual(hash(quiet), readQSCReferences(evidence.unchangedCompleteYears[0].noHomeNoDeath), 'Unbetroffener Paarfall: vollständige Ausgabe bytegleich');
-    assertEqual(hash(sale), readQSCReferences(evidence.unchangedCompleteYears[0].singleHome), 'Einzelimmobilie: Notverkauf ohne Immobilien-Anzeigefeld bytegleich');
+    assertEqual(hash(quiet), readKR1cReferences(readQSCReferences(evidence.unchangedCompleteYears[0].noHomeNoDeath)), 'Unbetroffener Paarfall: vollständige Ausgabe bytegleich');
+    assertEqual(hash(sale), readKR1cReferences(readQSCReferences(evidence.unchangedCompleteYears[0].singleHome)), 'Einzelimmobilie: Notverkauf ohne Immobilien-Anzeigefeld bytegleich');
 }
 
-// Nachlasssteuer im Ansparjahr kann denselben Einzelverkauf vor Ruin benötigen.
+// Nachlasssteuer im Ansparjahr: NK-2 (FR-84 Punkt 17, Punkt 6) – ungedeckt bleibt sie Schuld der erbenden Person, ohne Notverkauf im
+// Entstehungsjahr und ohne Ruin.
 {
     const inputs = inputsFor();
     Object.assign(inputs, { tagesgeld: 0, startVermoegen: 0, homeReferenceYear: 2026,
@@ -198,9 +211,8 @@ for (const moneyBasis of ['nominal', 'real']) for (const fallback of [false, tru
             { id: 'haus', profileId: 'muster_a', wert: 300000, stand: '2026-10', nutzung: 'selbst' }] });
     inputs.simulationPeople.forEach(person => { person.tagesgeld = 0; });
     const result = simulateOneYear(initMcRunState(inputs), inputs, year, 0, null, 0, { p1Alive: false, p2Alive: true }, 1, EngineAPI);
-    assertEqual(result.kind, 'success', 'Ansparjahr: Notverkauf deckt Nachlasssteuer');
-    assertEqual(result.logData.immobilienverkauf_personen.length, 1, 'Ansparjahr: zweiter Verkauf für Steuer nicht nötig');
-    assertEqual(result.logData.immobilienverkauf_personen[0].homeId, 'haus', 'Ansparjahr: Eigentum der verstorbenen Person zuerst');
-    assert(result.logData.erbschaftsteuer > 0, 'Ansparjahr: Steuer tatsächlich im Todesjahr bezahlt');
+    assertEqual(result.kind, 'success', 'Ansparjahr: offene Nachlasssteuer beendet den Lauf nicht');
+    assert(!result.logData.immobilienverkauf_personen?.length, 'Ansparjahr: kein Notverkauf im Entstehungsjahr');
+    assert(result.logData.erbschaftsteuer > 0 && result.logData.steuer_offen > 0, 'Ansparjahr: Steuer festgesetzt, der offene Teil bleibt Schuld');
     close(result.logData.portfolio_flow_delta, 0, 'Ansparjahr: Steuer und Nachlass ohne doppelten Vermögensfluss');
 }

@@ -13,12 +13,12 @@ export interface PrepareMarketOptions extends AnnualFetchOptions {manualPrice?: 
     onProgress?: (message: string)=>void; readers?: ReturnType<typeof import('../app/shared/annual-marketdata.js').createAnnualMarketDataReaders>; now?: ()=>Date;
     navigationOperation?: I.Operation;
 }
-export interface PlanPreviewOptions extends I.AnnualOptions {targetYear?: number; storage?: D.RecordStorage; choiceVariant?: "year_end"|"year_high";
+export interface PlanPreviewOptions extends I.AnnualOptions {targetYear?: number; storage?: D.RecordStorage;
     marketData?: B.ComputeAnnualOptions['marketData'] & {manualPrice?: number}; engineLoader?: typeof import('../app/shared/annual-engine-loader.js').annualEngineLoader; signal?: AbortSignal;}
 export type PlanPreview = Awaited<ReturnType<typeof import('../app/shared/annual-plan-editor.js').evaluateAnnualPlanPreview>>;
 export interface PlanDraftOptions {evaluate?: (patch: import('./profile-ui.js').PlanPatch|undefined)=>Promise<PlanPreview>; notify?: (state: PlanDraftState)=>void;}
 export interface PlanEditorOptions extends PlanDraftOptions {doc?: Document; listen?: (node: EventTarget, type: string, callback: (event: FocusEvent)=>unknown)=>void;
-    getPreview?: ()=>ReturnType<typeof import("../app/balance/balance-annual-preview.js").projectAnnualPreview>; getAnnualExpenses?: ()=>{needsReview?: ReturnType<typeof import("../app/expenses/expenses-needs.js").readCloseExpenseNeeds>}; onState?: (state: PlanDraftState)=>void; budgetNote?: ()=>string|null;}
+    getPreview?: ()=>ReturnType<typeof import("../app/balance/balance-annual-preview.js").projectAnnualPreview>; getAnnualExpenses?: ()=>{needsReview?: ReturnType<typeof import("../app/expenses/expenses-needs.js").readCloseExpenseNeeds>}; onState?: (state: PlanDraftState)=>void;}
 export interface RetryOptions {storage?: D.RecordStorage; archive?: Archive; getProfileId?: ()=>string; getReferenceDate?: ()=>Date; now?: number; scope?: D.PlanScope;}
 export interface AnnualRetry {token?: string; profileId: string; snapshotId: string; instrument: string; targetYear: number; periodId: string; createdAt?: number; price?: number;}
 export interface CoordinatorRequest extends Partial<Omit<B.PreparedAnnual,"adoptedPlanPatch">> {targetYear?: number; resume?: AnnualRetry; clarify?: boolean; opener?: HTMLElement;
@@ -42,7 +42,7 @@ export interface CoordinatorOptions {
 }
 export type Model = Partial<B.OverviewModel>;
 export type PreparationHandle = NonNullable<ReturnType<typeof import('../app/shared/close-dialog.js').createCloseDialog>> & {
-    update(model: Model): void; updateMarketData(data: {values: Record<string,unknown>; errors: Record<string,string>}): void;
+    update(model: Model): void; updateMarketData(data: {values: Record<string,unknown>; errors: Record<string,string>; capeWarning?: string}): void;
     setImportActive(value: boolean): void; syncReady(): void; isReady?(): boolean; dirty(): boolean;
 };
 export interface PreparationOptions {targetYear?: number; validatePrice?: (value: string)=>B.PreparedAnnual; signal?: AbortSignal; opener?: HTMLElement;
@@ -55,6 +55,8 @@ export interface AnnualDialogOptions {document?: Document; getLastUpdateResults?
     projectPreview?: typeof import('../app/balance/balance-annual-preview.js').projectAnnualPreview;
     /** WT-1: Umsetzungsstand des Plans für das abzuschließende Jahr (Schritt „Plan“ und Ergebnis). */
     readPlanProgress?: typeof import('../app/shared/annual-close-dialog.js').readAnnualClosePlanProgress;
+    /** S2: Bezugswert des CAPE-Abgleichs im Schritt Marktdaten (Tests ersetzen den Speicherleser). */
+    readCapeReference?: (options: object) => {value: number; label: string};
     evaluatePlan?: typeof import('../app/shared/annual-plan-editor.js').evaluateAnnualPlanPreview;
     onError?: (error: Error, action?: string)=>void; onClearError?: ()=>void; onNotice?: (text: string)=>void; isCommitActive?: ()=>boolean;
 }
@@ -64,7 +66,7 @@ export interface CloseSessionOptions {readContext?: ()=>unknown; fetchers?: Reco
     guard?: Guard; schedule?: typeof setInterval; unschedule?: typeof clearInterval;
 }
 export interface DraftSessionState {context: string; targetYear: number; controller: AbortController; values: Record<string,unknown>; errors: Record<string,string>;
-    dirty: boolean; getModel?: ()=>Model; loading?: Promise<void>|null; dialog?: PreparationHandle;}
+    dirty: boolean; getModel?: ()=>Model; loading?: Promise<void>|null; dialog?: PreparationHandle; capeWarning?: string;}
 export interface MonthSessionOptions {targetYear?: number; annualSnapshotId?: string; cash?: I.Cash; readModel?: ()=>Model; annualLease?: {released?: boolean};
     readPending?: ()=>unknown; readContext?: ()=>unknown; guard?: Guard; confirmSummary?: ()=>Promise<boolean>;
     store?: typeof import('../app/overview/overview-storage.js').storeMonthProvision;

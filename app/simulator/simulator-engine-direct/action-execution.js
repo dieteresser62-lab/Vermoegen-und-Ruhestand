@@ -14,7 +14,7 @@ export function executeYearAction(context) {
         actionResult, isBadYear, threeBucketState, bondRefillGross, bondRefillNet, bondRefillTax,
         equityPreserved, unmetLiquidity, portfolio, bondSaleAmount, depotTranchesAktien, depotTranchesGold,
         residenceAdvance, personalTaxBook, inputs, liquiditaet, equityAfterReturn, goldAfterReturn,
-        regularSaleScale, combinedTaxRawAggregate, stressReplayTransactionCapture, balanceTrace, deathYearCash
+        regularSaleScale, combinedTaxRawAggregate, balanceTrace, deathYearCash
     } = context;
 
     const allQuellen = Array.isArray(actionResult.quellen) ? actionResult.quellen : [];
@@ -93,47 +93,6 @@ export function executeYearAction(context) {
         recordPersonalSales(portfolio, investmentsBeforeAction,
             saleQuellen.map(source => ({ ...source, steuer: (source.steuer || 0) * regularSaleScale })));
     }
-    const regularSaleBreakdown = stressReplayTransactionCapture && hasSales && regularSaleScale > 0
-        ? saleQuellen.map(source => ({
-            assetClass: source?.category || source?.kind || 'unknown',
-            grossEur: (Number(source?.brutto) || 0) * regularSaleScale,
-            netEur: typeof source?.netto === 'number' && Number.isFinite(source.netto) && source.netto >= 0
-                ? source.netto * regularSaleScale
-                : null,
-            taxEur: typeof source?.steuer === 'number' && Number.isFinite(source.steuer) && source.steuer >= 0
-                ? source.steuer * regularSaleScale
-                : null
-        }))
-        : [];
-    const regularSaleMissingness = regularSaleBreakdown.flatMap((item, breakdownIndex) => [
-        ...(item.netEur === null ? [{
-            scope: 'breakdown',
-            breakdownIndex,
-            assetClass: item.assetClass,
-            field: 'netEur',
-            reason: 'policy_sale_breakdown_net_not_reported'
-        }] : []),
-        ...(item.taxEur === null ? [{
-            scope: 'breakdown',
-            breakdownIndex,
-            assetClass: item.assetClass,
-            field: 'taxEur',
-            reason: 'policy_sale_breakdown_tax_not_reported'
-        }] : [])
-    ]);
-    const regularSaleDiagnostic = stressReplayTransactionCapture && hasSales && regularSaleScale > 0
-        ? {
-            class: 'policy_rebalancing_sale',
-            phase: 'after_action_sales',
-            oracle: 'engine_action_sources_with_execution_scale_v1',
-            requestedNetEur: Number(actionResult.nettoErlös) || 0,
-            grossEur: plannedSaleBrutto * regularSaleScale,
-            netEur: (Number(actionResult.nettoErlös) || 0) * regularSaleScale,
-            taxEur: (Number(actionResult.steuer) || 0) * regularSaleScale,
-            breakdown: regularSaleBreakdown,
-            missingness: regularSaleMissingness
-        }
-        : null;
 
     // Aktualisiere Liquidität nach Transaktionen
     let saleFunding = [];
@@ -167,7 +126,7 @@ export function executeYearAction(context) {
         bondRefillTax, equityPreserved, unmetLiquidity, buyGoldAmount, buyEqAmount, buyBondAmount, portfolio,
         bondSaleAmount, depotTranchesAktien, depotTranchesGold, executedSaleSources, personalTaxBook, inputs,
         liquiditaet, equityAfterReturn, goldAfterReturn, regularSaleScale, combinedTaxRawAggregate,
-        stressReplayTransactionCapture, regularSaleDiagnostic, saleFunding, reinvestTotal, purchaseFunding,
+        saleFunding, reinvestTotal, purchaseFunding,
         balanceTrace
     } };
 }

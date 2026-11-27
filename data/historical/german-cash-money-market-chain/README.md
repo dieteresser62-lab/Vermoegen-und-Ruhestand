@@ -3,6 +3,9 @@
 Die festgeschriebenen Quelldateien in diesem Verzeichnis liefern die Eingaben für
 `GermanCashMoneyMarketChainV1`.
 
+Ein neues Datenjahr kommt nur als Jahreslieferung unter `jahre/<Jahr>/` dazu; Ablauf und Regeln stehen unter
+[Jahresdaten pflegen](../../../docs/reference/JAHRESDATEN.md).
+
 ## Quellenvertrag
 
 - `originals/bundesbank-long-series-2026-03-05.pdf`
@@ -57,6 +60,31 @@ Laufzeit nicht. Unter Windows lässt es sich mit
 
 Die erzeugte Datei liegt unter
 `app/simulator/german-cash-money-market-chain.js`.
+
+## Methodenwechsel für neue Jahre
+
+Bis 2025 übernimmt die Reihe den von der Bundesbank veröffentlichten
+Jahresdurchschnitt aus dem PDF. Für jedes spätere Jahr rechnet
+`npm run jahresdaten -- <Jahr> --holen` den Wert selbst: einfaches Mittel aller
+€STR-Tageswerte der EZB (Reihe `EST.B.EU000A2X2A25.WT`), kaufmännisch auf zwei
+Stellen gerundet. Das PDF wird dafür nicht mehr gebraucht.
+
+Nachgerechnet am 16.11.2026 sind beide Wege für 2020 bis 2025 auf zwei Stellen
+gleich:
+
+| Jahr | Reihe | Mittel der Tageswerte | Mittel der Bundesbank-Monatswerte |
+|---|---|---|---|
+| 2020 | −0,55 | −0,5467 | −0,5466 |
+| 2021 | −0,57 | −0,5677 | −0,5677 |
+| 2022 | −0,01 | −0,0070 | −0,0112 |
+| 2023 | 3,21 | 3,2053 | 3,2052 |
+| 2024 | 3,64 | 3,6449 | 3,6442 |
+| 2025 | 2,18 | 2,1781 | 2,1818 |
+
+Nur nahe einer halben Stelle (x,xx5) kann das Ergebnis um 0,01 abweichen. Zur
+Gegenprüfung trägt die Lieferung das Mittel der zwölf Bundesbank-Monatswerte
+(`BBMMB.M.EU000A2X2A25.WT`) als `monatsmittel` ein. Weicht es mehr als 0,005
+ab, meldet die Prüfung gelb.
 
 ## Aussagegrenzen
 

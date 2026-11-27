@@ -1,5 +1,4 @@
-import { readFileSync } from 'node:fs';
-import { createProfile, setProfileVerbundMembership } from '../app/profile/profile-registry.js';
+import { createProfile } from '../app/profile/profile-registry.js';
 import { importFullPersistenceBackup, buildFullPersistenceBackup } from '../app/shared/persistence-backup.js';
 import { importProfilesBundle, exportProfilesBundle } from '../app/profile/profile-bundle-io.js';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
@@ -14,15 +13,9 @@ const initial = JSON.stringify([...map]);
 let rejected = false; try { createProfile('Dritte Person', { storage }); } catch { rejected = true; }
 assert(rejected, 'Zwei Haushaltspersonen: Anlegen abgelehnt');
 assertEqual(JSON.stringify([...map]), initial, 'Abgewiesenes Anlegen schreibt nichts');
-let registry = JSON.parse(records.rs_profiles_v1);
-registry.profiles.third = { meta: { id: 'third', name: 'Dritte Person', belongsToHousehold: false }, data: { profile_person_schema_version: '1' } };
-storage.setItem('rs_profiles_v1', JSON.stringify(registry));
-const before = JSON.stringify([...map]); rejected = false;
-try { setProfileVerbundMembership('third', true, { storage }); } catch { rejected = true; }
-assert(rejected, 'Dritte Mitgliedschaft gesperrt');
-assertEqual(JSON.stringify([...map]), before, 'Abgewiesene Mitgliedschaft schreibt nichts');
-// Einen formal gültigen Altbestand mit drei Mitgliedern konstruieren.
-registry.profiles.third.meta.belongsToHousehold = true;
+// Einen formal gültigen Altbestand mit drei Personen konstruieren.
+const registry = JSON.parse(records.rs_profiles_v1);
+registry.profiles.third = { meta: { id: 'third', name: 'Dritte Person', belongsToHousehold: true }, data: { profile_person_schema_version: '1' } };
 storage.setItem('rs_profiles_v1', JSON.stringify(registry));
 for (const read of [readBalancePersonStatus, readHouseholdPersonStatus]) {
     const status = read({ storage, win: null });
@@ -43,6 +36,3 @@ assertEqual(JSON.stringify([...map]), unsafe, 'Speicher bei abgewiesenem Vollimp
 const bundle = exportProfilesBundle({ storage });
 assert(!importProfilesBundle(bundle, { storage }).ok, 'Profilimport mit drei Personen abgelehnt');
 assertEqual(JSON.stringify([...map]), unsafe, 'Profilimport schreibt nichts');
-for (const file of ['app/balance/balance-main-profilverbund.js', 'app/simulator/simulator-main-profiles.js']) {
-    assert(!readFileSync(new URL('../' + file, import.meta.url), 'utf8').includes('setProfileVerbundMembership'), file + ': keine Mitgliedschaftswrites');
-}

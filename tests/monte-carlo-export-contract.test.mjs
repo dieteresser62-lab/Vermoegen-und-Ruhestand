@@ -13,7 +13,6 @@ import {
     MONTE_CARLO_RUN_REQUEST_VERSION,
     MONTE_CARLO_RUN_RESULT_VERSION,
     MONTE_CARLO_RUN_RESULT_V2_VERSION,
-    MONTE_CARLO_LEGACY_READ_ALIASES,
     createMonteCarloRunRequestV1,
     createMonteCarloRunResultV1,
     projectMonteCarloRunResultV2,
@@ -234,6 +233,16 @@ const exportedAt = '2026-07-22T12:34:56.789Z';
 const document = buildMonteCarloExportV1({ request, result, engine, exportedAt });
 const resultV2 = projectMonteCarloRunResultV2(result);
 const documentV2 = buildMonteCarloExportV2({ request, result: resultV2, engine, exportedAt });
+{
+    const errors = [
+        expectThrow(() => buildMonteCarloExportV1({ request, result, engine, exportedAt: 'invalid' }),
+            'MC_EXPORT_TIMESTAMP_INVALID', 'V1 export rejects an invalid timestamp'),
+        expectThrow(() => buildMonteCarloExportV2({ request, result: resultV2, engine, exportedAt: 'invalid' }),
+            'MC_EXPORT_TIMESTAMP_INVALID', 'V2 export rejects an invalid timestamp')
+    ];
+    assertEqual(errors.map(error => error.message.split(':')[0]).join('/'),
+        `${MONTE_CARLO_EXPORT_V1_VERSION}/${MONTE_CARLO_EXPORT_V2_VERSION}`, 'Timestamp errors name their export version');
+}
 assertEqual(JSON.stringify(documentV2.result.kpis.euroMetrics), JSON.stringify(firstRun.aggregatedResults.euroMetrics),
     'V2 exportiert die getrennten Euro-Aggregate ohne Rundung');
 const oldEuroResult = JSON.parse(JSON.stringify(resultV2));
@@ -293,7 +302,7 @@ const schemaGolden = JSON.parse(fs.readFileSync(
     assertEqual(request.stress.pool.policy, 'not_applicable', 'request exports the stress pool policy');
     assertEqual(historicalStressRequest.stress.provenance.evidenceKind, 'historical_filter',
         'historical stress exports its evidence kind');
-    assertEqual(JSON.stringify(historicalStressRequest.stress.pool.rawCandidateYears), JSON.stringify([1946, 1948, 1973]),
+    assertEqual(JSON.stringify(historicalStressRequest.stress.pool.rawCandidateYears), JSON.stringify([1946, 1947, 1948, 1973, 1974, 2022]),
         'historical stress export pins the complete raw candidate pool');
     assertEqual(request.scenario.schemaVersion, 'MonteCarloScenarioV1', 'request versions the scenario payload');
     assertEqual(request.scenario.normalizedInputs.startFloorBedarf, 24000, 'request carries only the normalized scenario used by the run');
@@ -301,10 +310,6 @@ const schemaGolden = JSON.parse(fs.readFileSync(
     assert(/^[a-f0-9]{64}$/.test(request.data.fingerprint.value), 'data fingerprint is a SHA-256 hex value');
     assertEqual(request.execution.chunkConfiguration.strategy, 'single-chunk-v1', 'request records the exact serial chunk policy');
     assertEqual(request.snapshotPolicy.currentReference, null, 'request must not advertise a pending snapshot as the current reference');
-    assertEqual(Object.hasOwn(request, 'stressReplayCapture'), false,
-        'Normal MC exports must not persist opt-in replay capture traces');
-    assertEqual(Object.hasOwn(result, 'stressReplayCapture'), false,
-        'Normal MC results must remain independent of replay capture traces');
     assertEqual(
         request.snapshotPolicy.policy,
         'immutable-baseline-with-versioned-pending-candidates',
@@ -845,7 +850,6 @@ const schemaGolden = JSON.parse(fs.readFileSync(
         verifyFingerprint: false,
         onTelemetry: event => telemetry.push(event)
     });
-    assertEqual(MONTE_CARLO_LEGACY_READ_ALIASES.length, 0, 'Slice 11 removes every time-boxed V1 read alias');
     assertEqual(read.compatibility.deprecatedAliases.length, 0, 'reader no longer inventories a removed KPI alias');
     assert(!telemetry.some(event => event.event === 'monte_carlo_deprecated_alias_read'), 'removed aliases no longer emit read telemetry');
     assertEqual(document.compatibility.deprecatedReadAliases.length, 0, 'new exports publish an empty deprecated-alias registry');
@@ -931,7 +935,7 @@ const schemaGolden = JSON.parse(fs.readFileSync(
         click() { clicked++; },
         remove() {}
     };
-    const filename = triggerMonteCarloDownload(download, {
+    const saving = triggerMonteCarloDownload(download, {
         documentRef: {
             createElement: () => anchor,
             body: { appendChild() {} }
@@ -945,8 +949,9 @@ const schemaGolden = JSON.parse(fs.readFileSync(
         },
         BlobCtor: Blob
     });
-    assertEqual(filename, download.filename, 'explicit UI action reports the downloaded filename');
     assertEqual(clicked, 1, 'explicit UI action triggers exactly one browser download');
+    assertEqual(JSON.stringify(await saving), JSON.stringify({ saved: true, path: null }), 'browser download reports a saved file without a chosen path');
+    assertEqual(anchor.download, download.filename, 'browser download keeps the safe filename');
     assertEqual(revoked, 1, 'browser download revokes its object URL');
     assertEqual(JSON.parse(await capturedBlob.text()).schemaVersion, MONTE_CARLO_EXPORT_V2_VERSION, 'browser download contains the current V2 document');
 }
@@ -986,8 +991,9 @@ const schemaGolden = JSON.parse(fs.readFileSync(
         assertEqual(ui.publishRunExport(download), true, 'completed run publishes the versioned export action');
         assertEqual(elements.mcRunExportActions.hidden, false, 'published export action becomes visible');
         assertEqual(elements.exportMonteCarloRunJson.disabled, false, 'published export button becomes enabled');
-        elements.exportMonteCarloRunJson.onclick();
+        const exported = elements.exportMonteCarloRunJson.onclick();
         assertEqual(clicked, 1, 'published export remains user-triggered and downloads once');
+        await exported;
         assert(elements.mcRunExportStatus.textContent.includes(download.filename), 'UI status names the downloaded safe filename');
     } finally {
         if (previousDocument === undefined) delete globalThis.document;

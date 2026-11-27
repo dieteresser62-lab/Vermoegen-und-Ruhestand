@@ -4,10 +4,8 @@ import { resolveSimulatorCumulativeInflationFactor } from '../simulator-engine-w
 import { recordEuroHealthBucketYear, recordEuroZeroWithdrawal } from '../mc-euro-metrics.js';
 import { advancePostRuinCarePricing } from './post-ruin.js';
 import { recordWealthFanYear } from '../wealth-fan-aggregation.js';
-import { recordMonteCarloStressZeroWithdrawal } from '../mc-stress-tracker.js';
+import { recordMonteCarloStressRuin, recordMonteCarloStressZeroWithdrawal } from '../mc-stress-tracker.js';
 import { buildMonteCarloRuinLogRow } from '../mc-log-builder.js';
-import { createReplayAnnualRecord } from './replay-records.js';
-import { buildNextMarketDataHist, readYearReturnRates } from '../simulator-year-portfolio.js';
 import { BREAK_ON_RUIN } from '../simulator-data.js';
 import { recordSuccessfulYear } from './annual-success.js';
 import { normalizeTechnicalPathError } from './batch.js';
@@ -16,6 +14,7 @@ export function recordAnnualResult(context) {
 
     if (context.result?.kind === 'ruin' || /** @type {boolean} */ (context.result?.isRuin) === true) {
         context.failed = true;
+        if (context.personEventYears) context.personEventYears.failure ??= context.simulationsJahr;
         if (context.result.logData?.health_bucket_enabled) {
             const startFactor = resolveSimulatorCumulativeInflationFactor(context.simState);
             recordEuroHealthBucketYear(context.euroTracker, context.result.logData, startFactor,
@@ -35,6 +34,7 @@ export function recordAnnualResult(context) {
             context.displayHomeValuePath.selfReal[context.simulationsJahr + 1] = Number.isFinite(self) && factor > 0 ? self / factor : NaN;
         }
         recordWealthFanYear(context.wealthFanPath, context.simulationsJahr + 1, 0, 0, true);
+        recordMonteCarloStressRuin(context.stressTracker, context.simulationsJahr);
         if (!context.isAccumulation) {
             context.realWithdrawalsThisRun.push(0);
             recordEuroZeroWithdrawal(context.euroTracker, context.simulationsJahr);
@@ -54,27 +54,6 @@ export function recordAnnualResult(context) {
             lifeLogContext: context.lifeLogContext,
             tailRiskOverlay: context.tailRiskOverlay
         })));
-        if (context.replayCapture) {
-            context.replayCapture.years.push(createReplayAnnualRecord({
-                yearIndex: context.simulationsJahr,
-                yearData: context.yearData,
-                recordType: 'terminal_ruin',
-                stressEvents: context.replayStressEvents,
-                tailRiskOverlay: context.tailRiskOverlay,
-                householdEvent: context.replayHouseholdEvent
-            }));
-            context.replayCapture.sourcePrefixLength = context.replayCapture.years.length;
-            // A successful year receives this transition through
-            // result.newState. Ruin has no financial successor state,
-            // but its effective market year still belongs to the
-            // canonical replay path and must seed the first shadow year.
-            context.simState.marketDataHist = buildNextMarketDataHist({
-                marketDataHist: context.simState.marketDataHist,
-                yearData: context.yearData,
-                rA: readYearReturnRates(context.yearData, context.inputs.equityCostPct).rA,
-                resolvedCapeRatio: context.resolvedCapeRatio
-            });
-        }
         if (BREAK_ON_RUIN) return true;
     } else if ((context.result?.kind === undefined || context.result.kind === 'success')
         && context.result?.newState?.portfolio

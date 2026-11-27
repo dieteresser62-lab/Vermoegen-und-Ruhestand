@@ -5,6 +5,7 @@ import { captureHistoricalBacktestEngineProvenance, createHistoricalBacktestDown
 import { EngineAPI } from '../engine/index.mjs';
 import { renderWorstRunLog } from '../app/simulator/simulator-results.js';
 import { renderProtocolTable } from '../app/simulator/protocol-renderer.js';
+import { formatProtocolValue, PROTOCOL_COLUMNS, readProtocolValue } from '../app/simulator/protocol-columns.js';
 import { STRATEGY_OPTIONS } from '../types/strategy-options.js';
 
 // Vollständiger synthetischer Jahreszeuge mit den bisherigen Log-/Detail-/Pflege-/Guardfeldern.
@@ -110,27 +111,41 @@ function previousJson(content, backtest = false) {
 }
 function previousCsv(content, backtest = false) {
     const rows = parseCsv(content);
+    const restore = (row, key, value) => { row[rows[0].indexOf(key)] = value; };
+    rows.slice(1).forEach((row, index) => {
+        const original = document.records[index];
+        if (backtest) restore(row, 'minimum_flex_status_code', original.minimumFlexStatus);
+        else {
+            restore(row, 'Regime', original.Regime);
+            restore(row, 'minimumFlexStatus', original.minimumFlexStatus);
+            restore(row, 'minimumFlexBlockReason', original.minimumFlexBlockReason);
+            restore(row, 'vpw', canonical(original.vpw));
+        }
+    });
     if (backtest) {
         const index = key => rows[0].indexOf(key);
         const equity = index('portfolio_equity_end_nominal_eur'), bonds = index('portfolio_bond_bucket_end_nominal_eur');
         const cash = index('portfolio_cash_end_nominal_eur'), reserve = index('health_bucket_end_nominal_eur');
+        const guard = index('Schutzregel Grund');
+        assertEqual(rows[0].slice(-2).join(';'), 'VPW-Status;VPW-Hinweis', 'VPW-Spalten stehen hinter den bisherigen CSV-Spalten');
         assert(bonds >= 0, 'Echter Backtest-CSV ergänzt den Anleihentopf');
+        assert(guard >= 0, 'Echter Backtest-CSV ergänzt den Schutzregelgrund');
         for (const row of rows.slice(1)) {
             if (row[equity] !== '') row[equity] = String(Number(row[equity]) + Number(row[bonds]));
             if (row[cash] !== '') row[cash] = String(Number(row[cash]) - Number(row[reserve]));
         }
-        for (const row of rows) row.splice(bonds, 1);
+        for (const row of rows) { row.splice(-2); row.splice(guard, 1); row.splice(bonds, 1); }
     }
     return rows.map(row => row.slice(0, -2).map(value => /[;"\r\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value).join(';')).join(content.includes('\r\n') ? '\r\n' : '\n');
 }
-// Nach Rückführung der gesondert geprüften Anleihen-/Reservefelder und Entfernen der zwei Zahlungsspalten: vollständige UTF-8-Downloads der synthetischen Zeilen aus Basis c2e81fde, einschließlich Spaltenfolge.
+// Für den Vergleich mit c2e81fde deutsche Textzellen zurücksetzen und spätere Spalten herausrechnen.
 for (const [label, content, expected] of [
     ['MC JSON', previousJson(baselineJson), 'a83bc0a9133d3c9a82662f9d9394fd74fc985325320b853aaffbac3dfb4d0285'],
     ['MC CSV', previousCsv(baselineCsv), 'd85267dce9a689bd266a0e590d55c2c54a8e12853fe57063cae6ee0af077f1f2'],
     ['Backtest JSON', previousJson(btJson, true), '7d5482d5c0e97558ca9d640c38276ab355ea6601e379b1880ee2a9d940caa7db'],
     ['Backtest CSV', previousCsv(btCsv, true), 'd0cbc9fecc0ea8ae5c63b2e4d99cee3ba5adec92e090aeb5faa6ec8876f5e6d3']
 ]) assertEqual(createHash('sha256').update(content, 'utf8').digest('hex'), expected,
-    `${label}: Download bleibt bytegleich zur Basis einschließlich Spaltenreihenfolge`);
+    `${label}: übriger Download bleibt bytegleich zur Basis einschließlich Spaltenreihenfolge`);
 recursiveEqual(stripTotals(JSON.parse(btJson).result.rows), backtestRows, 'Backtest.result.rows');
 for (const caRThreshold of [undefined, 5000, 20000]) for (const logDetailLevel of ['normal', 'detailed']) for (const showCareDetails of [false, true]) {
     const options = { logDetailLevel, showCareDetails, strategyMode: STRATEGY_OPTIONS.THREE_BUCKET_JILGE, startYear: 2026, inputs: { startAlter: 62 } };
@@ -163,6 +178,70 @@ function parseCsv(text) {
     }
     lines.at(-1).push(value); return lines;
 }
+// Alle Textspalten, einschließlich der ausgeblendeten Rechenspuren im Szenario-CSV.
+const sample = { ...source, Regime: 'peak_hot', aktionUndGrund: 'ATH (Kein Handlungsbedarf)',
+    CutReason: 'Safety-Cap (flex_rate_hard_cap)', minimumFlexStatus: 'not_needed', minimumFlexBlockReason: 'alarm_active',
+    safety_transition: 'down', health_bucket_warning: 'Pflegebucket auf verfuegbare Liquiditaet gekappt: 10 von 20 EUR.',
+    GuardNote: 'floor_covered_by_pension', vpw: { ...source.vpw, status: 'active', returnPolicy: 'legacy_step',
+        expectedReturnSource: 'legacy_cape_linear', capeInputStatus: 'fallback_missing', safeRealReturnSource: 'config_dynamic_flex' } };
+const textColumns = {
+    'year-status': [null, null], 'household-care': [null, null],
+    minimumflexstatus: ['Nicht benötigt', 'minimum_flex_status_code'],
+    'vpw-status': ['Aktiv', 'VPW-Status'],
+    vpwfallbackhint: ['Ohne Ersatzrechnung', 'VPW-Hinweis'],
+    'vpw-returnpolicy': ['CAPE-Stufenmodell', null],
+    'vpw-expectedreturnsource': ['CAPE-Stützpunkte', null],
+    'vpw-capeinputstatus': ['CAPE-Wert fehlt', null],
+    'vpw-saferealreturnsource': ['Vorgabe für dynamischen Flex', null],
+    'row-safety-transition': ['Stufe gesenkt', null],
+    minimumflexblockreason: ['Alarmmodus aktiv', null],
+    market: ['Markt heiß gelaufen', null],
+    action: ['Stabiler Höchststand · kein Handlungsbedarf', 'action_code'],
+    cutreason: ['Sicherheitsgrenze (Feste Obergrenze für Flex)', 'cut_reason_code'],
+    'health-bucket-warning': ['Pflegereserve beim Start auf die verfügbare Liquidität begrenzt: 10 von 20 €.', null],
+    guardnote: ['Grundbedarf durch Renten und feste Einkünfte gedeckt', 'Schutzregel Grund']
+};
+const csvRecord = text => {
+    const [headers, cells] = parseCsv(text);
+    return Object.fromEntries(headers.map((header, index) => [header, cells[index]]));
+};
+const sampleLog = projectScenarioLogV2([sample]);
+const actualPayout = { ...sample, minimumFlexStatus: 'limited_by_actual_payout' };
+const payoutHtml = renderProtocolTable([actualPayout], { source: 'mc', logDetailLevel: 'detailed' });
+assert(payoutHtml.includes('Durch tatsächliche Auszahlung begrenzt'), 'Die Detailtabelle benennt die Begrenzung durch die tatsächliche Auszahlung');
+assertEqual(csvRecord(serializeScenarioLogCsvV2(projectScenarioLogV2([actualPayout]))).minimumFlexStatus,
+    'Durch tatsächliche Auszahlung begrenzt', 'MC-CSV zeigt denselben Status auf Deutsch');
+const sampleBacktest = { ...result, rows: [{ ...backtestRows[0], row: sample, vpw: sample.vpw, vpwFallbackHint: 'ok' }] };
+for (const [source, rows] of [['mc', [sample]], ['backtest', sampleBacktest.rows]]) {
+    const html = renderProtocolTable(rows, { source, logDetailLevel: 'detailed' });
+    assert(html.includes('>Nicht benötigt<') && html.includes('>Sicherheitsgrenze (Feste Obergrenze für Flex)<')
+        && !html.includes('not_needed') && !html.includes('flex_rate_hard_cap'), `${source}: Die Detailtabelle zeigt deutsche Status- und Begründungstexte`);
+}
+const mcCsvText = csvRecord(serializeScenarioLogCsvV2(sampleLog));
+const backtestCsvText = csvRecord(createHistoricalBacktestDownload(sampleBacktest, 'csv', { exportedAt }).content);
+const columns = PROTOCOL_COLUMNS.filter(column => column.format === 'text');
+assertEqual(columns.map(column => column.id).sort().join(','), Object.keys(textColumns).sort().join(','), 'Jede Textspalte wurde geprüft');
+for (const column of columns) {
+    const [expected, btHeader] = textColumns[column.id];
+    if (!expected) continue; // Jahresstatus und Pflege werden bereits aus Werten zu deutschen Texten zusammengesetzt.
+    for (const [source, entry, path] of [['mc', sample, column.mcPath], ['backtest', sampleBacktest.rows[0], column.backtestPath]]) {
+        if (!path) continue;
+        const options = { source };
+        assertEqual(formatProtocolValue(column, readProtocolValue(column, entry, options), entry, options), expected,
+            `${source}: ${column.label} als deutscher Text`);
+    }
+    if (column.mcPath?.startsWith('vpw.')) {
+        const vpw = JSON.parse(mcCsvText.vpw);
+        assertEqual(vpw[column.mcPath.split('.')[1]], expected, `MC-CSV: ${column.label}`);
+        assertEqual(vpw.vpwRate, sample.vpw.vpwRate, 'VPW-Zahlen bleiben unformatiert');
+    } else if (column.mcPath) assertEqual(mcCsvText[column.mcPath], expected, `MC-CSV: ${column.label}`);
+    if (btHeader) assertEqual(backtestCsvText[btHeader], expected, `Backtest-CSV: ${column.label}`);
+}
+assertEqual(JSON.parse(serializeScenarioLogExportV2(sampleLog)).records[0].vpw.capeInputStatus, 'fallback_missing',
+    'Szenario-JSON führt nach dem CSV-Export weiterhin den Rohwert');
+assertEqual(JSON.parse(createHistoricalBacktestDownload(sampleBacktest, 'json', { exportedAt }).content).result.rows[0].row.minimumFlexStatus,
+    'not_needed', 'Backtest-JSON führt nach dem CSV-Export weiterhin den Rohwert');
+
 for (const logRows of [rows, [rows[2]], [rows[3]], []]) {
     const withContext = projectScenarioLogV2(logRows, { personDataContext });
     const contextJson = JSON.parse(serializeScenarioLogExportV2(withContext));

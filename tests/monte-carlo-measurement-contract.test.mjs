@@ -1,3 +1,7 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
+import { grundbestandSichtWirkt } from './helpers/grundbestand-stichprobe.mjs';
 import { readLE1References } from './helpers/le-1-expectations.mjs';
 import { readGL1References } from './helpers/gl-1-expectations.mjs';
 import { readRNG1Hash } from './helpers/rng-1-expectations.mjs';
@@ -7,6 +11,7 @@ import { createHash } from 'node:crypto';
 import { Worker } from 'node:worker_threads';
 import { fileURLToPath } from 'node:url';
 import { readNL1Hash } from './helpers/jb-2-expectations.mjs';
+import { readMS1References } from './helpers/ms-1-expectations.mjs';
 
 import { EngineAPI } from '../engine/index.mjs';
 import {
@@ -21,7 +26,6 @@ import {
     mergeMonteCarloChunkResultV1
 } from '../app/simulator/monte-carlo-chunk-result.js';
 import {
-    MONTE_CARLO_LEGACY_READ_ALIASES,
     MONTE_CARLO_RUN_REQUEST_VERSION,
     MONTE_CARLO_RUN_RESULT_VERSION,
     MONTE_CARLO_SCENARIO_VERSION,
@@ -56,6 +60,11 @@ const goldenFixture = readFixture('golden-cases-v1.json');
 const snapshotPolicy = readFixture('snapshot-policy-v1.json');
 const deltaLedger = readFixture('delta-ledger-v1.json');
 const preHardening = readFixture('pre-hardening-v1.json');
+// AL-S: Laufzeitangaben in Monaten rechnen nicht mehr um. Die unveränderliche Eingabe wird wie früher übersetzt
+// (Zielmonate vor Mindestmonaten, auf halbe Jahre aufgerundet: 36 Monate = 3 Jahre); alle Messwerte bleiben gleich.
+preHardening.runnerCase.inputs = Object.fromEntries(Object.entries(preHardening.runnerCase.inputs)
+    .filter(([key]) => key !== 'runwayMinMonths')
+    .map(([key, value]) => key === 'runwayTargetMonths' ? ['liquidityRunwayYears', Math.ceil(value / 6) / 2] : [key, value]));
 const postSlice03 = readFixture('post-slice-03-v1.json');
 const postSlice04 = readFixture('post-slice-04-v1.json');
 const postSlice05 = readFixture('post-slice-05-v1.json');
@@ -158,6 +167,7 @@ function createWorkerHarness() {
                 globalThis.self.onmessage({ data });
             }
         });
+        ${grundbestandSichtWirkt() ? `await import(${JSON.stringify(new URL('./helpers/grundbestand-sicht-aktiv.mjs', import.meta.url).href)});` : ''}
         await import(${JSON.stringify(workerUrl.href)});
     `;
     return new Worker(
@@ -604,7 +614,7 @@ function finalCandidateSnapshotProjection(result) {
             measuredWorkerResultBytesPerRun: MONTE_CARLO_PARAMETER_LIMITS.measuredWorkerResultBytesPerRun
         },
         compatibility: {
-            deprecatedReadAliases: MONTE_CARLO_LEGACY_READ_ALIASES
+            deprecatedReadAliases: []
         },
         execution: {
             workerConfiguration: preHardening.metadata.workerConfiguration,
@@ -693,7 +703,8 @@ function compareSnapshotNode(actual, expected, pathName, sameRuntime, toleranceC
         }
         return;
     }
-    assertEqual(actual, readLE1References(expected), `Snapshot value mismatch at ${pathName}`);
+    // MS-1: Der Messfall rechnet block mit Blocklänge 4; feste Blöcke ziehen jetzt zirkulär (NG-9).
+    assertEqual(actual, readKR1cReferences(readMS1References(readLE1References(expected))), `Snapshot value mismatch at ${pathName}`);
 }
 
 function determinismProjection(result) {
@@ -1281,7 +1292,6 @@ function computeKpiDelta(low, high) {
 
 // Contract 9a: time-boxed V1 KPI aliases are absent from productive readers.
 {
-    assertEqual(MONTE_CARLO_LEGACY_READ_ALIASES.length, 0, 'Public V1 legacy read-alias registry must remain empty after Slice 11');
     const removedAliases = ['kpiKuerzungsjahre', 'consumptionAtRiskP10Real'];
     const productiveReaders = [
         'app/simulator/results-metrics.js',
@@ -1316,10 +1326,7 @@ function computeKpiDelta(low, high) {
         'app/simulator/monte-carlo-export/export-v2.js',
         'app/simulator/monte-carlo-export/scenario-record.js',
         'app/simulator/monte-carlo-export/scenario-log.js',
-        'app/simulator/monte-carlo-export/scenario-io.js',
-        'app/simulator/auto-optimize-evaluate.js',
-        'app/simulator/auto-optimize-metrics.js',
-        'app/simulator/auto-optimize-renderer.js'
+        'app/simulator/monte-carlo-export/scenario-io.js'
     ];
     for (const relativePath of productiveReaders) {
         const source = fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');

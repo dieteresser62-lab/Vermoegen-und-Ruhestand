@@ -201,9 +201,15 @@ for (const partner of [false, true, false]) {
         assertEqual(survivorIds.map(id => markupDoc.getElementById(id).value).join('/'), originalValues, 'Partnerwechsel erhält alle gespeicherten Anteile');
         assertEqual(modelSummary.textContent.includes('75 / 50 / 50 %'), partner, 'Zugeklappter Kopf nennt die drei Anteile nur beim Paar');
         assertEqual(modelSummary.textContent.includes('Witwenrente 55 %'), partner, 'Kopf nennt Witwenrente nur beim Paar');
+        assert(modelSummary.textContent.endsWith(' · Zukäufe: dasselbe Papier'), 'FZ-1c: Kopf nennt die Zukäufe auch bei Einzelperson');
         assert(!modelDetails.open, 'Zusammenfassung benötigt kein Öffnen der Klappe');
     }
 }
+const purchaseChoice = markupDoc.getElementById('simulatedEquityPurchases');
+purchaseChoice.value = 'separate';
+refreshAssumptionFillStatus(markupDoc);
+assertEqual(modelSummary.textContent, 'Einzelperson · Zukäufe: eigenes Papier', 'FZ-1c: Zugeklappter Kopf zeigt ein eigenes Papier');
+purchaseChoice.value = 'same';
 markupDoc.getElementById('chkPartnerAktiv').checked = true;
 markupDoc.getElementById('survivorFlexPercent').value = '60';
 refreshAssumptionFillStatus(markupDoc);

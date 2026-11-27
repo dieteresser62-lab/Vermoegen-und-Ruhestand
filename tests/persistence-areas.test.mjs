@@ -2,7 +2,6 @@ import { PersistenceFacade as persistence } from '../app/shared/persistence-faca
 import { createPersistenceAreas } from '../app/shared/persistence-areas.js';
 import { AREA_CONTROL_KEY, PLAY_STORAGE_PREFIX, PLAY_DB_NAME, areaSessionStorage, scopeWebStorage } from '../app/shared/persistence-area-storage.js';
 import { SnapshotArchive, SNAPSHOT_KINDS } from '../app/shared/snapshot-archive.js';
-import { StorageManager } from '../app/balance/balance-storage.js';
 import { renderStorageAreaNotice } from '../app/profile/profile-navigation.js';
 import { CONFIG } from '../app/balance/balance-config.js';
 import { MemoryWebStorage, fakeAreaIndexedDB, fakeAreaTauri } from './helpers/persistence-area-backends.mjs';
@@ -61,7 +60,7 @@ async function fixture(kind) {
         local: Object.entries(Object.fromEntries(local.records)).filter(([key]) => key !== AREA_CONTROL_KEY && !key.startsWith(PLAY_STORAGE_PREFIX)),
         session: [...session.records].filter(([key]) => !key.startsWith(PLAY_STORAGE_PREFIX)),
         backend: tauri ? [tauri.files.get('live'), tauri.files.get('snapshots')]
-            : indexedDB ? [indexedDB.bytes('ruhestand-suite'), indexedDB.bytes('snapshotDB')] : null
+            : indexedDB ? [indexedDB.bytes('ruhestand-suite')] : null
     });
     const restart = async () => { persistence.resetPersistenceRuntimeForTests(); await persistence.init(options); };
     const setControl = raw => tauri ? tauri.files.set('control', raw) : local.setItem(AREA_CONTROL_KEY, raw);
@@ -79,10 +78,10 @@ for (const kind of ['tauri', 'indexeddb', 'localstorage']) {
     assertEqual(copy.profile_tagesgeld, oldRecords.profile_tagesgeld, `${kind}: ausdrücklich lesender Echtzugriff erhält Rohwerte`);
     await persistence.activatePlayArea({ source: 'copy', records: copy });
     other.setItemSync('profile_tagesgeld', 'stale real page');
-    for (const action of [() => other.flush(), () => other.listSnapshots(), () => other.readSnapshot('real-point'), () => other.migrateLegacySnapshotsIfNeeded()]) {
+    for (const action of [() => other.flush(), () => other.listSnapshots(), () => other.readSnapshot('real-point')]) {
         let blocked = false;
         try { await action(); } catch { blocked = true; }
-        assert(blocked, `${kind}: alte Echtseite darf weder schreiben noch über Archivzugriffe migrieren`);
+        assert(blocked, `${kind}: alte Echtseite darf weder schreiben noch das Archiv lesen`);
     }
     other.resetPersistenceForTests();
     let staleBlocked = false;
@@ -91,7 +90,7 @@ for (const kind of ['tauri', 'indexeddb', 'localstorage']) {
     for (const read of [() => persistence.listSnapshots(), () => persistence.readSnapshot('real-point'), () => persistence.readPersistedRecords()]) {
         let blocked = false;
         try { await read(); } catch { blocked = true; }
-        assert(blocked, `${kind}: aktivierende Fassade liest oder migriert nach dem Wechsel keine echten Records mehr`);
+        assert(blocked, `${kind}: aktivierende Fassade liest nach dem Wechsel keine echten Records mehr`);
     }
     await f.restart();
     assertEqual(persistence.getPersistenceStatus().activeArea, 'spiel', `${kind}: vor dem ersten Lesen im Spielbereich`);
@@ -103,12 +102,10 @@ for (const kind of ['tauri', 'indexeddb', 'localstorage']) {
     const point = await SnapshotArchive.createSnapshot({ id: 'spiel-abschluss', records: persistence.exportAllSync().records,
         activeProfileId: 'default', kind: SNAPSHOT_KINDS.annualClosePreMutation });
     assertEqual((await SnapshotArchive.readSnapshot(point.id)).records.profile_tagesgeld, '9999.00', `${kind}: Abschluss-Sicherungspunkt im Spielbereich`);
-    const migrated = await persistence.migrateLegacySnapshotsIfNeeded();
-    if (kind !== 'localstorage') assertEqual(migrated.migratedCount, 1, `${kind}: Altsicherung wird nur in der Spielkopie migriert`);
     areaSessionStorage(f.session).setItem('rs_startup_prices_session_v1', 'play quotes');
     areaSessionStorage(f.session).removeItem('balance.annual-retry.once');
     await persistence.resetNewBeginningBrowserStorage({ window: f.options.window });
-    assertEqual(f.realBytes(), before, `${kind}: Eingaben, Gold, Tranche, Abschluss, Migration und Leerstart lassen echte Bytes gleich`);
+    assertEqual(f.realBytes(), before, `${kind}: Eingaben, Gold, Tranche, Abschluss und Leerstart lassen echte Bytes gleich`);
     await f.restart();
     assertEqual(persistence.getPersistenceStatus().activeArea, 'spiel', `${kind}: Absturz/Neustart bleibt im Spielbereich`);
     assertEqual(persistence.getItemSync('profile_tagesgeld'), '9999.00', `${kind}: Neustart erhält Spieldaten`);
@@ -200,18 +197,74 @@ for (const kind of ['tauri', 'indexeddb']) {
 // Direkter Archivzugriff initialisiert die Fassade ebenfalls vor dem ersten Read.
 {
     const f = await fixture('indexeddb'), before = f.realBytes(); await f.restart();
-    await persistence.activatePlayArea({ source: 'demo', records: { profile_tagesgeld: '3' }, snapshots: [{ ...archivePoint, id: 'only-play' }] });
+    // SV-1: Der Spielbereich startet ohne Punkte; ein eigener Punkt liegt nur in seinem Archiv.
+    await persistence.activatePlayArea({ source: 'demo', records: { profile_tagesgeld: '3' } });
+    await f.restart();
+    await persistence.writeSnapshot({ ...archivePoint, id: 'only-play' });
     persistence.resetPersistenceRuntimeForTests();
     // Runtime dependencies are explicit here while sharing the same public facade.
     const starting = persistence.init(f.options);
     const points = await SnapshotArchive.listSnapshots(); await starting;
     assert(points.some(point => point.id === 'only-play') && !points.some(point => point.id === 'real-point'), 'Archiv löst vor seinem ersten Lesen den Spielbereich auf');
-    let folderBlocked = false;
-    try { await StorageManager._idbHelper.open(); } catch { folderBlocked = true; }
-    assert(folderBlocked, 'Direkte Verzeichnis-Handle-Datenbank wird im Spielbereich nicht geöffnet');
-    assertEqual(f.realBytes(), before, 'Archivstart und Verzeichnisprüfung lassen echte Bytes gleich');
+    assertEqual(f.realBytes(), before, 'Archivstart lässt echte Bytes gleich');
 }
 persistence.resetPersistenceRuntimeForTests();
+
+// NG-1: Eine gescheiterte Übernahme in einen frischen Haushalt (noch ohne echte Daten) hinterlässt den Stand von vorher.
+// In der EXE heißt das: keine leere Hauptdatei, denn Rust lehnt danach jedes Speichern ab.
+for (const kind of ['tauri', 'indexeddb', 'localstorage']) {
+    const local = new MemoryWebStorage(), session = new MemoryWebStorage();
+    const indexedDB = kind === 'indexeddb' ? fakeAreaIndexedDB() : null;
+    const base = kind === 'tauri' ? fakeAreaTauri() : null;
+    const isObject = raw => { try { const value = JSON.parse(raw); return value !== null && typeof value === 'object' && !Array.isArray(value); } catch { return false; } };
+    // Wie save_state_file_with_replace: Eine vorhandene, aber unlesbare Hauptdatei sperrt jedes Speichern.
+    const invoke = base && (async (command, args = {}) => {
+        const target = args.household ? `hh/${args.household}/${args.target || 'live'}` : args.target || 'live';
+        if (command === 'save_app_state' && base.files.has(target) && !isObject(base.files.get(target))) throw new Error('Hauptdatei ist nicht lesbar; Rettungsdateien bleiben erhalten.');
+        return base.invoke(command, args);
+    });
+    const window = { localStorage: local, sessionStorage: session, ...(base ? { __TAURI__: {} } : {}) };
+    const areas = createPersistenceAreas({ window, localStorage: local, indexedDB, invoke, installLifecycleHooks: false });
+    await areas.resolve();
+    await areas.activate({ records: { profile_tagesgeld: '777.00' }, source: 'demo' });
+    await areas.resolve();
+    const before = await areas.readRealRecords();
+    if (base) assert(!base.files.has('live'), 'tauri: frischer Haushalt hat noch keine Hauptdatei');
+    const transfer = await areas.openRealTransfer();
+    await transfer.adapter.saveBatch({ upserts: [['profile_tagesgeld', '1000.00']], deletes: [] });
+    let rollbackError = null;
+    try { await transfer.rollback(); } catch (error) { rollbackError = error; }
+    transfer.close();
+    assertEqual(rollbackError?.message ?? null, null, `${kind}: Rücknahme in frischen Haushalt gelingt`);
+    if (base) {
+        assert(!base.files.has('live'), 'tauri: Rücknahme entfernt die Hauptdatei statt sie leer zu schreiben');
+        assertEqual(await base.invoke('load_app_state', { target: 'live' }), '', 'tauri: Nachprüfung liest wieder den leeren Rohbestand');
+    }
+    assertEqual(JSON.stringify(await areas.readRealRecords()), JSON.stringify(before), `${kind}: nach der Rücknahme dieselben Fachrecords wie vorher`);
+    const real = areas.makeAdapter('echt'); await real.open();
+    let saveError = null;
+    try { await real.saveBatch({ upserts: [['profile_tagesgeld', '5.00']], deletes: [] }); } catch (error) { saveError = error; }
+    real.close?.();
+    assertEqual(saveError?.message ?? null, null, `${kind}: späteres Speichern gelingt`);
+    assertEqual((await areas.readRealRecords()).profile_tagesgeld, '5.00', `${kind}: späterer Wert ist gespeichert`);
+    if (base) assert(isObject(base.files.get('live')), 'tauri: Hauptdatei ist danach ein JSON-Objekt');
+}
+
+// NG-1: Der Löschbefehl prüft wie jedes verändernde Kommando die Generation und trifft nur die Hauptdatei seines Haushalts.
+{
+    const tauri = fakeAreaTauri();
+    tauri.files.set('households', JSON.stringify({ generation: 3 }));
+    for (const key of ['live', 'snapshots', 'hh/abc123def456/live', 'hh/abc123def456/snapshots']) tauri.files.set(key, '{}');
+    let stale = '';
+    try { await tauri.invoke('delete_live_state', { household: 'abc123def456', expectedGeneration: 2 }); } catch (error) { stale = String(error.message); }
+    assert(stale.startsWith('HOUSEHOLD_CONTEXT_CHANGED'), 'Veraltete Generation wird abgewiesen');
+    assert(tauri.files.has('hh/abc123def456/live'), 'Abgewiesener Löschbefehl lässt die Hauptdatei liegen');
+    await tauri.invoke('delete_live_state', { household: 'abc123def456', expectedGeneration: 3 });
+    assertEqual([...tauri.files.keys()].sort().join(','), 'hh/abc123def456/snapshots,households,live,snapshots', 'Nur die Hauptdatei dieses Haushalts ist entfernt');
+    let invalid = '';
+    try { await tauri.invoke('save_app_state', { target: 'live', content: '' }); } catch (error) { invalid = String(error.message); }
+    assert(invalid.includes('kein JSON-Objekt'), 'Leerer Inhalt wird wie in Rust abgelehnt');
+}
 {
     let displayed;
     const doc = {

@@ -1,0 +1,29 @@
+{
+  "beforeHash": "a0873ce4d823a37a197499feec199dbbe691371f59853a232e9f6151533ddca2",
+  "afterHash": "98b329184427db77714e7d4c5df2934e568aee9813f41ee7da848bc898311345",
+  "unchangedContentHash": "78909cdb9110fa5b0129b8bb73402e07badf8465b4a5e0520d06b039f6e151b5",
+  "numericLeaves": 1361925,
+  "parityCases": 208,
+  "changedText": [
+    {
+      "path": "scenarios.0.console",
+      "before": "Aus: Entscheidungen gleich 26/26; Personenplan gleich 26/26; vollständig gleich 0/26; Rundung 0; offene Fachfragen keine; fehlendes Personenmodell 26; Fehler 0; Folgelauf 1/26, ab 2000 unvollständig ausführbar. Restklassen: MARKTZEIT_HERKUNFT_FEHLT, QUELLREVISION_FEHLT, JAHRESENDE_NUR_SIMULATOR, FOLGELAUF_AUSFUEHRUNG_FEHLT; unklassifiziert 0.",
+      "after": "Aus: Entscheidungen gleich 26/26 · Personenplan gleich 26/26 · Vollvergleich nicht möglich: Personenmodell fehlt in 26 Fällen; Rundung 0; offene Fachfragen keine; fehlendes Personenmodell 26; Fehler 0; Folgelauf 1/26, ab 2000 unvollständig ausführbar. Restklassen: MARKTZEIT_HERKUNFT_FEHLT, QUELLREVISION_FEHLT, JAHRESENDE_NUR_SIMULATOR, FOLGELAUF_AUSFUEHRUNG_FEHLT; unklassifiziert 0."
+    },
+    {
+      "path": "scenarios.1.console",
+      "before": "Konservativ: Entscheidungen gleich 26/26; Personenplan gleich 26/26; vollständig gleich 0/26; Rundung 0; offene Fachfragen keine; fehlendes Personenmodell 26; Fehler 0; Folgelauf 1/26, ab 2000 unvollständig ausführbar. Restklassen: MARKTZEIT_HERKUNFT_FEHLT, QUELLREVISION_FEHLT, JAHRESENDE_NUR_SIMULATOR, FOLGELAUF_AUSFUEHRUNG_FEHLT; unklassifiziert 0.",
+      "after": "Konservativ: Entscheidungen gleich 26/26 · Personenplan gleich 26/26 · Vollvergleich nicht möglich: Personenmodell fehlt in 26 Fällen; Rundung 0; offene Fachfragen keine; fehlendes Personenmodell 26; Fehler 0; Folgelauf 1/26, ab 2000 unvollständig ausführbar. Restklassen: MARKTZEIT_HERKUNFT_FEHLT, QUELLREVISION_FEHLT, JAHRESENDE_NUR_SIMULATOR, FOLGELAUF_AUSFUEHRUNG_FEHLT; unklassifiziert 0."
+    },
+    {
+      "path": "scenarios.2.console",
+      "before": "Ausgewogen: Entscheidungen gleich 26/26; Personenplan gleich 26/26; vollständig gleich 0/26; Rundung 0; offene Fachfragen keine; fehlendes Personenmodell 26; Fehler 0; Folgelauf 1/26, ab 2000 unvollständig ausführbar. Restklassen: MARKTZEIT_HERKUNFT_FEHLT, QUELLREVISION_FEHLT, JAHRESENDE_NUR_SIMULATOR, FOLGELAUF_AUSFUEHRUNG_FEHLT; unklassifiziert 0.",
+      "after": "Ausgewogen: Entscheidungen gleich 26/26 · Personenplan gleich 26/26 · Vollvergleich nicht möglich: Personenmodell fehlt in 26 Fällen; Rundung 0; offene Fachfragen keine; fehlendes Personenmodell 26; Fehler 0; Folgelauf 1/26, ab 2000 unvollständig ausführbar. Restklassen: MARKTZEIT_HERKUNFT_FEHLT, QUELLREVISION_FEHLT, JAHRESENDE_NUR_SIMULATOR, FOLGELAUF_AUSFUEHRUNG_FEHLT; unklassifiziert 0."
+    },
+    {
+      "path": "scenarios.3.console",
+      "before": "Offensiv: Entscheidungen gleich 26/26; Personenplan gleich 26/26; vollständig gleich 0/26; Rundung 0; offene Fachfragen keine; fehlendes Personenmodell 26; Fehler 0; Folgelauf 1/26, ab 2000 unvollständig ausführbar. Restklassen: MARKTZEIT_HERKUNFT_FEHLT, QUELLREVISION_FEHLT, JAHRESENDE_NUR_SIMULATOR, FOLGELAUF_AUSFUEHRUNG_FEHLT; unklassifiziert 0.",
+      "after": "Offensiv: Entscheidungen gleich 26/26 · Personenplan gleich 26/26 · Vollvergleich nicht möglich: Personenmodell fehlt in 26 Fällen; Rundung 0; offene Fachfragen keine; fehlendes Personenmodell 26; Fehler 0; Folgelauf 1/26, ab 2000 unvollständig ausführbar. Restklassen: MARKTZEIT_HERKUNFT_FEHLT, QUELLREVISION_FEHLT, JAHRESENDE_NUR_SIMULATOR, FOLGELAUF_AUSFUEHRUNG_FEHLT; unklassifiziert 0."
+    }
+  ]
+}

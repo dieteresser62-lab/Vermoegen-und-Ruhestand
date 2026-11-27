@@ -8,6 +8,7 @@ import { isAllowedPersistenceImportKey } from '../persistence-key-policy.js';
 import { FULL_BACKUP_TYPE, FULL_BACKUP_APP_ID, FULL_BACKUP_LEGACY_SCHEMA_VERSION, FULL_BACKUP_SCHEMA_VERSION, FULL_BACKUP_RECORD_SCOPE, BLOCKED_BACKUP_KEYS } from './schema.js';
 import { collectStorageRecords, isPlainRecord, hasOwn, validateIsoTimestamp, recordsMatch } from './records.js';
 import { validatePersistenceDomainRecords } from './domain-validation.js';
+import { BACKUP_DELIVERY_KEY } from '../../data/data-backup-summary.js';
 
 function timestampForFilename(date = new Date()) {
     return date.toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
@@ -26,6 +27,8 @@ export function buildFullPersistenceBackup(options = {}) {
     /** @type {string[]} */
     const excludedKeys = [];
     Object.entries(sourceRecords || {}).forEach(([key, value]) => {
+        // Externe Dateien (Vollsicherung, Recovery-Export, Haushaltsübergabe) nennen nie die Sicherungsart dieses Bestands.
+        if (key === BACKUP_DELIVERY_KEY) return;
         if (!isAllowedPersistenceImportKey(key)) {
             excludedKeys.push(key);
             return;

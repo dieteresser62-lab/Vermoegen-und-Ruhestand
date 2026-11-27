@@ -3,9 +3,6 @@ import { inputs as fixtureInputs } from './extended/parity-replay-fixture.mjs';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
 import { initMcRunState, simulateOneYear } from '../app/simulator/simulator-engine-wrapper.js';
 import { createMonteCarloLifeState, updateMonteCarloLifeEventsForYear } from '../app/simulator/mc-life-events.js';
-import { createStressReplayCaptureRequest, materializeStressReplayPathV1 } from '../app/simulator/stress-replay-path-materializer.js';
-import { createStressReplayFingerprint } from '../app/simulator/stress-replay-contract.js';
-import { runStressReplayPathV1 } from '../app/simulator/stress-replay-runner.js';
 
 function observeEngine(calls) {
     return { ...EngineAPI, simulateSingleYear(input, previous) {
@@ -28,7 +25,7 @@ for (const deceased of [1, 2]) for (const dynamicFlex of [false, true]) {
     const sourceCalls = [];
     const source = await runMonteCarloChunk({ inputs, monteCarloParams, widowOptions: inputs.widowOptions,
         runRange: { start: 0, count: 1 }, logIndices: [0], useCapeSampling: false,
-        stressReplayCapture: createStressReplayCaptureRequest([0]), engine: observeEngine(sourceCalls) });
+        engine: observeEngine(sourceCalls) });
     assertEqual(source.technicalInventory.technicalError, 0, 'Todesjahr: normaler MC-Lauf bleibt auswertbar');
     const meta = source.runMeta[0];
     assertEqual(meta.logDataRows.length, 2, 'Todesjahr und erstes volles Hinterbliebenenjahr werden berechnet');
@@ -37,10 +34,8 @@ for (const deceased of [1, 2]) for (const dynamicFlex of [false, true]) {
     assertEqual(meta.logDataRows[0][`Person${deceased}Alive`], 0, 'Gewählte Todesrichtung wird ausgeführt');
     assertEqual(sourceCalls[0].flex, 7500, 'Todesjahr: Wunsch-Flex mittelt 100 % Paar und 50 % allein');
     assertEqual(sourceCalls[0].minimum, 2500, 'Todesjahr: Mindest-Flex mittelt 100 % Paar und 25 % allein');
-    assertEqual(meta.stressReplayCapture.years[0].householdEvents[0].effectiveFlexFactor, .5,
-        'Replay-Tape speichert den Ereignisfaktor nach dem Tod ohne Halbjahresmischung');
 
-    // Auch der Lebenshelfer des Schattenpfads liefert denselben ungemischten Ereignisfaktor.
+    // Auch der Lebenshelfer allein liefert denselben ungemischten Ereignisfaktor.
     const rand = () => .999999;
     rand.fork = () => rand;
     const state = initMcRunState(inputs);
@@ -55,17 +50,4 @@ for (const deceased of [1, 2]) for (const dynamicFlex of [false, true]) {
     assertEqual(helperYear.kind, 'success', 'Lebenshelfer und Jahresadapter berechnen das Todesjahr');
     assertEqual(JSON.stringify(helperCalls), JSON.stringify([sourceCalls[0]]),
         'Lebenshelfer und normaler Lauf übergeben dieselben Flex-Beträge im Todesjahr');
-
-    const path = materializeStressReplayPathV1({ capture: meta.stressReplayCapture,
-        sourceLogRows: meta.logDataRows, sourceRequest: { inputs, monteCarloParams },
-        dataFingerprint: createStressReplayFingerprint({ data: 'survivor-replay-fixture' }),
-        engineFingerprint: createStressReplayFingerprint({ engine: EngineAPI.getVersion() }),
-        scenarioKey: `death-${deceased}-${dynamicFlex}`, selectionMetric: 'nominal_terminal_wealth_eur' });
-    const replayCalls = [];
-    const replay = runStressReplayPathV1({ path, baselineInputs: inputs, sourceScenarioLog: meta.logDataRows,
-        engine: observeEngine(replayCalls), captureTransactions: false });
-    assertEqual(replay.technicalError, null, 'Stresspfad-Replay bleibt ohne technischen Fehler');
-    assertEqual(replay.reconciliation.matched, true, 'Replay gleicht das Todesjahr und Folgejahr mit dem MC-Pfad ab');
-    assertEqual(JSON.stringify(replayCalls), JSON.stringify(sourceCalls),
-        'Beide Todesrichtungen mit/ohne Dynamic Flex: Replay und MC erhalten dieselben Wunsch-/Mindest-Flex-Beträge');
 }

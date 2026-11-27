@@ -40,13 +40,14 @@ console.log('--- Simulator Multi-Profile Aggregation ---');
         .05,
         'Missing persisted care drift uses the FR-73 5 percent default'
     );
-    const migratedLegacyRunway = buildSimulatorInputsFromProfileData({
-        sim_runwayTargetMonths: '25'
+    // AL-S: Monatsangaben werden nicht mehr umgerechnet; derselbe Fall prüft die gespeicherte Laufzeit in Jahren.
+    const storedRunway = buildSimulatorInputsFromProfileData({
+        sim_liquidityRunwayYears: '2.5'
     });
     assertEqual(
-        migratedLegacyRunway.liquidityRunwayYears,
+        storedRunway.liquidityRunwayYears,
         2.5,
-        'A profile created with the old 25-month UI value remains loadable without shortening its runway'
+        'A profile with a stored runway of 2.5 years remains loadable without shortening its runway'
     );
 }
 

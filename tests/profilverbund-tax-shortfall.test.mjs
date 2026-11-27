@@ -3,7 +3,7 @@ import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input
 import { buildSimulatorInputsFromProfileData, combineSimulatorProfiles } from '../app/simulator/simulator-profile-inputs.js';
 import { dynamicFlexPresetPatch } from '../app/shared/dynamic-flex-presets.js';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
-import { normalizeWidowOptions } from '../app/simulator/simulator-sweep-utils.js';
+import { normalizeWidowOptions } from '../app/simulator/simulator-run-utils.js';
 import { EngineAPI } from '../engine/index.mjs';
 import { attributeHouseholdAction, calculateActionLiquidityDelta } from '../app/profile/profilverbund-action-attribution.js';
 import { resolvePlannedAction } from '../types/planned-action-contract.js';

@@ -50,14 +50,4 @@ for (const length of [120, 128]) {
     assertEqual(text('Rente läuft seit 01.10.2026', '2026-10-28'), '1.600 € Rente / Monat', 'laufende Rente');
 }
 
-// Rauschen `daten-sicherung-punkte.png`: Gleich alte Wiederherstellungspunkte (Personenpunkte mit Zufallskennung) stehen fest nach Bezeichnung.
-{
-    const { snapshotGroups } = await import('../app/data/data-snapshot-presentation.js');
-    const at = '2026-10-20T10:00:00.000Z';
-    const point = (label, id) => ({ id, label, kind: 'profile-management-before', createdAt: at });
-    const order = ids => snapshotGroups([point('Vor dem Löschen von Max', ids[0]), point('Vor dem Löschen aller Tranchen', ids[1]),
-        point('Vor dem Löschen von Erika', ids[2])], { trialActive: false })[0].points.map(item => item.label).join(' | ');
-    const first = order(['person_management_c', 'person_management_a', 'person_management_b']);
-    assertEqual(order(['person_management_a', 'person_management_b', 'person_management_c']), first, 'andere Zufallskennungen: gleiche Reihenfolge');
-    assertEqual(first, 'Vor dem Löschen aller Tranchen | Vor dem Löschen von Erika | Vor dem Löschen von Max', 'gleich alte Punkte nach Bezeichnung');
-}
+// SV-1: Die Gruppen der Wiederherstellungspunkte (Anlass, Bezeichnung) sind mit der einfachen Liste entfallen.

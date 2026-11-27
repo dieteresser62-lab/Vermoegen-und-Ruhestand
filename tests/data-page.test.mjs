@@ -1,14 +1,15 @@
 import fs from 'node:fs';
 import { projectDataModel, readDataModel } from '../app/data/data-model.js';
-import { renderDataPage } from '../app/data/data-renderer.js';
+import { renderDataPage, backupChangesTitle } from '../app/data/data-renderer.js';
 import { initDataPage, dataBackupStatus } from '../app/data/data-page.js';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { buildBackupSummary, DATA_BACKUP_SUMMARY_KEY } from '../app/data/data-backup-summary.js';
 import { DAILY_PRICES_KEY, emptyHistorySymbol, historyDay } from '../app/tranches/tranchen-history-store.js';
 import { CONFIG } from '../app/balance/balance-config.js';
-import { PersistenceFacade, resetPersistenceForTests } from '../app/shared/persistence-facade.js';
+import { PersistenceFacade, resetPersistenceForTests, getDirtyState } from '../app/shared/persistence-facade.js';
 import { buildSnapshot } from '../app/shared/snapshot-archive.js';
 import { createPresentationTestDocument } from './designsystem-source-contract.mjs';
+import { PROBELAUF_RESTORE_HINT } from '../app/shared/probelauf-runtime.js';
 const html = fs.readFileSync(new URL('../Daten-Sicherung.html', import.meta.url), 'utf8');
 assert(!html.includes('id="dataBackupTop"') && (html.match(/>Jetzt sichern<\/button>/g) || []).length === 1
     && /id="daten-sicherung"[\s\S]*?id="fullBackupBtn"[^>]*>Jetzt sichern<\/button>/.test(html),
@@ -41,12 +42,13 @@ assertEqual(doc.getElementById('dataBackupDate').textContent,
     'Künftige bestätigte Sicherung zeigt ihre echte Zeit');
 renderDataPage(doc, await projectDataModel({ records: {}, now }));
 renderDataPage(doc, { ...model, trialActive: true });
-assert(doc.getElementById('dataRetentionPreview').disabled, 'Aufräumen im Spielbereich sichtbar gesperrt');
+assertEqual(doc.getElementById('dataSnapshotList').children[0]?.textContent, PROBELAUF_RESTORE_HINT, 'SV-1: Spielbereich zeigt keine Punkte, nur den Grund');
 for (const id of ['fullBackupBtn', 'fullBackupImportBtn']) assert(doc.getElementById(id).disabled, id + ': Vollsicherung im Spielbereich sichtbar gesperrt');
 assertEqual(doc.getElementById('dataBackupReason').textContent, 'Im Spielbereich nicht möglich. Deine echten Daten bleiben unverändert.', 'Graue Zeile erklärt beide Sicherungssperren');
 assert(!doc.getElementById('dataBackupReason').hidden, 'Sperrgrund ist im Spielbereich sichtbar');
-assert(doc.getElementById('dataRetentionReason').textContent.includes('Im Spielbereich nicht möglich.'), 'Aufräumen zeigt den Sperrgrund');
 assertEqual(doc.getElementById('dataBackupDate').textContent, 'Deine echten Daten bleiben unverändert.', 'Spielbereich gibt keinen Sicherungsrat');
+assertEqual(doc.getElementById('dataBackupAge').textContent, 'Im Spielbereich gesperrt', 'Die Kachel zeigt im Spielbereich die Sperre');
+assertEqual(doc.getElementById('dataBackupContext').textContent, 'Vollsicherung im Spielbereich gesperrt', 'Der Kopf nennt die Sperre für Vollsicherungen');
 renderDataPage(doc, await projectDataModel({ records: {}, now }));
 assertEqual(doc.getElementById('dataBackupAge').textContent, 'Noch keine Vollsicherung', 'Fehlende Sicherung zeigt echten Leerzustand');
 for (const id of ['fullBackupBtn', 'fullBackupImportBtn']) assert(!doc.getElementById(id).disabled, id + ': außerhalb des Spielbereichs bedienbar');
@@ -123,12 +125,12 @@ assert(!balanceSource.includes('id="snapshot-management"') && !balanceSource.inc
 assert(managerSource.includes('href="Daten-Sicherung.html#fullBackupImportBtn"'), 'Vermögen-Technik und Recovery verweisen auf konkrete Sicherungsziele');
 assert(!html.includes('clearTranchesBtn') && !html.includes('dataTranchesStatus'), 'Tranchengesamtlöschung ist entfernt');
 assert(html.includes('Handbuch.html#daten-sicherung') && fs.readFileSync(new URL('../Handbuch.html', import.meta.url), 'utf8').includes('id="daten-sicherung-title"'), 'Hilfe besitzt einen konkreten Handbuchanker');
-assert(html.includes('id="dataPersonSelect"') && html.includes('id="dataPersonImport"'), 'Personenaustausch hat echte Auswahl und Knöpfe');
+assert(!/id="(?:austausch|balance-austausch|dataPerson\w*|dataBalance\w*|dataLegacyFolder|dataExchange\w*)"/.test(html), 'AK-1: Karte „Austausch“ ist entfernt');
 
 // Die fünf Karten, einschließlich dynamischer Fehler- und Vorschauzustände.
 const mainIds = ['error-container', 'dataPageStatus', 'dataHouseholdContext', 'dataBackupContext', 'dataBackupAge', 'dataBackupDate',
-    'dataBackupTitle', 'dataBackupChanges', 'dataContent', 'fullBackupStatus', 'dataSnapshotCount', 'dataSnapshotDetail',
-    'dataPriceCount', 'dataPriceDetail', 'dataPriceServiceText', 'dataPriceRows', 'dataPriceActionStatus', 'dataRestoreStatus', 'dataSnapshotList', 'dataRestoreChanges', 'dataExchangeStatus', 'dataStorageSize', 'dataStorageSummary', 'dataStorageBackend', 'dataStorageDetail', 'dataStorageLocationStatus'];
+    'dataBackupTitle', 'dataBackupChanges', 'dataContent', 'fullBackupStatus',
+    'dataPriceCount', 'dataPriceDetail', 'dataPriceServiceText', 'dataPriceRows', 'dataPriceActionStatus', 'dataRestoreStatus', 'dataSnapshotList', 'dataRestorePointsNotice', 'dataStorageSize', 'dataStorageSummary', 'dataStorageBackend', 'dataStorageDetail', 'dataStorageLocationStatus'];
 const textOf = node => [node.textContent, ...node.children.map(textOf)].join(' ');
 const technicalWords = /IndexedDB|localStorage|UTF-8|Quota|\bSHA(?:-256)?\b|Fingerabdruck|serialisiert|\b(?:kv|metadata|snapshots|ruhestand-suite)\b|(?:rs_|profile_|snapshot_|overview_|balance_)[\w-]+|\b[A-Z]+(?:_[A-Z]+)+\b|Store|Browser-Dateidialog/i;
 const checkMainText = text => !technicalWords.test(text);
@@ -139,8 +141,8 @@ const visibleText = source => source.replace(/<details\b[^>]*>[\s\S]*?<\/details
 assert(checkMainText(visibleText(html.slice(html.indexOf('<div class="data-page">'), html.indexOf('<script type="module" src="app/data/data-page.js"')))), 'Statische Haupttexte enthalten keine technischen Ersatztexte');
 assert(!checkMainText(visibleText(topSource + '<p>IndexedDB kv</p>' + storageSource)), 'Gegenmutation mit technischem Haupttext wird abgewiesen');
 assert(checkMainText(visibleText(topSource + '<details><summary>Technische Details</summary><p>IndexedDB kv</p></details>' + storageSource)), 'Technischer Text ist ausschließlich innerhalb der Details erlaubt');
-for (const id of ['dataBackupDetails', 'dataStorageDetails', 'dataRestoreDetails', 'dataPriceDetails', 'dataExchangeDetails']) assert(new RegExp(`<details id="${id}"[^>]*><summary>Technische Details</summary>`).test(html), id + ': standardmäßig geschlossen und verständlich benannt');
-for (const [id, host] of [['dataModelTechnical', 'dataBackupDetails'], ['dataBackupTechnical', 'dataBackupDetails'], ['dataPageTechnical', 'dataBackupDetails'], ['dataStorageTechnical', 'dataStorageDetails'], ['dataStorageLocationTechnical', 'dataStorageDetails'], ['dataRestoreTechnical', 'dataRestoreDetails'], ['dataPriceTechnical', 'dataPriceDetails'], ['dataPriceIssues', 'dataPriceDetails'], ['dataExchangeTechnical', 'dataExchangeDetails']]) {
+for (const id of ['dataBackupDetails', 'dataStorageDetails', 'dataRestoreDetails', 'dataPriceDetails']) assert(new RegExp(`<details id="${id}"[^>]*><summary>Technische Details</summary>`).test(html), id + ': standardmäßig geschlossen und verständlich benannt');
+for (const [id, host] of [['dataModelTechnical', 'dataBackupDetails'], ['dataBackupTechnical', 'dataBackupDetails'], ['dataPageTechnical', 'dataBackupDetails'], ['dataStorageTechnical', 'dataStorageDetails'], ['dataStorageLocationTechnical', 'dataStorageDetails'], ['dataRestoreTechnical', 'dataRestoreDetails'], ['dataPriceTechnical', 'dataPriceDetails'], ['dataPriceIssues', 'dataPriceDetails']]) {
     const block = html.match(new RegExp(`<details id="${host}"[\\s\\S]*?</details>`))[0];
     assert(block.includes(`id="${id}"`), id + ': technische Ursache gehört zum richtigen Detailhost');
 }
@@ -166,14 +168,33 @@ const projected = await projectDataModel({ records: synthetic, now, snapshots: [
 renderDataPage(doc, projected);
 assertEqual(doc.getElementById('dataHouseholdContext').textContent, 'Haushalt: Max + Erika', 'Kontext benutzt echte Haushaltsnamen');
 assertEqual(doc.getElementById('dataBackupContext').textContent, 'Gesichert am 01.09.2026', 'Kontextchip benutzt echte Sicherungszeit');
-assertEqual(doc.getElementById('dataSnapshotCount').textContent, '0 verfügbar · 2 gesperrt', 'Punktkachel trennt verfügbare und gesperrte Punkte');
-assertEqual(doc.getElementById('dataSnapshotTile').dataset.state, 'warning', 'Gesperrte Punkte werden nicht grün zusammengefasst');
-assert(doc.getElementById('dataSnapshotDetail').textContent.includes('01.01.2026'), 'Ältester Punkt wird unabhängig von Eingabereihenfolge ermittelt');
+// SV-1: Ohne Zähler; Punkte anderer (alter) Arten erscheinen nicht in der Liste.
+assertEqual(doc.getElementById('dataSnapshotTile'), null, 'Keine Punktkachel mehr');
+assertEqual(doc.getElementById('dataSnapshotList').children[0]?.textContent, 'Noch keine Wiederherstellungspunkte.', 'Alte Arten erscheinen nicht');
+const listed = await projectDataModel({ records: synthetic, now, snapshots: [
+    { id: 'jahr', kind: 'annual-close-pre-mutation', label: 'Max', createdAt: '2026-01-10T12:00:00Z' },
+    { id: 'monat', kind: 'monthly-close-pre-mutation', label: 'Monatsabschluss 2026-09', createdAt: '2026-09-01T12:00:00Z' },
+    { id: 'kaputt', kind: 'full-backup-import-recovery', label: 'Vor dem Zurückholen', createdAt: '2026-09-02T12:00:00Z' }
+], damagedSnapshotIds: ['kaputt'] });
+renderDataPage(doc, listed);
+const rows = doc.getElementById('dataSnapshotList').children;
+assertEqual(rows.map(row => row.children[0].textContent).join(' | '), 'Vor dem Zurückholen | Vor dem Monatsabschluss September 2026 | Vor dem Jahresabschluss 2025', 'Liste nennt Anlass, neueste zuerst');
+assert(rows[0].children.some(node => node.textContent === 'beschädigt – nicht zurückholbar') && rows[0].children.find(node => node.dataset?.restorePoint)?.disabled, 'Beschädigter Punkt ist markiert und gesperrt');
+assert(!rows[1].children.find(node => node.dataset?.restorePoint)?.disabled, 'Lesbarer Punkt lässt sich zurückholen');
+renderDataPage(doc, projected);
 assertEqual(doc.getElementById('dataContent').children.length, 6, 'Passender Bestand liefert sechs fachliche Chiparten');
 assert(textOf(doc.getElementById('dataContent')).includes('2 Tageskurse'), 'Chip zählt wirkliche Tageskurse statt Musterwert');
 assert(!doc.getElementById('dataBackupChanges').hidden
     && doc.getElementById('dataBackupChanges').textContent === 'Keine Änderungen in Monatsabschlüssen, Tagesgeld-Einträgen, Tranchen, Haushalt & Plan, Einkünften, Partnerschaft und Erbe sowie Pflege.', 'Bekannter identischer Bestand zeigt ausdrücklich unveränderte Vergleichsbereiche');
-assertEqual(doc.getElementById('dataBackupTitle').textContent, 'Seit der letzten Sicherung geändert:', 'Hauptblock zeigt Änderungen statt wiederholtem Sicherungsdatum');
+// AK-1 Punkt 4: Die Überschrift passt zum Text darunter.
+assertEqual(doc.getElementById('dataBackupTitle').textContent, 'Seit der letzten Sicherung unverändert', 'Ohne Änderungen passt die Überschrift zu „Keine Änderungen …“');
+renderDataPage(doc, { ...projected, changes: { ...projected.changes, tranches: { ...projected.changes.tranches, added: 1 } } });
+assertEqual(doc.getElementById('dataBackupTitle').textContent, 'Seit der letzten Sicherung geändert:', 'Mit Änderungen erscheint die bisherige Überschrift');
+assert(doc.getElementById('dataBackupChanges').textContent.startsWith('1 Tranche neu.'), 'Text nennt die Änderung unter der Überschrift');
+assertEqual(backupChangesTitle({ months: {}, cash: {}, tranches: {}, areas: null }), 'Vollsicherung als Datei', 'Alte Basis ohne genannte Änderung behauptet weder „geändert“ noch „unverändert“');
+assertEqual(backupChangesTitle({ tranches: { removed: 2 }, areas: null }), 'Seit der letzten Sicherung geändert:', 'Alte Basis mit genannter Änderung zeigt „geändert“');
+assertEqual(backupChangesTitle(null), 'Vollsicherung als Datei', 'Ohne Vollsicherung bleibt die allgemeine Überschrift');
+renderDataPage(doc, projected);
 assert(!html.includes('id="dataStorageBar"'), 'Speicherzusammensetzung wird ohne Füllstandsbalken angezeigt');
 assertEqual(doc.getElementById('dataStorageTotal').textContent, doc.getElementById('dataStorageSize').textContent + ' lokal gespeichert', 'Kompakte Speicherangabe benutzt die unveränderte Gesamtgröße');
 assertEqual(doc.getElementById('dataStorageDetail').children[2].textContent, 'Wiederherstellungspunkte 3,0 MB', 'MB-Legende verwendet dezimale Umrechnung mit deutschem Komma');
@@ -210,10 +231,6 @@ assert(changesText.includes('Geprüft: Monatsabschlüsse, Tagesgeld-Einträge un
 for (const phrase of ['1 Monatsabschluss neu', '2 Monatsabschlüsse geändert', '3 Monatsabschlüsse entfernt', '1 Tagesgeld-Eintrag geändert', '2 Tranchen entfernt']) assert(changesText.includes(phrase), 'Fachlicher Aktivitätstext erhält ' + phrase);
 assert(checkMainText(mainText()), 'Aktivitätstexte enthalten keine technischen Bezeichner');
 
-const outside = structuredClone(synthetic), registryOutside = JSON.parse(outside.rs_profiles_v1);
-registryOutside.profiles[Object.keys(registryOutside.profiles)[1]].meta.belongsToHousehold = false;
-outside.rs_profiles_v1 = JSON.stringify(registryOutside);
-assertEqual((await projectDataModel({ records: outside, now })).householdNames.join(' + '), 'Max', 'Außenpersonen werden nicht als Haushalt ausgegeben');
 const expenseGap = structuredClone(synthetic); expenseGap.balance_expenses_v1 = JSON.stringify({ version: 1, years: { 2024: {}, 2026: {} } });
 renderDataPage(doc, await projectDataModel({ records: expenseGap, now }));
 assert(textOf(doc.getElementById('dataContent')).includes('Ausgaben 2024, 2026') && !textOf(doc.getElementById('dataContent')).includes('2024–2026'), 'Jahreslücke wird nicht als vorhandenes Zwischenjahr dargestellt');
@@ -222,7 +239,7 @@ for (const records of [{}, { overview_last_full_backup_v1: 'kaputt' }, { rs_prof
     const unknown = await projectDataModel({ records, now, archiveError: 'IndexedDB snapshots SYNTHETIC_READ_FAILED', points: null });
     renderDataPage(doc, unknown);
     assert(checkMainText(mainText()), 'Leer-/Fehlerhaupttexte enthalten keine technischen Ursachen');
-    assertEqual(doc.getElementById('dataSnapshotTile').dataset.state, 'unknown', 'Archivfehler wird kein grüner Nullbestand');
+    assert(doc.getElementById('dataRestoreStatus').textContent.includes('nicht verlässlich lesbar'), 'Archivfehler wird kein leerer Nullbestand');
     assertEqual(doc.getElementById('dataStorageTile').dataset.state, 'unknown', 'Unbekannte Archivgröße erzeugt keinen grünen Gesamtwert');
     assertEqual(doc.getElementById('dataStorageTotal').textContent, 'Speichergröße nicht vollständig verfügbar', 'Unbekannte Teilgröße behauptet keinen vollständigen Speicherwert');
     assert(doc.getElementById('dataBackupChanges').hidden && !doc.getElementById('dataBackupChanges').textContent, 'Fehlende oder fehlerhafte Vergleichsbasis entfernt auch einen vorherigen Änderungsstand');
@@ -256,20 +273,16 @@ renderDataPage(doc, { ...projected, priceCoverage: { ...storedCoverage, serviceR
 assertEqual(doc.getElementById('dataPriceCount').textContent, 'Kursdienst nicht erreichbar', 'Gescheiterte Dienstprüfung behauptet keinen gescheiterten Kursabruf');
 assertEqual(doc.getElementById('dataPriceActionStatus').textContent, '', 'Dienstfehler steht nur einmal im Haupttext');
 
+// SV-1: Auch ein Punkt einer gelöschten Person bleibt zurückholbar; der Haushalt kehrt ganz zurück.
 const availablePoint = { id: 'full', kind: 'full-backup-import-recovery', label: 'Vollbackup-Import Recovery 2026-10-13T12:00:00Z', createdAt: time };
-const blockedPoint = { id: 'removed', kind: 'annual-close-pre-mutation', activeProfileId: 'deleted-person', createdAt: time };
-renderDataPage(doc, { ...projected, snapshots: [availablePoint, blockedPoint] });
-assertEqual(doc.getElementById('dataSnapshotCount').textContent, '1 verfügbar · 1 gesperrt', 'Vollimport ohne Personenzuordnung und gesperrter Personenpunkt werden getrennt gezählt');
+const formerPersonPoint = { id: 'removed', kind: 'annual-close-pre-mutation', activeProfileId: 'deleted-person', createdAt: time };
+renderDataPage(doc, { ...projected, snapshots: [availablePoint, formerPersonPoint] });
 const descendants = node => [node, ...node.children.flatMap(descendants)];
-const pointRows = descendants(doc.getElementById('dataSnapshotList')).filter(node => node.className === 'data-timeline-row').reverse();
-assertEqual(pointRows[0].children[0].textContent, 'Vor dem Einspielen einer Sicherung', 'Technischer Importname wird nur für die Anzeige verständlich benannt');
-assert(!textOf(doc.getElementById('dataSnapshotList')).includes('Name unbekannt'), 'Unbekannter Punktname wird weggelassen');
-assert(textOf(pointRows[1]).includes('Eine neu angelegte Person mit demselben Namen'), 'Sperrerklärung nennt die fehlende direkte Lösung');
-renderDataPage(doc, { ...projected, snapshots: [availablePoint] });
-assertEqual(doc.getElementById('dataSnapshotTile').dataset.state, 'ok', 'Nur vollständig verfügbare Punkte erhalten einen grünen Status');
-renderDataPage(doc, { ...projected, activeTrialSnapshotId: availablePoint.id, snapshots: [{ ...availablePoint, kind: 'probelauf-before' }] });
-assertEqual(doc.getElementById('dataSnapshotCount').textContent, '0 verfügbar · 1 gesperrt', 'Probelaufpunkt bleibt für das Zurückholen auf dieser Seite gesperrt');
-assert(textOf(doc.getElementById('dataSnapshotList')).includes('Spielbereich beenden'), 'Probelaufpunkt nennt seinen vorhandenen Rückweg');
+const pointRows = descendants(doc.getElementById('dataSnapshotList')).filter(node => node.className === 'data-timeline-row');
+assert(pointRows.some(row => row.children[0].textContent === 'Vor dem Einspielen einer Sicherung'), 'Technischer Importname wird nur für die Anzeige verständlich benannt');
+assert(pointRows.every(row => !row.children.find(node => node.dataset?.restorePoint)?.disabled), 'Alle lesbaren Punkte sind zurückholbar');
+renderDataPage(doc, { ...projected, snapshots: [{ ...availablePoint, kind: 'probelauf-before' }] });
+assertEqual(doc.getElementById('dataSnapshotList').children[0]?.textContent, 'Noch keine Wiederherstellungspunkte.', 'Alter Spielbereichspunkt erscheint nicht');
 
 const backupStatus = dataBackupStatus(doc);
 for (const raw of ['IndexedDB kv rs_profiles_v1 SYNTHETIC_WRITE_FAILED', 'Quota UTF-8 SHA-Fingerabdruck serialisiert', 'Store metadata snapshots Browser-Dateidialog']) {
@@ -282,8 +295,11 @@ assert(doc.getElementById('fullBackupStatus').textContent.includes('Spielbereich
 backupStatus.textContent = 'Die Rückkehr wurde nicht bestätigt. In Daten & Sicherung mit dem Wiederherstellungspunkt wiederherstellen.';
 assert(doc.getElementById('fullBackupStatus').textContent.includes('nicht bestätigt') && doc.getElementById('fullBackupStatus').textContent.includes('wiederherstellen'), 'Unbestätigter Rückweg verliert keinen nötigen Wiederherstellungshinweis');
 backupStatus.dataset.kind = 'ok'; backupStatus.textContent = 'Komplettes fachliches Backup erstellt (12 Eintraege). Dateiausgabe der Vollsicherung angestoßen. 3 UI-/Layout-Einstellungen sind nicht enthalten.';
-assertEqual(doc.getElementById('fullBackupStatus').textContent, 'Vollsicherung erstellt. Wähle einen sicheren Ablageort.', 'Erfolg behauptet keinen bestätigten Dateipfad und verlagert Ausschlüsse in Details');
+assertEqual(doc.getElementById('fullBackupStatus').textContent, 'Vollsicherung erstellt. Sie liegt im Download-Ordner des Browsers; wähle einen sicheren Ablageort.', 'Erfolg behauptet keinen bestätigten Dateipfad und verlagert Ausschlüsse in Details');
 assert(checkMainText(mainText()), 'Auch Erfolgsmeldung bleibt frei von technischen Ersatztexten');
+// SD-1/Befund 1908: Die Desktop-App nennt den im Dialog „Speichern unter“ gewählten Pfad samt Dateinamen.
+backupStatus.dataset.kind = 'ok'; backupStatus.textContent = 'Komplettes fachliches Backup gespeichert unter D:\\Sync\\Vollsicherung_2026-11-26.json (12 Einträge). 3 UI-/Layout-Einstellungen sind nicht enthalten.';
+assertEqual(doc.getElementById('fullBackupStatus').textContent, 'Vollsicherung gespeichert unter D:\\Sync\\Vollsicherung_2026-11-26.json.', 'Desktop-App: Meldung nennt Ordner und Dateinamen');
 
 // Fünf fachliche Spalten und verborgene Rohursachen in allen Kurszuständen.
 for (const state of ['current', 'partial', 'unknown', 'offline']) {
@@ -300,37 +316,12 @@ for (const state of ['current', 'partial', 'unknown', 'offline']) {
     assert(checkMainText(mainText()), state + ': dynamische Kursfehler bleiben aus allen Haupttexten');
     assert(doc.getElementById('dataPriceIssues').textContent.includes('HTTP_503'), state + ': rohe Abrufdetails sind erhalten');
 }
-const retentionPoints = [
-    ['permanent', 'annual-close-pre-mutation', time], ['persons', 'profile-management-before', time],
-    ['old', 'full-backup-import-recovery', time], ['cover', 'full-backup-import-recovery', '2026-09-01T13:00:00Z'],
-    ['recovery', 'before-restore-recovery', '2026-10-01T12:00:00Z']
-].map(([id, kind, createdAt]) => buildSnapshot({ id, kind, createdAt, records: synthetic,
-    activeProfileId: projected.profileIds[0], activeProfileName: 'Max',
-    ...(kind === 'full-backup-import-recovery' ? { restoreScope: {
-        profileRegistryMode: 'replace-all-rollback', profileLiveDataMode: 'replace-all-rollback' } } : {}) }));
-renderDataPage(doc, await projectDataModel({ records: synthetic, snapshots: retentionPoints, points: retentionPoints, now }));
-const retentionRows = descendants(doc.getElementById('dataSnapshotList')).filter(node => node.className === 'data-timeline-row');
-const pointRow = id => retentionRows.find(row => descendants(row).some(node => node.dataset?.pointStatus === id));
-const permanent = pointRow('permanent');
-assertEqual(permanent.dataset.permanent, 'true', 'Jahrespunkt benutzt echte dauerhafte Aufbewahrungsmetadaten');
-assert(!descendants(doc.getElementById('dataSnapshotList')).some(node => node.className === 'data-permanent-pill'
-    || node.textContent === 'dauerhaft'), 'Kein Punkt besitzt ein sichtbares dauerhaft-Etikett');
-for (const [id, reason, removable] of [
-    ['permanent', 'Bleibt immer erhalten', false], ['persons', 'Bleibt, bis du ihn selbst löschst', true],
-    ['old', 'Fällt beim Aufräumen weg', true], ['cover', 'Letzter Stand dieses Monats und Datenumfangs', false],
-    ['recovery', 'Rückholpunkt – bleibt bis 31.10.2026', false]
-]) {
-    const row = pointRow(id), reasons = descendants(row).filter(node => node.className.includes('data-point-retention'));
-    assertEqual(reasons.length, 1, id + ': genau eine Grundzeile');
-    assertEqual(reasons[0].textContent, reason, id + ': passender Aufbewahrungsgrund');
-    assertEqual(descendants(row).some(node => node.dataset?.deletePoint === id), removable, id + ': Löschknopf nur nach unverändertem Plan');
-}
 renderDataPage(doc, { ...projected, archiveError: 'IndexedDB kv ARCHIVE_FAILED' });
 assert(checkMainText(mainText()), 'Auch dynamischer Archivfehler enthält keinen technischen Haupttext');
 assert(doc.getElementById('dataRestoreTechnical').textContent.includes('ARCHIVE_FAILED'), 'Archivursache bleibt in Details erhalten');
 
 // Echter Seitenstart mit Recovery-ID: Delegation und asynchrone Vorschau bleiben echt.
-function recoveryPageDocument(search, onPreviewClick = () => {}) {
+function recoveryPageDocument(search, onPreviewClick = () => {}, onDialog = () => {}) {
     const page = createPresentationTestDocument(), pendingClicks = [], previewClicks = [];
     const listeners = new WeakMap();
     const listen = (target, type, handler) => {
@@ -344,11 +335,15 @@ function recoveryPageDocument(search, onPreviewClick = () => {}) {
     page.createElement = tag => {
         const node = make(tag); node.dataset = {};
         node.addEventListener = (type, handler) => listen(node, type, handler);
+        node.removeEventListener = () => {};
+        if (tag === 'dialog') {
+            node.showModal = () => { node.open = true; onDialog(node); };
+            node.close = () => { node.open = false; };
+        }
         node.closest = selector => {
             for (let current = node; current; current = current.parentNode) {
                 if (selector === 'li' && current.tagName === 'li') return current;
-                if (selector === '[data-restore-preview]' && current.dataset?.restorePreview) return current;
-                if (selector === '[data-delete-point]' && current.dataset?.deletePoint) return current;
+                if (selector === '[data-restore-point]' && current.dataset?.restorePoint) return current;
             }
             return null;
         };
@@ -356,7 +351,7 @@ function recoveryPageDocument(search, onPreviewClick = () => {}) {
         node.scrollIntoView = options => { page.scrolledElement = node; page.scrollOptions = options; };
         node.click = () => {
             if (node.disabled) return;
-            if (node.dataset.restorePreview) { previewClicks.push(node.dataset.restorePreview); onPreviewClick(); }
+            if (node.dataset.restorePoint) { previewClicks.push(node.dataset.restorePoint); onPreviewClick(); }
             const event = { target: node, preventDefault() {} };
             for (let current = node; current; current = current.parentNode) {
                 event.currentTarget = current;
@@ -374,7 +369,7 @@ function recoveryPageDocument(search, onPreviewClick = () => {}) {
     page.contains = () => false;
     page.querySelectorAll = selector => {
         const descendants = node => node.children.flatMap(child => [child, ...descendants(child)]);
-        return selector === '[data-restore-preview]' ? descendants(page.body).filter(node => node.dataset?.restorePreview) : [];
+        return selector === '[data-restore-point]' ? descendants(page.body).filter(node => node.dataset?.restorePoint) : [];
     };
     page.getElementById('suiteNavigation').querySelector = () => ({ href: 'Daten-Sicherung.html' });
     const win = { location: { search, hash: '#wiederherstellung' }, addEventListener: (type, handler) => listen(win, type, handler) };
@@ -386,7 +381,7 @@ function recoveryPageDocument(search, onPreviewClick = () => {}) {
 }
 for (const search of ['?punkt=p1', '', '?punkt=', '?punkt=unbekannt']) {
     const records = createMusterHaushaltRecords('2026-10-02');
-    const point = buildSnapshot({ id: 'p1', label: 'Synthetischer Monatsstand', activeProfileId: records.rs_current_profile,
+    const point = buildSnapshot({ id: 'p1', kind: 'monthly-close-pre-mutation', label: 'Monatsabschluss 2026-08', activeProfileId: records.rs_current_profile,
         createdAt: time, records: { ...records, profile_tagesgeld: '321' } });
     const archive = new Map([[point.id, point]]);
     let targetWrites = 0, archiveWrites = 0, flushes = 0;
@@ -400,47 +395,37 @@ for (const search of ['?punkt=p1', '', '?punkt=', '?punkt=unbekannt']) {
     const originalFlush = PersistenceFacade.flush;
     PersistenceFacade.flush = async (...args) => { flushes++; return originalFlush.apply(PersistenceFacade, args); };
     try {
-        let beforePreview;
+        let beforePreview, restoreNotice;
         const fixture = recoveryPageDocument(search, () => {
             // Bootstrap hat ggf. Registry-Metadaten vorgemerkt; der echte Vorschauflush
             // darf diese bestätigen, aber keinen anderen (Restore-)Stand schreiben.
             beforePreview = { records: JSON.stringify(Object.entries(Object.fromEntries(PersistenceFacade.keysSync()
                 .map(key => [key, PersistenceFacade.getItemSync(key)]))).sort()), flushes };
+        }, dialog => {
+            restoreNotice = descendants(dialog).find(node => node.className === 'ds-note')?.textContent;
+            descendants(dialog).find(node => Object.hasOwn(node.dataset, 'pageDialogCancel')).click();
         }), { page, win, previewClicks } = fixture;
         const task = initDataPage(page, win);
         assertEqual(initDataPage(page, win), task, search + ': konkurrierender Seitenstart bleibt idempotent');
         assertEqual(await task, true, search + ': synthetischer Profilbestand startet vollständig');
-        await fixture.settle(); // Ende des echten delegierten Vorschauhandlers, nicht nur dataReady.
-        const preview = page.getElementById('dataRestorePreview'), automatic = search === '?punkt=p1';
-        assertEqual(preview.hidden, !automatic, search + ': nur die bekannte konkrete ID öffnet die Vorschau');
-        assertEqual(previewClicks.join(','), automatic ? 'p1' : '', search + ': genau der erwartete Punktklick');
-        if (automatic) {
-            assertEqual(JSON.stringify(Object.entries(records).sort()), beforePreview.records, 'Anfangsvorschau bestätigt nur vorgemerkte Eingaben, ohne Restore-Zielwrite');
-            assertEqual(flushes, beforePreview.flushes + 1, 'Anfangsvorschau führt genau einen echten Vorschauflush aus');
-            assert(page.getElementById('dataRestorePreviewTitle').textContent.includes(point.label), 'Anfangsvorschau gehört zum echten Punkt p1');
-            assert(textOf(page.getElementById('dataRestoreChanges')).includes('321'), 'Anfangsvorschau ist vollständig berechnet');
-        }
+        await fixture.settle();
+        // SV-1: Der Recovery-Link markiert den Punkt und setzt den Fokus; zurückgeholt wird erst nach eigenem Klick und Rückfrage.
+        const automatic = search === '?punkt=p1';
+        const button = page.querySelectorAll('[data-restore-point]').find(node => node.dataset.restorePoint === 'p1');
+        assert(button, search + ': Punkt steht in der Liste');
+        assertEqual(button.parentNode.dataset.selected === 'true', automatic, search + ': nur die bekannte konkrete ID markiert den Punkt');
+        assertEqual(page.activeElement === button, automatic, search + ': Fokus liegt auf „Zurückholen …“ des Punkts');
+        assertEqual(previewClicks.length, 0, search + ': kein automatischer Klick');
         const completedFlushes = flushes, completedWrites = targetWrites;
         const completedRecords = JSON.stringify(records), completedArchive = JSON.stringify([...archive]);
         assertEqual(initDataPage(page, win), task, search + ': abgeschlossener Seitenstart bleibt idempotent');
-        for (const hash of ['#suiteMain', '#balance-austausch', '#dataBalanceExport', '#dataBalanceImport']) {
+        for (const hash of ['#suiteMain', '#wiederherstellung', '#kursdienst']) {
             await fixture.changeHash(hash); await fixture.settle();
-            assertEqual(preview.hidden, !automatic, search + hash + ': Hashnavigation erhält den Vorschauzustand');
-            assertEqual(previewClicks.length, automatic ? 1 : 0, search + hash + ': kein weiterer Vorschauklick');
+            assertEqual(previewClicks.length, 0, search + hash + ': kein Punktklick');
             assertEqual(flushes, completedFlushes, search + hash + ': kein weiterer Vorschauflush');
             assertEqual(page.activeElement, page.getElementById(hash.slice(1)), search + hash + ': Fokus gehört dem Hashziel');
             assertEqual(page.scrolledElement, page.activeElement, search + hash + ': Scroll gehört dem Hashziel');
             assertEqual(page.scrollOptions.block, 'start', search + hash + ': bisheriger Scrollvertrag bleibt erhalten');
-            if (hash !== '#suiteMain') assert(page.getElementById('balance-austausch').open, hash + ': Austauschbereich öffnet weiterhin');
-        }
-        if (automatic) {
-            page.getElementById('dataRestoreCancel').click(); await fixture.settle();
-            assert(preview.hidden, 'Manuelles Schließen verbirgt die Anfangsvorschau');
-            assertEqual(page.activeElement.dataset.restorePreview, 'p1', 'Schließen gibt Fokus an den Punkt zurück');
-            await fixture.changeHash('#wiederherstellung'); await fixture.settle();
-            assert(preview.hidden, 'Weiterer Hashwechsel öffnet die manuell geschlossene Vorschau nicht');
-            assertEqual(previewClicks.length, 1, 'Nach Schließen bleibt es bei genau einem Punktklick');
-            assertEqual(flushes, completedFlushes, 'Nach Schließen startet kein weiterer Vorschauflush');
         }
         assertEqual(targetWrites, completedWrites, search + ': Navigation und Schließen erzeugen keinen Zielwrite');
         assertEqual(records.profile_tagesgeld, createMusterHaushaltRecords('2026-10-02').profile_tagesgeld, search + ': Vorschau schreibt den Zielstand nicht');
@@ -448,13 +433,19 @@ for (const search of ['?punkt=p1', '', '?punkt=', '?punkt=unbekannt']) {
         assertEqual(archiveWrites, 0, search + ': kein Recoverypunktwrite');
         assertEqual(JSON.stringify([...archive]), completedArchive, search + ': Archiv bleibt bytegleich');
         assertEqual(archive.size, 1, search + ': nur der synthetische Ausgangspunkt bleibt vorhanden');
+        if (automatic) {
+            button.click(); await fixture.settle();
+            assertEqual(restoreNotice, 'Monatsausgaben, erfasste Vermögensstände und der Haushaltsplan gehen für alle Personen auf diesen Stand zurück.',
+                'Rückfrage nennt die Haushaltsdaten im Hinweisbaustein');
+        }
     } finally {
         PersistenceFacade.flush = originalFlush;
         resetPersistenceForTests();
     }
 }
 
-// Der echte Seitenstart bestätigt seine Writes an der abschließenden Flush-Grenze.
+// Der echte Seitenstart bestätigt seine Writes an der abschließenden Flush-Grenze. SP-1: Der Profilstart bestätigt einen eigenen
+// Registrywrite schon vor der Profilbereitschaft; die abschließende Grenze bestätigt, was danach noch vorgemerkt ist.
 for (const outcome of ['confirmed', 'false', 'reject']) {
     const records = createMusterHaushaltRecords('2026-10-02');
     const fixture = recoveryPageDocument(''), { page, win } = fixture;
@@ -476,7 +467,7 @@ for (const outcome of ['confirmed', 'false', 'reject']) {
         if (!fixture.hasListener('fullBackupImportFile', 'change')) return originalFlush.apply(PersistenceFacade, args);
         finalFlush = true;
         flushes++;
-        beforeFlush = { records: JSON.stringify(records), writes };
+        beforeFlush = { records: JSON.stringify(records), writes, dirty: getDirtyState().dirtyKeys.length };
         expectedRecords = Object.fromEntries(PersistenceFacade.keysSync().map(key => [key, PersistenceFacade.getItemSync(key)]));
         started();
         if (outcome === 'confirmed') return originalFlush.apply(PersistenceFacade, args);
@@ -488,7 +479,7 @@ for (const outcome of ['confirmed', 'false', 'reject']) {
         const task = initDataPage(page, win);
         assertEqual(initDataPage(page, win), task, outcome + ': Start bleibt während Flush idempotent');
         await flushStarted;
-        if (outcome === 'confirmed') await batchStarted;
+        if (outcome === 'confirmed' && beforeFlush.dirty) await batchStarted;
         assert(page.documentElement.dataset.dataReady !== 'true', outcome + ': offener Startflush behauptet keine Bereitschaft');
         assertEqual(JSON.stringify(records), beforeFlush.records, outcome + ': offener Startflush hat keine bestätigten Backendwrites');
         assert(fixture.hasListener('fullBackupImportBtn', 'click') && fixture.hasListener('fullBackupImportFile', 'change'),
@@ -499,7 +490,8 @@ for (const outcome of ['confirmed', 'false', 'reject']) {
         assertEqual(initDataPage(page, win), task, outcome + ': beendeter Seitenstart bleibt idempotent');
         if (outcome === 'confirmed') {
             assertEqual(page.documentElement.dataset.dataReady, 'true', 'Bestätigter Startflush setzt erst nach Backendwrite die Bereitschaft');
-            assert(writes > beforeFlush.writes, 'Bestätigter Startflush speichert die echten vorgemerkten Startwrites');
+            assert(beforeFlush.writes > 0, 'SP-1: Der Profilstart hat seinen Registrywrite schon vor der Bereitschaft bestätigt');
+            assert(writes > beforeFlush.writes || !beforeFlush.dirty, 'Bestätigter Startflush speichert die noch vorgemerkten Startwrites');
             assertEqual(JSON.stringify(Object.entries(records).sort()), JSON.stringify(Object.entries(expectedRecords).sort()),
                 'Bestätigter Startflush bestätigt alle vorgemerkten Records im Backend');
         } else {
@@ -512,46 +504,30 @@ for (const outcome of ['confirmed', 'false', 'reject']) {
                 outcome + ': technische Startflushursache bleibt erhalten');
             assertEqual(writes, beforeFlush.writes, outcome + ': fehlgeschlagener Startflush bestätigt keine Startwrites');
         }
-        await fixture.changeHash('#balance-austausch');
-        assertEqual(page.activeElement, page.getElementById('balance-austausch'), outcome + ': Hashnavigation bleibt nach Flush erreichbar');
+        await fixture.changeHash('#kursdienst');
+        assertEqual(page.activeElement, page.getElementById('kursdienst'), outcome + ': Hashnavigation bleibt nach Flush erreichbar');
     } finally {
         release(); PersistenceFacade.flush = originalFlush; resetPersistenceForTests();
     }
 }
 
-// WH-1: zugeklappte Karte, Anlassgruppen, ältere Punkte und reines Spielarchiv.
-assert(/<details id="dataSnapshotDisclosure"><summary>Alle anzeigen<\/summary>/.test(html), 'Karte beginnt geschlossen mit vorhandenem Aufklappbaustein');
+// SV-1: Eine Liste ohne Gruppen, Zähler und Spielarchiv; der Spielbereich zeigt keine Punkte.
+assert(!html.includes('dataSnapshotDisclosure') && !html.includes('dataSnapshotSummary'), 'Keine Gruppen und keine Zusammenfassung mit Zähler');
 const mixed = [
-    { ...availablePoint, id: 'month-old', kind: 'monthly-close-pre-mutation', label: 'Vor dem Monatsabschluss 2026-08', createdAt: '2026-09-01T12:00:00Z' },
-    { ...availablePoint, id: 'month-new', kind: 'monthly-close-pre-mutation', label: 'Vor dem Monatsabschluss 2026-09', createdAt: '2026-10-01T12:00:00Z' },
-    { ...availablePoint, id: 'archive', kind: 'probelauf-before' },
-    { ...availablePoint, id: 'running', kind: 'probelauf-before' },
-    { ...blockedPoint }, availablePoint,
+    { ...availablePoint, id: 'month-old', kind: 'monthly-close-pre-mutation', label: 'Monatsabschluss 2026-08', createdAt: '2026-09-01T12:00:00Z' },
+    { ...availablePoint, id: 'month-new', kind: 'monthly-close-pre-mutation', label: 'Monatsabschluss 2026-09', createdAt: '2026-10-01T12:00:00Z' },
+    { ...availablePoint, id: 'archive', kind: 'probelauf-before' }, availablePoint,
     { ...availablePoint, id: 'delete', kind: 'profile-management-before', label: 'Vor dem Löschen aller Tranchen' },
-    { ...availablePoint, id: 'other', kind: 'manual', label: 'Eigener Stand' }
+    { ...availablePoint, id: 'intern', kind: 'internal-recovery', label: 'Balance-Import' }
 ];
-renderDataPage(doc, { ...projected, activeTrialSnapshotId: 'running', snapshots: mixed });
-assertEqual(doc.getElementById('dataSnapshotSummary').textContent, '8 Wiederherstellungspunkte · zuletzt: Vor dem Monatsabschluss September 2026, 01.10.2026', 'Zusammenfassung nennt Gesamtzahl und neuesten Punkt mit lesbarem Monat');
-const groups = doc.getElementById('dataSnapshotList').children;
-assertEqual(groups.map(group => group.children[0].tagName === 'details' ? group.children[0].children[0].textContent : group.children[0].textContent).join('|'),
-    'Monatsabschluss|Jahresabschluss|Import und Einspielen|Löschen und Haushalt|Spielbereich|Sonstiges|Spielbereich (nur Archiv)', 'Alle Anlässe stehen in festgelegten Gruppen');
-assertEqual(groups[0].children[1].children[0].children[0].textContent, 'Vor dem Monatsabschluss September 2026', 'Neuester Punkt steht zuerst');
-assert(groups[0].children[2].tagName === 'details' && !groups[0].children[2].open, 'Ältere Punkte beginnen geschlossen');
-const archive = groups.at(-1).children[0];
-assert(archive.tagName === 'details' && !archive.open && !descendants(archive).some(node => node.dataset?.restorePreview), 'Spielarchiv beginnt geschlossen ohne Zurückholen');
-assert(!textOf(archive).includes('Spielbereich beenden'), 'Archiv nennt keinen toten Rückweg');
-renderDataPage(doc, { ...projected, snapshots: mixed.filter(point => point.kind === 'probelauf-before') });
-assertEqual(doc.getElementById('dataSnapshotList').children.length, 1, 'Nach Spielbereichende bleiben alte Rückkehrpunkte nur im Archiv');
-assert(!descendants(doc.getElementById('dataSnapshotList')).some(node => node.dataset?.restorePreview), 'Nach Ende kein gesperrter Spielpunkt in Hauptliste');
-assertEqual(mixed[1].label, 'Vor dem Monatsabschluss 2026-09', 'Gespeicherter Titel bleibt unverändert');
-const activeModel = await projectDataModel({ records: { ...synthetic, rs_probelauf_state_v1: JSON.stringify({ active: true, snapshotId: 'running' }) }, snapshots: mixed });
-assertEqual(activeModel.activeTrialSnapshotId, 'running', 'Modell ordnet laufenden Rückkehrpunkt aus Steuerrecord zu');
-
-const readActiveModel = await readDataModel({
-    readPersistedRecords: async allow => Object.fromEntries(Object.entries({ ...synthetic, rs_probelauf_state_v1: JSON.stringify({ active: true, snapshotId: 'running' }) }).filter(([key]) => allow(key))),
-    listSnapshots: async () => [], getPersistenceStatus: () => ({ backend: 'test' })
-});
-assertEqual(readActiveModel.activeTrialSnapshotId, 'running', 'Bestätigter Lesepfad erhält Steuerkennung trotz Fachrecordfilter');
+renderDataPage(doc, { ...projected, snapshots: mixed });
+const flat = doc.getElementById('dataSnapshotList').children;
+assertEqual(flat.map(row => row.children[0].textContent).join('|'), 'Vor dem Monatsabschluss September 2026|Vor dem Monatsabschluss August 2026|Vor dem Einspielen einer Sicherung',
+    'Nur sichtbare Arten, neueste zuerst, mit lesbarem Monat');
+assertEqual(mixed[1].label, 'Monatsabschluss 2026-09', 'Gespeicherter Titel bleibt unverändert');
+const activeModel = await projectDataModel({ records: { ...synthetic, rs_probelauf_state_v1: JSON.stringify({ active: true }) }, snapshots: mixed });
+renderDataPage(doc, activeModel);
+assert(!descendants(doc.getElementById('dataSnapshotList')).some(node => node.dataset?.restorePoint), 'Spielbereich zeigt keine Punkte');
 
 for (const [totalBytes, expected] of [[0, '0,0 MB'], [1, '< 0,1 MB'], [99999, '< 0,1 MB'], [100000, '0,1 MB']]) {
     renderDataPage(doc, { ...projected, totalBytes });

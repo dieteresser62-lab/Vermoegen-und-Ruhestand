@@ -6,6 +6,7 @@
 
 import { DEFAULT_PROFILE_HEALTH_BUCKET, normalizeProfileHealthBucket } from '../profile/profile-state.js';
 import { classifyTranche } from '../../types/tranche-contract.js';
+import { withAthNoiseBand } from './balance-ath-noise.js';
 
 function safeNumber(value, fallback = 0) {
     const n = Number(value);
@@ -44,8 +45,8 @@ export function buildBalanceHealthBucketDiagnostics(inputData = {}, options = {}
         releasePolicy: 'diagnostic_only',
         releaseAllowed: false,
         releaseReason: definition.enabled
-            ? 'Balance zeigt den Pflegebucket nur als Zweckbindung; automatische Entsperrung erfordert einen expliziten Pflegefall-Ist-Zustand.'
-            : 'Pflegebucket ist deaktiviert.',
+            ? 'Balance zeigt die Pflegereserve nur als Zweckbindung; automatische Entsperrung erfordert einen expliziten Pflegefall-Ist-Zustand.'
+            : 'Pflegereserve ist deaktiviert.',
         releasedAmount: 0,
         grossLiquidity,
         requestedAmount,
@@ -58,7 +59,7 @@ export function buildBalanceHealthBucketDiagnostics(inputData = {}, options = {}
         targetCoveragePct,
         targetGap,
         warning: definition.enabled && nominalGap > 0
-            ? 'Pflegebucket-Ziel ist durch Geldmarkt/Cash aktuell nicht vollständig gedeckt.'
+            ? 'Ziel der Pflegereserve ist durch Geldmarkt und Tagesgeld aktuell nicht vollständig gedeckt.'
             : null
     };
 }
@@ -119,5 +120,6 @@ export function prepareBalanceEngineAssets(inputData, profiles = []) {
     const bonds = (input.detailledTranches || []).reduce((sum, t) =>
         sum + (classifyTranche(/** @type {import("../../typcheck/rechenkern.js").EngineTranche & Record<string, unknown>} */ (t), { allowLegacy: true }) === 'bonds' ? Math.max(0, Number(t.marketValue) || 0) : 0), 0);
     if (bonds > 0) input = { ...input, anleihenWert: bonds };
-    return { input, profiles: operativeProfiles };
+    // FR-89, Ergänzung 3: gemeinsamer Weg aller Balance-Engine-Aufrufe; Grundrauschen bis 5 % gilt als Höchststand.
+    return { input: withAthNoiseBand(input), profiles: operativeProfiles };
 }

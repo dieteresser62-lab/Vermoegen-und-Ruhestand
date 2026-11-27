@@ -21,7 +21,7 @@ export function renderSimulatorProfileRecovery(message, { documentRef = globalTh
             });
             button.disabled = true;
             button.setAttribute('aria-disabled', 'true');
-            button.setAttribute('title', 'Profil-Recovery erforderlich');
+            button.setAttribute('title', message);
         });
         const panel = documentRef.getElementById('tab-ergebnis');
         if (!panel) return;

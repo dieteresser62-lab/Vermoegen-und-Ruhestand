@@ -42,8 +42,10 @@ export function rowAllocation(row, mode = 'nominal', factor = rowEndFactor(row))
     const stocks = row.wertAktienEnthaeltAnleihen ? row.wertAktien - bonds : row.wertAktien;
     const gold = row.wertGold;
     // Der Gesamtbestand enthält die Pflegereserve; auch ihr Geldmarktanteil ist Liquidität.
-    const cash = Number.isFinite(row.portfolio_total_end) && Number.isFinite(stocks) && Number.isFinite(gold)
-        ? row.portfolio_total_end - stocks - gold - bonds : row.liquiditaet;
+    // NK-2b (Fable P3-9): Mit Steuerschuld ist das Jahresende netto; die Teile zeigen den Bestand (brutto), die Schuld steht im Hinweis.
+    const total = Number.isFinite(row.portfolio_total_brutto) ? row.portfolio_total_brutto : row.portfolio_total_end;
+    const cash = Number.isFinite(total) && Number.isFinite(stocks) && Number.isFinite(gold)
+        ? total - stocks - gold - bonds : row.liquiditaet;
     return Object.fromEntries(Object.entries({ cash, aktien: stocks, gold, anleihe: bonds })
         .map(([key, value]) => [key, Number.isFinite(value) && divisor > 0 ? Math.max(0, value) / divisor : NaN]));
 }
@@ -53,7 +55,12 @@ export function rowAllocation(row, mode = 'nominal', factor = rowEndFactor(row))
  * @param factor - Kontext für factor.
  * @returns {string}
  */
-export function rowWealthInfo(row, mode, factor) { if (!Number.isFinite(row.portfolio_total_end)) return ''; return wealthInfo(rowAllocation(row, mode, factor), rowWealthParts(row, mode, factor)); }
+export function rowWealthInfo(row, mode, factor) {
+    if (!Number.isFinite(row.portfolio_total_end)) return '';
+    const debt = Number(row.steuer_offen) > 0 ? Number(row.steuer_offen) / (mode === 'real' ? factor : 1) : 0;
+    return wealthInfo(rowAllocation(row, mode, factor), rowWealthParts(row, mode, factor),
+        debt > 0 ? `Davon geht eine Steuerschuld von ${Math.round(debt).toLocaleString('de-DE')} € ab; das Gesamtvermögen ist netto.` : '');
+}
 /**
  * @param row - Jahreszeile.
  * @param mode - Anzeige- oder Berechnungsmodus.
@@ -72,15 +79,6 @@ export function protocolWealthText(entry, { source = 'mc', moneyBasis, withHomes
     // Backtests halten die Jahresinflation am Eintrag, MC direkt an der Zeile.
     const inflation = source === 'backtest' ? entry?.inflationVJ : row.inflation;
     return rowWealthText(row, moneyBasis, rowEndFactor({ ...row, inflation }), withHomes);
-}
-
-/**
- * @param results - Aggregierte Laufdaten.
- * @param {string} [mode] - Anzeige- oder Berechnungsmodus.
- * @returns Ergebnis der Operation.
- */
-export function displayFinalOutcomes(results, mode = 'real') {
-    return results?.displayWealth?.[mode] || (mode === 'real' ? results?.euroMetrics?.real?.finalOutcomes : results?.finalOutcomes);
 }
 
 /** Perzentile der Summen aller beobachteten Läufe, niemals Summe von Perzentilen.

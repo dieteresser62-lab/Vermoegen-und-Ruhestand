@@ -1,7 +1,7 @@
 import { bindHouseholdPlanField, HOUSEHOLD_PLAN_DISPLAY_FIELDS, projectHouseholdPlanFieldLabels, HOUSEHOLD_PLAN_CARDS, HOUSEHOLD_PLAN_GROUPS, householdPlanFieldSpec, formatHouseholdPlanValue, readBoundHouseholdPlanField } from '../shared/household-plan-fields.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import { assertPlanValues, PLAN_FIELDS,
-    readBalanceHouseholdPlan, projectPlanToBalance, patchHouseholdPlan } from '../profile/household-plan.js';
+    readBalanceHouseholdPlan, patchHouseholdPlan } from '../profile/household-plan.js';
 import { getPageNavigationGuard } from '../shared/navigation-guard-dialog.js';
 import { createNavigationOperationLifecycle } from '../shared/navigation-guard.js';
 import { requestPageChoice } from '../shared/page-choice-dialog.js';
@@ -48,11 +48,8 @@ export { planTrialDifferences, planTrialPatch, planTrialContextFor, bindPlanTria
  */
 /** @param {import("../../typcheck/simulator-ui.js").SharedPlanOptions} [options] @returns Gemeinsamer Planversuch mit Balance-Schreibschutz. */
 export function createPlanTrial(options = {}) {
-    return /** @type {import("../../typcheck/simulator-ui.js").CreateSharedPlanTrial} */ (createSharedPlanTrial)({ validateBeforeUpdate: true, readPlan: readBalanceHouseholdPlan, writePlan: options => {
-        const own = readBalanceHouseholdPlan({ profileId: persistenceStorage.getItem('rs_current_profile') });
-        if (own.scope?.key !== /** @type {{scope: {key: string}}} */ (options).scope.key) throw new Error('Die geöffnete Außenperson darf den Haushaltsplan nicht ändern.');
-        return patchHouseholdPlan(options);
-    }, ...options });
+    return /** @type {import("../../typcheck/simulator-ui.js").CreateSharedPlanTrial} */ (createSharedPlanTrial)({ validateBeforeUpdate: true, readPlan: readBalanceHouseholdPlan,
+        writePlan: patchHouseholdPlan, ...options });
 }
 const leaf = (values, path) => path.split('.').reduce((value, key) => value?.[key], values);
 /**
@@ -71,19 +68,6 @@ export function getBalancePlanTrial(doc = globalThis.document) {
     trial.render = options => renderBalancePlanTrial(doc, options);
     trial.capture = ids => updateBalancePlanTrial(doc, ids);
     return trial;
-}
-/**
- * @param doc Eingabe für die bestehende Projektion.
- * @returns Ergebnis der bestehenden Operation.
- */
-export function readBalanceTrialInputs(doc = globalThis.document) {
-    const trial = getBalancePlanTrial(doc);
-    // Auch eine noch nicht zugestellte Eingabe darf keinen ungültigen Lauf starten.
-    if (trial.read().active) { trial.update(balancePlanFormPatch(doc)); updateLocalTrial(doc, trial); }
-    const values = trial.values();
-    return { inputs: projectPlanToBalance(values), context: {
-        scope: trial.read().scope, deviationApplied: trial.read().differences.length > 0
-    } };
 }
 /**
  * @param doc Eingabe für die bestehende Projektion.
@@ -288,17 +272,4 @@ export function initBalancePlanTrial({ doc = globalThis.document, refresh = () =
     // Der Seitenstart rechnet nach der vollständigen UI-Bindung genau einmal.
     // Hier werden nur Planwerte und Sperren projiziert.
     renderBalancePlanTrial(doc, { project: true });
-}
-/**
- * @param doc Eingabe für die bestehende Projektion.
- * @param opener Eingabe für die bestehende Projektion.
- * @returns Ergebnis der bestehenden Operation.
- */
-export async function discardBalanceTrialForScopeChange(doc = globalThis.document, opener) {
-    const trial = getBalancePlanTrial(doc), guard = getPageNavigationGuard(doc);
-    const attempt = await guard.prepare({ owners: [trial], intent: 'discard', opener });
-    if (!attempt) return false;
-    const accepted = guard.validate(attempt); guard.end(attempt);
-    if (accepted) trial.reset();
-    return accepted;
 }

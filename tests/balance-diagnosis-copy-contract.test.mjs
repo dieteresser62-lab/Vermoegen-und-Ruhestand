@@ -134,8 +134,8 @@ const text = handlers.generateDiagnosisText(appState.diagnosisData);
 
 assertEqual(countOccurrences(text, '--- Status-Übersicht ---'), 1, 'Diagnose-Copytext sollte den Statusblock nur einmal enthalten');
 assert(text.includes('--- Transaktionsdiagnostik ---'), 'Copytext sollte Transaktionsdiagnostik enthalten');
-assert(text.includes('Runway-Ziel-Glättung: Runway-Ziel geglättet'), 'Copytext sollte Runway-Glättung benennen');
-assert(text.includes('50% Drawdown-Severity'), 'Copytext sollte Severity der Runway-Glättung ausgeben');
+assert(text.includes('Glättung der Zielreichweite: Zielreichweite geglättet'), 'Copytext sollte Runway-Glättung benennen');
+assert(text.includes('50% Schwere des Rückgangs'), 'Copytext sollte Severity der Runway-Glättung ausgeben');
 assert(text.includes('Harte Mindestgrenze'), 'Copytext sollte harte Mindestgrenze ausgeben');
 assert(text.includes('Status: WARN (Obergrenze begrenzt Handel)'), 'Copytext sollte Blockgrund lesbar uebersetzen');
 assert(text.includes('Hypothetischer Handel: Verkauf'), 'Copytext sollte geplante Aktion ausgeben');
@@ -151,11 +151,11 @@ assert(text.includes('Longevity-Quantil-Shift ohne Effekt'), 'Copytext sollte wi
 assert(text.includes('VPW-Sicherheitsmodus: Stufe 2'), 'Copytext sollte VPW-Sicherheitsmodus ausgeben');
 assert(text.includes('Warnsignale:'), 'Copytext sollte VPW-Warnsignale ausgeben');
 assert(text.includes('Mindest-Flex p.a.:'), 'Copytext sollte Mindest-Flex ausgeben');
-assert(text.includes('Mindest-Runway nicht wiederherstellbar'), 'Copytext sollte Mindest-Flex-Blockgrund ausgeben');
-assert(text.includes('Realer Drawdown aktives Geldvermögen'), 'Copytext sollte die tatsaechliche Drawdown-Basis benennen');
+assert(text.includes('Mindestreichweite nicht wiederherstellbar'), 'Copytext sollte Mindest-Flex-Blockgrund ausgeben');
+assert(text.includes('Realer Rückgang aktives Geldvermögen'), 'Copytext sollte die tatsaechliche Drawdown-Basis benennen');
 assert(text.includes('Safety-Flex-Obergrenze: 18.3%'), 'Copytext sollte den B12-Cap vor der Rundung statt der effektiven Rate ausgeben');
 assert(text.includes('Schwere Flex-Notlage: AKTIV'), 'Copytext sollte die schwere Flex-Notlage sichtbar benennen');
-assert(text.includes('Flex einschließlich Mindest-Flex auf tragfähigen Teil begrenzt; geplanter Floor bleibt geschützt'), 'Copytext sollte Mindest-Flex und Floor trennen');
+assert(text.includes('Flex einschließlich Mindest-Flex auf tragfähigen Teil begrenzt; geplanter Grundbedarf bleibt geschützt'), 'Copytext sollte Mindest-Flex und Floor trennen');
 assert(text.includes('Erholung im Bärenmarkt'), 'Copytext nennt die Erholung im Bärenmarkt');
 assert(text.includes('geplante tatsächliche Portfolioentnahmequote einschließlich Rundung 5.4%'), 'Copytext nennt die geplante tatsächliche Quote statt der geschützten Quote als Gate');
 assert(text.includes('Alarm-Diagnose separat: inaktiv/unterdrückt'), 'Copytext sollte den unterdrueckten Alarm getrennt ausweisen');

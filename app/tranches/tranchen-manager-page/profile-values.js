@@ -275,6 +275,12 @@ export function flushManagerCashInput() {
     return scheduleProfileValuesSave({ cashChange: true, immediate: true });
 }
 
+export function flushManagerProfileInputs() {
+    const cashSave = flushManagerCashInput();
+    if (cashSave !== true || state.profileSaveTimer === null) return cashSave;
+    return scheduleProfileValuesSave({ immediate: true });
+}
+
 /** VK-3c: Nach einem Haushaltsschreibweg zeigt das unberührte Tagesgeldfeld den gespeicherten Stand (auch für das nächste Speichern
  * anderer Personenwerte, das alle Felder liest); danach lädt die Seite neu. Eine eigene Eingabe im Feld bleibt stehen. */
 export function reloadAfterHouseholdWrite() {

@@ -8,25 +8,30 @@ import { PROBELAUF_STATE_KEY, isAllowedSnapshotCaptureKey } from './persistence-
 
 export const SNAPSHOT_SCHEMA_VERSION = 1;
 export const SNAPSHOT_TYPE = 'persistence-records-v1';
+// SV-1: Sichtbar sind nur drei Arten (Monatsabschluss, Jahresabschluss, vor dem Einspielen). Interne Rücksicherungen
+// bleiben unsichtbar und werden nach Erfolg gelöscht. `probelaufBefore` liest nur noch den alten Spielbereich (Version 1).
 export const SNAPSHOT_KINDS = Object.freeze({
     annualClosePreMutation: 'annual-close-pre-mutation',
-    balanceImportRecovery: 'balance-import-recovery',
-    fullBackupImportRecovery: 'full-backup-import-recovery',
-    personDataMigrationRecovery: 'person-data-migration-recovery',
-    householdPlanMigrationRecovery: 'household-plan-migration-recovery',
-    probelaufBefore: 'probelauf-before',
-    probelaufTransferBefore: 'probelauf-transfer-before',
-    newBeginningBefore: 'new-beginning-before',
     monthlyClosePreMutation: 'monthly-close-pre-mutation',
-    beforeRestoreRecovery: 'before-restore-recovery',
-    profileManagementBefore: 'profile-management-before',
-    manual: 'manual'
+    fullBackupImportRecovery: 'full-backup-import-recovery',
+    internalRecovery: 'internal-recovery',
+    probelaufBefore: 'probelauf-before'
 });
-
-const DEFAULT_RESTORE_SCOPE = Object.freeze({
-    profileRegistryMode: 'preserve-by-default',
-    profileLiveDataMode: 'restore-only-if-active-profile-still-exists'
+/** Bezeichnungen der Punkte vor dem Einspielen; sie teilen sich Art und Aufbewahrung. */
+export const IMPORT_POINT_LABELS = Object.freeze({
+    restore: 'Vor dem Zurückholen',
+    playTransfer: 'Vor Übernahme der Spielkopie',
+    newBeginning: 'Vor Neu beginnen'
 });
+/** SV-1b: Umfang eines Punkts. Ohne Angabe der Haushalt (Monats- und Jahresabschluss); Vollimport ersetzt alle importierbaren
+ * Schlüssel, „Neu beginnen“ und die Übernahme der Spielkopie den ganzen Hauptspeicher. Zurückholen stellt genau diesen Umfang her. */
+export const SNAPSHOT_SCOPES = Object.freeze({ household: 'household', import: 'import', all: 'all' });
+/** Herkunft der Punkte dieser Version. Punkte ohne Herkunft stammen aus der Zeit vor der vereinfachten Sicherung. */
+export const SNAPSHOT_ORIGIN = 'sv1';
+/** @type {Set<string>} */
+const VISIBLE_KINDS = new Set([SNAPSHOT_KINDS.annualClosePreMutation, SNAPSHOT_KINDS.monthlyClosePreMutation, SNAPSHOT_KINDS.fullBackupImportRecovery]);
+/** @param {{kind?: string}} point @returns {boolean} Punkt erscheint auf Daten & Sicherung. */
+export const isVisibleRestorePoint = point => VISIBLE_KINDS.has(String(point?.kind || ''));
 
 function hasOwn(obj, key) {
     return Object.prototype.hasOwnProperty.call(obj, key);
@@ -54,6 +59,15 @@ function createSnapshotId(createdAt, label = '') {
     return suffix ? `snapshot_${timestamp}--${suffix}` : `snapshot_${timestamp}`;
 }
 
+/** @param {unknown} scope @returns {{scope?: string}} */
+function scopeField(scope) {
+    if (scope === undefined || scope === null || scope === '' || scope === SNAPSHOT_SCOPES.household) return {};
+    if (!/** @type {string[]} */ (Object.values(SNAPSHOT_SCOPES)).includes(String(scope))) throw new Error(`Snapshot-Umfang ${scope} wird nicht unterstuetzt.`);
+    return { scope: String(scope) };
+}
+/** @param {unknown} origin @returns {{origin?: string}} */
+const originField = origin => origin ? { origin: String(origin) } : {};
+
 function normalizeRecords(records) {
     if (!records || typeof records !== 'object' || Array.isArray(records)) {
         throw new Error('Snapshot records muessen ein Objekt sein.');
@@ -67,14 +81,19 @@ function normalizeRecords(records) {
     return normalized;
 }
 
-function normalizeRestoreScope(scope) {
-    if (!scope || typeof scope !== 'object' || Array.isArray(scope)) {
-        return { ...DEFAULT_RESTORE_SCOPE };
-    }
-    return {
-        ...DEFAULT_RESTORE_SCOPE,
-        ...scope
-    };
+/** SV-1c: Prüfung vor jeder Umwandlung. Wie beim Einspielen einer Vollsicherung muss jeder gespeicherte Wert ein Text sein;
+ * `validateSnapshot` wandelt sonst still um. @param {unknown} snapshot gelesener Rohpunkt @returns {string|null} Grund oder `null` */
+export function storedRecordTypeDamage(snapshot) {
+    const records = /** @type {{records?: unknown}|null} */ (snapshot)?.records;
+    if (!records || typeof records !== 'object' || Array.isArray(records)) return null;
+    const wrong = Object.entries(records).find(([, value]) => typeof value !== 'string');
+    return wrong ? `Punktwert ${wrong[0]} muss als Text vorliegen.` : null;
+}
+
+/** @param {unknown} snapshot @param {{checkStoredTypes?: boolean}} options */
+function assertStoredTypes(snapshot, options) {
+    const damage = options.checkStoredTypes ? storedRecordTypeDamage(snapshot) : null;
+    if (damage) throw Object.assign(new Error(damage), { code: 'restore_point_damaged' });
 }
 
 function getStorage(storage) {
@@ -110,16 +129,16 @@ export function captureCurrentRecords({ keys, getItem } = {}) {
     return records;
 }
 
-/** @param {{id?: string, label?: string, kind?: string, records?: Record<string, string>, activeProfileId?: string, activeProfileName?: string, createdAt?: string | Date, restoreScope?: object}} [options] */
+/** @param {{id?: string, label?: string, kind?: string, records?: Record<string, string>, activeProfileId?: string, activeProfileName?: string, createdAt?: string | Date, scope?: string}} [options] */
 export function buildSnapshot({
     id,
     label = '',
-    kind = SNAPSHOT_KINDS.manual,
+    kind = 'manual',
     records,
     activeProfileId,
     activeProfileName,
     createdAt,
-    restoreScope
+    scope
 } = {}) {
     const normalizedCreatedAt = asIsoDate(createdAt, 'createdAt');
     const normalizedRecords = normalizeRecords(records);
@@ -127,14 +146,15 @@ export function buildSnapshot({
         schemaVersion: SNAPSHOT_SCHEMA_VERSION,
         id: id ? String(id) : createSnapshotId(normalizedCreatedAt, label),
         snapshotType: SNAPSHOT_TYPE,
-        kind: String(kind || SNAPSHOT_KINDS.manual),
+        kind: String(kind || 'manual'),
         createdAt: normalizedCreatedAt,
         label: String(label || ''),
         activeProfileId: activeProfileId ? String(activeProfileId) : '',
         activeProfileName: activeProfileName ? String(activeProfileName) : '',
         recordCount: Object.keys(normalizedRecords).length,
-        records: normalizedRecords,
-        restoreScope: normalizeRestoreScope(restoreScope)
+        ...scopeField(scope),
+        origin: SNAPSHOT_ORIGIN,
+        records: normalizedRecords
     };
     return validateSnapshot(snapshot);
 }
@@ -163,14 +183,15 @@ export function validateSnapshot(snapshot) {
         schemaVersion: SNAPSHOT_SCHEMA_VERSION,
         id: String(snapshot.id),
         snapshotType: SNAPSHOT_TYPE,
-        kind: String(snapshot.kind || SNAPSHOT_KINDS.manual),
+        kind: String(snapshot.kind || 'manual'),
         createdAt,
         label: String(snapshot.label || ''),
         activeProfileId: snapshot.activeProfileId ? String(snapshot.activeProfileId) : '',
         activeProfileName: snapshot.activeProfileName ? String(snapshot.activeProfileName) : '',
         recordCount,
-        records,
-        restoreScope: normalizeRestoreScope(snapshot.restoreScope)
+        ...scopeField(snapshot.scope),
+        ...originField(snapshot.origin),
+        records
     };
 }
 
@@ -183,13 +204,13 @@ export function toSnapshotIndexEntry(snapshot) {
     return {
         id: String(source.id || ''),
         label: String(source.label || ''),
-        kind: String(source.kind || SNAPSHOT_KINDS.manual),
+        kind: String(source.kind || 'manual'),
         createdAt: asIsoDate(source.createdAt, 'createdAt'),
         activeProfileId: source.activeProfileId ? String(source.activeProfileId) : '',
         activeProfileName: source.activeProfileName ? String(source.activeProfileName) : '',
         recordCount: Number(source.recordCount) || 0,
-        restoreScope: normalizeRestoreScope(source.restoreScope),
-        standardRestorable: source.kind === SNAPSHOT_KINDS.newBeginningBefore || source.kind === SNAPSHOT_KINDS.probelaufTransferBefore || (source.kind !== SNAPSHOT_KINDS.probelaufBefore && Boolean(source.activeProfileId))
+        ...scopeField(source.scope),
+        ...originField(source.origin)
     };
 }
 
@@ -213,18 +234,21 @@ export async function createSnapshot(snapshotInput, options = {}) {
 export async function readSnapshot(id, options = {}) {
     const read = requireStorageMethod(options.storage, 'readSnapshot');
     const snapshot = await read(String(id || ''));
+    assertStoredTypes(snapshot, options);
     const normalized = validateSnapshot(snapshot);
     if (normalized.id !== String(id)) throw new Error('Snapshot-Readback liefert eine andere ID.');
     return normalized;
 }
 
-/** Mehrere Punkte mit derselben Prüfung wie readSnapshot; ohne Sammellesen des Speichers einzeln. */
+/** Mehrere Punkte mit derselben Prüfung wie readSnapshot; ohne Sammellesen des Speichers einzeln.
+ * `checkStoredTypes` (Liste und Zurückholen): ein gespeicherter Wert, der kein Text ist, macht den Punkt beschädigt. */
 export async function readSnapshots(ids, options = {}) {
     const storage = getStorage(options.storage);
     if (typeof storage?.readSnapshots !== 'function') return Promise.all(ids.map(id => readSnapshot(id, options)));
     const points = await storage.readSnapshots(ids.map(id => String(id || '')));
     if (!Array.isArray(points) || points.length !== ids.length) throw new Error('Snapshot-Readback ist unvollständig.');
     return points.map((point, index) => {
+        assertStoredTypes(point, options);
         const normalized = validateSnapshot(point);
         if (normalized.id !== String(ids[index])) throw new Error('Snapshot-Readback liefert eine andere ID.');
         return normalized;
@@ -258,6 +282,24 @@ export function getActiveProfileIdFromRecords(records) {
     return String(records[PROFILE_STORAGE_KEYS.current] || records[PROFILE_STORAGE_KEYS.active] || '');
 }
 
+/** SV-1: Interne Rücksicherung innerhalb eines Vorgangs. Sie erscheint nicht in der Liste und wird nach Erfolg gelöscht.
+ * @param {Record<string, string>} records @param {{label?: string, storage?: unknown, navigationOperation?: unknown}} [options] */
+export async function createInternalRecovery(records, { label = '', storage, navigationOperation } = {}) {
+    // Über das Archivobjekt, damit Prüfungen Speicherfehler einspielen können.
+    const point = await SnapshotArchive.createSnapshot({ id: `internal_${globalThis.crypto.randomUUID()}`, kind: SNAPSHOT_KINDS.internalRecovery,
+        label, records, activeProfileId: getActiveProfileIdFromRecords(records) }, { storage, navigationOperation });
+    if (JSON.stringify(await SnapshotArchive.readSnapshot(point.id, { storage })) !== JSON.stringify(point)) {
+        throw new Error('Die interne Rücksicherung konnte nicht bestätigt werden. Es wurde nichts geändert.');
+    }
+    return point;
+}
+
+/** Löscht eine interne Rücksicherung nach Erfolg. Ein Fehler hier ändert das Ergebnis des Vorgangs nicht; der Punkt bleibt dann
+ * unsichtbar liegen. @param {string} id @param {{storage?: unknown, navigationOperation?: unknown}} [options] @returns {Promise<boolean>} */
+export async function discardInternalRecovery(id, options = {}) {
+    try { await SnapshotArchive.deleteSnapshot(id, options); return true; } catch { return false; }
+}
+
 export const SnapshotArchive = {
     captureCurrentRecords,
     buildSnapshot,
@@ -269,7 +311,9 @@ export const SnapshotArchive = {
     deleteSnapshot,
     validateSnapshot,
     toSnapshotIndexEntry,
-    getActiveProfileIdFromRecords
+    getActiveProfileIdFromRecords,
+    createInternalRecovery,
+    discardInternalRecovery
 };
 
 export default SnapshotArchive;

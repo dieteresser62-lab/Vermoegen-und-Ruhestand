@@ -18,7 +18,7 @@ const previous = { window: globalThis.window, document: globalThis.document };
 const tick = async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); };
 try {
     const data = { profile_person_schema_version: '1', profile_geburtsdatum: '1958-03-14', profile_rente_monatlich: '1000', profile_tagesgeld: '100000', depot_tranchen: '[]' };
-    const profiles = Object.fromEntries(['a', 'b', 'c'].map(id => [id, { meta: { id, name: 'Muster ' + id, belongsToHousehold: id === 'a' }, data: { ...data } }]));
+    const profiles = { a: { meta: { id: 'a', name: 'Muster a', belongsToHousehold: true }, data: { ...data } } };
     let backend = { rs_profiles_v1: JSON.stringify({ version: 1, profiles }), rs_current_profile: 'a', rs_active_profile: 'a' };
     PersistenceFacade.resetPersistenceForTests({ name: 'Haushaltsregression', async init() {}, async loadAll() { return { ...backend }; },
         async saveBatch({ upserts, deletes }) { deletes.forEach(k => delete backend[k]); upserts.forEach(([k,v]) => backend[k] = v); } });

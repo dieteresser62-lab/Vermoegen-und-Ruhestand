@@ -2,7 +2,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const INSTRUMENTED_TESTS = new Set([
-    'auto-optimize-worker-contract.test.mjs',
     'balance-expenses.test.mjs',
     'health-bucket.test.mjs',
     'scenarios.test.mjs',

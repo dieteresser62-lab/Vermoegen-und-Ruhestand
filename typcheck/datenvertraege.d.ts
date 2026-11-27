@@ -34,10 +34,14 @@ export interface PersistenceContents {
     household_withdrawal_mode: PlanValues["householdWithdrawalMode"];
     household_simulator_needs_v1: HouseholdSimulatorNeedsAlt;
     household_simulator_needs_warning_ack_v1: string;
+    household_simulator_widow_v1: { version: 1; values: Partial<Record<
+        'widowPensionMode' | 'widowPensionPct' | 'widowMarriageOffsetYears' | 'widowMinMarriageYears', string>> };
+    household_simulator_equity_purchases_v1: 'same' | 'separate';
     balance_expenses_v1: ExpensesStore | ExpensesStoreAlt;
     overview_balance_summary_v1: OverviewRecord<BalanceSummary>;
     overview_month_provision_v1: OverviewRecord<MonthProvision>;
     overview_last_full_backup_v1: string;
+    overview_last_full_backup_delivery_v1: {version: 1; at: string; delivery: 'angestossen' | 'bestaetigt'};
     rs_data_backup_summary_v1: BackupSummary;
     profile_health_bucket: HealthBucket;
     profile_cash_history_v1: CashHistory;
@@ -155,6 +159,7 @@ export interface AnnualAction {
     quellen?: { kind: string; brutto: Euro; netto: Euro; steuer: Euro; [key: string]: Json | undefined }[];
     verwendungen?: Record<string, Euro>; steuer?: Euro; [key: string]: unknown;
 }
+/** Altbestand [A7]: Wahl „Jahreshoch“ in Jahresbelegen vor FR-89; neue Belege schreiben sie nicht mehr. */
 export interface YearHighChoice { value: number; asOf: string; }
 export interface AnnualOutcome {
     monthlyWithdrawal: Euro; monthlyBudget: Euro; monthlySaving?: Euro;
@@ -174,10 +179,9 @@ export interface AnnualPlanRecord { version: 1; entries: Record<string, AnnualPl
 export type AnnualPlanEntryAlt = AnnualPlanEntry;
 /** Balance-State ist erweiterbar; dieser Auftrag besitzt nur Speicher-/Jahresmetadaten. */
 export interface BalanceState { [key: string]: unknown; inputs?: Record<string, unknown>; lastState?: { cumulativeInflationFactor?: number; [key: string]: unknown }; annualPeriodMetadata?: AnnualPeriodMetadata; }
-export interface RestoreScope { profileRegistryMode: string; profileLiveDataMode: string; liveKeyMode?: string; [key: string]: unknown; }
 export interface Snapshot { schemaVersion: 1; snapshotType: 'persistence-records-v1'; id: string; kind: string; createdAt: string; label: string;
-    activeProfileId: string; activeProfileName: string; recordCount: number; records: StringRecords; restoreScope: RestoreScope; }
-export type SnapshotIndex = Omit<Snapshot, 'records' | 'schemaVersion' | 'snapshotType'> & { standardRestorable?: boolean };
+    activeProfileId: string; activeProfileName: string; recordCount: number; scope?: 'import' | 'all'; origin?: string; records: StringRecords; }
+export type SnapshotIndex = Omit<Snapshot, 'records' | 'schemaVersion' | 'snapshotType'>;
 export interface SnapshotListArchive { schemaVersion: 1; savedAt: string; snapshots: Snapshot[]; }
 export interface SnapshotAlt { snapshotType: 'full-localstorage'; localStorage: StringRecords; [key: string]: unknown; }
 export interface PersistenceFile { schemaVersion: 1; savedAt: string; records: StringRecords; metadata: Record<string, unknown>; }
@@ -196,13 +200,14 @@ export interface ProfileRecovery { status: string; scope: string; code: string; 
 export interface ProfileRecoveryDocument { schema: string; schemaVersion: number; exportedAt: string; backend: string;
     recovery: Omit<ProfileRecovery, 'canReset' | 'profileName'> & { profileName?: string | null }; }
 export interface ProfileLoadResult { status: string; storageKey: string; value: unknown; raw: unknown; error?: { code?: string; message?: string; cause?: unknown } | null; }
-export interface BootstrapResult { currentId: string | null; action: string; importResult: { ok: boolean; message?: string } | null; recovery: ProfileRecovery | null; }
+export interface BootstrapResult { currentId: string | null; action: string; written?: boolean; importResult: { ok: boolean; message?: string } | null; recovery: ProfileRecovery | null; }
 
 /** Haushaltsrecords, deren Eigentümer die vorhandenen Domänenvalidatoren bleiben. */
-export interface PartnershipRecord { schemaVersion: 1; status: 'married' | 'unmarried'; maritalPropertyRegime?: 'community' | 'separation';
+export interface PartnershipRecord { schemaVersion: 1; status?: 'married' | 'unmarried'; maritalPropertyRegime?: 'community' | 'separation';
     inheritance: Record<string, number>; marriedInheritance?: Record<string, number>;
     homeAndTaxInheritance?: Record<string, boolean>; activeInheritanceRule?: Record<string, 'testament' | 'home-and-tax'>;
-    testament?: Record<string, {minimum?: Euro; minimumStand?: YearMonth; maximumPercent?: number; home?: 'money' | 'residence' | 'life-estate'; residenceTax?: 'immediate' | 'annual'}>; }
+    testament?: Record<string, {minimum?: Euro; minimumStand?: YearMonth; maximumPercent?: number; estateCosts?: Euro; childrenProtected?: boolean;
+        home?: 'money' | 'residence' | 'life-estate' | 'rent-bequest' | 'housing-capital'; monthlyRent?: Euro; housingCapitalPercent?: number; moveOutYears?: number; residenceTax?: 'immediate' | 'annual'}>; }
 export type CarePriceOrigin = 'mitgeliefert' | 'von Hand' | 'fortgeschrieben';
 export interface CareValueSource { asOf: YearMonth; source: string; origin: CarePriceOrigin; validFrom: YearMonth; }
 /** FR-73 P8: Staffel zu Hause (€/Jahr je Grad), Deckel (€/Jahr) und eigene Ausgaben im Heim (€/Monat) mit Preisstand (Planjahr);
@@ -230,7 +235,7 @@ export type SimulatorPersonRecordsAlt = Partial<Record<SimulatorPersonKeysAlt, s
 export interface TrancheCorrection { at: string; sharesBefore: number; sharesAfter: number;
     purchasePriceBefore: Euro; purchasePriceAfter: Euro; reason: 'depotauszug' | 'split'; }
 export interface Tranche { schemaVersion: 2; trancheId: string; name: string; isin: string; ticker: string; shares: number;
-    purchasePrice: Euro; currentPrice: Euro; asOf?: number; purchaseDate: string | null;
+    purchasePrice: Euro; currentPrice: Euro; asOf?: number; quoteExchange?: string; purchaseDate: string | null;
     category: 'equity' | 'bonds' | 'money_market' | 'gold'; type: 'aktien_alt' | 'aktien_neu' | 'anleihe' | 'geldmarkt' | 'gold';
     tqf: number; taxExempt: boolean; notes: string; correctionHistory?: TrancheCorrection[]; legacyCorrectionAt?: IsoDate; }
 /** V0/1 ohne kanonische IDs/Steuerflags: der Tranchevalidator besitzt die Lese-Normalisierung. */

@@ -111,6 +111,17 @@ for (const missing of [undefined, null, NaN, Infinity, '0']) {
 for (const input of [{ results: {} }, { results: {}, totalRuns: 0, failCount: 0 }, { results: {}, totalRuns: 100 }]) {
     assert(buildMonteCarloAnswers(input).every(answer => answer.value === '—'), 'Leere Antwortdaten erfinden keine Zahlen');
 }
+// PZ-1: Zeile „davon mit Hilfe zur Pflege“ nur mit Pflegelogik, Wert wie die Kachel in „Weitere Kennzahlen“.
+{
+    const careInput = answerFixture(); careInput.results.careAid = { runCount: 42, runSharePct: 42, firstYearMedian: 20, sumMedianNominalEur: 90000 };
+    careInput.inputs = { pflegefallLogikAktivieren: true };
+    const dashboard = buildKpiDashboard(careInput.results, careInput.inputs);
+    const tile = [...dashboard.primary, ...dashboard.detailSections.flatMap(section => section.kpis)].find(kpi => kpi.title === 'Läufe mit Hilfe zur Pflege');
+    const line = buildMonteCarloAnswers(careInput)[0].careAid;
+    assert(line && line.value === tile?.value && line.value === '42,0\u00a0%', 'Hilfe-zur-Pflege-Zeile zeigt denselben Wert wie die Kachel');
+    assertEqual(buildMonteCarloAnswers({ ...answerFixture(), inputs: { pflegefallLogikAktivieren: true } })[0].careAid?.value, '0,0\u00a0%', 'Pflegelogik ohne Hilfe-Läufe zeigt 0 %');
+    assertEqual(buildMonteCarloAnswers({ ...answerFixture(), inputs: { pflegefallLogikAktivieren: false } })[0].careAid, null, 'Ohne Pflegelogik fehlt die Zeile');
+}
 for (const pair of [answers, deathAnswers, horizonAnswers, zeroAnswers, legacyAnswers, technicalAnswers, buildMonteCarloAnswers({ results: {} })]) {
     assert(!/Ruin|Quantil/i.test(JSON.stringify(pair)), 'Sichtbare Kernantworten bleiben verständlich');
 }
@@ -130,9 +141,9 @@ const outcomeSummary = buildSummaryData({
     totalRuns: 4,
     failCount: 1
 });
-assertEqual(outcomeSummary[0].title, 'Floor-Deckung im gewählten Horizont', 'Summary should use the reviewed floor-coverage label');
+assertEqual(outcomeSummary[0].title, 'Grundbedarf gedeckt im gewählten Horizont', 'Summary should use the reviewed floor-coverage label');
 assertEqual(outcomeSummary[0].value, '—', 'Technical path should suppress floor coverage in the UI');
-assert(outcomeSummary[1].value.includes('Ruin 1') && outcomeSummary[1].value.includes('Technik 1'), 'Summary should keep the terminal outcome inventory visible');
+assert(outcomeSummary[1].value.includes('Vermögen aufgebraucht 1') && outcomeSummary[1].value.includes('Technik 1'), 'Summary should keep the terminal outcome inventory visible');
 
 const uncertainSummary = buildSummaryData({
     results: {
@@ -201,12 +212,12 @@ const dashboard = buildKpiDashboard({
 const depletionKpi = dashboard.primary.find(kpi => kpi.title.includes('Aktien/Gold'));
 assert(Boolean(depletionKpi), 'Dashboard should expose the precise ruin/depot-rest KPI');
 assert(
-    depletionKpi.title === 'Ruin oder Aktien/Gold ≤ 100 €',
+    depletionKpi.title === 'Vermögen aufgebraucht oder Aktien/Gold ≤ 100 €',
     'Primary KPI title should name ruin, the asset subset and the threshold'
 );
 assert(depletionKpi.value === '12,3\u00a0%', 'Primary KPI should keep the existing percentage formatting');
 assert(depletionKpi.tone === 'warning', 'Primary KPI should keep the existing warning threshold');
-assert(depletionKpi.description.includes('Ruin') && !depletionKpi.description.includes('isRuin'), 'Erklärung benennt Ruin ohne Programmschlüssel');
+assert(depletionKpi.description.includes('aufgebrauchtem Vermögen') && !depletionKpi.description.includes('isRuin'), 'Erklärung benennt aufgebrauchtes Vermögen ohne Programmschlüssel');
 assert(
     depletionKpi.description.includes('Aktien-plus-Gold-Endbestand von höchstens 100 €'),
     'Description should name the asset subset and threshold'
@@ -224,11 +235,11 @@ const operativeDetails = dashboard.detailSections.find(section => section.title 
 const depletionAgeKpi = operativeDetails?.kpis.find(kpi => kpi.title.includes('Aktien/Gold'));
 assert(Boolean(depletionAgeKpi), 'Operative details should expose the matching age KPI');
 assert(
-    depletionAgeKpi.title === 'Median-Alter: Ruin oder Aktien/Gold ≤ 100 €',
+    depletionAgeKpi.title === 'Median-Alter: Vermögen aufgebraucht oder Aktien/Gold ≤ 100 €',
     'Age KPI title should use the same precise trigger wording'
 );
 assert(depletionAgeKpi.value === '81,0\u00a0Jahre', 'Age KPI should keep the existing value formatting');
-assert(depletionAgeKpi.description.includes('Ruin') && !depletionAgeKpi.description.includes('isRuin'), 'Age KPI should name the technical ruin trigger');
+assert(depletionAgeKpi.description.includes('aufgebrauchtem Vermögen') && !depletionAgeKpi.description.includes('isRuin'), 'Age KPI should name the technical ruin trigger');
 assert(
     depletionAgeKpi.description.includes('Aktien-plus-Gold-Bestand von höchstens 100 €'),
     'Age KPI should name the matching asset subset and threshold'
@@ -347,8 +358,8 @@ assertEqual(conservativelyRoundedDecisionDashboard.primary.find(kpi => kpi.title
 assertEqual(conservativelyRoundedDecisionDashboard.primary.find(kpi => kpi.title === 'Entnahme aus dem Vermögen in schwachen Jahren')?.secondaryValue, '19.877 €', 'Run-P10 median benefit should round to whole euros');
 assertEqual(conservativelyRoundedDecisionDashboard.primary.find(kpi => kpi.title === 'Ø Steuerersparnis Verlustvortrag')?.value, '331 €', 'Loss-carry benefit should round to whole euros');
 
-const nominalMedianDrawdown = withdrawalDashboard.drawdownKpis.find(kpi => kpi.title === 'Max. Drawdown nominal (Median)');
-const realMedianDrawdown = withdrawalDashboard.drawdownKpis.find(kpi => kpi.title === 'Max. Drawdown real (Median)');
+const nominalMedianDrawdown = withdrawalDashboard.drawdownKpis.find(kpi => kpi.title === 'Max. Rückgang nominal (Median)');
+const realMedianDrawdown = withdrawalDashboard.drawdownKpis.find(kpi => kpi.title === 'Max. Rückgang real (Median)');
 assertEqual(nominalMedianDrawdown?.value, '34,25\u00a0%', 'Nominal drawdown should expose at least two decimals from the aggregate');
 assertEqual(realMedianDrawdown?.value, '35,50\u00a0%', 'Real drawdown should expose at least two decimals from the aggregate');
 assert(nominalMedianDrawdown?.description.includes('Nominaler') && realMedianDrawdown?.description.includes('Preisen des Simulationsstarts'), 'Drawdown cards should visibly distinguish nominal and real price bases');
@@ -358,7 +369,7 @@ const withdrawalRateKpi = withdrawalDashboard.detailSections
     .flatMap(section => section.kpis)
     .find(kpi => kpi.title.includes('Entnahmequote'));
 assert(withdrawalRateKpi?.title.includes('realisierte Entnahmequote > 4,5 %'), 'Result KPI should name the realized withdrawal-rate basis and strict operator');
-assert(withdrawalRateKpi?.description.includes('Berichtsreferenz') && withdrawalRateKpi.description.includes('keine Alarm- oder Guardrail-Schwelle'), 'Result KPI should state the reporting-only role');
+assert(withdrawalRateKpi?.description.includes('Berichtsreferenz') && withdrawalRateKpi.description.includes('keine Alarm- oder Leitplanken-Schwelle'), 'Result KPI should state the reporting-only role');
 assertEqual(withdrawalDashboard.reportingReferenceNotice, WITHDRAWAL_RATE_REPORTING_REFERENCE_NOTICE, 'Dashboard should provide an always-visible reporting-role notice');
 
 for (const [input, expected] of [[0, '0,00\u00a0%'], [34.25, '34,25\u00a0%'], [100, '100,00\u00a0%']]) {
@@ -366,21 +377,21 @@ for (const [input, expected] of [[0, '0,00\u00a0%'], [34.25, '34,25\u00a0%'], [1
         depotErschoepfungsQuote: 0,
         maxDrawdowns: { p50: input, p90: input, distribution: { sampleSize: 1 } },
         realMaxDrawdowns: { p50: input, p90: input, distribution: { sampleSize: 1 }, observationCount: { observedPaths: 1 } }
-    }).drawdownKpis.find(kpi => kpi.title === 'Max. Drawdown nominal (Median)');
+    }).drawdownKpis.find(kpi => kpi.title === 'Max. Rückgang nominal (Median)');
     assertEqual(card?.value, expected, `Drawdown domain value ${input} should remain valid without recomputation`);
 }
 
 const conservativelyRoundedDrawdown = buildKpiDashboard({
     depotErschoepfungsQuote: 0,
     maxDrawdowns: { p50: 34.2549, p90: 34.2549, distribution: { sampleSize: 1 } }
-}).drawdownKpis.find(kpi => kpi.title === 'Max. Drawdown nominal (Median)');
+}).drawdownKpis.find(kpi => kpi.title === 'Max. Rückgang nominal (Median)');
 assertEqual(conservativelyRoundedDrawdown?.value, '34,26\u00a0%', 'Drawdown loss should conservatively ceil precision beyond two decimals');
 
 for (const input of [-0.01, -34.25, 100.01, Number.POSITIVE_INFINITY, Number.NaN]) {
     const card = buildKpiDashboard({
         depotErschoepfungsQuote: 0,
         maxDrawdowns: { p50: input, p90: input, distribution: { sampleSize: 1 } }
-    }).drawdownKpis.find(kpi => kpi.title === 'Max. Drawdown nominal (Median)');
+    }).drawdownKpis.find(kpi => kpi.title === 'Max. Rückgang nominal (Median)');
     assertEqual(card?.value, '—', `Invalid drawdown ${String(input)} should fail closed instead of being repaired`);
     assert(card?.statusLine.includes(Number.isFinite(input) ? 'invalid_drawdown_domain' : 'invalid_non_finite'), 'Invalid drawdown should expose a stable reason');
 }
@@ -394,7 +405,7 @@ const missingRealDrawdown = buildKpiDashboard({
         missingness: { missing_inflation: 2 },
         observationCount: { observedPaths: 0 }
     }
-}).drawdownKpis.find(kpi => kpi.title === 'Max. Drawdown real (Median)');
+}).drawdownKpis.find(kpi => kpi.title === 'Max. Rückgang real (Median)');
 assertEqual(missingRealDrawdown?.value, '—', 'Missing real drawdown should never become numeric zero');
 assert(missingRealDrawdown?.statusLine.includes('missing_inflation') && missingRealDrawdown.statusLine.includes('Beobachtungen: 0'), 'Missing real drawdown should expose stable reason and observation count');
 
@@ -406,7 +417,7 @@ const dominantMissingnessDrawdown = buildKpiDashboard({
         distribution: { sampleSize: 0, missingness: { missing_inflation: 1, technical_error: 999 } },
         observationCount: { observedPaths: 0 }
     }
-}).drawdownKpis.find(kpi => kpi.title === 'Max. Drawdown real (Median)');
+}).drawdownKpis.find(kpi => kpi.title === 'Max. Rückgang real (Median)');
 assert(dominantMissingnessDrawdown?.statusLine.includes('Grund: technical_error'), 'Missingness status should report the dominant counted reason rather than object insertion order');
 
 const inapplicableDrawdown = buildKpiDashboard({
@@ -417,7 +428,7 @@ const inapplicableDrawdown = buildKpiDashboard({
         applicability: { applicable: false, reason: 'not_applicable' },
         distribution: { sampleSize: 8 }
     }
-}).drawdownKpis.find(kpi => kpi.title === 'Max. Drawdown nominal (Median)');
+}).drawdownKpis.find(kpi => kpi.title === 'Max. Rückgang nominal (Median)');
 assertEqual(inapplicableDrawdown?.value, '—', 'Applicability reason should suppress even an otherwise finite drawdown value');
 assert(inapplicableDrawdown?.statusLine.includes('not_applicable') && inapplicableDrawdown.statusLine.includes('Beobachtungen: 8'), 'Inapplicable drawdown should expose stable reason and observation count');
 
@@ -536,7 +547,7 @@ for (const value of [0, 12.345, null, NaN, Infinity, -1]) {
     const withdrawal = dashboard.primary.find(card => card.title === 'Entnahme aus dem Vermögen in schwachen Jahren');
     for (const card of [withdrawal, ...dashboard.drawdownKpis]) assertEqual(card.tone, 'default', 'Entnahme/Drawdown ist unabhängig vom Wert neutral');
     const stress = buildStressMetrics({ presetKey: 'SYNTHETIC', years: 4, maxDD: results.maxDrawdowns, realWithdrawalP10: results.realWithdrawalP10 });
-    for (const title of ['Max. Drawdown (Median, Stress)', 'Max. Drawdown (P90, Stress)', 'Entnahme aus dem Vermögen in schwachen Jahren (Stressphase)']) assertEqual(stress.kpis.find(card => card.title === title).tone, 'default', 'Gleichartige Stresskarte ist neutral');
+    for (const title of ['Max. Rückgang (Median, Stress)', 'Max. Rückgang (P90, Stress)', 'Entnahme aus dem Vermögen in schwachen Jahren (Stressphase)']) assertEqual(stress.kpis.find(card => card.title === title).tone, 'default', 'Gleichartige Stresskarte ist neutral');
     assertEqual(stress.kpis.find(card => card.title.includes('Entnahmequote')).tone, 'warning', 'Bestehende Stresswarnung außerhalb R8 bleibt erhalten');
     assertEqual(JSON.stringify(results), before, 'R8-Töne ändern keine Rohwerte');
 }

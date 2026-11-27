@@ -17,6 +17,15 @@ export function runLabel(kind, value) {
     return /** @type {Record<string, string>} */ (RUN_LABELS[kind])[key] ?? key;
 }
 
+/** MS-1: Methode mit Blocklänge, wo sie wirkt (Stationary Bootstrap: erwartete Länge, Block-Bootstrap: feste Länge).
+ * @param {unknown} method @param {unknown} blockSize @returns {string} */
+export function monteCarloMethodLabel(method, blockSize) {
+    const label = runLabel('methode', method);
+    const length = Number(blockSize);
+    return (method === 'stationary' || method === 'block') && Number.isFinite(length) && length > 0
+        ? `${label}, Blocklänge ${length}` : label;
+}
+
 /** @param {unknown} key @returns {string} Name des Stress-Szenarios. */
 export function stressLabel(key) {
     const preset = /** @type {Record<string, {label?: string}>} */ (STRESS_PRESETS)[String(key ?? 'NONE')];

@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { PLANNED_EXPENSES_KEY, plannedExpenseErrors, assertPlannedExpensesRecord, readPlannedExpenses, savePlannedExpenses } from '../app/profile/household-planned-expenses.js';
-import { PLAN_DEFAULTS, HOUSEHOLD_PLAN_KEY, planScope, buildPlanRecord } from '../app/profile/household-plan.js';
+import { planScope, buildPlanRecord } from '../app/profile/household-plan.js';
 import { INCOME_KEY, writeIncome } from '../app/profile/profile-income.js';
 import { isProfileScopedKey } from '../app/profile/profile-key-policy.js';
 import { isAllowedPersistenceImportKey, isAllowedSnapshotCaptureKey } from '../app/shared/persistence-key-policy.js';
@@ -20,7 +20,7 @@ import { sourceFingerprint } from '../app/overview/overview-simulation-summary.j
 
 const same = (a, b, label) => assertEqual(JSON.stringify(a), JSON.stringify(b), label);
 const scope = planScope('household', ['muster_a', 'muster_b']);
-const outside = planScope('single', ['out']);
+const outside = planScope('single', ['muster_a']);
 const fixed = { id: 'kredit', bezeichnung: 'Kredit', betragMonat: 450, ab: '2026-10', bis: '2027-03', anpassung: 'keine' };
 const once = { id: 'auto', bezeichnung: 'Auto', monat: '2028-04', betrag: 35000 };
 const record = items => JSON.stringify({ version: 1, entries: { [scope.key]: { scope, items } } });
@@ -55,7 +55,7 @@ try {
     same(readPlannedExpenses(), [fixed, once], 'Andere Person desselben Haushalts liest dieselben Ausgaben');
     assertEqual(storage.getItem(PLANNED_EXPENSES_KEY), bytes, 'Profilwechsel erhält Haushaltsrohbytes');
     await savePlannedExpenses({ scope: outside, items: [{ ...once, id: 'aussen', betrag: 5000 }] });
-    same(readPlannedExpenses({ scope }), [fixed, once], 'Außenbereich überschreibt den Haushalt nicht');
+    same(readPlannedExpenses({ scope }), [fixed, once], 'Ein anderer Planbereich überschreibt den Haushalt nicht');
     assertEqual(readPlannedExpenses({ scope: outside })[0].betrag, 5000, 'Einzelplan bleibt unabhängig');
     assertEqual(readPlannedExpenses({ scope: outside })[0].priceYear, 2026, 'Neue Beträge speichern das Eingabejahr als Preisbasis');
     setAppTestDate('2027-10-21');
@@ -89,9 +89,6 @@ try {
 
     setAppTestDate('2026-10-21');
     const records = createMusterHaushaltRecords('2026-10-16'); records[PLANNED_EXPENSES_KEY] = record([{ ...fixed, ab: null, bis: null }, once]);
-    const plan = JSON.parse(records[HOUSEHOLD_PLAN_KEY]); plan.entries[outside.key] = { scope: outside, updatedAt: new Date().toISOString(), values: structuredClone(PLAN_DEFAULTS) };
-    records[HOUSEHOLD_PLAN_KEY] = JSON.stringify(plan);
-    const registry = JSON.parse(records.rs_profiles_v1); registry.profiles.out = { meta: { name: 'Außen', belongsToHousehold: false }, data: {} }; records.rs_profiles_v1 = JSON.stringify(registry);
     await boot(records);
     const { doc } = createDialogFixture();
     const create = doc.createElement;
@@ -101,7 +98,7 @@ try {
         const node = doc.createElement(id.includes('Add') || id.includes('Retry') ? 'button' : 'div'); node.id = id;
         if (node.tag === 'button') node.dataset.expenseAction = 'add'; host.append(node);
     }
-    let active = 'muster_a'; const timers = new Map(); let timerId = 0;
+    const active = 'muster_a'; const timers = new Map(); let timerId = 0;
     const editor = createManagerPlannedExpenses({ doc, storage, getProfileId: () => active,
         runOperation: execute => execute({ check() {}, commit() {} }),
         schedule: fn => { const id = ++timerId; timers.set(id, fn); return id; }, unschedule: id => timers.delete(id) });
@@ -124,13 +121,8 @@ try {
     assertEqual(await editor.flush(), false, 'Ungültiger Entwurf bleibt ungespeichert');
     assertEqual(readPlannedExpenses({ scope })[0].betragMonat, 500.5, 'Ungültige Eingabe erhält den bestätigten Datenbestand');
     field.value = '600'; await field.fire('input'); const oldTimer = [...timers.values()].at(-1);
-    await editor.flush(); editor.discard(); active = 'out'; editor.refresh();
-    await doc.getElementById('managerOneTimeExpenseAdd').fire('click');
-    const month = doc.getElementById('expense-0-monat'); month.value = '10.2026'; await month.fire('input');
-    const amount = doc.getElementById('expense-0-betrag'); amount.value = '800'; await amount.fire('input');
-    oldTimer(); await Promise.resolve(); assert(editor.read().dirty, 'Alter Timer schreibt nach Profilwechsel keinen neuen Entwurf');
-    await editor.flush(); assertEqual(readPlannedExpenses({ scope: outside })[0].betrag, 800, 'Editor schreibt nur den aktuellen Planbereich');
-    assertEqual(readPlannedExpenses({ scope })[0].betragMonat, 600, 'Editor erhält den vorherigen Haushalt');
+    await editor.flush(); oldTimer(); await Promise.resolve();
+    assertEqual(readPlannedExpenses({ scope })[0].betragMonat, 600, 'Bestätigter Haushaltswert bleibt nach altem Timer erhalten');
     editor.dispose();
 
     const person = { profile_person_schema_version: '1', profile_geburtsdatum: '1960-01-01', profile_geschlecht: 'w', profile_rentenbeginn: '2028-07-01', profile_rente_monatlich: '1000',

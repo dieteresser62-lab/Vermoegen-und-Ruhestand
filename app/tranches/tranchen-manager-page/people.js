@@ -4,19 +4,15 @@ import { renderProfileRecovery } from '../../profile/profile-recovery-ui.js';
 import { PROFILE_INPUT_IDS, state } from './state.js';
 import { setManagerControlsBlocked, processingIsBlocked } from './controls.js';
 import { renderPersistenceState } from './persistence-status.js';
-import { validateProfileName, confirmProfileDeletion, confirmUnchangedProfileContext, validateProfileManagementAction, applyProfileManagementAction } from '../../profile/profile-manager-bindings.js';
+import { validateProfileName, confirmProfileDeletion, validateProfileManagementAction, applyProfileManagementAction } from '../../profile/profile-manager-bindings.js';
 import { runManagerOperation } from './history.js';
-import { requestPageConfirmation } from '../../shared/page-dialog.js';
-import { getProbelaufController } from '../../shared/probelauf-state.js';
-import { PROBELAUF_RESTORE_HINT } from '../../shared/probelauf-runtime.js';
 import { scheduleProfileValuesSave, saveProfileValues } from './profile-values.js';
 import { readProfileAssetValuesFromDom, ProfileAssetValuesValidationError } from '../../profile/profile-asset-values.js';
 import { getPageNavigationGuard } from '../../shared/navigation-guard-dialog.js';
 import { captureProfileData } from '../../profile/profile-live-storage.js';
 import { PROFILE_STORAGE_KEYS } from '../../profile/profile-state.js';
-import { PROFILE_LIVE_BASE_KEY, getProfileMeta, getCurrentProfileId, getProfileRecoveryFromError, switchProfile } from '../../profile/profile-storage.js';
+import { PROFILE_LIVE_BASE_KEY, getCurrentProfileId, getProfileRecoveryFromError, switchProfile } from '../../profile/profile-storage.js';
 import { persistenceStorage } from '../../shared/persistence-facade.js';
-import { createProfileManagementRecovery } from '../../profile/profile-management-recovery.js';
 import { closeTrancheModal, closeCashPostingModal, closeManagerAuxiliaryDialog, confirmManagerModalBaseline } from '../tranchen-manager-modal.js';
 import { clearReconciliationPreview } from './reconciliation.js';
 import { renderManagerView, getManagerView } from '../tranchen-manager-renderer.js';
@@ -48,18 +44,15 @@ export async function executeManagerPerson(request) {
     const message = (text, kind = '') => { if (status) { status.textContent = text; status.dataset.kind = kind; } };
     try {
         if (['create', 'rename'].includes(request.kind)) request = { ...request, name: validateProfileName(request.name) };
-        if (['delete', 'membership'].includes(request.kind)) {
+        if (request.kind === 'delete') {
             const autosavePaused = state.profileSaveTimer !== null;
             if (autosavePaused) clearTimeout(state.profileSaveTimer);
             state.profileSaveTimer = null;
             const origin = state.profileId, doc = document;
             let confirmed = false;
             try {
-                confirmed = await runManagerOperation(operation => request.kind === 'delete'
-                    ? confirmProfileDeletion(request.profileId, undefined, { doc, signal: operation.controller.signal, opener: doc.activeElement })
-                    : confirmUnchangedProfileContext(() => requestPageConfirmation({ doc, signal: operation.controller.signal, opener: doc.activeElement,
-                        title: 'Haushalt ändern', confirmLabel: 'Haushalt ändern',
-                        description: 'Zugehörigkeit zum Haushalt ändern? ' + (getProbelaufController(doc)?.state ? PROBELAUF_RESTORE_HINT : 'Vorher wird der Wiederherstellungspunkt „Vor dem Ändern des Haushalts“ angelegt; der bisherige Haushalt ist über Daten & Sicherung zurückholbar.') + ' Partnerschaft, Testament, gemeinsamer Plan und gemeinsame Ausgaben bleiben eingetragen und müssen danach angepasst werden.' }), { signal: operation.controller.signal }));
+                confirmed = await runManagerOperation(operation => confirmProfileDeletion(request.profileId, undefined,
+                    { doc, signal: operation.controller.signal, opener: doc.activeElement }));
                 if (!confirmed || state.profileId !== origin || document !== doc || state.boundDocument !== doc) return false;
             } finally {
                 // Abgelehnte Löschung verwirft keine bereits eingegebenen Profilwerte.
@@ -101,11 +94,7 @@ export async function executeManagerPerson(request) {
             for (const key of [...Object.values(PROFILE_STORAGE_KEYS), PROFILE_LIVE_BASE_KEY]) previous.set(key, persistenceStorage.getItem(key));
             let confirmed = false;
             try {
-                if (['delete', 'membership'].includes(request.kind)) {
-                    const expectedRecords = validateProfileManagementAction(request);
-                    const label = request.kind === 'delete' ? `Vor dem Löschen von ${getProfileMeta(request.profileId)?.name || request.profileId}` : 'Vor dem Ändern des Haushalts';
-                    await createProfileManagementRecovery(label, { navigationOperation: operation, expectedRecords });
-                }
+                if (request.kind === 'delete') validateProfileManagementAction(request);
                 const result = applyProfileManagementAction(request);
                 if (!result) throw new Error('Profilverwaltung konnte nicht angewendet werden.');
                 await flushManagerRecords(); confirmed = true;

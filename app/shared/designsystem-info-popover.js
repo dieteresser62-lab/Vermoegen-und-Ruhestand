@@ -24,6 +24,18 @@ export function infoPopoverHtml(label, text, { handbookAnchor } = {}) {
 
 // Bindungen gehören den Hosts; entfernte Renderknoten werden nicht festgehalten.
 const infoHosts = new WeakMap();
+
+/** @param {ParentNode} root */
+export function dismissOpenInfoPopover(root) {
+    let dismissed = false;
+    for (const host of /** @type {NodeListOf<HTMLElement>} */ (root.querySelectorAll('.ds-info'))) {
+        const close = infoHosts.get(host);
+        if (host.dataset.visible !== 'true' || !close) continue;
+        close();
+        dismissed = true;
+    }
+    return dismissed;
+}
 const infoScopes = new WeakSet();
 
 /** Position im sichtbaren Fenster, bevorzugt unter dem Knopf.
@@ -45,7 +57,7 @@ export function infoPopoverPosition(anchor, box, width, height, container = { le
 
 const placementDocuments = new WeakSet();
 /** Jede sichtbar geschaltete Erklärung steht am Symbol, auch bei seiteneigenen Schaltern (Simulator-Ergebnis,
- * Monte Carlo, Werkstatt). Ohne Ausrichtung fiele sie auf die CSS-Vorgabe oben rechts zurück (Nutzer 05.11.2026).
+ * Monte Carlo). Ohne Ausrichtung fiele sie auf die CSS-Vorgabe oben rechts zurück (Nutzer 05.11.2026).
  * @param {Document} doc */
 export function installInfoPlacement(doc = globalThis.document) {
     const win = doc?.defaultView;
@@ -100,7 +112,7 @@ export function bindInfoPopovers(doc = globalThis.document, { root = doc, listen
         listen(host, 'focusout', e => { if (!host.contains(e.relatedTarget)) close(); });
         listen(button, 'click', () => { pinned = !pinned; show(pinned); });
         listen(host, 'keydown', e => {
-            if (e.key === 'Escape') { e.preventDefault(); button.focus(); close(); }
+            if (e.key === 'Escape' && host.dataset.visible === 'true') { e.preventDefault(); button.focus(); close(); }
         });
     });
     if (infoScopes.has(root)) return;

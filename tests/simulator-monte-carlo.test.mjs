@@ -14,7 +14,6 @@ import {
     simulateOneYear,
     SIMULATOR_TECHNICAL_ERROR_CODES
 } from '../app/simulator/simulator-engine-direct.js';
-import { runSweepChunk } from '../app/simulator/sweep-runner.js';
 import { createMonteCarloRunContext } from '../app/simulator/mc-run-context.js';
 import {
     createMonteCarloStressTracker,
@@ -1080,7 +1079,7 @@ const emptyLists = {
         anzahl: 1,
         maxDauer: 4,
         blockSize: 1,
-        seed: 93,
+        seed: 84,
         methode: 'block',
         rngMode: 'per-run-seed',
         startYearMode: 'UNIFORM'
@@ -1208,7 +1207,7 @@ const emptyLists = {
     assert(chunk.buffers.volatilities[0] !== chunk.buffers.maxDrawdowns[0], 'Runner must not copy max drawdown into volatility');
 }
 
-// --- TEST 20: Shared technical outcome is fail-closed across Direct, MC, worker-like merge, and Sweep ---
+// --- TEST 20: Shared technical outcome is fail-closed across Direct, MC, and worker-like merge ---
 {
     for (const invalidField of ['rendite', 'gold_eur_perf', 'zinssatz']) {
         let engineCalls = 0;
@@ -1280,36 +1279,12 @@ const emptyLists = {
     const contracted = attachMonteCarloBatchOutcome({}, mergedInventory);
     assertEqual(contracted.batchStatus, 'technical_error', 'merged worker result remains fail-closed');
     assertEqual(contracted.financialMetricsValid, false, 'merged worker result does not expose valid financial headlines');
-
-    const sweep = runSweepChunk({
-        baseInputs: inputs,
-        paramCombinations: [{
-            liquidityRunwayYears: 2.5,
-            goldRebalancingBand: 20,
-            maxSkimPct: 10,
-            maxBearRefillPct: 5,
-            goldTargetPct: 0
-        }],
-        comboRange: { start: 0, count: 1 },
-        sweepConfig: {
-            anzahlRuns: 1,
-            maxDauer: 1,
-            blockSize: 1,
-            baseSeed: 91,
-            methode: 'block',
-            rngMode: 'per-run-seed'
-        },
-        engine: rejectingEngine
-    });
-    assertEqual(sweep.results[0].metrics.invalidCombination, true, 'Sweep keeps technical engine errors as invalid combinations');
-    assert(sweep.results[0].metrics.invalidReason.includes(SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_ERROR), 'Sweep exposes the same stable technical code');
-    assert(!sweep.results[0].metrics.invalidReason.includes('C:\\private'), 'Sweep invalid reason hides internal paths');
 }
 
 
 // Reale UI-Orchestrierung mit kontrollierter Vorbereitung und Cleanup.
 {
-    const { normalizeWidowOptions } = await import('../app/simulator/simulator-sweep-utils.js');
+    const { normalizeWidowOptions } = await import('../app/simulator/simulator-run-utils.js');
     const { runMonteCarlo, cancelMonteCarlo, runMonteCarloSerial } = await import('../app/simulator/simulator-monte-carlo.js');
     const { runMonteCarloSimulation } = await import('../app/simulator/monte-carlo-runner.js');
     const { prepareHistoricalDataOnce } = await import('../app/simulator/simulator-engine-helpers.js');
@@ -1421,7 +1396,7 @@ const emptyLists = {
 
         // Der neue Signaladapter muss alle bisherigen fachlichen Daten erhalten.
         const args = { inputs: buildBasicInputs(), monteCarloParams: parameters, widowOptions: normalizeWidowOptions(), useCapeSampling: false };
-        const legacy = await runMonteCarloSimulation(args);
+        const legacy = await runMonteCarloSimulation({ ...args, collectPersonOutcomes: true });
         const cancellable = await runMonteCarloSerial(args);
         assertEqual(cancellable.batchStatus, 'completed', 'MC: Paritätsfixture ist fachlich erfolgreich');
         assertEqual(JSON.stringify(cancellable), JSON.stringify(legacy), 'MC: fest gesäter serieller Signaladapter liefert identische Ergebnisdaten');

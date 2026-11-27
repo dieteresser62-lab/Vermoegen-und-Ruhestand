@@ -75,9 +75,9 @@ export function parseShillerCapeTable(html, targetYear) {
  * @returns {string} Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
 export function capeManualHint(stored = {}) {
-    const value = Number.isFinite(stored.capeRatio) && stored.capeRatio > 0
+    const value = Number.isFinite(stored?.capeRatio) && stored.capeRatio > 0
         ? stored.capeRatio.toLocaleString('de-DE', { maximumFractionDigits: 2 }) : 'kein Wert';
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(stored.capeAsOf || '')
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(stored?.capeAsOf || '')
         ? new Date(stored.capeAsOf).toLocaleDateString('de-DE', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : 'Stand unbekannt';
     return `CAPE nicht automatisch ermittelt. Zuletzt gespeichert: ${value} (${date}). `
         + 'Trage den aktuellen Wert aus shillerdata.com (Datentabelle, Spalte CAPE) unten ein.';

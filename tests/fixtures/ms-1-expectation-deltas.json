@@ -1,0 +1,87 @@
+{
+  "note": "MS-1 (19.11.2026): Stationary und Block ziehen am Fensterende zirkulär weiter (NG-9, jedes Fensterjahr ist Blockstart) und CAPE wählt nur den ersten Block (NG-8). Nur Läufe mit block (Blocklänge über 1) oder stationary ändern sich; regime_markov und regime_iid bleiben bytegleich. Gemessen auf Linux x64, Node v22.23.2.",
+  "hashes": {
+    "d216fc4ee712cb1060788d6098816141b10f1c66ab5abd7469bf2b5224685041": "15bf9be0a78bbfab5f1d889c43599fb08d0634d4053e2a3ac009da0a7b849dcb",
+    "929d393d45c107ae0974fecbc7c4d8cee9022dac063a2f3b660a9ea9d31859d8": "195571afe86cc0fab96464733c15465d4bfb82240cc3edd07c2160511989047a",
+    "57d6e5100d5d8799271251e865e4a38c4240440ea1b6c41c408827ec7790aa86": "b9b23cfd02c1ee344b6644245d29c430d74df50ee2e4b1fc8aa6cb0b671c8dd0",
+    "9768c8a8282a01f5a61215fd0c2cb79e1999daefa161ab1a1f71595e486eca35": "30d6542d028437b01af4cdd2e6b8bd6bbb34827f485a5703cb89aa2d299a5adb"
+  },
+  "md2Cases": {
+    "block/no-home": {
+      "hashes": {
+        "totals": "724ec8d7cebd44e808e48bfc11a2afe0fc83f42523df387f91fc612834e8b3ce",
+        "lists": "312236d0e23ba064974c60c66c7795f0c56ce3e5dfa3a2871ba3f434c31f1912",
+        "pathSummaries": "1cb7dd4327407916e27abd37d9f1b63cd4ac68773ac2d6622fc0b5c970464d00",
+        "heatmap": "0b2ff66f4c5599d9cc2d4980f3abe1701cc45db6a7768d263c773d0373b8458d",
+        "combined": "715a5d1687f88a62a12f627b0ad46fa838d25e785169153996ae33dffd903dfe"
+      },
+      "characteristicIndices": [
+        18,
+        46,
+        30,
+        8,
+        1,
+        14,
+        39,
+        27,
+        47,
+        28,
+        40,
+        43,
+        22,
+        3
+      ]
+    },
+    "stationary/no-home": {
+      "hashes": {
+        "totals": "ab0f6eb59fb533a2537be89c73a095ff43847ad86960050b4298999d7320786d",
+        "lists": "93a0d2639f607427e921f9c97b40ea5a49e82194d3d9a24813062aec97bc61fe",
+        "pathSummaries": "31b45c2eadb18477afac17477f015bf3aa6f5e4456a289c70c72a6d51f7ca80f",
+        "heatmap": "25e1350ec10704ce290e8d95f82816da620838fc8b6e0859cb0e5aa6c3136821",
+        "combined": "7e3f00997b8ee1745c144a966a2b3654270b592c8555146980f23c14fc288928"
+      },
+      "characteristicIndices": [
+        1,
+        27,
+        15,
+        18,
+        22,
+        14,
+        47,
+        25,
+        36,
+        32,
+        30,
+        26,
+        4,
+        49
+      ]
+    },
+    "block/home": {
+      "hashes": {
+        "totals": "a6eb2bfdc6c510b5eab65383fb4fa86363d2b5807ccebaac925384b7e28e38f6",
+        "lists": "eddf145c440ba06f699dd8fc834bf890021dda4a4ad4e352912c86f579f52c75",
+        "pathSummaries": "0da242d7b3a3dba5d196a6a920760cd021c04488542ce437a9fd03a415cc4d98",
+        "heatmap": "0b2ff66f4c5599d9cc2d4980f3abe1701cc45db6a7768d263c773d0373b8458d",
+        "combined": "c52ee968117bdfa3e94a1d71d764a0eb0362e51c2c9081625657b4011d2326f2"
+      },
+      "characteristicIndices": [
+        18,
+        46,
+        12,
+        32,
+        1,
+        7,
+        39,
+        31,
+        47,
+        28,
+        40,
+        43,
+        22,
+        8,
+        3
+      ]
+    }
+  }
+}

@@ -9,7 +9,7 @@ import { payPersonalCostInAdvance } from './simulator-personal-tax.js';
  * @param household
  * @returns Ergebnis der Operation.
  */
-export function payResidenceTaxForYear(portfolio, inputs, survivor, household) {
+export function payResidenceTaxForYear(portfolio, inputs, survivor, household, maxAdvance = Infinity) {
     if (!portfolio.residenceTax) return null;
     const tax = portfolio.residenceTax;
     const people = inputs.simulationPeople || [];
@@ -18,7 +18,7 @@ export function payResidenceTaxForYear(portfolio, inputs, survivor, household) {
     const knownPayer = index === 0 || index === 1;
     if (knownPayer) endResidenceRights(portfolio, inputs, { ...survivor, survivorProfileId: tax.profileId }, household);
     const alive = index === 0 ? household.p1Alive : index === 1 ? household.p2Alive : true;
-    if (!alive || !Object.values(portfolio.homeInheritance || {}).some(home => home.residenceActive)) return null;
+    if (!alive || (!portfolio.rentBequest && !Object.values(portfolio.homeInheritance || {}).some(home => home.residenceActive))) return null;
     // Ein verbliebener Freibetrag wird jährlich um den Jahreswert aufgezehrt.
     const exempt = Math.min(tax.annualValue, tax.allowanceRemaining);
     const amount = (tax.annualValue - exempt) * tax.rate;
@@ -26,8 +26,12 @@ export function payResidenceTaxForYear(portfolio, inputs, survivor, household) {
     for (const key of ['depotTranchesAktien', 'depotTranchesGold', 'depotTranchesGeldmarkt']) {
         portfolio[key] = (portfolio[key] || []).map(lot => ({ ...lot }));
     }
-    const payment = payPersonalCostInAdvance(portfolio, tax.profileId, amount);
+    // NK-2b (Gutachten NK2C Befund 1): Zu Beginn nur aus Geld über Grundbedarf und Pflege des Jahres; der Rest ist Forderung (Schuldenbuch).
+    const advance = Math.min(amount, Math.max(0, maxAdvance));
+    const paid = payPersonalCostInAdvance(portfolio, tax.profileId, advance);
+    const payment = { ...paid, shortfall: paid.shortfall + amount - advance };
     return { wohnrechtsteuer: payment.paidCost, residenceTaxPayment: { profileId: tax.profileId, due: amount,
         annualValue: tax.annualValue, rate: tax.rate, exempt, allowanceRemaining: tax.allowanceRemaining - exempt,
-        annualTax: tax.annualTax, ...(!knownPayer ? { note: 'Zahler der Wohnrechtsteuer nicht eindeutig zugeordnet; Zahlung wird fortgesetzt.' } : {}), ...payment } };
+        annualTax: tax.annualTax, ...(portfolio.rentBequest ? { rentBequest: true } : {}),
+        ...(!knownPayer ? { note: 'Zahler der Wohnrechtsteuer nicht eindeutig zugeordnet; Zahlung wird fortgesetzt.' } : {}), ...payment } };
 }

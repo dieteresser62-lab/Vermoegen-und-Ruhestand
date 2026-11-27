@@ -64,3 +64,6 @@ node_modules/
 
 # Ausgaben der Paritätsprobe (Beispiele in tests/README.md)
 .paritaet/
+
+# Dauern des letzten vollständigen Testlaufs (Reihenfolge in tests/run-tests.mjs)
+.testlauf/

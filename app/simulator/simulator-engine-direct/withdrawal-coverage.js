@@ -7,16 +7,17 @@ import { euros } from '../simulator-engine-direct-utils.js';
 import { applyForcedSaleLiquidityCoverage } from '../simulator-forced-sale.js';
 import { applyHealthBucketCoverage } from '../simulator-health-bucket.js';
 import { attributeSimulatorAction, recordPersonalSales, coverPersonalPayout, recordPersonalDisposal } from '../simulator-personal-tax.js';
+import { openTaxDebt } from '../simulator-tax-debt.js';
 import { snapshotBalance } from './year-diagnostics.js';
 /** @typedef {import('./action-execution.js').YearContext & NonNullable<ReturnType<typeof coverYearWithdrawal>['state']>} YearContext */
 /** @param {import('./action-execution.js').YearContext} context */
 export function coverYearWithdrawal(context) {
     let {
-        plannedWithdrawalResolution, engineInput, pensionAnnual, plannedExpense, unmarried, portfolio, inputs,
+        plannedWithdrawalResolution, engineInput, pensionAnnual, plannedExpense, checkedExpenses, unmarried, portfolio, inputs,
         pensionResult, fixedIncome, incomeLog, liquiditaet, unmarriedShares, healthBucketCoverage,
         healthBucketHousehold, pflegeMeta, careFloorAddition, healthBucketCareNeed, personalTaxBook, profilesAtDecision, market,
         is3Bucket, protectsEquity, depotTranchesAktien, depotTranchesGold, combinedTaxRawAggregate,
-        stressReplayTransactionCapture, bondSaleAmount, unmetLiquidity, didForcedSale, forcedSaleScaleApplied,
+        bondSaleAmount, unmetLiquidity, didForcedSale, forcedSaleScaleApplied,
         forcedTaxReserved, saleQuellen, regularSaleScale, executedSaleSources, balanceTrace
     } = context;
 
@@ -38,14 +39,20 @@ export function coverYearWithdrawal(context) {
     const minLiqAfterPayout = netFloorYear / 12; // 1 Monat Mindest-Liquidität nach Auszahlung
     // FR-43: Die Reserve ist bereits im Engineziel enthalten. Hier nur eine
     // verbleibende Deckungslücke finanzieren; die Zahlung selbst folgt einmalig.
-    const expenseLog = plannedExpense > 0 ? { geplante_ausgaben: plannedExpense } : null;
+    const expenseLog = checkedExpenses?.dropped.length
+        ? { geplante_ausgaben: plannedExpense, geplante_ausgaben_abgelehnt: checkedExpenses.dropped.map(({ id, label }) => ({ id, label })) }
+        : plannedExpense > 0 ? { geplante_ausgaben: plannedExpense } : null;
     // FR-80 (P2-2): verbrauchte Einkünfte je Person für „Eine Person trägt“.
     const incomeCredits = unmarried ? consumedIncomeCredits(portfolio, inputs, pensionResult, fixedIncome, incomeLog) : null;
     const incomeConsumed = unmarried ? creditConsumedIncome(portfolio, inputs, pensionResult, fixedIncome, incomeLog) : 0;
     if (unmarried) liquiditaet = portfolio.liquiditaet;
     const ownedPlan = unmarried ? /** @type {import('../../../typcheck/rechenkern-integration').UnmarriedWithdrawalPlan} */ (unmarriedWithdrawalPlan)(unmarriedShares, jahresEntnahmeTarget + incomeConsumed + plannedExpense, portfolio, true, incomeCredits) : null;
     if (ownedPlan) ownedPlan.credits = incomeCredits;
-    const totalLiqNeed = jahresEntnahmeTarget + minLiqAfterPayout + incomeConsumed;
+    // FR-84: Eigene Pflegekosten, die eine unverheiratete Person nicht tragen kann, zahlt der Staat; dafür verkauft der Haushalt nichts.
+    const careAidEstimate = /** @type {any} */ (ownedPlan)?.careAid || 0;
+    // NK-2 (FR-84 Punkt 17): Offene Steuer (Altschuld, Wohnrechtsteuer des Jahres) braucht ebenfalls Liquidität; ohne Schuld unverändert.
+    const taxDebt = openTaxDebt(portfolio);
+    const totalLiqNeed = jahresEntnahmeTarget + minLiqAfterPayout + incomeConsumed - careAidEstimate + (taxDebt > 0 ? taxDebt : 0);
     let forcedShortfall = Math.max(0, totalLiqNeed + plannedExpense - liquiditaet);
     healthBucketCoverage = /** @type {import('../../../typcheck/rechenkern-integration').ApplyHealthBucketCoverage} */ (applyHealthBucketCoverage)({
         inputs,
@@ -95,7 +102,7 @@ export function coverYearWithdrawal(context) {
         personalCoverage.sources.push(...ownCoverage.sources);
         /** @type {NonNullable<typeof ownedPlan>} */ (ownedPlan).items = revisedPlan.items;
         liquiditaet = portfolio.liquiditaet;
-        forcedShortfall = Math.max(0, totalLiqNeed + plannedExpense - liquiditaet);
+        forcedShortfall = Math.max(0, totalLiqNeed + careAidEstimate - (/** @type {any} */ (revisedPlan).careAid || 0) + plannedExpense - liquiditaet);
     }
     const forcedFunding = /** @type {{profileId:string;amount:number}[]} */ ([]);
     /** @param {number} shortfall
@@ -108,8 +115,7 @@ export function coverYearWithdrawal(context) {
             forcedShortfall: shortfall, portfolio, engineInput, market, is3Bucket,
             isBadYear: protectEquity, depotTranchesAktien, depotTranchesGold,
             equityBeforeForced, goldBeforeForced, combinedTaxRawAggregate,
-            attributeAction: personalTaxBook ? action => /** @type {import('../../../typcheck/rechenkern-integration').AttributeSimulatorAction} */ (attributeSimulatorAction)(portfolio, action, inputs, { followup: true }) : null,
-            captureTransactions: stressReplayTransactionCapture
+            attributeAction: personalTaxBook ? action => /** @type {import('../../../typcheck/rechenkern-integration').AttributeSimulatorAction} */ (attributeSimulatorAction)(portfolio, action, inputs, { followup: true }) : null
         });
         recordPersonalSales(portfolio, investments, coverage.sources);
         forcedFunding.push(...creditPersonalSale(portfolio, investments, coverage.liquiditaetDelta, coverage.sources));
@@ -143,7 +149,7 @@ export function coverYearWithdrawal(context) {
         plannedExpense, incomeConsumed, unmarried, portfolio, inputs, pensionResult, fixedIncome, incomeLog,
         liquiditaet, ownedPlan, unmarriedShares, healthBucketCoverage, pflegeMeta, personalCoverage,
         personalTaxBook, market, is3Bucket, protectsEquity, forcedFunding, depotTranchesAktien,
-        depotTranchesGold, combinedTaxRawAggregate, stressReplayTransactionCapture, bondSaleAmount,
+        depotTranchesGold, combinedTaxRawAggregate, bondSaleAmount,
         unmetLiquidity, didForcedSale, forcedSaleScaleApplied, forcedTaxReserved, forcedCoverage,
         regularSaleScale, expenseCoverage, executedSaleSources, balanceTrace
     } };

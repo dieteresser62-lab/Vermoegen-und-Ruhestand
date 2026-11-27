@@ -48,7 +48,10 @@ for (const marker of ['ageAdjustedForInflation', 'lastInflationAppliedAtAge', 'c
     const sample = legacySample();
     assertEqual(project(sample).status, 'ready', 'Echter metadatenloser Altbestand ohne Indiz ist offen');
     assertEqual(project(sample, [{ kind: 'annual-close-pre-mutation', activeProfileId: sample.records.rs_current_profile, createdAt: annualTestNow().toISOString() }]).status,
-        'legacy_confirmation_required', 'Ein isolierter Vorabpunkt ist kein Jahreserfolg');
+        'ready', 'Ein isolierter Vorabpunkt ohne Jahresmetadaten ist kein Jahreserfolg und kein Klärungsfall');
+    const priorMetadata = { [CONFIG.STORAGE.LS_KEY]: JSON.stringify({ annualPeriodMetadata: { schemaVersion: 1, lastCommittedPeriod: 'calendar-year:2025', pendingCommit: null } }) };
+    assertEqual(project(sample, [{ kind: 'annual-close-pre-mutation', activeProfileId: sample.records.rs_current_profile, createdAt: annualTestNow().toISOString(), records: priorMetadata }]).status,
+        'legacy_confirmation_required', 'Fehlen live Jahresmetadaten, die der Vorabpunkt noch hatte, bleibt der Stand unklar');
     change(sample, state => { state.wealthHistory.entries = [createManualWealthHistoryEntry(amounts, '2026-12-31'), createAnnualWealthHistoryEntry(amounts, 2025 + 2)]; });
     assertEqual(project(sample).status, 'ready', 'Manuelle Stände und fremde Jahre zählen nicht');
     change(sample, state => { state.wealthHistory.entries = [createAnnualWealthHistoryEntry(amounts, 2026)]; });
@@ -88,13 +91,17 @@ const archiveDeferred = () => {
     assertEqual(deriveAnnualCloseEvidence({ ...context, records: sample.records, snapshots: loaded.snapshots }).status,
         'ready', 'Bytegleicher markerloser Payload bestätigt nur den offenen Vorabstand');
     const live = { ...sample.records, depot_tranchen: sample.records.depot_tranchen + ' ' };
+    // JW-1a (Fable P2-2): Ein Kurswrite nach dem Vorabpunkt eines Erstabschlusses hält das Jahr offen.
     assertEqual(deriveAnnualCloseEvidence({ ...context, records: live, snapshots: reader.read(context).snapshots }).status,
-        'legacy_confirmation_required', 'Frische Finanzrecords werden trotz unveränderter Archivlesung neu klassifiziert');
+        'ready', 'Kurswrite nach metadatenlosem Vorabpunkt bleibt offen');
     for (const projection of [projectOverview, projectOverviewFromRecords]) {
         const view = projection({ registry: JSON.parse(live.rs_profiles_v1), activeId: context.activeId,
             liveData: live, now: annualTestNow(), snapshots: loaded.snapshots });
-        assertEqual(view.occasion.annualState, 'unclear', 'Echter Snapshot plus Kurswrite projiziert sichtbare Jahresklärung');
+        assertEqual(view.occasion.annualState, 'open', 'Echter Snapshot plus Kurswrite projiziert keine Jahresklärung');
     }
+    const marked = { ...live, [CONFIG.STORAGE.LS_KEY]: JSON.stringify({ ...JSON.parse(live[CONFIG.STORAGE.LS_KEY]), lastInflationAppliedAtYear: 2027 }) };
+    assertEqual(deriveAnnualCloseEvidence({ ...context, records: marked, snapshots: reader.read(context).snapshots }).status,
+        'legacy_confirmation_required', 'Frische Finanzrecords werden trotz unveränderter Archivlesung neu klassifiziert');
 
     assertEqual(deriveAnnualCloseEvidence({ ...context, records: live, snapshots: others }).status,
         'ready', 'Fremdes Profil, Jahr und Snapshotkind erzeugen keine Vorabpunktklärung');
@@ -255,35 +262,17 @@ try {
         await env.persistence.flush();
         const changed = await env.persistence.readPersistedRecords(), changedBytes = JSON.stringify(changed);
         assert(changed.depot_tranchen !== snapshot.records.depot_tranchen, origin + ': echter späterer depot_tranchen-Write');
-        assertEqual(evidence(changed).status, 'legacy_confirmation_required', origin + ': Kurswrite löst Klärung aus');
-        assertEqual(evidence(changed).allowOpenConfirmation, true, origin + ': markerloser Punkt erlaubt ehrliche Offen-Antwort');
+        // JW-1a (Fable P2-2): Ein metadatenloser eigener Vorabpunkt fragt auch nach einem Kurswrite nicht „bereits abgeschlossen?“.
+        assertEqual(evidence(changed).status, 'ready', origin + ': Kurswrite nach Vorabpunkt des Erstabschlusses bleibt offen');
         assertEqual(JSON.stringify(await env.persistence.readPersistedRecords()), changedBytes, origin + ': Ableitung erhält Quellbytes');
-        const archiveBytes = JSON.stringify([...env.snapshots]), batchCount = env.batches.length;
         let questions = 0, preparations = 0;
-        const cancelled = env.create({ getLegacyDecision: async () => { questions++; return 'cancel'; },
-            confirmAnnual: async () => { preparations++; return {}; } });
-        assertEqual((await cancelled.reconcilePeriod()).status, 'legacy_confirmation_required', origin + ': Prüfung ohne clarify bleibt ungelöst');
-        assertEqual(questions, 0, origin + ': Hintergrundprüfung öffnet keinen Dialog');
-        assertEqual((await cancelled.close()).status, 'cancelled', origin + ': Klärungsabbruch beendet den Versuch');
-        assertEqual(questions, 1, origin + ': ausdrückliche Aktion fragt genau einmal');
-        assertEqual(preparations, 0, origin + ': Abbruch erreicht keine Vorbereitung');
-        assertEqual(JSON.stringify(await env.persistence.readPersistedRecords()), changedBytes, origin + ': Abbruch erhält Backend');
-        assertEqual(JSON.stringify([...env.snapshots]), archiveBytes, origin + ': Abbruch erhält Archiv');
-        assertEqual(env.batches.length, batchCount, origin + ': Abbruch übernimmt keine Metadaten');
-        assertEqual(env.reports.length, origin === 'restore' ? 1 : 0, origin + ': Abbruch erzeugt keinen neuen Fehler');
-        questions = 0;
         const service = env.create({ snapshotId: 'after-' + origin,
-            getLegacyDecision: async () => { questions++; return 'not_committed'; },
+            getLegacyDecision: async () => { questions++; return 'already_committed'; },
             confirmAnnual: async () => { preparations++; return {}; } });
-        assertEqual((await service.reconcilePeriod({ clarify: true })).status, 'ready', origin + ': Noch nicht abgeschlossen führt zur offenen Periode');
-        const adopted = await env.persistence.readPersistedRecords(), adoptedState = JSON.parse(adopted[CONFIG.STORAGE.LS_KEY]);
-        assertEqual(adoptedState.annualPeriodMetadata.lastCommittedPeriod, null, origin + ': Offenklärung behauptet keinen Erfolg');
-        delete adoptedState.annualPeriodMetadata;
-        assertEqual(JSON.stringify(adoptedState), changed[CONFIG.STORAGE.LS_KEY], origin + ': Offenklärung erhält Finanzfelder');
-        for (const key of Object.keys(changed).filter(key => key !== CONFIG.STORAGE.LS_KEY))
-            assertEqual(adopted[key], changed[key], origin + ': Offenklärung erhält Record ' + key);
+        assertEqual((await service.reconcilePeriod({ clarify: true })).status, 'ready', origin + ': Wiederholung führt ohne Frage zur offenen Periode');
+        assertEqual(JSON.stringify(await env.persistence.readPersistedRecords()), changedBytes, origin + ': Prüfung schreibt keine Metadaten');
         assertEqual((await service.close()).status, 'already_committed', origin + ': ehrlicher Wiederanlauf schließt regulär ab');
-        assertEqual(questions, 1, origin + ': Offenübernahme und Abschluss fragen zusammen einmal');
+        assertEqual(questions, 0, origin + ': Wiederholung fragt nicht nach dem Jahresstand');
         assertEqual(preparations, 1, origin + ': genau eine bestätigte Vorbereitung');
         const after = await env.persistence.readPersistedRecords();
         assertEqual(JSON.parse(after[CONFIG.STORAGE.LS_KEY]).lastState.cumulativeInflationFactor, 1 * 1.0214, origin + ': Inflation genau einmal');
@@ -399,7 +388,7 @@ try {
         for (const projection of [projectOverview, projectOverviewFromRecords]) {
             assertEqual(projection({ registry: JSON.parse(quoted.rs_profiles_v1), activeId: quoted.rs_current_profile,
                 liveData: quoted, now: annualTestNow(), snapshots: [snapshot] }).occasion.annualState,
-                'unclear', 'Vollständiger H3-Restore plus bestätigter Kurs-/Registrywrite projiziert Jahresklärung');
+                'open', 'JW-1a: Vollständiger H3-Restore plus bestätigter Kurs-/Registrywrite bleibt ohne Jahresklärung offen');
         }
         await env.persistence.replaceRecordsTransactional(restored.records, { allowKey: restored.allowKey });
 
@@ -416,7 +405,7 @@ try {
         await env.create().close();
         assertEqual(JSON.stringify(await env.persistence.readPersistedRecords()), after, 'Recovery-Neustart bleibt auch nach Reload idempotent');
         const changed = { ...snapshot.records, profile_tagesgeld: '777' };
-        assertEqual(project({ records: changed, scope: legacySample().scope }, [snapshot]).allowOpenConfirmation, true, 'Abweichender markerloser Quellsatz erlaubt ausdrückliche Offenklärung, keinen stillen Restorenachweis');
+        assertEqual(project({ records: changed, scope: legacySample().scope }, [snapshot]).status, 'ready', 'JW-1a: Abweichender markerloser Quellsatz nach metadatenlosem Vorabpunkt bleibt offen');
         const partial = { ...snapshot.records, [CONFIG.STORAGE.LS_KEY]: JSON.stringify({ ...JSON.parse(snapshot.records[CONFIG.STORAGE.LS_KEY]), lastInflationAppliedAtYear: 2027 }) };
         assertEqual(project({ records: partial, scope: legacySample().scope }, [{ ...snapshot, records: partial }]).allowOpenConfirmation, false, 'Selbst ein quellgleicher Punkt erlaubt keine doppelte Zieljahresanpassung');
     }

@@ -6,7 +6,7 @@ import { EngineAPI } from '../engine/index.mjs';
 import { buildAnnualPlanRecord } from '../app/profile/annual-plan-record.js';
 import { planScope } from '../app/profile/household-plan.js';
 import { overviewScope, summaryEntryKey } from '../app/overview/overview-storage.js';
-import { simulationEntryKey } from '../app/overview/overview-simulation-summary.js';
+import { simulationEntryKey, sourceFingerprint } from '../app/overview/overview-simulation-summary.js';
 import { playFixture } from './helpers/probelauf-area-fixture.mjs';
 import { PersistenceFacade as P } from '../app/shared/persistence-facade.js';
 import { SnapshotArchive as A } from '../app/shared/snapshot-archive.js';
@@ -175,7 +175,8 @@ for (const state of [{ ...start, source: 'demo' }, { ...start, hasDateJump: true
     assert(result.action.amount > 18000, 'Handlungsbetrag stammt aus frischer Rechnung');
     assertEqual(result.liquidity, 55.55555555555556, 'Liquidität vor Umsetzung aus frischer Haushaltsrechnung');
     const entry = { scope, kind: 'montecarlo', completedAt: '2026-10-14T10:00:00Z', statement: 'completed', priceBasis: 'heute',
-        fingerprintVersion: 2, sourceFingerprint: 'a'.repeat(64), runFingerprint: 'b'.repeat(64), deviationApplied: false,
+        fingerprintVersion: 2, sourceFingerprint: sourceFingerprint({ ...probelaufRecordContext(records), scope, kind: 'montecarlo' }),
+        runFingerprint: 'b'.repeat(64), deviationApplied: false,
         metrics: { runs: 100, covered: 94, successPct: 94, median: 100, p5: 5 } };
     const storeRun = () => {
         const raw = JSON.stringify({ version: 1, entries: { [simulationEntryKey(scope, 'montecarlo')]: entry } });
@@ -187,6 +188,9 @@ for (const state of [{ ...start, source: 'demo' }, { ...start, hasDateJump: true
     assertEqual(projectProbelaufComparison(records, { now, play: true, state: { initialMonteCarloRuns } }).monteCarlo, null, 'Mitkopierter MC-Lauf zählt im Spielbereich nicht');
     entry.completedAt = '2026-10-15T10:00:00Z'; storeRun();
     assertEqual(projectProbelaufComparison(records, { now, play: true, state: { initialMonteCarloRuns } }).monteCarlo.completedAt, entry.completedAt, 'Neuer Spiel-MC-Lauf mit Datum');
+    const changed = { ...records, profile_rente_monatlich: '2400' };
+    const stale = projectProbelaufComparison(changed, { now, play: true, state: { initialMonteCarloRuns } });
+    assert(stale.monteCarloStale && stale.monteCarlo === null, 'Eine geänderte Spielannahme entwertet die gespeicherte Quote');
     const review = buildProbelaufEndReview({ state: start, realRecords: {}, playRecords: records, now });
     assertEqual(review.budgetDelta, null, 'Fehlender Vergleichswert erzeugt keine Differenz');
     assertEqual(probelaufRecordContext(records).registry.profiles.muster_a.data.overview_simulation_summary_v1, records.overview_simulation_summary_v1, 'Liveprojektion ohne Writes');

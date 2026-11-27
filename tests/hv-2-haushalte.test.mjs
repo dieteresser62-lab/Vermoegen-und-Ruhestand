@@ -60,7 +60,7 @@ for (const kind of ['tauri', 'indexeddb', 'localstorage']) {
     const lenaBytes = f.householdBytes(id);
 
     // Spielbereich in B: Kopie von B, eigener Ort, B echt und Haushalt 1 unberührt.
-    await persistence.activatePlayArea({ source: 'copy', records: await persistence.readRealRecords(), snapshots: await persistence.readRealSnapshots() });
+    await persistence.activatePlayArea({ source: 'copy', records: await persistence.readRealRecords() });
     await f.restart();
     let status = persistence.getPersistenceStatus();
     assertEqual(status.activeArea, 'spiel', `${kind}: Spielbereich in B aktiv`);
@@ -117,7 +117,7 @@ for (const kind of ['tauri', 'indexeddb', 'localstorage']) {
     await f.restart();
     await persistence.switchHousehold('h1');
     await f.restart();
-    await persistence.activatePlayArea({ source: 'copy', records: await persistence.readRealRecords(), snapshots: await persistence.readRealSnapshots() });
+    await persistence.activatePlayArea({ source: 'copy', records: await persistence.readRealRecords() });
     await f.restart();
     assertEqual(persistence.getPersistenceStatus().storageArea, 'spiel', `${kind}: Haushalt 1 behält seinen Spielbereich`);
     assertEqual(persistence.getItemSync('profile_tagesgeld'), oldRecords.profile_tagesgeld, `${kind}: Spielkopie aus Haushalt 1`);

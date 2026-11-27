@@ -10,7 +10,8 @@ export function _clamp(value, min, max) {
 }
 
 
-/** @param {number} realeRendite
+/** FR-88: Vorschüssige Rate, denn die Entnahme eines Jahres steht zu dessen Beginn bereit.
+ * @param {number} realeRendite
  * @param {number} horizontJahre */
 export const _berechneEntnahmeRate = (realeRendite, horizontJahre) => {
     const laufzeitJahre = Math.max(1, Number(horizontJahre) || 1);
@@ -18,7 +19,7 @@ export const _berechneEntnahmeRate = (realeRendite, horizontJahre) => {
     if (Math.abs(rendite) < 0.001) {
         return 1 / laufzeitJahre;
     }
-    return rendite / (1 - Math.pow(1 + rendite, -laufzeitJahre));
+    return rendite / ((1 + rendite) * (1 - Math.pow(1 + rendite, -laufzeitJahre)));
 };
 
 /** @param {VpwReturnContext & {lastExpectedRealReturn?:number|null;expectedReturnCape?:number;inflation?:number}} params */

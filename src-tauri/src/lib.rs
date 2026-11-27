@@ -14,6 +14,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{Emitter, Manager};
+use tauri_plugin_dialog::DialogExt;
 use tiny_http::{Header, Method, Response, Server, StatusCode};
 
 const APP_STATE_FILENAME: &str = "ruhestand_suite_data.json";
@@ -21,6 +22,8 @@ const SNAPSHOT_STATE_FILENAME: &str = "ruhestand_suite_snapshots.json";
 const QUOTE_MAX_AGE_SECONDS: u64 = 7 * 24 * 60 * 60;
 const QUOTE_FUTURE_TOLERANCE_SECONDS: u64 = 5 * 60;
 const UPSTREAM_TIMEOUT_SECONDS: u64 = 4;
+const CLOSE_FALLBACK_MS: u64 = 3000;
+const CLOSE_SAVE_LIMIT_MS: u64 = 10000;
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -52,6 +55,7 @@ struct CloseAttempt {
 struct CloseProtocol {
   sequence: u64,
   active: Option<CloseAttempt>,
+  saves: HashMap<String, bool>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -70,6 +74,8 @@ impl CloseProtocol {
     if self.active.is_some_and(|attempt| !matches!(attempt.phase, ClosePhase::Closing { .. })) {
       self.active = None;
     }
+    // Nur bereits native Schreibaufträge bleiben beim Dokumentwechsel aktiv.
+    self.saves.retain(|_, writing| *writing);
   }
 
   fn request(&mut self, now_ms: u64) -> CloseRequest {
@@ -84,7 +90,7 @@ impl CloseProtocol {
     let id = self.sequence;
     self.active = Some(CloseAttempt {
       id,
-      phase: ClosePhase::Waiting { deadline_ms: now_ms.saturating_add(3000) },
+      phase: ClosePhase::Waiting { deadline_ms: now_ms.saturating_add(CLOSE_FALLBACK_MS) },
     });
     CloseRequest::Start(id)
   }
@@ -110,9 +116,12 @@ impl CloseProtocol {
     false
   }
 
-  fn allow(&mut self, id: u64) -> bool {
+  // NR-1 (M2): Laufen bei der JS-Freigabe noch Speicherungen, wartet der Versuch wie nach Ablauf der
+  // Übernahmefrist auf sie (Waiting mit erreichter Frist), höchstens bis zur bestehenden Speicherfrist.
+  fn allow(&mut self, id: u64, now_ms: u64) -> bool {
     if self.active == Some(CloseAttempt { id, phase: ClosePhase::Held }) {
-      self.active = Some(CloseAttempt { id, phase: ClosePhase::Closing { permit: true } });
+      let phase = if self.saves.is_empty() { ClosePhase::Closing { permit: true } } else { ClosePhase::Waiting { deadline_ms: now_ms } };
+      self.active = Some(CloseAttempt { id, phase });
       return true;
     }
     false
@@ -121,7 +130,8 @@ impl CloseProtocol {
   fn timeout(&mut self, id: u64, now_ms: u64) -> bool {
     match self.active.as_mut() {
       Some(attempt) if attempt.id == id => match attempt.phase {
-        ClosePhase::Waiting { deadline_ms } if now_ms >= deadline_ms => {
+        ClosePhase::Waiting { deadline_ms } if now_ms >= deadline_ms
+          && (self.saves.is_empty() || now_ms >= deadline_ms.saturating_add(CLOSE_SAVE_LIMIT_MS - CLOSE_FALLBACK_MS)) => {
           attempt.phase = ClosePhase::Closing { permit: true };
           true
         }
@@ -129,6 +139,17 @@ impl CloseProtocol {
       },
       _ => false,
     }
+  }
+
+  fn save_wait_ms(&self, id: u64, now_ms: u64) -> Option<u64> {
+    let attempt = self.active?;
+    if let ClosePhase::Waiting { deadline_ms } = attempt.phase {
+      if attempt.id == id && !self.saves.is_empty() {
+        let limit = deadline_ms.saturating_add(CLOSE_SAVE_LIMIT_MS - CLOSE_FALLBACK_MS);
+        return Some(limit.saturating_sub(now_ms).min(25));
+      }
+    }
+    None
   }
 
   fn close_failed(&mut self, id: u64) {
@@ -229,14 +250,18 @@ fn open_app_data_directory(app: tauri::AppHandle, household: Option<String>) -> 
 }
 
 #[tauri::command]
-fn load_app_state(app: tauri::AppHandle, target: Option<StateTarget>, household: Option<String>) -> Result<String, String> {
-  let file_path = app_state_path(&app, target, household.as_deref())?;
-  let content = load_state_file(&file_path)?;
-  // HV-1: Ein vorhandenes, aber leeres Haushaltsverzeichnis ist beschädigt und nicht „fehlend“.
-  if matches!(target, Some(StateTarget::Households)) && content.trim().is_empty() && file_path.exists() {
-    return Err("Haushaltsverzeichnis ist leer.".into());
-  }
-  Ok(content)
+async fn load_app_state(app: tauri::AppHandle, target: Option<StateTarget>, household: Option<String>) -> Result<String, String> {
+  tauri::async_runtime::spawn_blocking(move || {
+    // Die .tmp-Rettung darf keiner laufenden Speicherung zuvorkommen.
+    let _guard = STATE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let file_path = app_state_path(&app, target, household.as_deref())?;
+    let content = load_state_file(&file_path)?;
+    // HV-1: Ein vorhandenes, aber leeres Haushaltsverzeichnis ist beschädigt und nicht „fehlend“.
+    if matches!(target, Some(StateTarget::Households)) && content.trim().is_empty() && file_path.exists() {
+      return Err("Haushaltsverzeichnis ist leer.".into());
+    }
+    Ok(content)
+  }).await.map_err(|error| error.to_string())?
 }
 
 fn load_state_file(file_path: &Path) -> Result<String, String> {
@@ -316,12 +341,61 @@ fn check_generation(root: &Path, expected: Option<u64>) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn save_app_state(app: tauri::AppHandle, content: String, target: Option<StateTarget>, household: Option<String>, expected_generation: Option<u64>) -> Result<(), String> {
-  // Wie die übrigen Sperren: nach einer Panik eines anderen Threads weiterarbeiten (kein dauerhaftes Poisoning).
-  with_state_lock(&app, expected_generation, |_| {
-    let file_path = app_state_path(&app, target, household.as_deref())?;
-    save_state_file_with_replace(&file_path, &content, |source, destination| fs::rename(source, destination))
-  })
+async fn save_app_state(app: tauri::AppHandle, content: String, target: Option<StateTarget>, household: Option<String>, expected_generation: Option<u64>, save_id: Option<String>) -> Result<(), String> {
+  let close_state = app.state::<CloseState>();
+  if let Some(id) = &save_id {
+    close_state.protocol.lock().unwrap_or_else(|e| e.into_inner()).saves.insert(id.clone(), true);
+  }
+  let handle = app.clone();
+  let result = tauri::async_runtime::spawn_blocking(move || {
+    with_state_lock(&handle, expected_generation, |_| {
+      let file_path = app_state_path(&handle, target, household.as_deref())?;
+      save_state_file_with_replace(&file_path, &content, |source, destination| fs::rename(source, destination))
+    })
+  }).await;
+  if let Some(id) = &save_id {
+    close_state.protocol.lock().unwrap_or_else(|e| e.into_inner()).saves.remove(id);
+  }
+  result.map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+fn report_app_save(state: tauri::State<'_, CloseState>, save_id: String, active: bool) {
+  let mut protocol = state.protocol.lock().unwrap_or_else(|e| e.into_inner());
+  if active { protocol.saves.entry(save_id).or_insert(false); }
+  else { protocol.saves.remove(&save_id); }
+}
+
+// SD-1: Sicherungen und Exporte über den Windows-Dialog „Speichern unter“ statt ungefragt in „Downloads“.
+// Rückgabe: gewählter Pfad, None bei Abbruch. Der Dialog blockiert und läuft deshalb nie im Hauptthread.
+#[tauri::command]
+async fn save_file_with_dialog(
+  window: tauri::Window,
+  default_name: String,
+  content: String,
+  filter_name: Option<String>,
+  extensions: Option<Vec<String>>,
+) -> Result<Option<String>, String> {
+  tauri::async_runtime::spawn_blocking(move || {
+    let mut dialog = window.dialog().file().set_file_name(default_name);
+    #[cfg(any(windows, target_os = "macos"))]
+    {
+      dialog = dialog.set_parent(&window);
+    }
+    let extensions = extensions.unwrap_or_default();
+    if !extensions.is_empty() {
+      let list: Vec<&str> = extensions.iter().map(String::as_str).collect();
+      dialog = dialog.add_filter(filter_name.unwrap_or_else(|| "Datei".into()), &list);
+    }
+    let Some(chosen) = dialog.blocking_save_file() else { return Ok(None) };
+    let path = chosen.into_path().map_err(|error| error.to_string())?;
+    write_chosen_file(&path, &content)?;
+    path.to_str().map(|text| Some(text.to_string())).ok_or_else(|| "Der gewählte Pfad ist nicht als Text darstellbar.".into())
+  }).await.map_err(|error| error.to_string())?
+}
+
+fn write_chosen_file(path: &Path, content: &str) -> Result<(), String> {
+  fs::write(path, content).map_err(|error| format!("Datei konnte nicht gespeichert werden: {error}"))
 }
 
 // HV-3 Nachcheck: Export eines Haushalts nur lesend – keine Ordneranlage, keine Wiederherstellung aus .tmp/.bak.
@@ -336,14 +410,22 @@ fn read_household_state(app: tauri::AppHandle, household: Option<String>) -> Res
   }
 }
 
+fn is_json_object(content: &str) -> bool {
+  serde_json::from_str::<serde_json::Value>(content).map(|value| value.is_object()).unwrap_or(false)
+}
+
 fn save_state_file_with_replace(
   file_path: &Path,
   content: &str,
   replace: impl FnOnce(&Path, &Path) -> std::io::Result<()>,
 ) -> Result<(), String> {
+  // NG-1: Nur ein JSON-Objekt wird geschrieben, auch kein leerer Inhalt. Die Prüfung läuft vor jeder Rettung und vor .tmp.
+  if !is_json_object(content) {
+    return Err("Inhalt ist kein JSON-Objekt und wird nicht gespeichert. Die Datei bleibt unverändert.".into());
+  }
   // Zuerst einen unterbrochenen Altwrite retten. Erst dann darf .tmp neu entstehen.
   let previous = load_state_file(file_path)?;
-  if file_path.exists() && !serde_json::from_str::<serde_json::Value>(&previous).map(|value| value.is_object()).unwrap_or(false) {
+  if file_path.exists() && !is_json_object(&previous) {
     return Err("Hauptdatei ist nicht lesbar; Rettungsdateien bleiben erhalten.".into());
   }
   let tmp_path = file_path.with_extension("json.tmp");
@@ -389,6 +471,57 @@ fn delete_play_files(directory: &Path) -> Result<(), String> {
     }
   }
   Ok(())
+}
+
+// NG-1: Rücknahme einer Übernahme in einen Haushalt, der vorher keine Hauptdatei hatte. Entfernt nur die Hauptdatei
+// und ihre Schreibdatei. Zuerst .tmp, damit sie nicht als Hauptdatei zurückkommt.
+// NR-1 (M3): Eine liegengebliebene .json.bak (nur aus älteren Versionen) käme beim nächsten Laden ebenso zurück.
+// Sie wird vorher beiseitegelegt, nicht gelöscht. Beim Speichern bleibt sie wie bisher unberührt.
+fn delete_live_files(file_path: &Path) -> Result<(), String> {
+  set_aside_stale_backup(file_path)?;
+  let tmp_path = file_path.with_extension("json.tmp");
+  for file in [tmp_path.as_path(), file_path] {
+    match fs::remove_file(file) {
+      Ok(()) => {},
+      Err(error) if error.kind() == std::io::ErrorKind::NotFound => {},
+      Err(error) => return Err(error.to_string()),
+    }
+  }
+  let backup_path = file_path.with_extension("json.bak");
+  for file in [backup_path.as_path(), tmp_path.as_path(), file_path] {
+    if fs::symlink_metadata(file).err().map(|error| error.kind()) != Some(std::io::ErrorKind::NotFound) {
+      return Err("Hauptdatei konnte nicht entfernt werden.".into());
+    }
+  }
+  Ok(())
+}
+
+// Benennt die .json.bak in <Name>.bak.<Zeitstempel>.json um; die Bytes bleiben für eine Rettung von Hand erhalten.
+fn set_aside_stale_backup(file_path: &Path) -> Result<(), String> {
+  let backup_path = file_path.with_extension("json.bak");
+  match fs::symlink_metadata(&backup_path) {
+    Ok(_) => {},
+    Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+    Err(error) => return Err(error.to_string()),
+  }
+  let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|e| e.to_string())?.as_nanos();
+  let stem = file_path.file_stem().and_then(|stem| stem.to_str()).unwrap_or("state");
+  let aside_path = file_path.with_file_name(format!("{}.bak.{}.json", stem, timestamp));
+  // Eine schon beiseitegelegte Sicherung wird nie überschrieben.
+  match fs::symlink_metadata(&aside_path) {
+    Ok(_) => return Err("Alte Sicherungsdatei konnte nicht beiseitegelegt werden.".into()),
+    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {},
+    Err(error) => return Err(error.to_string()),
+  }
+  fs::rename(&backup_path, &aside_path).map_err(|e| e.to_string())
+}
+
+// Fest auf das Ziel live; den Pfad bildet nur Rust aus der Haushaltskennung.
+#[tauri::command]
+fn delete_live_state(app: tauri::AppHandle, household: Option<String>, expected_generation: Option<u64>) -> Result<(), String> {
+  with_state_lock(&app, expected_generation, |_| {
+    delete_live_files(&app_state_path(&app, Some(StateTarget::Live), household.as_deref())?)
+  })
 }
 
 #[tauri::command]
@@ -448,19 +581,43 @@ fn confirm_app_close(
   response: String,
 ) -> Result<bool, String> {
   let id = attempt_id.parse::<u64>().map_err(|e| e.to_string())?;
-  let accepted = {
+  let (accepted, permitted) = {
     let mut protocol = state.protocol.lock().map_err(|e| e.to_string())?;
-    match response.as_str() {
+    let accepted = match response.as_str() {
       "hold" => protocol.hold(id, close_clock_ms()),
       "reject" => protocol.reject(id),
-      "allow" => protocol.allow(id),
+      "allow" => protocol.allow(id, close_clock_ms()),
       _ => return Err("INVALID_CLOSE_RESPONSE".to_string()),
-    }
+    };
+    (accepted, protocol.active == Some(CloseAttempt { id, phase: ClosePhase::Closing { permit: true } }))
   };
   if accepted && response == "allow" {
-    close_reserved_window(&window, &state, id)?;
+    if permitted {
+      close_reserved_window(&window, &state, id)?;
+    } else {
+      // NR-1 (M2): Speicherungen laufen noch; ein eigener Faden schließt danach, höchstens nach der Speicherfrist.
+      thread::spawn(move || close_after_saves(&window, id));
+    }
   }
   Ok(accepted)
+}
+
+// HL-2/NR-1: Schließt nach Ablauf der Übernahmefrist oder nach einer JS-Freigabe, sobald keine Speicherung
+// mehr läuft, spätestens nach der Speicherfrist. Endet, sobald der Versuch nicht mehr wartet.
+fn close_after_saves(window: &tauri::Window, id: u64) {
+  let Some(state) = window.try_state::<CloseState>() else { return; };
+  loop {
+    let (reserved, wait_ms) = {
+      let mut protocol = state.protocol.lock().unwrap_or_else(|e| e.into_inner());
+      let now_ms = close_clock_ms();
+      (protocol.timeout(id, now_ms), protocol.save_wait_ms(id, now_ms))
+    };
+    if reserved {
+      let _ = close_reserved_window(window, &state, id);
+    }
+    let Some(wait_ms) = wait_ms else { break; };
+    thread::sleep(Duration::from_millis(wait_ms));
+  }
 }
 
 fn close_reserved_window(window: &tauri::Window, state: &CloseState, id: u64) -> Result<(), String> {
@@ -472,22 +629,38 @@ fn close_reserved_window(window: &tauri::Window, state: &CloseState, id: u64) ->
   Ok(())
 }
 
-fn allowed_cors_origin(origin: &str) -> &str {
+// E4 (NR-1): Lokale Herkunft exakt prüfen: http://localhost oder http://127.0.0.1, ohne Port oder mit Port aus Ziffern.
+// Ein Präfix wie http://localhost:8000.example passt nicht mehr.
+fn is_local_origin(origin: &str) -> bool {
+  for host in ["http://localhost", "http://127.0.0.1"] {
+    if let Some(rest) = origin.strip_prefix(host) {
+      if rest.is_empty() { return true; }
+      if let Some(port) = rest.strip_prefix(':') {
+        return !port.is_empty() && port.len() <= 5 && port.bytes().all(|b| b.is_ascii_digit())
+          && port.parse::<u16>().map(|value| value > 0).unwrap_or(false);
+      }
+    }
+  }
+  false
+}
+
+// Fremde Herkunft: None, also kein Access-Control-Allow-Origin-Header (bisher „null“).
+fn allowed_cors_origin(origin: &str) -> Option<&str> {
   match origin {
-    "null" | "tauri://localhost" | "https://tauri.localhost" | "http://tauri.localhost" => origin,
-    o if o.starts_with("http://localhost:") || o.starts_with("http://127.0.0.1:") => o,
-    o if o == "http://localhost" || o == "http://127.0.0.1" => o,
-    _ => "null",
+    "tauri://localhost" | "https://tauri.localhost" | "http://tauri.localhost" => Some(origin),
+    o if is_local_origin(o) => Some(o),
+    _ => None,
   }
 }
 
-fn build_headers_for_origin(origin: &str) -> Vec<Header> {
-  vec![
-    Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap(),
-    Header::from_bytes(&b"Access-Control-Allow-Origin"[..], origin.as_bytes()).unwrap(),
-    Header::from_bytes(&b"Access-Control-Allow-Methods"[..], &b"GET,OPTIONS"[..]).unwrap(),
-    Header::from_bytes(&b"Access-Control-Allow-Headers"[..], &b"Content-Type"[..]).unwrap(),
-  ]
+fn build_headers_for_origin(origin: Option<&str>) -> Vec<Header> {
+  let mut headers = vec![Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap()];
+  if let Some(origin) = origin {
+    headers.push(Header::from_bytes(&b"Access-Control-Allow-Origin"[..], origin.as_bytes()).unwrap());
+  }
+  headers.push(Header::from_bytes(&b"Access-Control-Allow-Methods"[..], &b"GET,OPTIONS"[..]).unwrap());
+  headers.push(Header::from_bytes(&b"Access-Control-Allow-Headers"[..], &b"Content-Type"[..]).unwrap());
+  headers
 }
 
 fn get_request_origin(request: &tiny_http::Request) -> String {
@@ -496,7 +669,7 @@ fn get_request_origin(request: &tiny_http::Request) -> String {
       return header.value.as_str().to_string();
     }
   }
-  "null".to_string()
+  String::new()
 }
 
 fn send_json(request: tiny_http::Request, status: u16, payload: serde_json::Value) {
@@ -633,6 +806,9 @@ fn pick_chart_candidate(data: &serde_json::Value) -> serde_json::Value {
     "price": price,
     "currency": meta.get("currency").and_then(|value| value.as_str()),
     "asOf": as_of,
+    "exchangeName": meta.get("exchangeName").and_then(|value| value.as_str()),
+    "previousClose": meta.get("chartPreviousClose").and_then(|value| value.as_f64())
+      .or_else(|| meta.get("previousClose").and_then(|value| value.as_f64())),
     "source": "yahoo-chart",
   })
 }
@@ -644,6 +820,8 @@ fn pick_quote_candidate(data: &serde_json::Value) -> serde_json::Value {
     "price": result.get("regularMarketPrice").and_then(|value| value.as_f64()),
     "currency": result.get("currency").and_then(|value| value.as_str()),
     "asOf": result.get("regularMarketTime").and_then(|value| value.as_u64()),
+    "exchangeName": result.get("exchange").and_then(|value| value.as_str()),
+    "previousClose": result.get("regularMarketPreviousClose").and_then(|value| value.as_f64()),
     "source": "yahoo-quote",
   })
 }
@@ -722,22 +900,23 @@ fn normalize_provider_quote(
     "price": price,
     "currency": currency,
     "asOf": as_of,
+    "exchangeName": candidate.get("exchangeName"),
+    "previousClose": candidate.get("previousClose"),
     "source": source,
   }))
 }
 
 fn should_stop_quote_fallback(error: &QuoteFailure) -> bool {
-  matches!(error.code, "UNSUPPORTED_CURRENCY" | "SYMBOL_MISMATCH" | "QUOTE_STALE" | "QUOTE_FROM_FUTURE")
+  matches!(error.code, "UNSUPPORTED_CURRENCY" | "SYMBOL_MISMATCH" | "QUOTE_STALE"
+    | "QUOTE_FROM_FUTURE" | "SYMBOL_NOT_FOUND" | "PROVIDER_RATE_LIMITED")
 }
 
-fn handle_quote(request: tiny_http::Request, raw_symbol: &str) {
-  let symbol = match normalize_yahoo_symbol(raw_symbol) {
-    Ok(symbol) => symbol,
-    Err(error) => {
-      send_quote_error(request, &error);
-      return;
-    }
-  };
+fn fetch_quote(
+  raw_symbol: &str,
+  single_attempt: bool,
+  mut fetch: impl FnMut(&str) -> Result<serde_json::Value, QuoteFailure>,
+) -> Result<serde_json::Value, QuoteFailure> {
+  let symbol = normalize_yahoo_symbol(raw_symbol)?;
   let encoded_symbol = urlencoding::encode(&symbol);
   let attempts: Vec<(String, fn(&serde_json::Value) -> serde_json::Value)> = vec![
     (
@@ -764,19 +943,23 @@ fn handle_quote(request: tiny_http::Request, raw_symbol: &str) {
   let mut last_error = quote_failure("SYMBOL_NOT_FOUND", "Yahoo: Symbol nicht gefunden.", 404);
 
   for (url, pick_candidate) in attempts {
-    match fetch_json(&url).and_then(|data| normalize_provider_quote(&symbol, &pick_candidate(&data), now_seconds)) {
-      Ok(quote) => {
-        send_json(request, 200, quote);
-        return;
-      }
+    match fetch(&url).and_then(|data| normalize_provider_quote(&symbol, &pick_candidate(&data), now_seconds)) {
+      Ok(quote) => return Ok(quote),
       Err(error) => {
-        let stop = should_stop_quote_fallback(&error);
+        let stop = single_attempt || should_stop_quote_fallback(&error);
         last_error = error;
         if stop { break; }
       }
     }
   }
-  send_quote_error(request, &last_error);
+  Err(last_error)
+}
+
+fn handle_quote(request: tiny_http::Request, raw_symbol: &str, single_attempt: bool) {
+  match fetch_quote(raw_symbol, single_attempt, fetch_json) {
+    Ok(quote) => send_json(request, 200, quote),
+    Err(error) => send_quote_error(request, &error),
+  }
 }
 
 fn handle_search(request: tiny_http::Request, query: &str) {
@@ -846,7 +1029,7 @@ fn handle_proxy_request(request: tiny_http::Request) {
   match path {
     "/quote" => {
       if let Some(symbol) = params.get("symbol") {
-        handle_quote(request, symbol);
+        handle_quote(request, symbol, params.get("einmal").map(String::as_str) == Some("1"));
       } else {
         send_quote_error(request, &quote_failure("INVALID_SYMBOL", "Yahoo-Symbol fehlt.", 400));
       }
@@ -883,6 +1066,7 @@ pub fn run() {
     single_instance::InstanceStart::Unchecked => None,
   };
   tauri::Builder::default()
+    .plugin(tauri_plugin_dialog::init())
     .manage(CloseState::default())
     .on_page_load(|webview, payload| {
       if matches!(payload.event(), tauri::webview::PageLoadEvent::Started) {
@@ -896,11 +1080,14 @@ pub fn run() {
       save_app_state,
       quarantine_app_state,
       delete_play_state,
+      delete_live_state,
       delete_household_state,
       read_household_state,
       get_app_data_directory,
       open_app_data_directory,
-      confirm_app_close
+      confirm_app_close,
+      report_app_save,
+      save_file_with_dialog
     ])
     .setup(move |app| {
       if let Some(lock) = instance {
@@ -934,13 +1121,8 @@ pub fn run() {
         let _ = window.emit("ruhestand://close-requested", json!({ "attemptId": id.to_string() }));
         let fallback_window = window.clone();
         thread::spawn(move || {
-          thread::sleep(Duration::from_secs(3));
-          if let Some(state) = fallback_window.try_state::<CloseState>() {
-            let reserved = state.protocol.lock().unwrap_or_else(|e| e.into_inner()).timeout(id, close_clock_ms());
-            if reserved {
-              let _ = close_reserved_window(&fallback_window, &state, id);
-            }
-          }
+          thread::sleep(Duration::from_millis(CLOSE_FALLBACK_MS));
+          close_after_saves(&fallback_window, id);
         });
       }
     })
@@ -1025,6 +1207,19 @@ mod tests {
     assert!(delete_household_folder(root, "fff000fff000").is_err());
   }
 
+  #[test]
+  fn chosen_file_receives_the_content_and_reports_unwritable_paths() {
+    let files = StateFiles::new();
+    let path = files.0.join("Vollsicherung.json");
+    write_chosen_file(&path, "{\"a\":1}").unwrap();
+    assert_eq!(fs::read_to_string(&path).unwrap(), "{\"a\":1}");
+    write_chosen_file(&path, "überschrieben").unwrap();
+    assert_eq!(fs::read_to_string(&path).unwrap(), "überschrieben", "der Dialog hat das Ersetzen schon bestätigt");
+    let missing = files.0.join("fehlt").join("Export.csv");
+    assert!(write_chosen_file(&missing, "x").unwrap_err().starts_with("Datei konnte nicht gespeichert werden"));
+    assert!(!missing.exists());
+  }
+
   struct StateFiles(PathBuf);
   impl StateFiles {
     fn new() -> Self {
@@ -1104,6 +1299,113 @@ mod tests {
     fs::write(path.with_extension("json.tmp"), r#"{"cash":30000}"#).unwrap();
     assert!(save_state_file_with_replace(&path, "{}", |source, destination| fs::rename(source, destination)).is_err());
     assert_eq!(fs::read_to_string(path.with_extension("json.tmp")).unwrap(), r#"{"cash":30000}"#);
+  }
+
+  #[test]
+  fn empty_or_invalid_content_is_rejected_and_main_stays_unchanged() {
+    let files = StateFiles::new();
+    let path = files.0.join(APP_STATE_FILENAME);
+    fs::write(&path, r#"{"cash":30000}"#).unwrap();
+    let modified = fs::metadata(&path).unwrap().modified().unwrap();
+    for content in ["", "  ", "null", "[]", "42", "\"text\"", "{kaputt"] {
+      let error = save_state_file_with_replace(&path, content, |source, destination| fs::rename(source, destination)).unwrap_err();
+      assert!(error.contains("kein JSON-Objekt"), "{content:?}: {error}");
+      assert_eq!(fs::read_to_string(&path).unwrap(), r#"{"cash":30000}"#);
+      assert!(!path.with_extension("json.tmp").exists(), "{content:?}: keine Schreibdatei angelegt");
+    }
+    assert_eq!(fs::metadata(&path).unwrap().modified().unwrap(), modified);
+    // Ein ungültiger Inhalt holt auch keine Rettungsdatei als Hauptdatei zurück.
+    fs::remove_file(&path).unwrap();
+    fs::write(path.with_extension("json.tmp"), r#"{"cash":31000}"#).unwrap();
+    assert!(save_state_file_with_replace(&path, "", |source, destination| fs::rename(source, destination)).is_err());
+    assert!(!path.exists());
+    assert_eq!(fs::read_to_string(path.with_extension("json.tmp")).unwrap(), r#"{"cash":31000}"#);
+    save_state_file_with_replace(&path, "{}", |source, destination| fs::rename(source, destination)).unwrap();
+    assert_eq!(load_state_file(&path).unwrap(), "{}");
+  }
+
+  #[test]
+  fn live_delete_removes_only_main_and_temporary_file() {
+    let _: fn(tauri::AppHandle, Option<String>, Option<u64>) -> Result<(), String> = delete_live_state;
+    let files = StateFiles::new();
+    let root = files.0.as_path();
+    let own = household_state_directory(root, Some(StateTarget::Live), Some("abc123def456")).unwrap();
+    let other = household_state_directory(root, Some(StateTarget::Live), Some("zzz999yyy888")).unwrap();
+    let mut kept = Vec::new();
+    for directory in [root.to_path_buf(), own.clone(), other] {
+      fs::create_dir_all(&directory).unwrap();
+      for target in [StateTarget::Live, StateTarget::Snapshots, StateTarget::Spiel, StateTarget::SpielSnapshots] {
+        let path = directory.join(state_filename(Some(target)));
+        for file in [path.clone(), path.with_extension("json.tmp"), path.with_extension("json.bak")] {
+          let content = format!("{{\"file\":\"{}\"}}", kept.len());
+          fs::write(&file, &content).unwrap();
+          kept.push((file, content));
+        }
+      }
+    }
+    for target in [StateTarget::Control, StateTarget::Households] {
+      let file = root.join(state_filename(Some(target)));
+      let content = format!("{{\"file\":\"{}\"}}", kept.len());
+      fs::write(&file, &content).unwrap();
+      kept.push((file, content));
+    }
+    let main = own.join(APP_STATE_FILENAME);
+    let backup = fs::read_to_string(main.with_extension("json.bak")).unwrap();
+    delete_live_files(&main).unwrap();
+    assert!(!main.exists());
+    assert!(!main.with_extension("json.tmp").exists());
+    assert!(!main.with_extension("json.bak").exists());
+    kept.retain(|(file, _)| *file != main && *file != main.with_extension("json.tmp") && *file != main.with_extension("json.bak"));
+    assert_eq!(kept.len(), 3 * 12 + 2 - 3);
+    for (file, content) in &kept {
+      assert_eq!(&fs::read_to_string(file).unwrap(), content, "{}", file.display());
+    }
+    // NR-1 (M3): Die .json.bak ist nicht gelöscht, sondern im selben Ordner beiseitegelegt.
+    let aside: Vec<PathBuf> = fs::read_dir(&own).unwrap().map(|entry| entry.unwrap().path())
+      .filter(|path| path.file_name().and_then(|name| name.to_str()).is_some_and(|name| name.starts_with("ruhestand_suite_data.bak."))).collect();
+    assert_eq!(aside.len(), 1);
+    assert_eq!(fs::read_to_string(&aside[0]).unwrap(), backup);
+    assert_eq!(fs::read_dir(&own).unwrap().count(), 10, "Haupt- und Schreibdatei fehlen, die .json.bak liegt beiseite");
+    assert!(delete_live_files(&main).is_ok(), "fehlende Dateien gelten als Erfolg");
+  }
+
+  #[test]
+  fn live_delete_sets_aside_stale_backup_so_it_cannot_return_as_main() {
+    // NR-1 (M3): Leere Hauptdatei und alte .json.bak aus einer früheren Version. Nach der Rücknahme bleibt der Haushalt leer.
+    let files = StateFiles::new();
+    let path = files.0.join(APP_STATE_FILENAME);
+    fs::write(&path, "").unwrap();
+    fs::write(path.with_extension("json.bak"), r#"{"cash":29000}"#).unwrap();
+    assert_eq!(load_state_file(&path).unwrap(), "");
+    delete_live_files(&path).unwrap();
+    assert_eq!(load_state_file(&path).unwrap(), "");
+    assert!(!path.exists());
+    assert!(!path.with_extension("json.bak").exists());
+    let aside: Vec<PathBuf> = fs::read_dir(&files.0).unwrap().map(|entry| entry.unwrap().path()).collect();
+    assert_eq!(aside.len(), 1);
+    assert!(aside[0].file_name().and_then(|name| name.to_str()).is_some_and(|name| name.starts_with("ruhestand_suite_data.bak.") && name.ends_with(".json")));
+    assert_eq!(fs::read_to_string(&aside[0]).unwrap(), r#"{"cash":29000}"#);
+    // Im Normalbetrieb bleibt die .json.bak beim Speichern unberührt (state_replace_keeps_main_until_atomic_rename_for_every_target).
+  }
+
+  #[test]
+  fn live_delete_leaves_no_temporary_file_that_could_return_as_main() {
+    let files = StateFiles::new();
+    let path = files.0.join(APP_STATE_FILENAME);
+    // Hauptdatei fehlt, .tmp ist gültig: danach bringt kein Lesen sie als Hauptdatei zurück.
+    fs::write(path.with_extension("json.tmp"), r#"{"cash":31000}"#).unwrap();
+    delete_live_files(&path).unwrap();
+    assert!(!path.with_extension("json.tmp").exists());
+    assert_eq!(load_state_file(&path).unwrap(), "");
+    assert!(!path.exists());
+    // Eine schon leere Hauptdatei samt gültiger Schreibdatei geht mit; danach lässt sich wieder speichern.
+    fs::write(&path, "").unwrap();
+    fs::write(path.with_extension("json.tmp"), r#"{"cash":32000}"#).unwrap();
+    delete_live_files(&path).unwrap();
+    assert_eq!(load_state_file(&path).unwrap(), "");
+    save_state_file_with_replace(&path, r#"{"cash":5}"#, |source, destination| fs::rename(source, destination)).unwrap();
+    assert_eq!(load_state_file(&path).unwrap(), r#"{"cash":5}"#);
+    assert_eq!(fs::read_dir(&files.0).unwrap().count(), 1);
   }
 
   #[test]
@@ -1187,12 +1489,13 @@ mod tests {
 
   #[test]
   fn yahoo_proxy_cors_query_and_errors_keep_contract() {
-    for origin in ["null", "tauri://localhost", "https://tauri.localhost", "http://localhost:8080", "http://127.0.0.1:8080"] {
-      assert_eq!(allowed_cors_origin(origin), origin);
-      let headers = build_headers_for_origin(origin);
+    for origin in ["tauri://localhost", "https://tauri.localhost", "http://localhost:8080", "http://127.0.0.1:8080"] {
+      assert_eq!(allowed_cors_origin(origin), Some(origin));
+      let headers = build_headers_for_origin(Some(origin));
       assert!(headers.iter().any(|header| header.field.to_string() == "Access-Control-Allow-Origin" && header.value.as_str() == origin));
     }
-    assert_eq!(allowed_cors_origin("https://example.invalid"), "null");
+    assert_eq!(allowed_cors_origin("https://example.invalid"), None);
+    assert!(!build_headers_for_origin(None).iter().any(|header| header.field.to_string() == "Access-Control-Allow-Origin"));
     assert_eq!(parse_query("symbol=VWCE%2EDE").get("symbol").unwrap(), "VWCE.DE");
     let error = quote_failure("NOT_FOUND", "Route nicht gefunden.", 404);
     assert_eq!(quote_error_payload(&error), json!({ "status": "error", "code": "NOT_FOUND", "message": "Route nicht gefunden." }));
@@ -1227,7 +1530,7 @@ mod tests {
     let response = client.request(reqwest::Method::OPTIONS, format!("http://{}/quote", address))
       .header("Origin", "https://example.invalid").send().unwrap();
     assert_eq!(response.status().as_u16(), 204);
-    assert_eq!(response.headers().get("Access-Control-Allow-Origin").unwrap(), "null");
+    assert!(response.headers().get("Access-Control-Allow-Origin").is_none());
     assert_eq!(response.headers().get("Access-Control-Allow-Methods").unwrap(), "GET,OPTIONS");
     assert_eq!(response.headers().get("Access-Control-Allow-Headers").unwrap(), "Content-Type");
     assert_eq!(response.text().unwrap(), "");
@@ -1247,12 +1550,35 @@ mod tests {
     let id = start_close(&mut protocol, 100);
     assert!(!protocol.timeout(id, 3099));
     assert_eq!(protocol.request(200), CloseRequest::Block);
-    assert!(!protocol.allow(id));
+    assert!(!protocol.allow(id, 200));
     assert!(protocol.timeout(id, 3100));
     assert!(!protocol.hold(id, 3100));
     assert!(!protocol.timeout(id, 9999));
     assert_eq!(protocol.request(3100), CloseRequest::Allow);
     assert_eq!(protocol.request(3101), CloseRequest::Block);
+  }
+
+  #[test]
+  fn close_unclaimed_saving_waits_for_all_saves_up_to_ten_seconds() {
+    let mut protocol = CloseProtocol::default();
+    protocol.saves.insert("live".into(), true);
+    protocol.saves.insert("archive".into(), true);
+    let id = start_close(&mut protocol, 100);
+    assert!(!protocol.timeout(id, 3100));
+    assert_eq!(protocol.save_wait_ms(id, 3100), Some(25));
+    protocol.saves.remove("live");
+    assert!(!protocol.timeout(id, 5000));
+    protocol.saves.remove("archive");
+    assert!(protocol.timeout(id, 5000));
+    assert_eq!(protocol.save_wait_ms(id, 5000), None);
+
+    let mut protocol = CloseProtocol::default();
+    protocol.saves.insert("slow".into(), true);
+    let id = start_close(&mut protocol, 100);
+    assert!(!protocol.timeout(id, 10099));
+    assert_eq!(protocol.save_wait_ms(id, 10099), Some(1));
+    assert!(protocol.timeout(id, 10100));
+    assert_eq!(protocol.save_wait_ms(id, 10100), None);
   }
 
   #[test]
@@ -1306,12 +1632,12 @@ mod tests {
     let next = start_close(&mut protocol, 100);
     assert!(next > old);
     assert!(!protocol.reject(old));
-    assert!(!protocol.allow(old));
+    assert!(!protocol.allow(old, 101));
     assert!(!protocol.timeout(old, 10_000));
     assert!(protocol.hold(next, 101));
     assert!(!protocol.timeout(next, 10_000));
-    assert!(protocol.allow(next));
-    assert!(!protocol.allow(next));
+    assert!(protocol.allow(next, 10_000));
+    assert!(!protocol.allow(next, 10_000));
     assert!(!protocol.reject(next));
     assert_eq!(protocol.request(10_000), CloseRequest::Allow);
     assert_eq!(protocol.request(10_001), CloseRequest::Block);
@@ -1329,12 +1655,12 @@ mod tests {
     assert!(next > old);
     assert!(!protocol.hold(old, 1_000_002));
     assert!(!protocol.reject(old));
-    assert!(!protocol.allow(old));
+    assert!(!protocol.allow(old, 1_000_002));
     assert!(!protocol.timeout(old, 2_000_000));
     assert!(protocol.hold(next, 1_000_002));
     assert!(!protocol.timeout(next, 2_000_000));
-    assert!(protocol.allow(next));
-    assert!(!protocol.allow(next));
+    assert!(protocol.allow(next, 2_000_000));
+    assert!(!protocol.allow(next, 2_000_000));
     assert_eq!(protocol.request(2_000_001), CloseRequest::Allow);
     assert_eq!(protocol.request(2_000_002), CloseRequest::Block);
   }
@@ -1346,7 +1672,7 @@ mod tests {
       let id = start_close(&mut protocol, 0);
       if held {
         assert!(protocol.hold(id, 1));
-        assert!(protocol.allow(id));
+        assert!(protocol.allow(id, 1));
       } else {
         assert!(protocol.timeout(id, 3000));
       }
@@ -1363,33 +1689,91 @@ mod tests {
       let mut protocol = CloseProtocol::default();
       let old = start_close(&mut protocol, 0);
       assert!(protocol.hold(old, 0));
-      assert!(protocol.allow(old));
+      assert!(protocol.allow(old, 0));
       if consume { assert_eq!(protocol.request(1), CloseRequest::Allow); }
       protocol.close_failed(old);
       let next = start_close(&mut protocol, 2);
       assert!(protocol.hold(next, 2));
       protocol.close_failed(old);
-      assert!(protocol.allow(next));
+      assert!(protocol.allow(next, 2));
       assert_eq!(protocol.request(3), CloseRequest::Allow);
     }
   }
 
   #[test]
+  fn close_allow_waits_for_running_saves_up_to_the_save_limit() {
+    // NR-1 (M2): Die JS-Freigabe schließt erst nach laufenden Speicherungen; neue Klicks und alte Antworten ändern nichts.
+    let mut protocol = CloseProtocol::default();
+    let id = start_close(&mut protocol, 0);
+    assert!(protocol.hold(id, 1));
+    protocol.saves.insert("archive".into(), true);
+    assert!(protocol.allow(id, 500));
+    assert_ne!(protocol.active, Some(CloseAttempt { id, phase: ClosePhase::Closing { permit: true } }));
+    assert_eq!(protocol.request(600), CloseRequest::Block);
+    assert!(!protocol.hold(id, 600));
+    assert!(!protocol.reject(id));
+    assert!(!protocol.allow(id, 600));
+    assert!(!protocol.timeout(id, 600));
+    assert_eq!(protocol.save_wait_ms(id, 600), Some(25));
+    protocol.saves.remove("archive");
+    assert!(protocol.timeout(id, 700));
+    assert_eq!(protocol.save_wait_ms(id, 700), None);
+    assert_eq!(protocol.request(701), CloseRequest::Allow);
+    assert_eq!(protocol.request(702), CloseRequest::Block);
+
+    // Hängt eine Speicherung, schließt der Versuch spätestens 7 s nach der Freigabe (bestehende Speicherfrist).
+    let mut protocol = CloseProtocol::default();
+    let id = start_close(&mut protocol, 0);
+    assert!(protocol.hold(id, 1));
+    protocol.saves.insert("slow".into(), false);
+    assert!(protocol.allow(id, 1000));
+    assert!(!protocol.timeout(id, 7999));
+    assert_eq!(protocol.save_wait_ms(id, 7999), Some(1));
+    assert!(protocol.timeout(id, 8000));
+    assert_eq!(protocol.request(8001), CloseRequest::Allow);
+
+    // Ein Seitenwechsel während des Wartens verwirft den Versuch; das Fenster bleibt offen.
+    let mut protocol = CloseProtocol::default();
+    let id = start_close(&mut protocol, 0);
+    assert!(protocol.hold(id, 1));
+    protocol.saves.insert("live".into(), true);
+    assert!(protocol.allow(id, 2));
+    protocol.page_load_started();
+    assert!(!protocol.timeout(id, 1_000_000));
+    assert_eq!(protocol.save_wait_ms(id, 1_000_000), None);
+    assert!(start_close(&mut protocol, 1_000_001) > id);
+
+    // Ohne laufende Speicherung bleibt die Freigabe sofort wirksam.
+    let mut protocol = CloseProtocol::default();
+    let id = start_close(&mut protocol, 0);
+    assert!(protocol.hold(id, 1));
+    assert!(protocol.allow(id, 2));
+    assert_eq!(protocol.request(3), CloseRequest::Allow);
+  }
+
+  #[test]
   fn cors_origin_allows_tauri_and_local_origins() {
-    assert_eq!(allowed_cors_origin("null"), "null");
-    assert_eq!(allowed_cors_origin("tauri://localhost"), "tauri://localhost");
-    assert_eq!(allowed_cors_origin("https://tauri.localhost"), "https://tauri.localhost");
-    assert_eq!(allowed_cors_origin("http://localhost:8000"), "http://localhost:8000");
-    assert_eq!(allowed_cors_origin("http://127.0.0.1:8000"), "http://127.0.0.1:8000");
-    assert_eq!(allowed_cors_origin("http://localhost"), "http://localhost");
-    assert_eq!(allowed_cors_origin("http://127.0.0.1"), "http://127.0.0.1");
+    assert_eq!(allowed_cors_origin("tauri://localhost"), Some("tauri://localhost"));
+    assert_eq!(allowed_cors_origin("https://tauri.localhost"), Some("https://tauri.localhost"));
+    assert_eq!(allowed_cors_origin("http://localhost:8000"), Some("http://localhost:8000"));
+    assert_eq!(allowed_cors_origin("http://127.0.0.1:8000"), Some("http://127.0.0.1:8000"));
+    assert_eq!(allowed_cors_origin("http://localhost"), Some("http://localhost"));
+    assert_eq!(allowed_cors_origin("http://127.0.0.1"), Some("http://127.0.0.1"));
   }
 
   #[test]
   fn cors_origin_rejects_external_origins() {
-    assert_eq!(allowed_cors_origin("https://example.com"), "null");
-    assert_eq!(allowed_cors_origin("http://192.168.1.10:8000"), "null");
-    assert_eq!(allowed_cors_origin("https://localhost.evil.example"), "null");
+    assert_eq!(allowed_cors_origin(""), None);
+    assert_eq!(allowed_cors_origin("null"), None);
+    assert_eq!(allowed_cors_origin("https://example.com"), None);
+    assert_eq!(allowed_cors_origin("http://192.168.1.10:8000"), None);
+    assert_eq!(allowed_cors_origin("https://localhost.evil.example"), None);
+    // E4 (NR-1): exakte Prüfung statt Präfix; ein Port besteht nur aus Ziffern.
+    for origin in ["http://localhost:8000.attacker.com", "http://127.0.0.1:8000.attacker.com", "http://localhost.attacker.com",
+      "http://127.0.0.10", "http://localhost:", "http://localhost:+80", "http://localhost:0", "http://localhost:65536",
+      "http://localhost:8000/", "http://127.0.0.1:8000@attacker.com"] {
+      assert_eq!(allowed_cors_origin(origin), None, "{origin}");
+    }
   }
 
   #[test]
@@ -1411,7 +1795,9 @@ mod tests {
             "symbol": "VWCE.DE",
             "regularMarketPrice": 123.45,
             "currency": "EUR",
-            "regularMarketTime": now - 60
+            "regularMarketTime": now - 60,
+            "exchange": "GER",
+            "regularMarketPreviousClose": 123.0
           }
         ]
       }
@@ -1421,6 +1807,8 @@ mod tests {
     assert_eq!(normalized_quote.get("price").and_then(|value| value.as_f64()), Some(123.45));
     assert_eq!(normalized_quote.get("currency").and_then(|value| value.as_str()), Some("EUR"));
     assert_eq!(normalized_quote.get("asOf").and_then(|value| value.as_u64()), Some(now - 60));
+    assert_eq!(normalized_quote.get("exchangeName").and_then(|value| value.as_str()), Some("GER"));
+    assert_eq!(normalized_quote.get("previousClose").and_then(|value| value.as_f64()), Some(123.0));
     assert_eq!(normalized_quote.get("source").and_then(|value| value.as_str()), Some("yahoo-quote"));
 
     let chart = json!({
@@ -1430,7 +1818,9 @@ mod tests {
             "meta": {
               "symbol": "VWCE.DE",
               "regularMarketPrice": 0.0,
-              "currency": "EUR"
+              "currency": "EUR",
+              "exchangeName": "GER",
+              "chartPreviousClose": 101.0
             },
             "timestamp": [now - 180, now - 120, now - 60],
             "indicators": {
@@ -1445,6 +1835,8 @@ mod tests {
     let chart_candidate = pick_chart_candidate(&chart);
     assert_eq!(chart_candidate.get("price").and_then(|value| value.as_f64()), Some(101.2));
     assert_eq!(chart_candidate.get("asOf").and_then(|value| value.as_u64()), Some(now - 60));
+    assert_eq!(chart_candidate.get("exchangeName").and_then(|value| value.as_str()), Some("GER"));
+    assert_eq!(chart_candidate.get("previousClose").and_then(|value| value.as_f64()), Some(101.0));
   }
 
   #[test]
@@ -1482,6 +1874,25 @@ mod tests {
       normalize_provider_quote("VWCE.DE", &stale, now).unwrap_err().code,
       "QUOTE_STALE"
     );
+  }
+
+  #[test]
+  fn quote_fallback_limits_upstream_attempts() {
+    for (single_attempt, code, status, expected_count) in [
+      (false, "SYMBOL_NOT_FOUND", 404, 1),
+      (false, "PROVIDER_RATE_LIMITED", 429, 1),
+      (true, "PROVIDER_UNAVAILABLE", 502, 1),
+      (false, "PROVIDER_UNAVAILABLE", 502, 4),
+    ] {
+      let mut urls = Vec::new();
+      let error = fetch_quote("MUSTER.MU", single_attempt, |url| {
+        urls.push(url.to_owned());
+        Err(quote_failure(code, "Musterantwort", status))
+      }).unwrap_err();
+      assert_eq!(error.code, code);
+      assert_eq!(urls.len(), expected_count);
+      assert!(urls[0].starts_with("https://query1.finance.yahoo.com/v8/finance/chart/MUSTER.MU?"));
+    }
   }
 
   #[test]

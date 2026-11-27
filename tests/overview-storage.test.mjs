@@ -231,7 +231,7 @@ assertEqual(await storeMonthProvision({ ...monthRequest, month: '2026-05' }, { .
     changeScopeFlushes++;
     if (changeScopeFlushes === 1) {
         const changed = JSON.parse(persistenceStorage.getItem('rs_profiles_v1'));
-        changed.profiles.b.meta.belongsToHousehold = false;
+        delete changed.profiles.b;
         persistenceStorage.setItem('rs_profiles_v1', JSON.stringify(changed));
     }
     return true;

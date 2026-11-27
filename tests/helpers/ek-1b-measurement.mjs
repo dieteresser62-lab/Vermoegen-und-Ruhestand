@@ -17,7 +17,7 @@ import { prepareHistoricalDataOnce } from '../../app/simulator/simulator-engine-
 import { runMonteCarloChunk } from '../../app/simulator/monte-carlo-runner.js';
 import { simulateOneYear } from '../../app/simulator/simulator-engine-direct.js';
 import { runHistoricalBacktest } from '../../app/simulator/historical-backtest-runner.js';
-import { createHistoricalBacktestContractProvider } from '../../app/simulator/historical-backtest-contract.js';
+import { historischerProvider } from './grundbestand-stichprobe.mjs';
 import { computeAdjPctForYear } from '../../app/simulator/simulator-main-helpers.js';
 import { resolveDynamicFlexRunnerHorizon } from '../../app/simulator/dynamic-flex-runner-horizon.js';
 import { portfolioTotal } from '../../app/simulator/simulator-results.js';
@@ -27,8 +27,9 @@ import { quantile } from '../../app/simulator/simulator-utils.js';
 export const parameters = { anzahl: 2000, maxDauer: 35, blockSize: 3, seed: 12345,
     methode: 'regime_markov', rngMode: 'per-run-seed', startYearMode: 'UNIFORM' };
 export const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
-export async function measurementInputs(salary = 0, householdId = undefined, testDate = '2026-10-16', variantId = 'grund') {
-    const records = createMusterHaushaltRecords(testDate, householdId, variantId);
+export async function measurementInputs(salary = 0, householdId = undefined, testDate = '2026-10-16', variantId = 'grund', transform = null) {
+    const created = createMusterHaushaltRecords(testDate, householdId, variantId);
+    const records = transform ? transform(created) : created;
     if (salary) {
         const registry = JSON.parse(records.rs_profiles_v1);
         const entries = [{ id: 'gehalt', art: 'sonstige', bezeichnung: 'Gehalt', betragMonat: salary,
@@ -53,7 +54,7 @@ export async function measurementInputs(salary = 0, householdId = undefined, tes
 }
 export function backtest(inputs, startYear = 2000, endYear = 2025) {
     return runHistoricalBacktest({ inputs, period: { startYear, endYear },
-        historicalDataProvider: createHistoricalBacktestContractProvider(), initializePortfolio,
+        historicalDataProvider: historischerProvider(), initializePortfolio,
         simulateYear: (...args) => simulateOneYear(...args, null, 0, null, 1, EngineAPI),
         computeAdjustmentPct: computeAdjPctForYear, resolveHorizon: resolveDynamicFlexRunnerHorizon,
         totalPortfolio: portfolioTotal, breakOnRuin: true });

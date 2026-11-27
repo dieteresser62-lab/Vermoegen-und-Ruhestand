@@ -297,7 +297,7 @@ try {
         () => portfolioInputs, () => ({}), () => ({}), () => ({}), () => aggregate, formatCurrency, formatDisplayNumber, setFieldState, propertyParts, wealthDetail, wealthMoney, (active, amount) => active === true || amount > 0,
         () => ({ value: null }), () => 0, () => '', () => 0, () => ''
     );
-    const portfolio = fixture({ simStartVermoegen: { disabled: true }, depotwertGesamt: { disabled: true }, goldWert: { disabled: true }, initialBondBucket: { disabled: true }, einstandNeu: '', displayPortfolioBreakdown: '', goldStrategyPanel: '' });
+    const portfolio = fixture({ simStartVermoegen: { disabled: true }, depotwertGesamt: { disabled: true }, goldWert: { disabled: true }, initialBondBucket: { disabled: true }, einstandNeu: '', displayPortfolioBreakdown: '' });
     for (const useAggregates of [false, true, false]) {
         portfolioInputs = { startVermoegen: 100000, depotwertAlt: 20000, tagesgeld: 5000, geldmarktEtf: 3000, goldAktiv: true, goldZielProzent: 20, detailledTranches: useAggregates ? [{}] : [] };
         aggregate = { depotwertAlt: 20000, depotwertNeu: 30000, goldWert: 10000, geldmarktEtf: 8000, costBasisNeu: 22000, bondsWert: 9000 };
@@ -322,7 +322,6 @@ try {
         assertEqual(partnerOnly.field('sectionRente2').style.display, active ? 'block' : 'none', 'S16: manueller Partnerwechsel');
     }
     assert(!sources['Simulator.html'].includes('id="enableAccumulationPhase"'), 'S18: Ansparbedienung entfernt');
-    assert(!sources['app/simulator/simulator-main-accumulation.js'].includes('setItem'), 'S18: kein Anspar-UI-Schreibpfad');
 
     const b = fixture({ mcMethode: 'regime_iid', mcBlockSize: '7', mcBlockSizeLabel: '' });
     initMonteCarloMethodControls();
@@ -377,6 +376,12 @@ try {
         if (step) assertEqual(node.attrs.step, step, 'S17: Prozent-Schritt unverändert');
         assert(node.attrs.class.includes('ds-input'), 'S17: additive Eingaberolle');
     }
+    const floorLabel = html.find(node => node.tag === 'label' && node.attrs.for === 'survivorFloorPercent');
+    const floorInfo = html.find(node => node.tag === 'button' && node.attrs['aria-label'] === 'Grundbedarf nach dem Tod');
+    assert(floorLabel && floorLabel.parent === floorInfo?.parent?.parent
+        && floorLabel.parent.attrs.class === 'sim-survivor-floor-heading'
+        && /aria-label="Grundbedarf nach dem Tod"[^>]*>ⓘ<\/button>/.test(sources['Simulator.html']),
+        'HL-5: Grundbedarf und ⓘ teilen sich eine Feldbeschriftung');
     store.clear(); store.set('sim_p1KirchensteuerPct', '9'); store.set('sim_p1Monatsrente', '1234'); store.set('sim_r2Brutto', '24000');
     const legacy = fixture(Object.fromEntries([...legacyIds, 'p1KirchensteuerPct', 'p1Monatsrente', 'chkPartnerAktiv', 'sectionRente2', 'r2Monatsrente'].map(id => [id, ''])));
     initRente2ConfigWithLocalStorage();

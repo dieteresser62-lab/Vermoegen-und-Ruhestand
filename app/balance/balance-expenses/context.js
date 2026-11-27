@@ -6,7 +6,6 @@ export const context = {
     pendingImport: null,
     recoveryOptions: null,
     onChange: null,
-    onImportSuccess: null,
     generation: 0,
     decisionInFlight: false,
     exampleVisible: false,

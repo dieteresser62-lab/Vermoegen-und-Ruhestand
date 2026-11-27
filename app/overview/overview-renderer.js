@@ -8,7 +8,7 @@ import { deriveBalanceNextSteps } from '../balance/balance-next-steps.js';
 import { renderOverviewHistory } from './overview-history.js';
 import { escapeHtml } from '../shared/security-utils.js';
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
-import { overviewPriceLabel, overviewPricesDone, overviewQuoteLabel, overviewBackupAge, overviewAllocationView } from './overview-model.js';
+import { overviewPriceLabel, overviewPricesDone, overviewQuoteLabel, overviewBackupStatus, overviewAllocationView } from './overview-model.js';
 import { projectOverviewMonthSteps } from './overview-month-confirmation.js';
 import { cashDateDisplay } from '../shared/tagesgeld-fields.js';
 import { EXAMPLE_EXPENSES_ICON_HTML, exampleExpensesLabel } from '../shared/designsystem-icons.js';
@@ -54,7 +54,7 @@ function actionOriginHtml(origin) {
 // Die fachliche Frischeprüfung bleibt für Rechen- und Abschlussschritte unverändert.
 function todaysPricesConfirmed(model) {
     if (getAppTestDate() !== null) return false;
-    if (model.priceReport?.status !== 'complete' || !overviewPricesDone(model)) return false;
+    if (model.priceReport?.status !== 'complete' || !overviewPricesDone(model, { annual: false })) return false;
     const date = new Date(model.priceReport.retrievedAt ?? model.quoteDate ?? NaN);
     return Number.isFinite(date.getTime()) && date <= model.now && date.toDateString() === model.now.toDateString();
 }
@@ -80,11 +80,9 @@ export function renderOverview(doc, model) {
     doc.getElementById('overviewHouseholdNames')?.setAttribute('title', names);
     set('overviewPricesValue', overviewPriceLabel(model));
     set('overviewPlanningYearValue', `${model.year}${model.planComparison?.recordStatus === 'valid' ? '' : ' · Vorschau'}`);
-    const backup = overviewBackupAge(model.now, model.lastBackup);
-    const backupDays = backup.days === null ? null : Math.floor(backup.days);
-    set('overviewBackupLabel', backup.days === null ? '' : 'Letzte Sicherung');
-    set('overviewBackupValue', backupDays === null ? 'Noch keine Vollsicherung'
-        : backupDays === 0 ? 'heute' : backupDays === 1 ? 'vor 1 Tag' : `vor ${backupDays} Tagen`);
+    const backup = overviewBackupStatus(model.now, model.lastBackup, model.lastBackupDelivery);
+    set('overviewBackupLabel', backup.label);
+    set('overviewBackupValue', backup.value);
     const backupPill = doc.getElementById('overviewBackup');
     // Gutachten 05.11.2026: Beim allerersten Start ohne Daten ist noch keine Vollsicherung fällig.
     const backupWarning = backup.warning && !isPlayArea(getStorageArea()) && !model.firstStart;
@@ -92,6 +90,12 @@ export function renderOverview(doc, model) {
     const reminder = doc.getElementById('overviewBackupReminder');
     if (reminder) reminder.hidden = !backupWarning;
     const pricesPill = doc.getElementById('overviewPrices');
+    // OP-3 Punkt 3: Außerhalb des Spielbereichs aktualisiert ein Klick die Kurse; Spielkurse nicht.
+    if (pricesPill) {
+        const play = getAppTestDate() !== null;
+        pricesPill.disabled = play;
+        if (play) pricesPill.removeAttribute('title'); else pricesPill.setAttribute('title', 'Kurse jetzt aktualisieren');
+    }
     if (pricesPill) pricesPill.dataset.warning = String(!model.firstStart && model.priceTranches?.length !== 0
         && (['offline', 'timeout', 'changed', 'cancelled', 'storage-failed', 'recovery', 'unavailable'].includes(model.priceReport?.status)
         || Boolean(model.priceReport?.results?.some(result => result.status !== 'updated' && (!model.scope?.ids || !result.profileId || model.scope.ids.includes(result.profileId))))));
@@ -197,7 +201,7 @@ function renderYearMonth(month, year, maximum, budget, budgetStatus) {
     const name = calendarMonth(year, month.month);
     const labels = { complete: 'vollständig', partial: 'unvollständig', missing: 'Import fehlt', open: 'noch offen' };
     const detail = `${name}: ${labels[month.state]}${month.spent === null ? '' : ' · ' + money(month.spent)}${month.overBudget ? ' · über Budget' : ''}`;
-    const height = month.spent === null ? 0 : Math.max(2, month.spent / maximum * 100);
+    const height = month.spent === null || month.spent < 0 ? 0 : Math.max(2, month.spent / maximum * 100);
     return `<div class="overview-year-month" data-overview-year-month="${month.month}" data-state="${month.state}" title="${escapeHtml(detail)}">
         <div class="overview-bar-space">${budget === null ? '' : `<i class="overview-budget-line" data-budget-status="${budgetStatus}" style="bottom:${budget / maximum * 100}%" aria-hidden="true"></i>`}<span class="overview-month-bar${month.overBudget ? ' is-over' : ''}" style="height:${height}%" aria-hidden="true"></span></div>
         <b>${escapeHtml(name.slice(0, 3))}</b>
@@ -532,6 +536,20 @@ export function bindOverviewBackupTargets(doc, win = doc.defaultView) {
         const card = doc.getElementById('kursdetails');
         if (card) { card.open = true; card.querySelector?.('summary')?.focus(); }
     };
+    // OP-3 Nachtrag 1: Die Kurspille aktualisiert nur (overview-main.js); die Kursdetails öffnet das ⓘ daneben.
+    // Escape und ein Klick außerhalb schließen sie, zusätzlich zum Knopf im Fenster.
+    const details = doc.getElementById('kursdetails'), detailsButton = doc.getElementById('overviewPriceDetailsBtn');
+    const syncDetails = () => detailsButton?.setAttribute('aria-expanded', String(Boolean(details?.open)));
+    detailsButton?.addEventListener('click', () => { if (details?.open) details.open = false; else openPrices(); syncDetails(); });
+    details?.addEventListener?.('toggle', syncDetails);
+    doc.addEventListener?.('keydown', event => {
+        if (event.key !== 'Escape' || !details?.open) return;
+        details.open = false; syncDetails(); detailsButton?.focus?.();
+    });
+    doc.addEventListener?.('click', event => {
+        if (!details?.open || event.target?.closest?.('.overview-price-context, a[href="#kursdetails"]')) return;
+        details.open = false; syncDetails();
+    });
     let lastHash;
     const open = () => {
         const hash = win?.location.hash;
@@ -545,7 +563,6 @@ export function bindOverviewBackupTargets(doc, win = doc.defaultView) {
     };
 
     doc.getElementById('overviewWelcomeImport')?.addEventListener('click', () => { openOverviewBackupTarget(doc, '#fullBackupImportBtn'); });
-    doc.getElementById('overviewPrices')?.addEventListener('click', openPrices);
     doc.getElementById('overviewFocus')?.addEventListener('click', event => {
         if (event.target.closest('a[href="#kursdetails"]')) openPrices();
     });

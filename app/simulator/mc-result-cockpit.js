@@ -1,16 +1,10 @@
 "use strict";
 
-import { focusSelectedScenario } from './scenario-log-view.js';
 import { effectiveMonteCarloDurationValue } from './monte-carlo-duration.js';
-import { openWorkshopReplay } from './simulator-workshop-ui.js';
-import { activateSimulatorTab } from './simulator-main-tabs.js';
 import { bindResultInfoPopups } from './results-renderers.js';
 
 const cockpitInstances = new WeakMap();
 const RESULT_VIEW_IDS = Object.freeze(['overview', 'risk', 'care', 'logs', 'decision']);
-const COMPARISON_VIEW_IDS = Object.freeze(['kpi', 'delta', 'year']);
-const COMPARISON_TAB_SELECTOR = '[role="tab"][data-stress-replay-comparison-view]';
-const COMPARISON_PANEL_SELECTOR = '[role="tabpanel"][data-stress-replay-comparison-panel]';
 
 function getResultViewElements(documentRef) {
     return RESULT_VIEW_IDS.map(viewId => ({
@@ -60,55 +54,6 @@ export function activateMonteCarloResultView(viewOrTarget, {
     if (comparisonBasis) comparisonBasis.hidden = selected.viewId !== 'decision';
     if (focusTab && typeof selected.tab.focus === 'function') selected.tab.focus();
     return selected.viewId;
-}
-
-/**
- * Schaltet die dynamisch gerenderten Replay-Vergleichsansichten um. Tabs und
- * Panels werden bei jedem Aufruf neu aus dem stabilen Vergleichscontainer
- * gelesen, damit ein Renderer-Rerender keine verwaisten Referenzen erzeugt.
-
- *
- * @param viewId - Kontext für viewId.
- * @param [options] - Optionen des Aufrufers.
- * @returns Ergebnis der Operation.
- */
-export function activateStressReplayComparisonView(viewId, {
-    documentRef = globalThis.document,
-    focusTab = false
-} = {}) {
-    if (!COMPARISON_VIEW_IDS.includes(viewId)) return null;
-    const root = documentRef?.getElementById?.('stressReplayComparison');
-    const tabs = Array.from(/** @type {NodeListOf<HTMLElement>} */ (root?.querySelectorAll?.(COMPARISON_TAB_SELECTOR) || []));
-    const panels = Array.from(/** @type {NodeListOf<HTMLElement>} */ (root?.querySelectorAll?.(COMPARISON_PANEL_SELECTOR) || []));
-    if (tabs.length !== COMPARISON_VIEW_IDS.length || panels.length !== COMPARISON_VIEW_IDS.length) return null;
-
-    const selectedTab = tabs.find(/** @param {HTMLElement} tab */ tab => tab.dataset?.stressReplayComparisonView === viewId);
-    const selectedPanel = panels.find(panel => panel.dataset?.stressReplayComparisonPanel === viewId);
-    if (!selectedTab || !selectedPanel) return null;
-
-    for (const tab of tabs) {
-        const active = tab === selectedTab;
-        tab.setAttribute?.('aria-selected', String(active));
-        tab.setAttribute?.('tabindex', active ? '0' : '-1');
-    }
-    for (const panel of panels) panel.hidden = panel !== selectedPanel;
-    if (focusTab && typeof selectedTab.focus === 'function') selectedTab.focus();
-    return viewId;
-}
-
-/**
- * @param [options] - Optionen des Aufrufers.
- * @returns {number}
- */
-export function updateMonteCarloReplayVariantBadge({ documentRef = globalThis.document } = {}) {
-    const badge = documentRef?.getElementById?.('mcReplayVariantBadge');
-    const list = documentRef?.getElementById?.('stressReplayVariantList');
-    if (!badge || !list) return 0;
-    const variantCount = Math.max(0, (list.querySelectorAll?.('li[data-variant-id]')?.length || 0) - 1);
-    badge.textContent = String(variantCount);
-    badge.hidden = variantCount === 0;
-    badge.setAttribute?.('aria-label', `${variantCount} ${variantCount === 1 ? 'Variante' : 'Varianten'}`);
-    return variantCount;
 }
 
 function getMethodLabel(methodSelect) {
@@ -181,12 +126,38 @@ export function completeMonteCarloCockpitRun({ documentRef = globalThis.document
 }
 
 /**
+ * OP-1 (Punkt 3): Nach einem fertigen Lauf stehen die Reiterzeile des Simulators und die Ergebnisreiter über dem Ergebnis im Blick.
+ * Passt die Überschrift des Ergebnisses darunter nicht ins Fenster, beginnt die Ansicht bei den Ergebnisreitern.
+ * Ist der Monte-Carlo-Reiter nicht offen oder das Ergebnis nicht sichtbar, scrollt nichts.
+ * @param {HTMLElement | null} resultRegion - Ergebnisbereich mit der ersten Antwortkarte.
+ * @param [options] - Optionen des Aufrufers.
+ * @returns {boolean} true, wenn gescrollt wurde; der Fokus darf dann ohne Scrollen folgen.
+ */
+export function revealMonteCarloResult(resultRegion, { documentRef = globalThis.document } = {}) {
+    const win = documentRef?.defaultView, gap = 16;
+    if (typeof win?.scrollTo !== 'function' || typeof resultRegion?.getBoundingClientRect !== 'function') return false;
+    // Nur bei offenem Monte-Carlo-Reiter und sichtbarem Ergebnis; aus einem anderen Reiter gestartet, bleibt die Seite stehen.
+    const panel = resultRegion.closest?.('.tab-panel');
+    if (panel && !panel.classList?.contains('active') || !(resultRegion.getBoundingClientRect().height > 0)) return false;
+    const top = (/** @type {Element | null | undefined} */ element) => {
+        const box = element?.getBoundingClientRect?.();
+        return box && box.height > 0 ? box.top + win.scrollY : null;
+    };
+    const heading = resultRegion.querySelector?.('h2')?.getBoundingClientRect?.();
+    const headingBottom = heading && heading.height > 0 ? heading.bottom + win.scrollY : (top(resultRegion) ?? 0) + 80;
+    const target = [documentRef.querySelector?.('.tab-buttons'), documentRef.querySelector?.('.mc-view-nav'), resultRegion].map(top)
+        .find(value => value !== null && headingBottom - value + 2 * gap <= win.innerHeight);
+    if (target === undefined || target === null) return false;
+    win.scrollTo({ top: Math.max(0, target - gap), behavior: 'instant' });
+    return true;
+}
+
+/**
  * @param [options] - Optionen des Aufrufers.
  * @returns Ergebnis der Operation.
  */
 export function initMonteCarloResultCockpit({
-    documentRef = globalThis.document,
-    MutationObserverCtor = globalThis.MutationObserver
+    documentRef = globalThis.document
 } = {}) {
     if (!documentRef) return null;
     const existing = cockpitInstances.get(documentRef);
@@ -206,9 +177,6 @@ export function initMonteCarloResultCockpit({
     setupDisclosure?.addEventListener?.('toggle', syncDisclosure);
     syncDisclosure();
     const primaryButton = documentRef.getElementById?.('mcButton');
-    const showReplayButton = documentRef.getElementById?.('mcShowReplayButton');
-    const showScenarioLogsButton = documentRef.getElementById?.('mcShowScenarioLogsButton');
-    const comparisonRoot = documentRef.getElementById?.('stressReplayComparison');
     const viewTabs = getResultViewElements(documentRef).map(view => view.tab).filter(Boolean);
     if (!setupDisclosure || !primaryButton || viewTabs.length !== RESULT_VIEW_IDS.length) return null;
 
@@ -220,24 +188,6 @@ export function initMonteCarloResultCockpit({
         input?.addEventListener?.('input', updateSummary);
         input?.addEventListener?.('change', updateSummary);
     }
-
-    showReplayButton?.addEventListener?.('click', () => {
-        const fixButton = documentRef.getElementById?.('stressReplayFixButton');
-        const target = (fixButton && !fixButton.disabled ? fixButton : null)
-            || documentRef.getElementById?.('stressReplaySelectedScenario')
-            || documentRef.getElementById?.('stressReplayStatus')
-            || documentRef.getElementById?.('mcShowScenarioLogsButton');
-        if (!target) return;
-        openWorkshopReplay({ documentRef, target });
-    });
-
-    showScenarioLogsButton?.addEventListener?.('click', () => {
-        if (!activateSimulatorTab('montecarlo', { documentRef })) return;
-        if (activateMonteCarloResultView('logs', { documentRef }) !== 'logs') return;
-        if (focusSelectedScenario(documentRef)) return;
-        const target = showReplayButton;
-        target?.focus?.();
-    });
 
     for (const [index, tab] of viewTabs.entries()) {
         tab.addEventListener?.('click', () => {
@@ -255,45 +205,10 @@ export function initMonteCarloResultCockpit({
         });
     }
 
-    comparisonRoot?.addEventListener?.('click', event => {
-        const tab = /** @type {HTMLElement} */ (/** @type {Element} */ (event?.target)?.closest?.(COMPARISON_TAB_SELECTOR));
-        const viewId = tab?.dataset?.stressReplayComparisonView;
-        if (viewId) activateStressReplayComparisonView(viewId, { documentRef });
-    });
-    comparisonRoot?.addEventListener?.('keydown', event => {
-        const tab = /** @type {HTMLElement} */ (/** @type {Element} */ (event?.target)?.closest?.(COMPARISON_TAB_SELECTOR));
-        if (!tab) return;
-        const tabs = Array.from(/** @type {NodeListOf<HTMLElement>} */ (comparisonRoot.querySelectorAll?.(COMPARISON_TAB_SELECTOR) || []));
-        const index = tabs.indexOf(tab);
-        if (index < 0) return;
-        let nextIndex = null;
-        if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
-        else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
-        else if (event.key === 'Home') nextIndex = 0;
-        else if (event.key === 'End') nextIndex = tabs.length - 1;
-        if (nextIndex === null) return;
-        event.preventDefault?.();
-        activateStressReplayComparisonView(tabs[nextIndex]?.dataset?.stressReplayComparisonView, {
-            documentRef,
-            focusTab: true
-        });
-    });
-
-    let observer = null;
-    let variantObserver = null;
-    if (typeof MutationObserverCtor === 'function') {
-        const variantList = documentRef.getElementById?.('stressReplayVariantList');
-        if (variantList) {
-            variantObserver = new MutationObserverCtor(() => updateMonteCarloReplayVariantBadge({ documentRef }));
-            variantObserver.observe(variantList, { childList: true, subtree: true });
-        }
-    }
-
     updateSummary();
     syncStartState();
     activateMonteCarloResultView('overview', { documentRef });
-    updateMonteCarloReplayVariantBadge({ documentRef });
-    const instance = { setupDisclosure, updateSummary, syncStartState, observer, variantObserver, comparisonRoot };
+    const instance = { setupDisclosure, updateSummary, syncStartState };
     cockpitInstances.set(documentRef, instance);
     return instance;
 }

@@ -25,14 +25,20 @@ console.log('--- Balance Renderer Summary Tests ---');
     globalThis.window = { ...previousWindow, __profileRecoveryBlocker: false,
         __profilverbundProfileSummaries: [{ name: 'A', profileId: 'a' }, { name: 'B', profileId: 'b' }] };
     try {
-        const renderer = new SummaryRenderer({ outputs: {} });
+        const balanceMarketSource = doc.createElement('div');
+        const renderer = new SummaryRenderer({ outputs: { balanceMarketSource } });
         const input = { profilName: 'Testprofil' };
         renderer.renderContext(input);
         assertEqual(scopeHost.textContent, 'Berechnet für: Haushalt · A + B', 'Haushaltsumfang landet über den DOM-Fallback im Kopf');
         assertEqual(profileHost.textContent, profileText, 'Haushaltsrendern erhält die aktive Profilanzeige');
 
+        const annualSource = balanceMarketSource.textContent;
+        renderer.renderContext(input, { marketPreview: { quote: { asOf: '2026-10-23' } } });
+        assertEqual(balanceMarketSource.textContent, 'Vorschau nach Regel · VWCE.DE · Schlusskurs 23.10.2026 · Der Kurs gilt als Jahresende, die Korrekturwerte zählen als Vorjahre.', 'Abrufkurs ergänzt die Quellenzeile um die verwendeten Jahreswerte');
+
         delete globalThis.window.__profilverbundProfileSummaries;
         renderer.renderContext(input);
+        assertEqual(balanceMarketSource.textContent, annualSource, 'Ohne Abrufkurs bleibt die Quelle der Jahresmarktdaten');
         assertEqual(scopeHost.textContent, 'Berechnet für: aktives Profil · Testprofil', 'Ohne Zusammenfassungen ersetzt der Einzelprofilumfang den Haushalt im Kopf');
         assertEqual(profileHost.textContent, profileText, 'Einzelprofilrendern erhält die aktive Profilanzeige');
 
@@ -351,7 +357,7 @@ console.log('--- Balance Renderer Summary Tests Completed ---');
             };
             outputs.balanceActionPeriod = doc.createElement('span');
             outputs.balanceActionPreviewTitle = doc.createElement('span');
-            const checkPreview = expectedYear => {
+            const checkPreview = (expectedYear, { due = false } = {}) => {
                 const detailOutputs = { handlungsanweisung: doc.createElement('div'), actionDetailsTitle: doc.createElement('h2') };
                 // Echte Fassade, auch wenn die Detailansicht keine Budgetkarte besitzt.
                 initUIRenderer({ outputs: { ...detailOutputs, balanceActionPeriod: outputs.balanceActionPeriod,
@@ -360,7 +366,9 @@ console.log('--- Balance Renderer Summary Tests Completed ---');
                 const label = `Vorläufige Vorschau · Jahresabschluss ${expectedYear}`;
                 // WT-1 (FR-77 Punkt 4), WT-1b: Die Vorschau ist eine zugeklappte Zeile „Vorschau auf den Plan {J+1}“.
                 assertEqual(outputs.balanceActionPreviewTitle.textContent, `Vorschau auf den Plan ${expectedYear + 1}`, 'Vorschauzeile nennt den Plan des nächsten Abschlusses');
-                assert(outputs.balanceActionDisclaimer.textContent.startsWith('So sähe der Plan aus, wenn heute der 31.12. wäre.'), 'Aufgeklappt steht ein Satz zur Vorschau');
+                const previewText = due ? `Die Vorschau bleibt vorläufig, bis du den Plan im Jahresabschluss ${expectedYear} beschließt.`
+                    : 'So sähe der Plan aus, wenn heute der 31.12. wäre.';
+                assert(outputs.balanceActionDisclaimer.textContent.startsWith(previewText), 'Aufgeklappt passt der Vorschauhinweis zum Abschlussstatus');
                 assert(detailOutputs.actionDetailsTitle.textContent.startsWith(label), 'Dialogtitel nennt das Abschlussjahr der Herkunftsprojektion');
                 const copy = UIRenderer.getActionCopyText();
                 assert(copy.startsWith(label), 'Kopie übernimmt das Label derselben Herkunftsprojektion');
@@ -370,7 +378,7 @@ console.log('--- Balance Renderer Summary Tests Completed ---');
             metadata = { schemaVersion: 1, lastCommittedPeriod: null, pendingCommit: null };
             seedPeriod(); plan.renderContext(input);
             assert(outputs.balanceActionPreviewTitle.textContent.includes(`Plan ${targetYear + 1}`), 'Offenes Vorjahr: Vorschau auf den Plan, den der nächste Jahresabschluss beschließt');
-            checkPreview(targetYear);
+            checkPreview(targetYear, { due: true });
             metadata = { schemaVersion: 99, lastCommittedPeriod: null, pendingCommit: null }; seedPeriod(); plan.renderContext(input);
             metadata = { schemaVersion: 1, lastCommittedPeriod: `calendar-year:${targetYear}`, pendingCommit: null };
             seedPeriod(); plan.renderContext(input);
@@ -436,7 +444,7 @@ console.log('--- Balance Renderer Summary Tests Completed ---');
         assertEqual(JSON.stringify([...values]), before, 'Ausgabenübersichtszeile bleibt vollständig lesend');
         const registryRaw = values.get('rs_profiles_v1');
         const registry = JSON.parse(registryRaw);
-        registry.profiles.muster_b.meta.belongsToHousehold = false;
+        delete registry.profiles.muster_b;
         values.set('rs_profiles_v1', JSON.stringify(registry));
         const singleHousehold = overviewScope('household', ['muster_a']);
         values.set('annual_plan_record_v1', buildAnnualPlanRecord(null, { targetYear: 2025, scope: singleHousehold, committedAt: '2026-01-02T12:00:00Z', recommended: outcome,

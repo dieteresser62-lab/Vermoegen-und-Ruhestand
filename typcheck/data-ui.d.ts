@@ -10,21 +10,22 @@ export interface DataProjectionOptions {
     backend?: string; recordCount?: number; migrationWarning?: ReturnType<Persistence['getPersistenceStatus']>['migrationWarning'];
     now?: Date; startupReport?: ReturnType<typeof import('../app/tranches/tranchen-startup-prices.js').readStartupPriceReport>;
     serviceReport?: {status: string; kind?: string; attemptedAt?: number}; archiveError?: string|null; trialStateRaw?: string;
-    retentionRecords?: D.StringRecords;
+    allRecords?: D.StringRecords; damagedSnapshotIds?: string[]; restoreReset?: unknown;
 }
 export interface DataModel {
-    age: {days: number|null; warning: boolean}; lastBackup?: string|null; backupUnknown?: boolean; backend: string; recordCount: number;
-    migrationWarning?: DataProjectionOptions['migrationWarning']; snapshots: D.SnapshotIndex[]; activeTrialSnapshotId?: string|null; trialActive?: boolean;
+    age: {days: number|null; warning: boolean}; lastBackup?: string|null; backupUnknown?: boolean; backupDelivery?: 'angestossen'|'bestaetigt'|null; backend: string; recordCount: number;
+    backupImport?: {at: string; importedAt: string}|null;
+    migrationWarning?: DataProjectionOptions['migrationWarning']; snapshots: D.SnapshotIndex[]; trialActive?: boolean;
+    damagedSnapshotIds?: string[]; restoreNotice?: boolean;
     liveBytes: number|null; priceBytes: number|null; archiveBytes: number|null; totalBytes: number|null; knownBytes: number|null;
     liveError?: string|null; priceError?: string|null; archiveError?: string|null; shares: number[]|null; error?: string;
     priceCoverage: PriceCoverage; changes?: ReturnType<typeof import('../app/data/data-backup-summary.js').compareBackupSummaries>;
     profileIds?: string[]; activeProfileId?: string; prices?: {symbol: string; count: number; failed: boolean; error: string|null}[];
     counts?: {persons: number; months: number; cash: number; tranches: number; prices: number}; householdNames?: string[];
     expenseYears?: number[]; hasCashHistory?: boolean; hasPlans?: boolean;
-    retention?: ReturnType<typeof import('../app/shared/snapshot-retention.js').projectSnapshotRetention>|null;
 }
 export interface DataBindingOptions {win?: Window & typeof globalThis; refresh?: ()=>Promise<void>; guard?: Guard;}
-export interface NewBeginningSelection {backupSaved?: boolean; withoutBackup?: boolean; confirmed?: boolean; busy?: boolean; deleteSnapshots?: boolean;}
+export interface NewBeginningSelection {backupSaved?: boolean; withoutBackup?: boolean; confirmed?: boolean; busy?: boolean;}
 export interface NewBeginningOptions {
     persistence?: Persistence; archive?: Archive; probelaufController?: I.BackupOptions['probelaufController']; window?: Window & typeof globalThis;
     recovery?: boolean;

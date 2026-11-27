@@ -18,12 +18,6 @@ export async function readRealRecords() {
     return toNullPrototypeRecords(await storeState.areaManager.readRealRecords());
 }
 
-export async function readRealSnapshots() {
-    await init();
-    if (!storeState.areaManager) throw new Error('Speicherbereiche benötigen einen Laufzeitadapter.');
-    return storeState.areaManager.readRealSnapshots();
-}
-
 /** Fundament für SB-2: Nach Aktivieren/Verwerfen ist ein Dokumentneustart nötig. */
 /**
  * @param {Parameters<NonNullable<ReturnType<typeof createPersistenceAreas>>['activate']>[0]} input
@@ -52,11 +46,19 @@ export async function discardPlayArea(options = {}) {
     if (!storeState.areaManager || storeState.areaControl.activeArea !== 'spiel') throw new Error('Kein Spielbereich aktiv.');
     const discard = async () => {
         assertDocumentWritable();
-        storeState.areaReloadRequired = true;
-        clearScheduledFlush();
-        storeState.dirtyKeys.clear();
-        storeState.deletedKeys.clear();
-        await /** @type {NonNullable<typeof storeState.areaManager>} */ (storeState.areaManager).discard(storeState.adapter);
+        // SV-1b: Die Neuladen-Sperre gilt erst, wenn der Bereichswechsel tatsächlich beginnt; ein Lesefehler davor lässt die Seite bedienbar.
+        const beforeSwitch = () => {
+            storeState.areaReloadRequired = true;
+            clearScheduledFlush();
+            storeState.dirtyKeys.clear();
+            storeState.deletedKeys.clear();
+        };
+        try { await /** @type {NonNullable<typeof storeState.areaManager>} */ (storeState.areaManager).discard(storeState.adapter, { beforeSwitch }); }
+        catch (error) {
+            // SV-1: Scheitert ein Schritt vor dem Bereichswechsel, bleibt die Seite im Spielbereich bedienbar.
+            if (/** @type {I.AppError & {areaUnchanged?: boolean}} */ (error)?.areaUnchanged) storeState.areaReloadRequired = false;
+            throw error;
+        }
     };
     return storeState.probelaufProtection?.ownsWrites?.(options) ? discard() : withProbelaufOperation(discard);
 }
@@ -71,8 +73,8 @@ export async function adoptPlayArea({ state, expectedPlayChecksum, now = new Dat
     assertDocumentWritable();
     if (!storeState.areaManager || storeState.areaControl.activeArea !== 'spiel' || state?.version !== 2 || state.phase !== 'active'
         || !storeState.probelaufProtection?.ownsWrites?.(options)) throw new Error('Übernehmen ist hier gesperrt.');
-    const [{ buildProbelaufTransferRecords, probelaufDomainChecksum }, { probelaufTransferability, calculateProbelaufEndReview }, { SnapshotArchive, SNAPSHOT_KINDS }] = await Promise.all([
-        import("../probelauf-records.js"), import("../probelauf-comparison.js"), import("../snapshot-archive.js")
+    const [{ buildProbelaufTransferRecords, probelaufDomainChecksum }, { probelaufTransferability, calculateProbelaufEndReview }, { SnapshotArchive, SNAPSHOT_KINDS, SNAPSHOT_SCOPES, IMPORT_POINT_LABELS }, { pruneRestorePoints }] = await Promise.all([
+        import("../probelauf-records.js"), import("../probelauf-comparison.js"), import("../snapshot-archive.js"), import("../snapshot-retention.js")
     ]);
     /** @param {string} key */
     const allowKey = key => key !== PROBELAUF_STATE_KEY && key !== LOCAL_SNAPSHOT_ARCHIVE_KEY;
@@ -110,25 +112,41 @@ export async function adoptPlayArea({ state, expectedPlayChecksum, now = new Dat
             if (real.readPersistedSnapshot) return real.readPersistedSnapshot(id);
             if (real.readSnapshot) return real.readSnapshot(id);
             return normalizeSnapshotListArchive((await read())[LOCAL_SNAPSHOT_ARCHIVE_KEY]).snapshots.find(point => point.id === id);
+        },
+        // SV-1: Kürzen der Punkte vor dem Einspielen im echten Archiv nach der Übernahme.
+        async listSnapshots() {
+            if (real.listSnapshots) return real.listSnapshots();
+            return normalizeSnapshotListArchive((await read())[LOCAL_SNAPSHOT_ARCHIVE_KEY]).snapshots;
+        },
+        async deleteSnapshot(/** @type {string} */ id) {
+            assertDocumentWritable();
+            if (real.deleteSnapshot) return real.deleteSnapshot(id);
+            const archive = normalizeSnapshotListArchive((await read())[LOCAL_SNAPSHOT_ARCHIVE_KEY]);
+            await real.saveBatch({ deletes: [], upserts: [[LOCAL_SNAPSHOT_ARCHIVE_KEY, serializeSnapshotListArchive(archive.snapshots.filter(point => point.id !== id))]] });
+            return true;
         }
     };
-    let replacing = false;
+    let replacing = false, replaced = false;
     try {
         const before = Object.fromEntries(Object.entries(realRecords).filter(([key]) => allowKey(key)));
         if (JSON.stringify(Object.entries(await read(allowKey)).sort()) !== JSON.stringify(Object.entries(before).sort())) throw new Error('Der echte Bestand hat sich während der Prüfung geändert.');
         /** @type {I.Operation} */ (options.navigationOperation).check();
+        // SV-1: Die Übernahme ersetzt den echten Stand wie ein Einspielen und legt deshalb einen Punkt dieser Art an.
+        // SV-1b: Er umfasst den ganzen ersetzten Hauptspeicher.
         const snapshot = await SnapshotArchive.createSnapshot({ id: `before_play_transfer_${globalThis.crypto.randomUUID()}`,
-            kind: SNAPSHOT_KINDS.probelaufTransferBefore, label: 'Vor Übernahme aus dem Spielbereich', records: before,
-            activeProfileId: before.rs_current_profile || before.rs_active_profile || '',
-            restoreScope: { profileRegistryMode: 'replace-all-rollback', profileLiveDataMode: 'replace-all-rollback', liveKeyMode: 'play-transfer' }
+            kind: SNAPSHOT_KINDS.fullBackupImportRecovery, label: IMPORT_POINT_LABELS.playTransfer, scope: SNAPSHOT_SCOPES.all,
+            records: before, activeProfileId: before.rs_current_profile || before.rs_active_profile || ''
         }, { storage, navigationOperation: options.navigationOperation });
         const confirmed = await SnapshotArchive.readSnapshot(snapshot.id, { storage });
         if (JSON.stringify(confirmed) !== JSON.stringify(snapshot)) throw new Error('Der Wiederherstellungspunkt konnte nicht bestätigt werden.');
         // Dieselbe Transaktion wie bei Import/Zurückholen, auf dem echten Adapter.
         replacing = true;
         await replaceRecordsTransactionalWith(storage, target, { ...options, allowKey, expectedRecords: before });
+        replaced = true;
         await storeState.areaManager.finishTransfer(storeState.adapter);
         storeState.areaReloadRequired = true;
+        await pruneRestorePoints(SNAPSHOT_KINDS.fullBackupImportRecovery, { storage, protectedIds: [snapshot.id], records: target,
+            navigationOperation: options.navigationOperation });
         clearScheduledFlush(); storeState.dirtyKeys.clear(); storeState.deletedKeys.clear();
         return { changes: review.changes, monthlyBudget: review.play.monthlyBudget, year: review.play.year,
             snapshotId: snapshot.id, snapshotLabel: snapshot.label, savedAt: new Date().toISOString() };
@@ -137,9 +155,12 @@ export async function adoptPlayArea({ state, expectedPlayChecksum, now = new Dat
         // die Originalbytes samt Backend-Zeitstempeln zurück.
         if (replacing && /** @type {I.AppError} */ (cause).code !== 'persistence_precondition_mismatch') {
             try { await transfer.rollback(); }
-            catch (rollbackError) { throw Object.assign(new Error('Übernahme fehlgeschlagen. Der echte Bestand konnte nicht bestätigt werden; bitte Daten & Sicherung prüfen. Der Spielbereich bleibt erhalten.'), { cause, rollbackError, code: 'rollback_failed' }); }
+            catch (rollbackError) { throw Object.assign(new Error('Übernahme fehlgeschlagen. Der echte Bestand konnte nicht bestätigt werden. Bitte lade die Seite neu, verwirf den Spielbereich und hole unter Daten & Sicherung den Punkt „Vor Übernahme der Spielkopie“ zurück.'), { cause, rollbackError, code: 'rollback_failed' }); }
         }
-        if (/** @type {I.AppError} */ (cause).code === 'rollback_failed') throw cause;
-        throw Object.assign(new Error(`Nicht übernommen: ${/** @type {I.AppError} */ (cause).message} Dein echter Bestand ist unverändert. Der Spielbereich bleibt erhalten.`), { cause });
+        // SV-1b: Hat die Dateirücknahme den echten Bestand bestätigt, ist er vollständig der alte; nur ein unvollständig
+        // zurückgeholter Spielbereich bleibt ein Rücknahmefehler.
+        if (replaced && /** @type {I.AppError} */ (cause).code === 'rollback_failed') throw cause;
+        const reason = /** @type {I.AppError} */ (cause).code === 'rollback_failed' ? /** @type {I.AppError} */ (cause).cause : cause;
+        throw Object.assign(new Error(`Nicht übernommen: ${/** @type {I.AppError} */ (reason)?.message || ''} Dein echter Bestand ist unverändert. Der Spielbereich bleibt erhalten.`), { cause });
     } finally { transfer.close(); }
 }

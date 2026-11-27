@@ -13,7 +13,7 @@ export interface DecisionRangeResult {
 export interface WorkerRunnerOptions<T = import("./runtime-contracts.js").JsonRecord> {
     pool: import('../workers/worker-pool.js').WorkerPool; totalItems: number; workerCount: number; timeBudgetMs?: number;
     minChunk?: number; maxChunk?: number | null; onProgress?: (pct: number, counts?: {completedItems: number; totalItems: number}) => void;
-    trackPartialProgress?: boolean; buildPayload: (start: number, count: number) => R.WorkerPayload;
+    buildPayload: (start: number, count: number) => R.WorkerPayload;
     mergeResult: (result: T, start: number, count: number) => void;
     generationId?: R.GenerationId; signal?: AbortSignal | null; enableTelemetry?: boolean;
     enableStallDetection?: boolean; stallTimeoutMs?: number; baseTimeoutMs?: number;
@@ -40,17 +40,12 @@ export interface WealthFanModel {
     years: {year: number; alive: number; ruined: number; alivePct: number; missing: number; quantiles: Record<string, WealthFanQuantile>}[];
     hasHomes?: boolean; hasHomeSelf?: boolean; hasHomeRented?: boolean;
 }
-declare global { interface Window { aoChampionResult?: {championCfg?: object} | null; } }
 /** Native DOM-Setter konvertieren Zahlen nach String; Leser liefern Strings. */
 export interface NumericInput extends Omit<HTMLInputElement, 'value' | 'min' | 'max' | 'step'> {
     get value(): string; set value(value: string | number);
     get min(): string; set min(value: string | number);
     get max(): string; set max(value: string | number);
     get step(): string; set step(value: string | number);
-}
-export interface AutoOptimizeBatchOptions {
-    inputs: R.SimulatorInputs; widowOptions: R.WidowOptions; monteCarloParams: R.MonteCarloParameters;
-    useCapeSampling: boolean; signal?: AbortSignal | null; generationId?: string; onProgress?: ComparisonProgress;
 }
 export interface KpiDashboard {
     primary: KpiDescriptor[]; detailSections: {title: string; kpis: KpiDescriptor[]}[];
@@ -60,11 +55,6 @@ export interface ScenarioChartOptions {
     startYear?: number; realByRun?: object; personDisplayContext?: ReturnType<typeof import('../app/simulator/protocol-columns.js').createProtocolPersonContext>;
     startAge?: number; startAgeP2?: number; initialWealth?: number; initialHomes?: number; initialHomeSelf?: number; wealthFan?: R.WealthFan;
     displayHomeValueFan?: R.HomeWealthFan;
-}
-export interface ReplayPersistenceOptions {
-    backend?: {storage?: Pick<import('./datenvertraege.js').RecordStorage, 'getItem' | 'setItem' | 'removeItem'>; flush?: () => unknown | Promise<unknown>};
-    currentCompatibility?: {contractVersion?: string; dataFingerprint?: R.Fingerprint; engineFingerprint?: R.Fingerprint};
-    confirmReplace?: boolean; confirmDiscard?: boolean;
 }
 export type WealthFanPath = ReturnType<typeof import('../app/simulator/wealth-fan-aggregation.js').createWealthFanPath>;
 export interface MinimumFlexTracker {completedYearCount: number; paid: number[]; desired: number[]; affectedYearCount: number;}

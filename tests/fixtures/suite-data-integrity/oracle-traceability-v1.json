@@ -147,91 +147,50 @@
       ]
     },
     {
-      "id": "O-11",
+      "id": "O-11", "retiredBy": "WS-1",
       "title": "Sweep-Methodik",
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/simulator-sweep.test.mjs",
-          "marker": "O-11 expliziter Stationary-/Markov-Dispatch OK"
-        }
-      ]
+      "witnesses": []
     },
     {
-      "id": "O-12",
+      "id": "O-12", "retiredBy": "WS-1",
       "title": "Sweep-Partner",
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/simulator-sweep.test.mjs",
-          "marker": "O-12 Sweep Partner-/Witwenpfad OK"
-        }
-      ]
+      "witnesses": []
     },
     {
-      "id": "O-13",
+      "id": "O-13", "retiredBy": "WS-1",
       "title": "Sweep-Tail",
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/simulator-sweep.test.mjs",
-          "marker": "O-13 Sweep Tail-Risk-Overlay OK"
-        }
-      ]
+      "witnesses": []
     },
     {
-      "id": "O-14",
+      "id": "O-14", "retiredBy": "WS-1",
       "title": "Drawdown",
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/simulator-sweep.test.mjs",
-          "marker": "O-14 Terminaler Ruin-Drawdown OK"
-        }
-      ]
+      "witnesses": []
     },
     {
-      "id": "O-15",
+      "id": "O-15", "retiredBy": "WS-1",
       "title": "Optimizer-Paritaet",
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/auto-optimize-fidelity.test.mjs",
-          "marker": "apply roundtrip preserves the evaluated fingerprint"
-        },
-        {
-          "gate": "browser",
-          "file": "tests/browser-smoke.test.mjs",
-          "marker": "Browser optimizer apply must preserve the evaluated canonical fingerprint"
-        }
-      ]
+      "witnesses": []
     },
     {
       "id": "O-16",
-      "title": "Boolean-Import",
+      "title": "Boolean-Import (seit AK-1 ohne Balance-Dateiimport: gespeicherte Werte im Balance-Leser)",
       "witnesses": [
         {
           "gate": "node",
-          "file": "tests/balance-ui-orchestration.test.mjs",
-          "marker": "Aktuelles Schema blockiert den Nicht-Boolean"
+          "file": "tests/balance-reader.test.mjs",
+          "marker": "String \"false\" darf Dynamic Flex nicht aktivieren"
         },
         {
           "gate": "node",
-          "file": "tests/balance-ui-orchestration.test.mjs",
-          "marker": "Legacy-String false wird explizit migriert"
+          "file": "tests/balance-reader.test.mjs",
+          "marker": "Nur echter Boolean true aktiviert eine Checkbox"
         }
       ]
     },
     {
-      "id": "O-17",
+      "id": "O-17", "retiredBy": "AL-P",
       "title": "Stale CSV",
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/suite-data-integration-contract.test.mjs",
-          "marker": "O-17 rejects a 2010 market CSV for current period 2025"
-        }
-      ]
+      "witnesses": []
     },
     {
       "id": "O-18",
@@ -276,31 +235,14 @@
       ]
     },
     {
-      "id": "O-20",
+      "id": "O-20", "retiredBy": "WS-1",
       "title": "Survival-Horizont",
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/simulator-sweep.test.mjs",
-          "marker": "Sweep and MC use the same VPW horizon"
-        },
-        {
-          "gate": "node",
-          "file": "tests/auto-optimize-fidelity.test.mjs",
-          "marker": "direct optimizer request contract should accept the O-20 upper fixture"
-        }
-      ]
+      "witnesses": []
     },
     {
-      "id": "O-21",
+      "id": "O-21", "retiredBy": "WS-1",
       "title": "Optimizer-Metriken",
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/auto-optimize-metrics-contract.test.mjs",
-          "marker": "O-21 P25 should use its own final-outcome quantile"
-        }
-      ]
+      "witnesses": []
     },
     {
       "id": "O-22",
@@ -381,16 +323,10 @@
     { "id": "ENG-05", "fixSlices": [5], "evidenceSlices": [5, 16], "oracleIds": ["O-19"] },
     { "id": "ENG-06", "fixSlices": [5], "evidenceSlices": [5, 16], "oracleIds": ["O-19"] },
     {
-      "id": "ENG-07",
+      "id": "ENG-07", "retiredBy": "WS-1",
       "fixSlices": [15],
       "evidenceSlices": [15],
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/auto-optimize-fidelity.test.mjs",
-          "marker": "Slice-15 model matrix and backlog links remain complete"
-        }
-      ]
+      "witnesses": []
     },
     {
       "id": "ENG-08",
@@ -411,53 +347,29 @@
     { "id": "SWP-04", "fixSlices": [8], "evidenceSlices": [8, 16], "oracleIds": ["O-13"] },
     { "id": "SWP-05", "fixSlices": [8], "evidenceSlices": [8, 10], "oracleIds": ["O-20"] },
     {
-      "id": "SWP-06",
+      "id": "SWP-06", "retiredBy": "WS-1",
       "fixSlices": [7],
       "evidenceSlices": [7, 16],
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/simulator-sweep.test.mjs",
-          "marker": "Sweep Startjahrfilter und Estimated-History-Ausschluss"
-        }
-      ]
+      "witnesses": []
     },
     {
-      "id": "SWP-07",
+      "id": "SWP-07", "retiredBy": "WS-1",
       "fixSlices": [7],
       "evidenceSlices": [7, 16],
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/simulator-sweep.test.mjs",
-          "marker": "Sweep Seed 0 Reproduzierbarkeit"
-        }
-      ]
+      "witnesses": []
     },
     {
-      "id": "SWP-08",
+      "id": "SWP-08", "retiredBy": "WS-1",
       "fixSlices": [9],
       "evidenceSlices": [9, 10],
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/auto-optimize-fidelity.test.mjs",
-          "marker": "every interactive parameter has a deterministic causal witness"
-        }
-      ]
+      "witnesses": []
     },
     { "id": "SWP-09", "fixSlices": [9], "evidenceSlices": [9, 16], "oracleIds": ["O-14"] },
     {
-      "id": "SWP-10",
+      "id": "SWP-10", "retiredBy": "WS-1",
       "fixSlices": [8],
       "evidenceSlices": [8, 16],
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/simulator-sweep.test.mjs",
-          "marker": "Sweep Pflege-Flex-/Floor-Paritaet"
-        }
-      ]
+      "witnesses": []
     },
     { "id": "SWP-11", "fixSlices": [7], "evidenceSlices": [7, 16], "oracleIds": ["O-11"] },
     { "id": "OPT-01", "fixSlices": [10], "evidenceSlices": [10, 16], "oracleIds": ["O-15"] },
@@ -465,16 +377,10 @@
     { "id": "OPT-03", "fixSlices": [10], "evidenceSlices": [10, 15], "oracleIds": ["O-20"] },
     { "id": "OPT-04", "fixSlices": [10], "evidenceSlices": [3, 10], "oracleIds": ["O-08", "O-15"] },
     {
-      "id": "OPT-05",
+      "id": "OPT-05", "retiredBy": "WS-1",
       "fixSlices": [10, 15],
       "evidenceSlices": [10, 15],
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/auto-optimizer.test.mjs",
-          "marker": "AutoOptimizeModelStatusV1"
-        }
-      ]
+      "witnesses": []
     },
     { "id": "OPT-06", "fixSlices": [11], "evidenceSlices": [11], "oracleIds": ["O-21"] },
     {
@@ -482,26 +388,14 @@
       "fixSlices": [11],
       "evidenceSlices": [11, 16],
       "oracleIds": ["O-21"],
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/auto-optimize-metrics-contract.test.mjs",
-          "marker": "The additional quantile field should select P10 instead of being ignored"
-        }
-      ]
+      "witnesses": []
     },
     {
       "id": "OPT-08",
       "fixSlices": [11],
       "evidenceSlices": [9, 11],
       "oracleIds": ["O-21"],
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/auto-optimize-metrics-contract.test.mjs",
-          "marker": "A versioned shape with a missing drawdown should fail closed instead of becoming zero"
-        }
-      ]
+      "witnesses": []
     },
     { "id": "SIM-01", "fixSlices": [6], "evidenceSlices": [6, 9], "oracleIds": ["O-22"] },
     { "id": "SIM-02", "fixSlices": [6], "evidenceSlices": [6, 16], "oracleIds": ["O-10"] },
@@ -511,8 +405,8 @@
     { "id": "SIM-06", "fixSlices": [6], "evidenceSlices": [6, 15], "oracleIds": ["O-22"] },
     { "id": "SIM-07", "fixSlices": [10], "evidenceSlices": [10], "oracleIds": ["O-20"] },
     { "id": "IMP-01", "fixSlices": [12], "evidenceSlices": [12, 16], "oracleIds": ["O-16"] },
-    { "id": "IMP-02", "fixSlices": [12], "evidenceSlices": [12, 16], "oracleIds": ["O-17"] },
-    { "id": "IMP-03", "fixSlices": [12, 15], "evidenceSlices": [12, 15], "oracleIds": ["O-17"] },
+    { "id": "IMP-02", "retiredBy": "AL-P", "fixSlices": [12], "evidenceSlices": [12, 16], "oracleIds": [], "witnesses": [] },
+    { "id": "IMP-03", "retiredBy": "AL-P", "fixSlices": [12, 15], "evidenceSlices": [12, 15], "oracleIds": [], "witnesses": [] },
     { "id": "PER-01", "fixSlices": [13], "evidenceSlices": [13, 14], "oracleIds": ["O-18"] },
     {
       "id": "PER-02",
@@ -548,8 +442,8 @@
       "witnesses": [
         {
           "gate": "node",
-          "file": "tests/balance-storage-contract.test.mjs",
-          "marker": "import replace creates confirmed recovery and rollback restores all captured live data"
+          "file": "tests/profile-wealth-history.test.mjs",
+          "marker": "Preflight führt keinen Write aus"
         }
       ]
     },
@@ -632,52 +526,28 @@
       ]
     },
     {
-      "id": "MOD-05",
+      "id": "MOD-05", "retiredBy": "WS-1",
       "fixSlices": [15, 16],
       "evidenceSlices": [15, 16],
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/auto-optimize-fidelity.test.mjs",
-          "marker": "Slice-15 model matrix and backlog links remain complete"
-        }
-      ]
+      "witnesses": []
     },
     {
-      "id": "MOD-06",
+      "id": "MOD-06", "retiredBy": "WS-1",
       "fixSlices": [15, 16],
       "evidenceSlices": [15, 16],
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/auto-optimize-fidelity.test.mjs",
-          "marker": "Slice-15 model matrix and backlog links remain complete"
-        }
-      ]
+      "witnesses": []
     },
     {
-      "id": "MOD-07",
+      "id": "MOD-07", "retiredBy": "WS-1",
       "fixSlices": [15, 16],
       "evidenceSlices": [15, 16],
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/auto-optimize-fidelity.test.mjs",
-          "marker": "Slice-15 model matrix and backlog links remain complete"
-        }
-      ]
+      "witnesses": []
     },
     {
-      "id": "MOD-08",
+      "id": "MOD-08", "retiredBy": "WS-1",
       "fixSlices": [15, 16],
       "evidenceSlices": [15, 16],
-      "witnesses": [
-        {
-          "gate": "node",
-          "file": "tests/auto-optimizer.test.mjs",
-          "marker": "AutoOptimizeModelStatusV1"
-        }
-      ]
+      "witnesses": []
     },
     {
       "id": "QA-01",
@@ -751,7 +621,7 @@
         {
           "gate": "node",
           "file": "tests/balance-storage-contract.test.mjs",
-          "marker": "failed recovery snapshot blocks replace without changing Balance live state"
+          "marker": "Snapshot-Restore setzt den Verlauf auf den Punkt und validiert ihn vorher"
         }
       ]
     }
@@ -780,18 +650,6 @@
       "gate": "browser",
       "file": "tests/browser-smoke.test.mjs",
       "marker": "Browser full-backup recovery must restore the previous registry byte-for-byte"
-    },
-    {
-      "id": "sweep",
-      "gate": "browser",
-      "file": "tests/browser-smoke.test.mjs",
-      "marker": "Browser sweep must expose versioned execution provenance"
-    },
-    {
-      "id": "optimizer",
-      "gate": "browser",
-      "file": "tests/browser-smoke.test.mjs",
-      "marker": "Browser optimizer apply must preserve the evaluated canonical fingerprint"
     }
   ],
   "parityContracts": [
@@ -805,116 +663,10 @@
       "id": "main_worker",
       "gate": "node",
       "file": "tests/worker-parity.test.mjs",
-      "marker": "Sweep split parity passed"
-    },
-    {
-      "id": "mc_single_sweep",
-      "gate": "node",
-      "file": "tests/simulator-sweep.test.mjs",
-      "marker": "Single-Profile Sweep/MC Ergebnisparitaet OK"
-    },
-    {
-      "id": "evaluate_apply",
-      "gate": "node",
-      "file": "tests/auto-optimize-fidelity.test.mjs",
-      "marker": "applied request fingerprint should match evaluation"
+      "marker": "Monte-Carlo merge parity passed"
     }
   ],
   "parameterCausality": {
-    "sweep": [
-      {
-        "uiId": "sweepLiquidityRunwayYears",
-        "key": "liquidityRunwayYears",
-        "canonicalKey": "liquidityRunwayYears",
-        "unit": "years",
-        "domain": { "min": 1, "max": 10 },
-        "consumer": "app/simulator/sweep-runner.js#buildSweepInputs",
-        "provenance": "SweepExecutionV2.results[].params.liquidityRunwayYears",
-        "witnessValue": 4.5,
-        "apply": "not_applicable",
-        "status": "canonical_path_verified"
-      },
-      {
-        "uiId": "sweepGoldRebalancingBand",
-        "key": "goldRebalancingBand",
-        "canonicalKey": "rebalancingBand",
-        "unit": "percent",
-        "domain": { "min": 0, "max": 100 },
-        "consumer": "app/simulator/sweep-runner.js#buildSweepInputs",
-        "provenance": "SweepExecutionV2.results[].params.goldRebalancingBand",
-        "witnessValue": 30,
-        "apply": "not_applicable",
-        "status": "canonical_path_verified"
-      },
-      {
-        "uiId": "sweepMaxSkimPct",
-        "key": "maxSkimPct",
-        "canonicalKey": "maxSkimPctOfEq",
-        "unit": "percent",
-        "domain": { "min": 0, "max": 100 },
-        "consumer": "app/simulator/sweep-runner.js#buildSweepInputs",
-        "provenance": "SweepExecutionV2.results[].params.maxSkimPct",
-        "witnessValue": 12,
-        "apply": "not_applicable",
-        "status": "canonical_path_verified"
-      },
-      {
-        "uiId": "sweepMaxBearRefillPct",
-        "key": "maxBearRefillPct",
-        "canonicalKey": "maxBearRefillPctOfEq",
-        "unit": "percent",
-        "domain": { "min": 0, "max": 100 },
-        "consumer": "app/simulator/sweep-runner.js#buildSweepInputs",
-        "provenance": "SweepExecutionV2.results[].params.maxBearRefillPct",
-        "witnessValue": 8,
-        "apply": "not_applicable",
-        "status": "canonical_path_verified"
-      },
-      {
-        "uiId": "sweepGoldTargetPct",
-        "key": "goldTargetPct",
-        "canonicalKey": "goldZielProzent",
-        "unit": "percent",
-        "domain": { "min": 0, "max": 30 },
-        "consumer": "app/simulator/sweep-runner.js#buildSweepInputs",
-        "provenance": "SweepExecutionV2.results[].params.goldTargetPct",
-        "witnessValue": 7.5,
-        "apply": "not_applicable",
-        "status": "canonical_path_verified"
-      },
-      {
-        "uiId": "sweepSurvivalQuantile",
-        "key": "survivalQuantile",
-        "canonicalKey": "survivalQuantile",
-        "unit": "ratio",
-        "domain": { "min": 0.5, "max": 0.99 },
-        "consumer": "app/simulator/sweep-runner.js#buildSweepInputs",
-        "provenance": "SweepExecutionV2.results[].params.survivalQuantile",
-        "witnessValue": 0.9,
-        "apply": "not_applicable",
-        "status": "canonical_path_verified_when_dynamic_flex_survival_quantile"
-      },
-      {
-        "uiId": "sweepGoGoMultiplier",
-        "key": "goGoMultiplier",
-        "canonicalKey": "goGoMultiplier",
-        "unit": "multiplier",
-        "domain": { "min": 1, "max": 1.5 },
-        "consumer": "app/simulator/sweep-runner.js#buildSweepInputs",
-        "provenance": "SweepExecutionV2.results[].params.goGoMultiplier",
-        "witnessValue": 1.2,
-        "apply": "not_applicable",
-        "status": "canonical_path_verified_when_go_go_active"
-      }
-    ],
-    "optimizer": [
-      { "uiId": "liquidityRunwayYears", "key": "liquidityRunwayYears", "canonicalKey": "liquidityRunwayYears", "unit": "Jahre", "domain": { "min": 1, "max": 10, "step": 0.5 }, "consumer": "AUTO_OPTIMIZE_PARAMETER_REGISTRY", "provenance": "AutoOptimizeRequestFingerprintV1.liquidityRunwayYears", "apply": "liquidityRunwayYears", "status": "effective" },
-      { "uiId": "goldAllokationProzent", "key": "goldTargetPct", "canonicalKey": "goldZielProzent", "unit": "%", "domain": { "min": 0, "max": 50, "step": 1 }, "consumer": "AUTO_OPTIMIZE_PARAMETER_REGISTRY", "provenance": "AutoOptimizeRequestFingerprintV1.goldZielProzent", "apply": "goldAllokationProzent+goldAllokationAktiv", "status": "effective" },
-      { "uiId": "rebalancingBand", "key": "goldRebalancingBand", "canonicalKey": "rebalancingBand", "unit": "%", "domain": { "min": 0, "max": 100, "step": 1 }, "consumer": "AUTO_OPTIMIZE_PARAMETER_REGISTRY", "provenance": "AutoOptimizeRequestFingerprintV1.rebalancingBand", "apply": "rebalancingBand", "status": "effective" },
-      { "uiId": "maxSkimPctOfEq", "key": "maxSkimPct", "canonicalKey": "maxSkimPctOfEq", "unit": "%", "domain": { "min": 0, "max": 50, "step": 1 }, "consumer": "AUTO_OPTIMIZE_PARAMETER_REGISTRY", "provenance": "AutoOptimizeRequestFingerprintV1.maxSkimPctOfEq", "apply": "maxSkimPctOfEq", "status": "effective" },
-      { "uiId": "survivalQuantile", "key": "survivalQuantile", "canonicalKey": "survivalQuantile", "unit": "", "domain": { "min": 0.5, "max": 0.99, "step": 0.01 }, "consumer": "AUTO_OPTIMIZE_PARAMETER_REGISTRY", "provenance": "AutoOptimizeRequestFingerprintV1.survivalQuantile", "apply": "survivalQuantile", "status": "effective_when_dynamic_flex_survival_quantile" },
-      { "uiId": "goGoMultiplier", "key": "goGoMultiplier", "canonicalKey": "goGoMultiplier", "unit": "x", "domain": { "min": 1, "max": 1.5, "step": 0.05 }, "consumer": "AUTO_OPTIMIZE_PARAMETER_REGISTRY", "provenance": "AutoOptimizeRequestFingerprintV1.goGoMultiplier", "apply": "goGoMultiplier+goGoActive", "status": "effective_when_dynamic_flex" }
-    ]
   },
   "deltaBaselines": [
     { "id": "backtest-baseline", "file": "tests/fixtures/simulator-backtest-baseline-v1.json", "gitBlobSha1": "7b2cb702ad3c3c1501d5ddd4abb71a497b95ca3c", "expectedDelta": "none" },

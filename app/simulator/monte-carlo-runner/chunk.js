@@ -13,10 +13,10 @@ import { createMonteCarloRunMetrics, finalizeMonteCarloRunMetrics } from '../mc-
 import { MC_HEATMAP_BINS } from '../monte-carlo-runner-utils.js';
 import { createWealthFan } from '../wealth-fan-aggregation.js';
 import { createHomeWealthFan } from '../wealth-home-fan.js';
-import { STRESS_REPLAY_CAPTURE_VERSION } from '../stress-replay-path-materializer.js';
 import { prepareGuardrailPlanInputs } from '../../shared/guardrail-history.js';
 import { runMonteCarloPath } from './path-state.js';
 import { createMonteCarloChunkResultV1 } from '../monte-carlo-chunk-result.js';
+import { createPersonOutcomeCounts } from '../mc-person-outcomes.js';
 /** @typedef {ReturnType<typeof prepareChunk>} ChunkContext */
 /** @param {import('../../../typcheck/rechenkern').MonteCarloChunkOptions} options */
 export function prepareChunk({
@@ -27,10 +27,10 @@ export function prepareChunk({
     runRange = null,
     onProgress = () => { },
     logIndices = null,
-    stressReplayCapture = null,
     signal = null,
     engine = null,
     collectWealthFan = false,
+    collectPersonOutcomes = false,
     comparisonPairing = null
 }) {
     throwIfMonteCarloAborted(signal);
@@ -133,25 +133,9 @@ export function prepareChunk({
         horizon_exhausted: 0
     };
     const heatmap = Array(10).fill(0).map(() => new Uint32Array(MC_HEATMAP_BINS.length - 1));
-    // Nur der MC-Ergebnispfad optiert ein; Sweep/Optimize und Lognachrechnung nicht.
+    // Nur der MC-Ergebnispfad optiert ein; die Lognachrechnung nicht.
     const wealthFan = collectWealthFan ? createWealthFan(maxDauer) : null;
     const displayHomeValueFan = wealthFan && inputs.home?.length ? createHomeWealthFan(maxDauer) : undefined;
-    if (stressReplayCapture !== null
-        && (stressReplayCapture?.schemaVersion !== STRESS_REPLAY_CAPTURE_VERSION
-            || !Array.isArray(stressReplayCapture.runIndices))) {
-        const error = /** @type {Error & {code:string}} */ (new Error('Stress replay capture request is invalid.'));
-        error.code = 'STRESS_REPLAY_CAPTURE_REQUEST_INVALID';
-        throw error;
-    }
-    const replayCaptureIndexSet = stressReplayCapture === null
-        ? null
-        : new Set(stressReplayCapture.runIndices);
-    if (replayCaptureIndexSet && resolvedRngMode !== 'per-run-seed') {
-        const error = /** @type {Error & {code:string}} */ (new Error('Stress replay capture requires per-run-seed RNG mode.'));
-        error.code = 'STRESS_REPLAY_SOURCE_UNSUPPORTED';
-        throw error;
-    }
-    const replayCapturesByIndex = new Map();
     let lastProgressPct = -1;
 
     // PE-1/MP-1: Planfelder sind im Paket konstant. Ohne vorgegebenen
@@ -159,7 +143,7 @@ export function prepareChunk({
     const chunkGuardrailPlanInputs = inputs.horizonYears == null ? null
         : prepareGuardrailPlanInputs({ ...inputs, guardrailPlanHorizonYears: inputs.horizonYears });
     return {
-        inputs, monteCarloParams, widowOptions, useCapeSampling, runRange, onProgress, logIndices, stressReplayCapture,
+        inputs, monteCarloParams, widowOptions, useCapeSampling, runRange, onProgress, logIndices,
         signal, engine, collectWealthFan, comparisonPairing, normalizedParameters, context, maxDauer, blockSize, seed,
         methode, startYearMode, startYearFilter, startYearHalfLife, excludeEstimatedHistory, runStart, runCount,
         resolvedRngMode, legacyRand, stressCtxMaster, buffers, progressUpdateInterval, logIndexSet, yearSamplingConfig,
@@ -169,8 +153,12 @@ export function prepareChunk({
         alterBeiErschoepfung, alterBeiErschoepfungMissingness, anteilJahreOhneFlex, stress_maxDrawdowns,
         stress_timeQuoteAbove45, stress_cutYears, stress_CaR_P10_Real, stress_realWithdrawalObservationCount,
         stress_realWithdrawalP10Missingness, stress_recoveryYears, DEPOT_DEPLETION_THRESHOLD, runMetrics,
-        technicalInventory, outcomeCounts, heatmap, wealthFan, displayHomeValueFan, replayCaptureIndexSet,
-        replayCapturesByIndex, lastProgressPct, chunkGuardrailPlanInputs
+        technicalInventory, outcomeCounts, heatmap, wealthFan, displayHomeValueFan, lastProgressPct, chunkGuardrailPlanInputs,
+        personOutcomeCounts: collectPersonOutcomes ? createPersonOutcomeCounts(inputs.partner?.aktiv === true, maxDauer) : null,
+        // FR-84: Läufe mit Hilfe zur Pflege (globaler Index, erstes Jahr, Summe nominal); im Ergebnis nur, wenn es solche Läufe gibt.
+        careAidRuns: { runIndices: /** @type {number[]} */ ([]), firstYears: /** @type {number[]} */ ([]), sumsNominal: /** @type {number[]} */ ([]) },
+        // NK-2 (FR-84 Punkt 16): Läufe mit entfallener Einmalausgabe, gleiche Form.
+        droppedExpenseRuns: { runIndices: /** @type {number[]} */ ([]), firstYears: /** @type {number[]} */ ([]), sumsNominal: /** @type {number[]} */ ([]) }
     };
 }
 
@@ -184,13 +172,13 @@ export async function runMonteCarloChunk({
     runRange = null,
     onProgress = () => { },
     logIndices = null,
-    stressReplayCapture = null,
     signal = null,
     engine = null,
     collectWealthFan = false,
+    collectPersonOutcomes = false,
     comparisonPairing = null
 }) {
-    const context = prepareChunk({ inputs, monteCarloParams, widowOptions, useCapeSampling, runRange, onProgress, logIndices, stressReplayCapture, signal, engine, collectWealthFan, comparisonPairing });
+    const context = prepareChunk({ inputs, monteCarloParams, widowOptions, useCapeSampling, runRange, onProgress, logIndices, signal, engine, collectWealthFan, collectPersonOutcomes, comparisonPairing });
     for (let i = 0; i < context.runCount; i++) {
         throwIfMonteCarloAborted(context.signal);
         if (i % context.progressUpdateInterval === 0) {
@@ -205,11 +193,6 @@ export async function runMonteCarloChunk({
     }
 
     const finalizedMetrics = /** @type {ReturnType<typeof finalizeMonteCarloRunMetrics> & {totals:Record<string,number>}} */ (finalizeMonteCarloRunMetrics(context.runMetrics));
-    for (const meta of finalizedMetrics.runMeta) {
-        if (context.replayCapturesByIndex.has(meta.index)) {
-            meta.stressReplayCapture = context.replayCapturesByIndex.get(meta.index);
-        }
-    }
     finalizedMetrics.totals.outcomeRuinCount = context.outcomeCounts.ruin;
     finalizedMetrics.totals.outcomeAllDeadCount = context.outcomeCounts.all_dead;
     finalizedMetrics.totals.outcomeHorizonExhaustedCount = context.outcomeCounts.horizon_exhausted;
@@ -232,7 +215,10 @@ export async function runMonteCarloChunk({
         batchStatus: context.technicalInventory.technicalError > 0 ? 'technical_error' : 'completed',
         financialMetricsValid: context.technicalInventory.technicalError === 0,
         technicalInventory: context.technicalInventory,
+        ...(context.personOutcomeCounts ? { personOutcomeCounts: context.personOutcomeCounts } : {}),
         samplingDiagnostics: context.samplingDiagnostics,
+        ...(context.careAidRuns.runIndices.length ? { careAid: context.careAidRuns } : {}),
+        ...(context.droppedExpenseRuns.runIndices.length ? { droppedExpense: context.droppedExpenseRuns } : {}),
         wealthFan: context.wealthFan,
         ...(context.displayHomeValueFan ? { displayHomeValueFan: context.displayHomeValueFan } : {})
     });

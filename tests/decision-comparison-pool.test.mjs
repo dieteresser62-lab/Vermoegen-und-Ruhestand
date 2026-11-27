@@ -1,5 +1,15 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { fz1References } from './helpers/fz-1-expectations.mjs';
+import { readDM1References } from './helpers/dm-1-expectations.mjs';
+import { readJA1References } from './helpers/ja-1-expectations.mjs';
+import { readHP4References } from './helpers/hp-4-expectations.mjs';
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import { readVB1References } from './helpers/vb-1-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
+import { readNK1References } from './helpers/nk-1-expectations.mjs';
 import { readLE1References as readBeforeGN2References } from './helpers/le-1-expectations.mjs';
 import { readGN2References } from './helpers/gn-2-expectations.mjs';
+const readFZ1Reference = fz1References(import.meta.url);
 const readLE1References = value => readGN2References(readBeforeGN2References(value));
 import { readGU1References } from './helpers/gu-1-expectations.mjs';
 import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
@@ -58,14 +68,15 @@ try {
     assert.equal(DecisionNodeWorker.instances.length - comparisonWorkers, 4, 'Ein Pool für beide Vergleichspläne');
     assert.ok(DecisionNodeWorker.instances.every(worker => worker.terminated));
     // Referenz vor VS-1b, bereits mit dem Datenstand nach KETTE TB.
-    assert.equal(checksum(pooled.baseline), readFI1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References('a96ddabcf9286552785a6406175a5a3b133d150ce19357a847a2c710bf67a6ce'))))))));
-    assert.equal(checksum(pooled.variant), readFI1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References('244b5d9c72c108b27e8764e46ad426b7b2a7cb6becbed0b5f7181e1e34f2ade4'))))))));
+    assert.equal(checksum(pooled.baseline), readFZ1Reference(readDM1References(readJA1References(readHP4References(readKR1cReferences(readVB1References(readFI1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References('a96ddabcf9286552785a6406175a5a3b133d150ce19357a847a2c710bf67a6ce'))))))))))))));
+    assert.equal(checksum(pooled.variant), readFZ1Reference(readDM1References(readJA1References(readHP4References(readKR1cReferences(readVB1References(readFI1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References('244b5d9c72c108b27e8764e46ad426b7b2a7cb6becbed0b5f7181e1e34f2ade4'))))))))))))));
     assert.ok(progress.some(row => row.completedRuns > 0 && row.completedRuns < 24));
     assert.ok(progress.every((row, i) => !i || row.pct >= progress[i - 1].pct));
     console.log('VS-1 Vergleich SHA256', checksum(pooled.baseline), checksum(pooled.variant));
 
     // Suchschritte: Ausgangsruin, geretteter Plan, anderer Replay, erneut geretteter Plan.
-    const strained = { ...options, inputs: { ...inputs, startFlexBedarf: 300000 }, isolateReplays: true };
+    // FR-84: Ruin nur bei ungedecktem Grundbedarf; der Grundbedarf liegt über den Renten, der hohe Flex zehrt das Vermögen auf.
+    const strained = { ...options, inputs: { ...inputs, startFloorBedarf: 60000, startFlexBedarf: 300000 }, isolateReplays: true };
     const evaluate = async () => {
         const session = createDecisionComparisonSession(strained);
         try {
@@ -83,10 +94,10 @@ try {
     const serialStep = await evaluate();
     assert.deepEqual(poolStep.metrics, serialStep.metrics);
     assert.equal(checksum(poolStep), checksum(serialStep));
-    assert.equal(checksum(poolStep), readFI1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References('f4ce36cbd93c3d38b9dbf88db996a31f16ec76c840e77fdebb3421ac86f32c9c'))))))));
+    console.log('VS-1 Suchschritt nach Ruin SHA256', checksum(poolStep));
+    assert.equal(checksum(poolStep), readFZ1Reference(readDM1References(readJA1References(readHP4References(readKR1cReferences(readVB1References(readNK1References(readFI1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References('f4ce36cbd93c3d38b9dbf88db996a31f16ec76c840e77fdebb3421ac86f32c9c')))))))))))))));
     assert.deepEqual(poolStep.diagnostics, serialStep.diagnostics);
     assert.deepEqual(poolStep.chunk.runMeta, serialStep.chunk.runMeta);
-    console.log('VS-1 Suchschritt nach Ruin SHA256', checksum(poolStep));
     const searchOptions = { ...options, diagnosticRuns: 0, captureLogs: false,
         // LE-1 (FR-75): Ziele so, dass Suche und Endprobe weiter laufen (vorher 99 % / 10 %).
         goals: { coveragePct: 97, affectedPct: 20 }, maximumMonthly: 2750 };
@@ -145,7 +156,7 @@ try {
     for (const [standardRuns, anzahl, text] of [
         [10000, 1000, '1.000 Läufe je Plan (Einstellung 10.000 ÷ 10)'],
         [2000, 500, '500 Läufe je Plan (Einstellung 2.000, mindestens 500)'],
-        [300, 300, '300 Läufe je Plan · Seed'],
+        [300, 300, '300 Läufe je Plan · Zufallsstartwert'],
         [10500, 1100, '1.100 Läufe je Plan (Einstellung 10.500 ÷ 10, auf volle Hundert aufgerundet)']
     ]) {
         const view = { ...serial, params: { ...serial.params, anzahl, standardRuns } };

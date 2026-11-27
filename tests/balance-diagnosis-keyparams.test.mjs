@@ -115,19 +115,19 @@ setupDom();
     assert(txt.includes('Flex freigegeben'), 'Released flex metric should be rendered');
     assert(txt.includes('Nicht genutzter Rahmen'), 'Unused VPW room should be rendered');
     assert(txt.includes('Mindest-Flex p.a.'), 'Minimum flex metric should be rendered');
-    assert(txt.includes('Runway-Ziel'), 'Runway target smoothing metric should be rendered');
-    assert(txt.includes('50\u00a0% Drawdown-Severity'), 'Runway target smoothing severity should be visible');
+    assert(txt.includes('Zielreichweite'), 'Runway target smoothing metric should be rendered');
+    assert(txt.includes('50\u00a0% Schwere des Rückgangs'), 'Runway target smoothing severity should be visible');
     assert(txt.includes('Harte Mindestgrenze'), 'Runway target smoothing hard minimum should be visible');
     assert(txt.includes('Mindest-Flex Rate'), 'Minimum flex required rate should be rendered');
     assert(txt.includes('Mindest-Flex Effekt'), 'Minimum flex effect should be rendered');
-    assert(txt.includes('Pflegebucket'), 'Health bucket metric should be rendered');
-    assert(txt.includes('Pflegebucket-Zieldeckung'), 'Health bucket target coverage should be rendered');
+    assert(txt.includes('Pflegereserve'), 'Health bucket metric should be rendered');
+    assert(txt.includes('Zieldeckung der Pflegereserve'), 'Health bucket target coverage should be rendered');
     assert(txt.includes('keine automatische Freigabe'), 'Health bucket policy should be visible');
     assert(txt.includes('Marktdaten-Provenienz'), 'Persistierte Marktdaten-Provenienz should be rendered');
     assert(txt.includes('VWCE.DE · 2025-12-30'), 'Marktdaten-Provenienz should expose instrument and as-of');
     assert(txt.includes('calendar-year:2025'), 'Marktdaten-Provenienz should expose its exact period');
     assert(txt.includes('Hoch-Scope Hoch im Datenfenster'), 'Diagnosis should not mislabel a manual window high as ATH');
-    assert(txt.includes('Engine-Referenz konservative ATH-Untergrenze angewendet'),
+    assert(txt.includes('Konservative Allzeithoch-Untergrenze angewendet'),
         'Diagnosis should expose the conservative engine reference explicitly');
 }
 
@@ -168,7 +168,7 @@ setupDom();
     const card = findCardByLabel(grid, 'Mindest-Flex p.a.');
     const txt = flattenText(grid);
     assert(card?.dataset?.trend === 'down', 'Blocked minimum flex should be marked as warning trend');
-    assert(txt.includes('Mindest-Runway nicht wiederherstellbar'), 'Minimum flex block reason should be visible');
+    assert(txt.includes('Mindestreichweite nicht wiederherstellbar'), 'Minimum flex block reason should be visible');
 }
 
 {
@@ -200,13 +200,13 @@ setupDom();
     });
     const txt = flattenText(grid);
     const minimumCard = findCardByLabel(grid, 'Mindest-Flex p.a.');
-    assert(flattenText(findCardByLabel(grid, 'Safety-Flex-Obergrenze')).includes('18,3'), 'Karte zeigt den B12-Cap vor Rundung; effektive Flex-Rate ist 18,0 %');
+    assert(flattenText(findCardByLabel(grid, 'Flex-Obergrenze der Sicherheitsgrenze')).includes('18,3'), 'Karte zeigt den B12-Cap vor Rundung; effektive Flex-Rate ist 18,0 %');
     assert(txt.includes('Schwere Flex-Notlage'), 'Severe flex emergency should be visible');
     assert(txt.includes('aktiven Geldvermögens'), 'Emergency copy should name the total-wealth basis');
     assert(txt.includes('geplante tatsächliche Portfolioentnahmequote einschließlich Rundung 5,4'), 'Emergency copy names the actual planned withdrawal gate');
     assert(txt.includes('Erholung im Bärenmarkt'), 'Emergency copy includes recovery in bear');
     assert(txt.includes('AKTIV · Flex 18,0'), 'Emergency shows the actual partial Flex rate');
-    assert(txt.includes('Mindest-Flex bewusst überstimmt; Floor bleibt geschützt'), 'Emergency copy should separate flex from floor');
+    assert(txt.includes('Mindest-Flex bewusst überstimmt; Grundbedarf bleibt geschützt'), 'Emergency copy should separate flex from floor');
     assert(txt.includes('Alarm-Diagnose'), 'Suppressed alarm should remain a separate diagnostic');
     assert(minimumCard?.dataset?.trend === 'down', 'Overridden minimum flex should be marked as warning trend');
     assert(txt.includes('In schwerer Flex-Notlage bewusst überstimmt'), 'Minimum-flex override status should be human-readable');

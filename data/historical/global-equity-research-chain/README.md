@@ -4,6 +4,9 @@ Die gefilterten Eingaben in diesem Verzeichnis liefern
 `global_equity_research_index`. Die Reihe ist eine transparente
 Forschungsproxykette und kein MSCI- oder anderer Anbieterindex.
 
+Ein neues Datenjahr kommt nur als Jahreslieferung unter `jahre/<Jahr>/` dazu; Ablauf und Regeln stehen unter
+[Jahresdaten pflegen](../../../docs/reference/JAHRESDATEN.md).
+
 ## Quellenstand
 
 Abruf und Filterung erfolgten am 2026-07-29.

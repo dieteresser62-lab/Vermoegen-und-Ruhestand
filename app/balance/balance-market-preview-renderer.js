@@ -1,12 +1,10 @@
-/** Jahreshoch in Balance und Jahresabschluss (FR-77 Punkt 5: nur bei verdecktem Bärenmarkt); keine Rechnung oder Speicherung. */
+/** Allzeithoch in Balance und Jahresabschluss (FR-89): Hoch mit Datum, Abstand, Marktlage, Kursschwelle; keine Rechnung oder Speicherung. */
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
-import { isHiddenBearMarket, hiddenBearCheckUnreliable, hiddenBearPriceProblem } from './balance-market-preview.js';
-import { createHiddenBearBlock } from '../shared/annual-todo-view.js';
-import { displayMonthlyDown } from '../shared/display-rounding.js';
+import { highCheckUnreliable, highPriceProblem, deepBearThreshold } from './balance-market-preview.js';
+import { ATH_NOISE_BAND_TEXT, athDistancePct, athNoiseBandApplies } from './balance-ath-noise.js';
 
 /** @typedef {ReturnType<typeof import('./balance-market-preview.js').projectMarketPreview>} MarketPreview */
 /** @typedef {MarketPreview|import('./balance-market-preview.js').UnavailableMarketPreview} Preview */
-/** @typedef {MarketPreview['rule']} Reading */
 /** @typedef {ReturnType<typeof import('./balance-next-year-budget.js').projectNextYearBudget>} Projection */
 /** @param {string|null} value */
 const date = value => value ? value.split('-').reverse().join('.') : 'Datum nicht belegt';
@@ -15,113 +13,107 @@ const number = (value, digits, signed = false) => `${signed && value !== null &&
 /** @param {number|null} value */
 const price = value => `${number(value, 2)} €`;
 /** @param {number|null} value */
-const money = value => `${number(value, 0)} €`;
-/** @param {number|null} value */
 const percent = value => `${number(value, 1)} %`;
 /** @param {Document} doc @param {string} tag @param {string} text @param {string} [className] */
 const make = (doc, tag, text, className = '') => {
     const node = doc.createElement(tag); node.textContent = text; node.className = className; return node;
 };
-/** @param {Reading} reading */
-const highOrigin = reading => reading.high.origin === 'stored_close'
-    ? `höchster gespeicherter Schlusskurs am ${date(reading.high.asOf)}${reading.high.coverageShorterThanAth ? ` (gespeicherte Kurse seit ${date(reading.high.coverage?.first ?? null)})` : ''}`
-    : reading.high.origin === 'rule_high' ? 'neues Hoch nach Regel'
-        : `Hoch aus Jahresmarktdaten${reading.high.asOf ? ` am ${date(reading.high.asOf)}` : ' · Datum nicht belegt'}`;
-/** @param {MarketPreview} view */
-const highLabel = view => view.high.high.asOf ? `Mit Hoch vom ${date(view.high.high.asOf)}` : 'Mit Hoch (Datum nicht belegt)';
 
-/** @param {Document} doc @param {string[]} columns
- * @param {[string, (string|HTMLElement)[]][]} fields @param {string} label */
-function comparisonTable(doc, columns, fields, label) {
-    const scroll = make(doc, 'div', '', 'ds-table-scroll');
-    scroll.tabIndex = 0; scroll.setAttribute('role', 'region'); scroll.setAttribute('aria-label', label);
-    const table = make(doc, 'table', '', 'ds-table balance-preview-table');
-    const head = make(doc, 'thead', ''), headings = make(doc, 'tr', '');
-    for (const text of ['', ...columns]) {
-        const th = make(doc, 'th', text); th.setAttribute('scope', 'col'); headings.append(th);
-    }
-    head.append(headings);
-    const rows = make(doc, 'tbody', '');
-    for (const [label, values] of fields) {
-        const row = make(doc, 'tr', ''), th = make(doc, 'th', label); th.setAttribute('scope', 'row'); row.append(th);
-        for (const value of values) {
-            const td = make(doc, 'td', '');
-            if (typeof value !== 'string' && value.dataset.changed === 'true') td.className = 'balance-preview-cell-warning';
-            td.append(typeof value === 'string' ? doc.createTextNode(value) : value); row.append(td);
-        }
-        rows.append(row);
-    }
-    table.append(head, rows); scroll.append(table); return scroll;
+/** Herkunft des Allzeithochs (ATH-1b): „Tagesschluss vom …“, „Jahresschluss vom …“ oder „gespeicherter Wert“, nach einem Split
+ * mit „nach Split am …“. @param {MarketPreview['high']} high */
+export function marketHighSource(high) {
+    const source = high.source ?? (high.dated ? 'daily' : 'stored');
+    const text = source === 'stored' || !high.asOf ? 'gespeicherter Wert'
+        : `${source === 'year_end' ? 'Jahresschluss' : 'Tagesschluss'} vom ${date(high.asOf)}`;
+    return high.splitAsOf ? `${text} · nach Split am ${date(high.splitAsOf)}` : text;
 }
 
-/** @param {NonNullable<MarketPreview['comparison']['rule']>} variant */
-export const actionText = variant => `${variant.mainAction.text}${variant.mainAction.netAmount === null ? '' : ` · ${money(variant.mainAction.netAmount)} netto`}${variant.goldPurchase > 0 ? `, davon ${money(variant.goldPurchase)} in Gold` : ', kein Gold-Kauf'}`;
-
-/** Marktwerte stammen aus der fertigen Projektion, Beträge aus ihrem Vergleichsobjekt.
- * @param {Document} doc @param {{label: string, reading: Reading}[]} columns
- * @param {MarketPreview['comparison']} [comparison] */
-export function createMarketReadingsTable(doc, columns, comparison) {
-    const readings = columns.map(column => column.reading);
-    /** @type {[string, (string|HTMLElement)[]][]} */
-    const fields = [
-        ['Indexstand heute', readings.map(r => price(r.index))],
-        ['Hoch', readings.map(r => { const cell = make(doc, 'span', price(r.high.value)); cell.append(make(doc, 'small', highOrigin(r), 'ds-source')); return cell; })],
-        ['Abstand zum Hoch', readings.map(r => percent(r.drawdownPct))],
-        ['Marktlage', readings.map(r => r.market.text)]
-    ];
-    if (comparison?.rule && comparison.high) {
-        const variants = [comparison.rule, comparison.high];
-        fields.push(['Hauptaktion / Verkauf', variants.map(v => `${v.mainAction.text}${v.mainAction.netAmount === null ? '' : ` · ${money(v.mainAction.netAmount)} netto`}`)],
-            ['Steuer', variants.map(v => money(v.tax))],
-            ['Reserve nach Aktion', variants.map(v => money(v.reserveAfterAction))]);
-    }
-    return comparisonTable(doc, columns.map(column => column.label), fields, 'Markt und Umschichtung im Vergleich');
+/** Wo sich ein Tageskurs ausnehmen oder ein Split eintragen lässt. */
+export const ATH_CORRECTION_PLACE = 'Balance › „Alle Parameter“ › „Marktdaten-Korrektur“';
+/** Warnhinweise zum Hoch (ATH-1b); sie verwerfen nichts. @param {MarketPreview['warnings']|undefined} warnings @returns {string[]} */
+export function marketHighWarningTexts(warnings) {
+    return [warnings?.outlier ? `Ausreißer-Verdacht – Kurs prüfen: Der Tagesschluss vom ${date(warnings.outlier.asOf)} liegt ${percent(warnings.outlier.pctOverPrevious)} über dem Vortag. Ist er falsch, markiere ihn unter ${ATH_CORRECTION_PLACE} als „nicht verwenden“.` : null,
+        warnings?.drop ? `Möglicher Split oder Datenfehler: Am ${date(warnings.drop.asOf)} liegt der Tagesschluss ${percent(warnings.drop.pctDrop)} unter dem Vortag. Einen Split trägst du unter ${ATH_CORRECTION_PLACE} ein.` : null]
+        .filter(text => text !== null);
 }
 
-/** Jahresabschluss, Schritt Marktdaten (FR-77 Punkt 5): Vom Jahreshoch steht hier nur „nicht belastbar“, wenn die Kurse für
- * die Prüfung fehlen und es auf sie ankäme. Den verdeckten Bärenmarkt samt Wahl zeigt der Schritt „Plan“.
+/** Kursschwelle „tiefer Bär“ mit Restabstand; kürzt die Engine schon, „Kürzung aktiv“.
+ * @param {MarketPreview['deepBear']} deepBear */
+export function deepBearText(deepBear) {
+    return deepBear.cutActive ? `unter ${price(deepBear.threshold)} · Kürzung aktiv`
+        : `unter ${price(deepBear.threshold)} · noch ${percent(deepBear.remainingDeclinePct)} Abstand`;
+}
+
+/** Marktkachel der Diagnose (FR-89): stellt den Zeilen Abstand, Seit dem Hoch, … das Allzeithoch mit Herkunft voran und die
+ * Kursschwelle „tiefer Bär“ hinter „Seit dem Hoch“. Werte der Rechnung, die die Kachel zeigt; ohne Hoch bleiben beide Zeilen leer.
+ * @param {{ath?: number, endeVJ?: number}} input @param {string|undefined} marketKey @param {Preview|null|undefined} preview
+ * @param {[string, string|null, ...unknown[]][]} rows */
+export function withMarketHighRows(input, marketKey, preview, rows) {
+    const known = typeof input.ath === 'number' && Number.isFinite(input.ath) && input.ath > 0;
+    const source = preview && 'high' in preview && preview.high.value === input.ath ? marketHighSource(preview.high) : 'aus den Jahresmarktdaten';
+    const bear = known && typeof input.endeVJ === 'number' && Number.isFinite(input.endeVJ)
+        ? deepBearText(deepBearThreshold(/** @type {{ath: number, endeVJ: number}} */ (input), marketKey)) : null;
+    const [distance, since, ...rest] = rows, noise = athNoiseBandApplies(input);
+    // Im Grundrauschen rechnet die Engine am Hoch; die Kachel nennt das und den echten Abstand (FR-89, Ergänzung 3).
+    return [['Allzeithoch', known ? `${price(/** @type {number} */ (input.ath))} · ${source}${noise ? ` · ${ATH_NOISE_BAND_TEXT}` : ''}` : null],
+        noise ? [distance[0], formatDisplayNumber(athDistancePct(input), { unit: 'percent' })] : distance, since, ['Tiefer Bär', bear], ...rest];
+}
+
+/** Zeilen zum Allzeithoch für den Jahresabschluss; die Marktkachel der Balance zeigt dieselben Werte in ihren Zeilen.
+ * @param {MarketPreview} view @returns {[string, string][]} */
+export function marketHighRows(view) {
+    return [['Allzeithoch', `${price(view.high.value)} · ${marketHighSource(view.high)}${athNoiseBandApplies(view.inputs) ? ` · ${ATH_NOISE_BAND_TEXT}` : ''}`],
+        [view.quote ? `Abstand am ${date(view.quote.asOf)}` : 'Abstand zum Allzeithoch', percent(view.drawdownPct)],
+        ['Marktlage', view.market.text], ['Tiefer Bär', deepBearText(view.deepBear)]];
+}
+
+/** Jahresabschluss, Schritt Marktdaten: Allzeithoch, Abstand, Marktlage und Kursschwelle. Fehlen Kurse und käme es auf sie an,
+ * steht darunter „nicht belastbar“ mit dem Weg zu frischen Kursen.
  * @param {Document} doc @param {Preview|null} view */
 export function createAnnualMarketReadings(doc, view) {
     const host = make(doc, 'section', '', 'balance-market-preview'); host.dataset.annualMarketReadings = '';
-    host.hidden = !view || !hiddenBearCheckUnreliable(view);
-    if (host.hidden || !view) return host;
+    host.hidden = !view;
+    if (!view) return host;
+    if ('market' in view && view.market) {
+        host.append(make(doc, 'h4', 'Allzeithoch und Marktlage'));
+        for (const [label, value] of marketHighRows(view)) {
+            const row = make(doc, 'div', '', 'balance-row ds-row');
+            row.append(make(doc, 'span', label), make(doc, 'strong', value));
+            host.append(row);
+        }
+        for (const text of marketHighWarningTexts(view.warnings)) {
+            const note = make(doc, 'p', text, 'ds-note ds-note-warning'); note.dataset.athWarning = ''; host.append(note);
+        }
+        if (view.high.origin === 'daily_close') host.append(make(doc, 'p', `Ist dieser Tagesschluss falsch, markierst du ihn unter ${ATH_CORRECTION_PLACE} als „nicht verwenden“; die App bestimmt das Hoch dann neu.`, 'ds-source'));
+    }
+    if (!highCheckUnreliable(view)) return host;
     const result = make(doc, 'div', '', 'balance-preview-result balance-preview-result-not_reliable');
     result.dataset.marketStage = 'not_reliable';
-    result.append(make(doc, 'span', 'Nicht bewertet', 'ds-badge'), make(doc, 'strong', 'Vergleich mit dem Jahreshoch nicht möglich'),
-        make(doc, 'p', view.comparison.reason || 'Schlusskurse fehlen.'));
+    result.append(make(doc, 'span', 'Nicht belastbar', 'ds-badge'), make(doc, 'strong', 'Allzeithoch nur aus den bekannten Kursen'),
+        make(doc, 'p', view.unreliableReason || view.withoutQuoteReason || 'Schlusskurse fehlen.'));
     const link = make(doc, 'a', 'Kurse auf Daten & Sicherung holen'); link.setAttribute('href', 'Daten-Sicherung.html#kursdienst');
-    result.append(link, make(doc, 'p', 'Der Abschluss läuft nach der Jahresendregel.'));
+    result.append(link, make(doc, 'p', 'Der Abschluss rechnet mit dem höchsten bekannten Wert.'));
     host.append(result);
     return host;
 }
 
-/** „Kurse älter als 10 Tage – verdeckter Bärenmarkt nicht prüfbar · Kurse holen →“ (WT-1b, vorläufige Entscheidung der Steuerung).
- * WT-1c: Fehlen Kurse oder sind sie lückenhaft, heißt es „Kurse fehlen oder sind lückenhaft – …“.
+/** „Kurse älter als 10 Tage – Allzeithoch nicht belastbar · Kurse holen →“; fehlen Kurse oder sind sie lückenhaft,
+ * „Kurse fehlen oder sind lückenhaft – …“ (WT-1b, WT-1c).
  * @param {Document} doc @param {'stale'|'missing'} problem */
-function hiddenBearStaleLine(doc, problem) {
+function highStaleLine(doc, problem) {
     const reason = problem === 'stale' ? 'Kurse älter als 10 Tage' : 'Kurse fehlen oder sind lückenhaft';
-    const line = make(doc, 'p', `${reason} – verdeckter Bärenmarkt nicht prüfbar · `, 'ds-source todo-bear-stale');
-    line.dataset.hiddenBearStale = '';
+    const line = make(doc, 'p', `${reason} – Allzeithoch nicht belastbar · `, 'ds-source');
+    line.dataset.highStale = '';
     const link = make(doc, 'a', 'Kurse holen →'); link.setAttribute('href', 'Daten-Sicherung.html#kursdienst');
     line.append(link);
     return line;
 }
 
 const renderedPreviewBodies = new WeakMap();
-const previewDetails = ['[data-market-history-details]'];
-/** Ergebniswechsel erhalten die Bedienauswahl; gleiche Ergebnisse behalten ihre DOM-Knoten.
- * @param {HTMLElement} host @param {string} signature @param {()=>HTMLElement[]} render */
+/** Gleiche Ergebnisse behalten ihre DOM-Knoten. @param {HTMLElement} host @param {string} signature @param {()=>HTMLElement[]} render */
 function updateMarketPreviewBody(host, signature, render) {
     if (renderedPreviewBodies.get(host) === signature) return;
-    const states = previewDetails.map(selector => /** @type {HTMLDetailsElement|null} */ (host.querySelector(selector))?.open);
-    const contents = render();
-    const oldStage = host.querySelector('[data-market-stage]')?.getAttribute('data-market-stage');
-    const newStage = contents.map(content => content.querySelector('[data-market-stage]')).find(Boolean)?.getAttribute('data-market-stage');
-    previewDetails.forEach((selector, index) => {
-        const details = /** @type {HTMLDetailsElement|undefined} */ (contents.map(content => content.querySelector(selector)).find(Boolean));
-        if (details && states[index] !== undefined && oldStage !== 'not_reliable' && newStage !== 'not_reliable') details.open = states[index];
-    });
-    host.replaceChildren(...contents);
+    host.replaceChildren(...render());
     renderedPreviewBodies.set(host, signature);
 }
 
@@ -141,40 +133,24 @@ export function projectionAssumptions(projection) {
  * @param {Projection} projection */
 export function projectionReasons(projection) {
     const effects = { need: 'Bedarf', income: 'Einkünfte', planned_flows: 'geplante Zahlungen', budget: 'Budget' };
-    return (projection.rule?.reasons || []).map((/** @type {import('./balance-next-year-budget.js').ChangeReason} */ reason) => `${reason.text} ${number(reason.effect === 'planned_flows' ? -reason.amount : reason.amount, 0, true)} € ${effects[reason.effect]}`).join(' · ');
+    return (projection.plan?.reasons || []).map((/** @type {import('./balance-next-year-budget.js').ChangeReason} */ reason) => `${reason.text} ${number(reason.effect === 'planned_flows' ? -reason.amount : reason.amount, 0, true)} € ${effects[reason.effect]}`).join(' · ');
 }
 
-/** @param {Document} doc @param {Preview|null} view @param {Projection|null} [projection] */
+/** Balance, Karte „Was zu tun ist“: Tragen die Kurse das Allzeithoch nicht, steht dort genau eine kleine Zeile mit dem Weg zu
+ * frischen Kursen (WT-1b Soll 6). Hoch, Abstand, Marktlage und Kursschwelle stehen in der Marktkachel der Diagnose.
+ * @param {Document} doc @param {Preview|null} view @param {Projection|null} [projection] */
 export function renderBalanceMarketPreview(doc, view, projection = null) {
     if (!doc?.getElementById) return;
-    if (projection) view = projection.marketPreview || { withoutQuote: true, withoutQuoteReason: projection.reason,
-        quote: null, yearEndDate: null, readingsEqual: true,
-        comparison: /** @type {import('./balance-market-preview.js').UnavailableMarketPreview['comparison']} */ (projection.comparison) };
+    if (projection) view = projection.marketPreview || { withoutQuote: true, withoutQuoteReason: projection.reason || '',
+        unreliableReason: projection.reason || '', quote: null, yearEndDate: null };
     const reasons = doc.getElementById('balanceBudgetReasons');
-    if (reasons) { reasons.hidden = !projection?.rule; reasons.textContent = projection?.rule
+    if (reasons) { reasons.hidden = !projection?.plan; reasons.textContent = projection?.plan
         ? `Warum anders als ${projection.closingYear}: ${projectionReasons(projection) || 'Keine Änderungen ab 1 €'}` : ''; }
     const host = doc.getElementById('balanceMarketPreview');
-    const ruleSource = doc.getElementById('balanceBudgetRuleSource');
-    if (ruleSource) ruleSource.hidden = !view || view.withoutQuote || !view.quote;
-    // FR-77 Punkt 5: Das Jahreshoch erscheint nur bei verdecktem Bärenmarkt; alle übrigen Stufen zeigt die App nicht mehr.
-    const hidden = view && 'rule' in view && isHiddenBearMarket(view) ? /** @type {MarketPreview} */ (view) : null;
-    const budget = doc.getElementById('balanceHighBudget');
-    if (budget) { budget.hidden = true; budget.replaceChildren(); }
     if (!host) return;
-    // WT-1b (Soll 6): Tragen die Kurse die Prüfung nicht, steht genau eine kleine Zeile mit dem Weg zu frischen Kursen.
-    const stale = hidden ? null : hiddenBearPriceProblem(view);
-    host.hidden = !hidden && !stale;
-    host.setAttribute?.('aria-label', stale ? 'Prüfung auf verdeckten Bärenmarkt' : 'Bärenmarkt, den die Jahresregel nicht sieht');
+    const stale = highPriceProblem(view);
+    host.hidden = !stale;
     const body = doc.getElementById('balanceMarketPreviewBody');
     if (!body) return;
-    updateMarketPreviewBody(body, JSON.stringify(hidden || stale), () => hidden ? [createHiddenBearBlock(doc, hidden)] : stale ? [hiddenBearStaleLine(doc, stale)] : []);
-    if (!hidden) return;
-    const { comparison } = hidden;
-    if (budget && ['budget_lower', 'budget_higher'].includes(comparison.state) && comparison.high && comparison.difference) {
-        budget.hidden = false;
-        // FR-78: Monatsbudget abgerundet; der Unterschied ergibt sich aus den gezeigten Beträgen.
-        const shownHigh = displayMonthlyDown(comparison.high.monthlyBudget), shownRule = displayMonthlyDown(comparison.rule?.monthlyBudget);
-        const shownDifference = Number.isFinite(shownHigh) && Number.isFinite(shownRule) ? shownHigh - shownRule : comparison.difference.monthlyBudget;
-        budget.append(make(doc, 'span', highLabel(hidden)), make(doc, 'strong', `${money(shownHigh)} · ${number(shownDifference, 0, true)} € im Monat`));
-    }
+    updateMarketPreviewBody(body, JSON.stringify(stale), () => stale ? [highStaleLine(doc, stale)] : []);
 }

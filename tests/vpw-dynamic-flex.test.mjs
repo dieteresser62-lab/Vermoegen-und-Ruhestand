@@ -29,9 +29,10 @@ const baseInput = {
     jahreSeitAth: 0
 };
 
+// FR-88: vorschüssige Rate.
 function vpwRate(r, n) {
     if (Math.abs(r) < 0.001) return 1 / n;
-    return r / (1 - Math.pow(1 + r, -n));
+    return r / ((1 + r) * (1 - Math.pow(1 + r, -n)));
 }
 
 // Test 1: dynamicFlex false -> contract ready, no active VPW.
@@ -541,7 +542,8 @@ function vpwRate(r, n) {
     const result = EngineAPI.simulateSingleYear(input, priorState);
     const rawVpwTarget = Math.ceil((result.ui.vpw.vpwTotal * input.liquidityRunwayYears) / 100) * 100;
 
-    assertClose(result.ui.vpw.vpwTotal, 432255.60263476154, 1e-6, 'Fixture should retain a high raw VPW budget');
+    // FR-88 (vorschüssig): vorher 432.255,60 €.
+    assertClose(result.ui.vpw.vpwTotal, 421189.7979433411, 1e-6, 'Fixture should retain a high raw VPW budget');
     assertEqual(result.ui.spending.details.endgueltigeEntnahme, 31200, 'Fixture should retain the final post-policy annual withdrawal');
     assertEqual(result.ui.zielLiquiditaet, 180000, 'FR-30: Runway target uses floor plus wish-flex minus pension times five years');
     assert(result.ui.zielLiquiditaet !== rawVpwTarget, 'Runway target must not use the raw VPW budget');
@@ -563,11 +565,12 @@ function vpwRate(r, n) {
 // Test 19: A spending cut must not create its own false Safety recovery signal.
 {
     // B3 deckt den Nettoauftrag jetzt vollständig; weniger Startcash erhält den Safety-Krisenzeugen.
+    // FR-88: Die vorschüssige Rate senkt den Vorbedarf; 65.000 statt 75.000 € Startcash erhalten den Zeugen.
     const input = {
         ...baseInput,
         depotwertAlt: 2000000,
         depotwertNeu: 0,
-        tagesgeld: 75000,
+        tagesgeld: 65000,
         floorBedarf: 24000,
         flexBedarf: 100000,
         dynamicFlex: true,
@@ -598,7 +601,7 @@ function vpwRate(r, n) {
 
     const result = EngineAPI.simulateSingleYear(input, priorState);
 
-    assertClose(result.ui.spending.kuerzungProzent, 48.074554796671485, 1e-9,
+    assertClose(result.ui.spending.kuerzungProzent, 48.63025978987301, 1e-9,
         'FR-33: Safety-Zeuge ohne S-Kurve bleibt durch Glättung gekürzt');
     assert(result.ui.runway.months >= 27,
         'Post-policy UI runway should cross hard minimum plus recovery headroom');

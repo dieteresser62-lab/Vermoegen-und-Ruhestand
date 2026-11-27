@@ -53,13 +53,20 @@ assertEqual(unavailable.querySelectorAll('.close-dialog-tile').length, 3, 'Fehle
 assertEqual(unavailable.querySelectorAll('.ds-readonly-value').filter(node => node.textContent === 'Fehlt').length, 3, 'Fehlende Werte werden knapp benannt');
 assert(!doc.getElementById('annualHandPriceGroup').hidden && !doc.getElementById('annualHandInflation').disabled && !doc.getElementById('annualHandCape').disabled, 'Fehlende Pflichtdaten lassen sich weiterhin von Hand ergänzen');
 const quote = syntheticAnnualQuote('VWCE.DE', 2026, '2027-01-02');
-binding.updateMarketData({ values: { ...Object.fromEntries([['inflation', '2.5'], ['cape', '28']]
+// NR-1b: CAPE 36 liegt unter 25 % Abstand zum Bezug 37,71; ein Sprung öffnet seit M1 das Handfeld (eigener Test in nr-1-muss-fehler).
+binding.updateMarketData({ values: { ...Object.fromEntries([['inflation', '2.5'], ['cape', '36']]
     .map(([type, value]) => [type, createManualAnnualValue(type, value, 2026)])), etf: quote }, errors: {} });
 for (let i = 0; i < 30; i++) await Promise.resolve();
 const root = doc.getElementById('balanceAnnualClose');
 const text = element => dialogElements(element).map(node => node.textContent || '').join(' ').replaceAll('\u00a0', ' ');
 const market = root.querySelector('[data-annual-market-report]');
 assertEqual(capeGroup.querySelector('p').textContent, 'Optional – ergänzt einen fehlenden Abruf mit manueller Herkunft.', 'Bei vorhandenem CAPE bleibt die bisherige Feldhilfe');
+const capeWarning = 'Der gespeicherte Balance-Stand ist für den CAPE-Abruf nicht lesbar.';
+const preparedMarket = { inflation: createManualAnnualValue('inflation', '2.5', 2026), cape: createManualAnnualValue('cape', '28', 2026), etf: quote };
+binding.updateMarketData({ values: preparedMarket, errors: {}, capeWarning });
+assertEqual(root.querySelector('[data-annual-cape-stored-warning]').textContent, capeWarning, 'Beschädigter Balance-Stand bleibt trotz erfolgreichem CAPE sichtbar');
+assert(!capeGroup.hidden && !doc.getElementById('annualHandCape').disabled, 'Beschädigter Balance-Stand lässt eine CAPE-Handeingabe zu');
+binding.updateMarketData({ values: preparedMarket, errors: {} });
 assert(text(market).includes('ETF-Schlusskurs') && text(market).includes('140,78 €'), 'FR-14: Vorbereitung zeigt den Quellkurs in Euro und Cent');
 assert(!text(market).includes('auf ganze Euro gerundet'), 'Vorbereitung verspricht keine Rundung des gespeicherten Kurses');
 assertEqual(market.querySelectorAll('.close-dialog-tile').length, 3, 'Marktdaten zeigen drei Kacheln');
@@ -144,3 +151,16 @@ assert(text(completeStatus).includes('Jahr 2026 vollständig') && !text(complete
 const incompleteMonth = createAnnualExpenseStatus({ doc, model: { ...model, expenses: { ...model.expenses, complete: false,
     rows: [{ id: 'a', present: true }, { id: 'b', present: false }] } }, targetYear: 2026 });
 assert(text(incompleteMonth).includes('Dezember noch unvollständig · Ausgaben fehlen: Erika Mustermann'), 'Fehlende Dezemberausgaben nennen die betroffene Person');
+
+// ATH-1c (Gutachten zu ATH-1b, P3-1): Das Ergebnisfenster ohne Monatsphase nennt das Grundrauschen, wenn es greift.
+{
+    const { doc: resultDoc } = createDialogFixture();
+    const resultUi = createAnnualCloseDialog({ document: resultDoc, getModel: () => model, isCommitActive: () => false, projectPreview: () => preview });
+    const show = yearsSince => {
+        resultUi.showUpdateResultModal({ targetYear: 2026, confirmed: true, showProtocol: true,
+            etf: { price: 196, source: 'Spielbereich · synthetisch', ath: { old: 180, new: 200, isNew: true, yearsSince, lastHighAsOf: '2026-08-12' } } });
+        return text(resultDoc.getElementById('annualResults'));
+    };
+    assert(show(0.39).includes('gilt als Höchststand (Grundrauschen bis 5 %)'), 'Ergebnisfenster: Zusatz bei jungem Hoch 2 % über dem Schlusskurs');
+    assert(!show(1).includes('Grundrauschen'), 'Ergebnisfenster: kein Zusatz bei einem Hoch von vor einem Jahr');
+}

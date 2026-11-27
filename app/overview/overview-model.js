@@ -11,7 +11,7 @@ import { memberPlanScope, readHouseholdPlan } from '../profile/household-plan.js
 import { projectHouseholdPlanComparison } from '../profile/household-plan-comparison.js';
 import { projectBalanceActionOrigin } from '../balance/balance-action-origin.js';
 import { derivePlanningStart, resolvePlanningPeriodSource } from '../shared/planning-start.js';
-import { appNow, getAppTestDate } from '../shared/app-clock.js';
+import { appNow, getAppTestDate, berlinCalendarDays } from '../shared/app-clock.js';
 import { PROBELAUF_PRICE_LABEL } from '../shared/probelauf-price-ui.js';
 import { loadProfileRegistry } from '../profile/profile-registry.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
@@ -27,7 +27,7 @@ import { overviewScope, readOverviewSummary, readOverviewSummaries, OVERVIEW_SUM
 import { summarizeBalanceAction } from '../balance/balance-action-summary.js';
 import { preflightAnnualPeriod, resolveAnnualTargetYear } from '../balance/balance-annual-period.js';
 import { loadExpensesStoreResult } from '../balance/balance-expenses-storage.js';
-import { computeSpent, computeBudgetSpent, computeYearStats, hasExpenseImport } from '../balance/balance-expenses-metrics.js';
+import { computeBudgetSpent, expenseConvention, expenseConventions, forecastExpenseMonths, hasExpenseImport } from '../balance/balance-expenses-metrics.js';
 import { readWealthHistory } from '../../types/wealth-history-contract.js';
 import { readReconciliationHistory, projectReconciliationCashStatuses } from '../tranches/tranche-reconciliation.js';
 
@@ -110,7 +110,7 @@ export function buildBalanceOverviewSummary({ modelResult, monthlyBudget, metada
 /** @param {O.ProjectionOptions} options
  * @returns Lesendes Übersichtsmodell aus den angegebenen Quellen.
  */
-export function projectOverview({ registry, activeId, liveData = {}, now = appNow(), annualTargetYear, lastBackup = null, priceReport = null, recovery = false, balanceSingleFallback = false, historyPeriod = 'all', historyReport = null, snapshots = [], annualArchive = null }) {
+export function projectOverview({ registry, activeId, liveData = {}, now = appNow(), annualTargetYear, lastBackup = null, priceReport = null, recovery = false, historyPeriod = 'all', historyReport = null, snapshots = [], annualArchive = null }) {
     if (!registry?.profiles?.[activeId]) return { available: false, year: now.getFullYear(), lastBackup, now, priceReport,
         occasion: deriveOverviewOccasion({ now, dataAvailable: false, recovery }) };
     if (householdMemberCount(registry) > 2) return { available: false, householdLimit: HOUSEHOLD_CURRENT_LIMIT_MESSAGE(householdMemberCount(registry)),
@@ -129,12 +129,7 @@ export function projectOverview({ registry, activeId, liveData = {}, now = appNo
         const today = personDisplayAge(projectedRegistry.profiles[person.id].data, now);
         return { ...person, personDates: { ...person.personDates, todayAge: today.age, todayAgeStatus: today.status } };
     });
-    const members = projection.profiles.filter(p => p.belongs);
-    if (balanceSingleFallback && !members.length) {
-        const current = projection.profiles.find(person => person.id === activeId);
-        if (current) members.push(current);
-        projection.complete = Boolean(current?.valid);
-    }
+    const members = projection.profiles;
     const scope = overviewScope(members.length === 1 && members[0].id === activeId ? 'single' : 'household', members.map(p => p.id));
     const cashPeople = members.map(person => readCashPerson(person.id, person.name, projectedRegistry.profiles[person.id].data));
     const cashWarnings = projectCashFreshness(cashPeople, localHistoryDate(now));
@@ -143,8 +138,7 @@ export function projectOverview({ registry, activeId, liveData = {}, now = appNo
     const periodSource = resolvePlanningPeriodSource({ writerId: activeId, scope,
         records: Object.entries(projectedRegistry.profiles).map(([id, profile]) => ({ id,
             state: loadStoredBalanceStateFromData(profile.data),
-            // Frühere Anzeigen einer inzwischen außenstehenden Person sind
-            // keine aktuelle Haushaltsquelle. Den geöffneten Writer weiterhin
+            // Nur Stände aus dem aktuellen Haushaltsbereich zählen. Den geöffneten Writer weiterhin
             // berücksichtigen, insbesondere während seines Pending-Commits.
             scopeMatches: Object.values(readOverviewSummaries(profile.data[OVERVIEW_SUMMARY_KEY])).some(item => scope
                 && (id === activeId || item?.year === now.getFullYear())
@@ -191,7 +185,7 @@ export function projectOverview({ registry, activeId, liveData = {}, now = appNo
     const expenses = beforePlanning ? { year: expenseYear, month: expenseMonth, rows: [], missingMonths: [],
         complete: false, spent: null, beforePlanning: true } : projectFocusExpenses(expenseResult.store, scope, expenseYear, expenseMonth);
     const comparisonStorage = { getItem: key => liveData[key] ?? null };
-    const planArea = memberPlanScope(memberIds, comparisonStorage, members.some(person => person.belongs));
+    const planArea = memberPlanScope(memberIds, comparisonStorage);
     const budgetContext = { registry: projectedRegistry, activeId, liveData: { ...liveData }, scope, receiptScope: planArea };
     const expenseBudgetSource = overviewExpenseBudget(budgetContext, expenseYear, beforePlanning);
     const expenseBudgetSources = { [occasion.closingYear]: overviewExpenseBudget(budgetContext, occasion.closingYear, occasion.closingYear < planning.firstPlanningYear),
@@ -324,8 +318,9 @@ export function projectOverviewYear({ store, scope, now, retrospective = false, 
     // FR-43: Mit festen Ausgaben im Beschluss hat jeder Monat sein eigenes Budget; ohne sie gilt das Mittel.
     const budgetMonths = budget !== null && Array.isArray(budgetSummary.months) ? budgetSummary.months : null;
     const budgetFor = month => budgetMonths ? budgetMonths[month - 1] : budget;
+    const directions = expenseConventions(store?.years?.[year]);
     const months = Array.from({ length: 12 }, (_, index) => {
-        const month = index + 1, source = projectFocusExpenses(store, scope, year, month);
+        const month = index + 1, source = projectFocusExpenses(store, scope, year, month, directions);
         const presentRows = source.rows.filter(row => row.present);
         const spent = presentRows.length ? presentRows.reduce((sum, row) => sum + row.spent, 0) : null;
         const closed = month <= lastMonth;
@@ -337,14 +332,12 @@ export function projectOverviewYear({ store, scope, now, retrospective = false, 
     const recorded = months.filter(month => month.spent !== null);
     const complete = lastMonth > 0 && months.slice(0, lastMonth).every(month => month.complete);
     // Mittelwert-Hochrechnung auf vollständigen, gefilterten Monaten.
-    const yearData = { months: Object.fromEntries(months.filter(month => month.complete).map(month =>
-        [month.month, { profiles: { selected: { categories: { total: month.spent } } } }])) };
-    const stats = computeYearStats({ yearData });
+    const { annualForecast } = forecastExpenseMonths(months.filter(month => month.complete && month.spent !== 0).map(month => month.spent));
     const reliable = months.some(month => month.complete);
     const total = recorded.length ? recorded.reduce((sum, month) => sum + month.spent, 0) : null;
     return { year, retrospective, lastMonth, months, complete, total, budget, budgetCreatedAt: budget === null ? null : budgetSummary.createdAt,
         budgetStatus: budget === null ? (budgetStatus === 'invalid' ? 'invalid' : 'missing') : budgetStatus, budgetPreviewStatus,
-        forecast: reliable && (stats.annualForecast > 0 || complete) ? stats.annualForecast : null, forecastIncomplete: !complete,
+        forecast: reliable && (annualForecast > 0 || complete) ? annualForecast : null, forecastIncomplete: !complete,
         highest: recorded.reduce((best, month) => !best || month.spent > best.spent ? month : best, null),
         overBudgetCount: budget === null || !recorded.length ? null : recorded.filter(month => month.overBudget).length,
         budgetPercent: budget > 0 && total !== null ? total / (budgetMonths ? budgetMonths.slice(0, retrospective ? 12 : lastMonth).reduce((sum, value) => sum + value, 0)
@@ -403,16 +396,28 @@ export function projectOverviewSales(registry, scope, year, now) {
     } catch { return { count: null, net: null, unconfirmed: null }; }
 }
 
-/** Lokale Kalendertage, ohne Annahmen über Börsenfeiertage. */
+/** Bei .DE muss für den Jahresabschluss ein Xetra-Kurs belegt sein. */
+export function annualXetraQuoteNeedsReview(tranche) {
+    return /\.DE$/i.test(tranche?.ticker || '') && tranche.quoteExchange !== 'Xetra';
+}
+
+function weekdayOnOrBefore(date) {
+    while ([0, 6].includes(date.getDay())) date.setDate(date.getDate() - 1);
+    return date;
+}
+
 /**
  * @param model Bereits gelesene Anzeigeprojektion.
+ * @param {{ annual?: boolean }} [options] Börsenprüfung für den Jahresabschluss.
  * @returns Ob der belegte Kursstand den Abschlusskontext abdeckt.
  */
-export function overviewPricesDone(model) {
+export function overviewPricesDone(model, { annual = model.occasion?.kind === 'annual' } = {}) {
     const now = model.now, report = model.priceReport;
     if (!(now instanceof Date) || !Number.isFinite(now.getTime()) || model.complete === false) return false;
-    if (report && report.status !== 'complete') return false;
+    const offlineAnnual = annual && model.occasion?.kind === 'annual' && report?.status === 'offline' && report.updated === 0;
+    if (report && report.status !== 'complete' && !offlineAnnual) return false;
     const tranches = model.priceTranches || [];
+    if (annual && tranches.some(annualXetraQuoteNeedsReview)) return false;
     const identity = t => JSON.stringify([t.profileId, String(t.trancheId || t.id || '')]);
     if (!tranches.length || tranches.some(t => !t.profileId || !(t.trancheId || t.id))
         || new Set(tranches.map(identity)).size !== tranches.length) return false;
@@ -421,7 +426,7 @@ export function overviewPricesDone(model) {
     if (!Number.isFinite(quote.getTime()) || quote > now || times.some(t => !Number.isFinite(t) || t > now.getTime())) return false;
     const oldest = new Date(Math.min(quote.getTime(), ...times));
     let relevant = [];
-    if (report) {
+    if (report?.status === 'complete') {
         if (!Array.isArray(report.results)) return false;
         const ids = new Set(tranches.map(t => t.profileId));
         relevant = (report.results || []).filter(r => ids.has(r.profileId));
@@ -440,15 +445,20 @@ export function overviewPricesDone(model) {
         if (Number.isFinite(retrieved.getTime()) && retrieved <= now && retrieved.toDateString() === now.toDateString()) return true;
     }
     const day = date => localHistoryDate(date);
-    const previousWeekday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-    while ([0, 6].includes(previousWeekday.getDay())) previousWeekday.setDate(previousWeekday.getDate() - 1);
-    if (day(oldest) >= day(previousWeekday)) return true;
+    // Lokale Kalendertage ohne Annahmen über Börsenfeiertage.
+    const previousWeekday = weekdayOnOrBefore(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+    if (!offlineAnnual && day(oldest) >= day(previousWeekday)) return true;
     const occasion = model.occasion || {};
     const year = occasion.kind === 'annual' ? occasion.closingYear : occasion.previousYear;
     const month = occasion.kind === 'annual' ? 12 : occasion.previousMonth;
     const end = new Date(year, month, 0);
-    return Number.isInteger(year) && Number.isInteger(month) && month >= 1 && month <= 12
-        && day(end) < day(now) && day(oldest) >= day(end);
+    if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12 || day(end) >= day(now)) return false;
+    if (day(oldest) >= day(end)) return true;
+    if (!annual || occasion.kind !== 'annual') return false;
+    // An Silvester findet auf Xetra kein Handel statt.
+    const xetraClose = day(weekdayOnOrBefore(new Date(year, 11, 30)));
+    return day(oldest) >= xetraClose && tranches.every((t, i) =>
+        day(new Date(times[i])) >= (t.quoteExchange === 'Xetra' ? xetraClose : day(end)));
 }
 
 /** FR-43: Monatswert aus der Budgetquelle; ohne feste Ausgaben im Beschluss das einheitliche Monatsbudget. */
@@ -566,15 +576,31 @@ export function deriveOverviewOccasion({ now, scope = null, memberIds = scope?.i
     return { ...context, kind: 'annual', annualState: 'open' };
 }
 
-/**
+/** Alter in Kalendertagen (Europe/Berlin): Text, Warnung ab 30 und Empfehlung ab 8 Tagen zählen dieselben Tage.
  * @param now Lokaler Bezugszeitpunkt.
  * @param lastBackup Zeitstempel der letzten Vollsicherung.
  * @returns Alter und Erinnerungsstatus der letzten Vollsicherung.
  */
 export function overviewBackupAge(now, lastBackup) {
     const parsed = Date.parse(lastBackup);
-    const days = Number.isFinite(parsed) ? Math.max(0, (now.getTime() - parsed) / 86400000) : null;
+    const days = Number.isFinite(parsed) ? Math.max(0, berlinCalendarDays(parsed, now.getTime())) : null;
     return { days, warning: days === null || days >= 30, recommended: days === null || days > 7 };
+}
+
+/** Anzeige der letzten Vollsicherung. Eine nur angestoßene Sicherung zählt für die Erinnerung wie eine bestätigte, heißt aber
+ * „Sicherung angestoßen – bitte Ablage prüfen“.
+ * @param {Date} now Lokaler Bezugszeitpunkt.
+ * @param {string|null|undefined} lastBackup Zeitstempel der letzten Vollsicherung.
+ * @param {string|null} [delivery] Art der Sicherung; ohne Angabe wie bisher.
+ * @returns Alter, Erinnerung und Texte.
+ */
+export function overviewBackupStatus(now, lastBackup, delivery = null) {
+    const age = overviewBackupAge(now, lastBackup);
+    const whole = age.days === null ? null : Math.floor(age.days);
+    const when = whole === null ? null : whole === 0 ? 'heute' : whole === 1 ? 'gestern' : `vor ${whole} Tagen`;
+    const triggered = when !== null && delivery === 'angestossen';
+    return { ...age, whole, when, triggered, label: when === null ? '' : 'Letzte Sicherung',
+        value: when === null ? 'Noch keine Vollsicherung' : triggered ? `${when} · Sicherung angestoßen – bitte Ablage prüfen` : when };
 }
 
 /**
@@ -582,16 +608,20 @@ export function overviewBackupAge(now, lastBackup) {
  * @param scope Geprüfter Personen- oder Haushaltsbereich.
  * @param year Kalenderjahr der Projektion.
  * @param month Kalendermonat von 1 bis 12.
+ * @param {Map<string, number>} [directions] Vorzeichen je Person im ausgewählten Jahr.
  * @returns Gelesene Monatsausgaben und Vollständigkeit je Person.
  */
-export function projectFocusExpenses(store, scope, year, month) {
+export function projectFocusExpenses(store, scope, year, month, directions = expenseConventions(store?.years?.[year])) {
     const entries = store?.years?.[year]?.months?.[month]?.profiles;
     const rows = (scope?.ids || []).map(id => {
-        const categories = entries?.[id]?.categories;
-        const present = hasExpenseImport(entries?.[id]);
         const record = entries?.[id];
-        return { id, present: Boolean(present), categories: present ? { ...categories } : null, spent: present ? computeBudgetSpent(record).spent : null,
-            ...(record?.plannedExpenses?.length ? { plannedExpenses: structuredClone(record.plannedExpenses), plannedSpent: computeBudgetSpent(record).planned } : {}) };
+        const present = hasExpenseImport(record);
+        const direction = directions.get(id);
+        const budget = present ? computeBudgetSpent(record, direction) : null;
+        // Bei reinen Erstattungsmonaten braucht die Detailansicht den Jahresfaktor.
+        return { id, present, categories: present ? { ...record.categories } : null, spent: budget?.spent ?? null,
+            ...(present && direction !== expenseConvention(record.categories) ? { direction } : {}),
+            ...(budget?.planned ? { plannedExpenses: structuredClone(record.plannedExpenses), plannedSpent: budget.planned } : {}) };
     });
     return { year, month, rows, complete: rows.length > 0 && rows.every(row => row.present),
         partialSpent: rows.some(row => row.present) ? rows.filter(row => row.present).reduce((sum, row) => sum + row.spent, 0) : null,
@@ -606,7 +636,7 @@ export function projectFocusExpenses(store, scope, year, month) {
  */
 export function parseOverviewTarget(page, location) {
     const allowed = { balance: ['abschluss', 'jahresabschluss', 'ausgaben', 'ausgaben-import', 'handlungsanweisung'],
-        simulator: ['backtest', 'monte-carlo', 'annahmen', 'werkstatt'], manager: ['personen', 'profileTagesgeld', 'haushalt-plan'] };
+        simulator: ['backtest', 'monte-carlo', 'annahmen'], manager: ['personen', 'profileTagesgeld', 'haushalt-plan'] };
     const target = (location?.hash || '').slice(1);
     if (!allowed[page]?.includes(target)) return null;
     const params = new URLSearchParams(location?.search || '');
@@ -649,13 +679,12 @@ export function projectOverviewFromRecords(options) {
     if (registry && live) {
         const shared = Object.fromEntries(HOUSEHOLD_OWNED_BALANCE_STATE_KEYS.filter(key => Object.hasOwn(live, key)).map(key => [key, live[key]]));
         for (const profile of Object.values(registry.profiles)) {
-            if (profile.meta.belongsToHousehold === false) continue;
             const loaded = loadStoredBalanceStateFromData(profile.data);
             // Beschädigte Quellen bleiben für die bestehende Recoveryprojektion sichtbar.
             if (loaded.status === 'valid') profile.data[CONFIG.STORAGE.LS_KEY] = JSON.stringify({ ...loaded.value, ...shared });
         }
     }
-    return projectOverview({ ...options, balanceSingleFallback: options.balanceSingleFallback ?? true, registry });
+    return projectOverview({ ...options, registry });
 }
 
 // Beide Seiten teilen nur bestätigte Archivpayloads, niemals einen Finanzquellsatz.

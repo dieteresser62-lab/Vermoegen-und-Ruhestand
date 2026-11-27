@@ -1,4 +1,3 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PersistenceFacade, persistenceStorage } from '../app/shared/persistence-facade.js';
@@ -6,6 +5,7 @@ import strict from 'node:assert/strict';
 import { syncSelectionText } from '../app/shared/designsystem-selection-text.js';
 import { bindHouseholdPlanField, readBoundHouseholdPlanField, writeBoundHouseholdPlanField } from '../app/shared/household-plan-fields.js';
 import { parseOverviewTarget } from '../app/overview/overview-model.js';
+import HISTORICAL_DATENSTAND from '../app/simulator/historical-datenstand.js';
 import { createSelectionDocument, addField, simulatorSelectOptions, functionSource, selectionVariant } from './designsystem-selection-dom.mjs';
 
 {
@@ -19,7 +19,6 @@ import { createSelectionDocument, addField, simulatorSelectOptions, functionSour
 }
 
 const __filename = fileURLToPath(import.meta.url);
-const projectRoot = path.resolve(path.dirname(__filename), '..');
 
 class MockClassList {
     constructor() {
@@ -119,7 +118,6 @@ class MockElement {
     }
 
     closest(selector) {
-        if (selector === '.ao-preset-btn' && this.classList.contains('ao-preset-btn')) return this;
         return null;
     }
 }
@@ -208,41 +206,6 @@ function registerElement(documentRef, id, options = {}) {
     return element;
 }
 
-function registerSweepDom(documentRef) {
-    const rangeFields = [
-        ['sweepLiquidityRunwayYears', '3'],
-        ['sweepGoldRebalancingBand', '25'],
-        ['sweepMaxSkimPct', '10'],
-        ['sweepMaxBearRefillPct', '2'],
-        ['sweepGoldTargetPct', '0'],
-        ['sweepSurvivalQuantile', '0.85'],
-        ['sweepGoGoMultiplier', '1']
-    ];
-    [
-        ['sweepMetric', 'successProbFloor'],
-        ['sweepAxisX', 'liquidityRunwayYears'],
-        ['sweepAxisY', 'goldRebalancingBand'],
-        ...rangeFields
-    ].forEach(([id, value]) => registerElement(documentRef, id, { value }));
-    registerElement(documentRef, 'sweepGridSize', { tagName: 'span' });
-    return rangeFields.map(([id]) => id);
-}
-
-function readRealSweepRangeIds() {
-    const simulatorHtml = fs.readFileSync(path.join(projectRoot, 'Simulator.html'), 'utf8');
-    const ranges = simulatorHtml.match(
-        /<fieldset id="sweepRanges"[^>]*>([\s\S]*?)<\/fieldset>/
-    );
-    assert(ranges, 'Simulator.html enthält den eindeutigen Sweep-Ranges-Host');
-    assert(/<legend><span[^>]*>[^<]*<\/span>Sweep-Ranges<\/legend>/.test(ranges[1]),
-        'Sweep-Ranges behält die identifizierbare Legend und semantische Feldgruppe');
-    const ids = [...ranges[1].matchAll(/<input\b[^>]*\bid="(sweep[A-Za-z0-9_-]+)"/g)]
-        .map(match => match[1]);
-    assertEqual(ids.length, 7, 'Sweep-Ranges-Host enthält genau sieben echte Eingaben');
-    assertEqual(new Set(ids).size, 7, 'Sweep-Ranges-Eingaben bleiben eindeutig');
-    return ids;
-}
-
 const previousGlobals = {
     document: global.document,
     window: global.window,
@@ -258,15 +221,16 @@ async function runSimulatorUiOrchestrationTests() {
         functionSource('app/simulator/simulator-main.js', 'openSimulatorOverviewTarget').split('// Globale Funktionen')[0] + '\nreturn openSimulatorOverviewTarget;')(
         parseOverviewTarget, () => { throw new Error('Unbeabsichtigte Aktivierung'); }, {});
     const activated = [];
-    for (const [hash, tab] of [['backtest', 'backtesting'], ['monte-carlo', 'montecarlo'], ['annahmen', 'annahmen'], ['werkstatt', 'werkstatt']]) {
+    for (const [hash, tab] of [['backtest', 'backtesting'], ['monte-carlo', 'montecarlo'], ['annahmen', 'annahmen']]) {
         assertEqual(openTarget({ hash: '#' + hash }, { ready: true, activate: value => { activated.push(value); return true; } }), true, 'Simulatorziel öffnet vorhandenen Tab: ' + hash);
         assertEqual(activated.at(-1), tab, 'Simulatorziel ordnet bestehenden Tabnamen zu');
     }
     assertEqual(openTarget({ hash: '#backtest' }, { ready: false }), false, 'Simulatorziel wartet auf Bereitschaft');
     assertEqual(openTarget({ hash: '#backtest' }, { ready: true, blocked: true }), false, 'Simulatorziel löst bei Recovery nichts aus');
     assertEqual(openTarget({ hash: '#unbekannt' }, { ready: true }), false, 'Simulator ignoriert fremde Hashes');
+    assertEqual(openTarget({ hash: '#werkstatt' }, { ready: true }), false, 'Das Ziel der entfernten Werkstatt öffnet nichts');
     assertEqual(openTarget({ hash: '#backtest', search: '?year=2026' }, { ready: true }), false, 'Simulatorziel akzeptiert keine fremden Parameter');
-    assertEqual(activated.length, 4, 'Simulatorziele aktivieren ausschließlich die vier gewählten Ansichten');
+    assertEqual(activated.length, 3, 'Simulatorziele aktivieren ausschließlich die drei gewählten Ansichten');
     console.log('--- Simulator UI Orchestration Tests ---');
 
     const documentRef = new MockDocument();
@@ -280,9 +244,6 @@ async function runSimulatorUiOrchestrationTests() {
         partnerModule,
         stressModule,
         persistModule,
-        sweepModule,
-        sweepUiModule,
-        optimizerModule,
         monteCarloUiModule,
         backtestUiModule,
         householdNeedsModule,
@@ -293,9 +254,6 @@ async function runSimulatorUiOrchestrationTests() {
         import('../app/simulator/simulator-main-partner.js'),
         import('../app/simulator/simulator-main-stress.js'),
         import('../app/simulator/simulator-main-input-persist.js'),
-        import('../app/simulator/simulator-sweep.js'),
-        import('../app/simulator/simulator-main-sweep-ui.js'),
-        import('../app/simulator/simulator-optimizer.js'),
         import('../app/simulator/monte-carlo-ui.js'),
         import('../app/simulator/simulator-backtest.js'),
         import('../app/simulator/simulator-household-needs-persistence.js'),
@@ -310,7 +268,6 @@ async function runSimulatorUiOrchestrationTests() {
         assertEqual(window.onload, undefined, 'Simulator überschreibt keinen globalen onload-Slot');
         assertEqual(typeof window.runMonteCarlo, 'function', 'Monte-Carlo Handler wird global verdrahtet');
         assertEqual(typeof window.runBacktest, 'function', 'Backtest Handler wird global verdrahtet');
-        assertEqual(typeof window.runParameterSweep, 'function', 'Sweep Handler wird global verdrahtet');
         assertEqual(typeof window.simulateOneYear, 'function', 'Legacy simulateOneYear Handler bleibt verfuegbar');
     }
 
@@ -319,19 +276,19 @@ async function runSimulatorUiOrchestrationTests() {
         const overviewButton = registerElement(documentRef, 'tab-ergebnis-button', { tagName: 'button', className: 'tab-btn' });
         overviewButton.dataset.tab = 'ergebnis';
         overviewButton.classList.add('active');
-        const sweepButton = registerElement(documentRef, 'tab-werkstatt-button', { tagName: 'button', className: 'tab-btn' });
-        sweepButton.dataset.tab = 'werkstatt';
+        const targetButton = registerElement(documentRef, 'tab-montecarlo-button', { tagName: 'button', className: 'tab-btn' });
+        targetButton.dataset.tab = 'montecarlo';
         const overviewPanel = registerElement(documentRef, 'tab-ergebnis', { className: 'tab-panel' });
         overviewPanel.classList.add('active');
-        const sweepPanel = registerElement(documentRef, 'tab-werkstatt', { className: 'tab-panel' });
+        const targetPanel = registerElement(documentRef, 'tab-montecarlo', { className: 'tab-panel' });
 
         tabsModule.initTabSwitching();
-        sweepButton.click();
+        targetButton.click();
 
         assert(!overviewButton.classList.contains('active'), 'Vorheriger Tab-Button wird deaktiviert');
-        assert(sweepButton.classList.contains('active'), 'Geklickter Tab-Button wird aktiviert');
+        assert(targetButton.classList.contains('active'), 'Geklickter Tab-Button wird aktiviert');
         assert(!overviewPanel.classList.contains('active'), 'Vorheriges Panel wird deaktiviert');
-        assert(sweepPanel.classList.contains('active'), 'Ziel-Panel wird aktiviert');
+        assert(targetPanel.classList.contains('active'), 'Ziel-Panel wird aktiviert');
     }
 
     console.log('Test 4: central simulator controls persist and update visible state');
@@ -379,7 +336,6 @@ async function runSimulatorUiOrchestrationTests() {
             ['goldAllokationProzent', 'input'],
             ['goldFloorProzent', 'input'],
             ['goldSteuerfrei', 'select'],
-            ['goldStrategyPanel', 'div'],
             ['einstandNeu', 'input'],
             ['depotwertGesamt', 'input'],
             ['goldWert', 'input'],
@@ -434,129 +390,16 @@ async function runSimulatorUiOrchestrationTests() {
         assert(corruptHouseholdNeeds.warning.includes('beschädigt'), 'Defekter Haushalts-Override erzeugt ein sichtbares Warnsignal');
     }
 
-    console.log('Test 5: stress and sweep UI render visible state for valid and invalid combinations');
+    console.log('Test 5: stress UI renders visible presets');
     {
         const stressSelect = registerElement(documentRef, 'stressPreset', { tagName: 'select' });
         stressModule.initStressPresetOptions();
         assert(stressSelect.children.length > 0, 'Stress-Presets werden in das Select geschrieben');
 
-        const mockSweepIds = registerSweepDom(documentRef);
-        assertEqual(
-            JSON.stringify([...mockSweepIds].sort()),
-            JSON.stringify(readRealSweepRangeIds().sort()),
-            'Sweep Mock-DOM bleibt exakt mit Simulator.html synchron'
-        );
         registerElement(documentRef, 'dynamicFlex', { type: 'checkbox' });
         registerElement(documentRef, 'horizonMethod', { tagName: 'select', value: 'survival_quantile' });
         registerElement(documentRef, 'goGoActive', { type: 'checkbox' });
         registerElement(documentRef, 'dynamicFlexPreset', { tagName: 'select', value: 'off' });
-        documentRef.getElementById('sweepLiquidityRunwayYears').value = '3:1:7';
-        documentRef.getElementById('sweepGoldRebalancingBand').value = '10:5:30';
-        documentRef.getElementById('sweepGoldTargetPct').value = '5,7.5';
-        documentRef.getElementById('sweepSurvivalQuantile').value = 'bad:range';
-        documentRef.getElementById('sweepGoGoMultiplier').value = '1,1.1';
-        persistenceStorage.setItem('sim.sweep.horizonYears', '30');
-        persistenceStorage.setItem('sim.sweep.goldTarget', '2:2:10');
-        sweepModule.initSweepDefaultsWithLocalStorageFallback();
-        assertEqual(persistenceStorage.getItem('sim.sweep.horizonYears'), null,
-            'Entferntes Direkt-Horizon-Feld laesst keinen verwaisten Persistenzwert zurueck');
-        sweepUiModule.initSweepUIControls();
-        const gridSize = documentRef.getElementById('sweepGridSize');
-        assertEqual(gridSize.textContent, 'Grid: 125 Kombis',
-            'Initialer Zaehler erfasst den vor seiner Initialisierung geladenen Gold-Bereich');
-        persistenceStorage.removeItem('sim.sweep.goldTarget');
-        documentRef.getElementById('sweepGoldTargetPct').value = '5,7.5';
-        documentRef.getElementById('sweepGoldTargetPct').dispatchEvent({ type: 'input' });
-        assertEqual(gridSize.textContent, 'Grid: 50 Kombis', 'HTML-Vorgaben ergeben 50 Kombinationen');
-        assertEqual(Object.keys(sweepModule.readInteractiveSweepRanges().ranges).length, 5,
-            'Inaktive VPW-Felder werden nicht an den Runner uebergeben');
-
-        const goldInput = documentRef.getElementById('sweepGoldTargetPct');
-        goldInput.value = '2:2:10';
-        goldInput.dispatchEvent({ type: 'input' });
-        assertEqual(gridSize.textContent, 'Grid: 125 Kombis', 'Gold-Target-Range wird gezaehlt');
-        persistenceStorage.setItem('sim.sweep.goldTarget', '5,7.5');
-        goldInput.value = '0';
-        sweepModule.initSweepDefaultsWithLocalStorageFallback();
-        assertEqual(goldInput.value, '5,7.5', 'Persistierter Bereich wird geladen');
-        // In der Hauptinitialisierung erfolgt die erste Zaehlerberechnung erst nach dem Laden.
-        goldInput.dispatchEvent({ type: 'change' });
-        assertEqual(gridSize.textContent, 'Grid: 50 Kombis', 'Persistierter Bereich wird gezaehlt');
-
-        const dynamicFlex = documentRef.getElementById('dynamicFlex');
-        const quantile = documentRef.getElementById('sweepSurvivalQuantile');
-        quantile.value = '0.8,0.85';
-        dynamicFlex.checked = true;
-        dynamicFlex.dispatchEvent({ type: 'change' });
-        assertEqual(gridSize.textContent, 'Grid: 100 Kombis', 'Aktives Quantil verdoppelt die Matrix');
-        quantile.value = 'bad:range';
-        quantile.dispatchEvent({ type: 'input' });
-        assertEqual(gridSize.textContent, 'Grid: ? Kombis', 'Ungueltige aktive VPW-Range wird blockiert');
-        quantile.value = '0.8,0.85';
-        quantile.dispatchEvent({ type: 'input' });
-        const goGo = documentRef.getElementById('goGoActive');
-        goGo.checked = true;
-        goGo.dispatchEvent({ type: 'change' });
-        assertEqual(gridSize.textContent, 'Grid: 200 Kombis', 'Aktives Go-Go verdoppelt die Matrix');
-        assertEqual(Object.keys(sweepModule.readInteractiveSweepRanges().ranges).length, 7,
-            'Aktive VPW-Felder werden an den Runner uebergeben');
-        documentRef.getElementById('horizonMethod').value = 'mean';
-        documentRef.getElementById('horizonMethod').dispatchEvent({ type: 'change' });
-        assertEqual(gridSize.textContent, 'Grid: 100 Kombis', 'Andere Horizontmethode entfernt Quantil');
-        dynamicFlex.checked = false;
-        documentRef.getElementById('dynamicFlexPreset').dispatchEvent({ type: 'change' });
-        assertEqual(gridSize.textContent, 'Grid: 50 Kombis', 'Presetwechsel aktualisiert den Zaehler');
-
-        const invalidInput = documentRef.getElementById('sweepLiquidityRunwayYears');
-        invalidInput.value = '18:6';
-        invalidInput.dispatchEvent({ type: 'input' });
-        assertEqual(gridSize.textContent, 'Grid: ? Kombis', 'Ungueltige Sweep-Range wird sichtbar blockiert');
-
-        invalidInput.value = '1:1:301';
-        invalidInput.dispatchEvent({ type: 'input' });
-        assert(gridSize.textContent.includes('Max: 300'), 'Zu grosse Sweep-Kombination zeigt Max-Hinweis');
-        assertEqual(gridSize.style.color, 'var(--bad)', 'Zu grosse Sweep-Kombination wird mit dem Fehler-Token markiert');
-
-        const heatmap = registerElement(documentRef, 'sweepHeatmap', { tagName: 'div' });
-        window.sweepParamRanges = { liquidityRunwayYears: [3], goldRebalancingBand: [25] };
-        const result = {
-            params: { liquidityRunwayYears: 3, goldRebalancingBand: 25 },
-            metrics: { schemaVersion: 'SweepMetricsV4', successProbFloor: 75 }
-        };
-        window.sweepResults = [result];
-        sweepModule.displaySweepResults();
-        assert(heatmap.innerHTML.includes('<svg') && heatmap.innerHTML.includes('>75,0\u00a0%</text>'),
-            'Lesbarer kanonischer Metrikwert erzeugt deutsch beschriftete SVG-Zelle');
-        result.metrics.invalidCombination = true;
-        result.metrics.invalidReason = 'Dynamic-Flex-Parameter gesetzt, aber Dynamic Flex ist deaktiviert';
-        sweepModule.displaySweepResults();
-        assert(heatmap.innerHTML.includes('Keine gültigen Sweep-Ergebnisse'),
-            'Explizit ungueltige Kombination erzeugt die Leermeldung');
-        delete window.sweepResults;
-        delete window.sweepParamRanges;
-    }
-
-    console.log('Test 6: optimizer applies selected parameters without running Monte-Carlo jobs');
-    {
-        registerElement(documentRef, 'liquidityRunwayYears');
-        registerElement(documentRef, 'rebalancingBand');
-        registerElement(documentRef, 'maxSkimPctOfEq');
-        registerElement(documentRef, 'maxBearRefillPctOfEq');
-        registerElement(documentRef, 'goldAllokationProzent');
-        registerElement(documentRef, 'goldAllokationAktiv', { value: 'false' });
-
-        optimizerModule.applyParametersToForm({
-            liquidityRunwayYears: 1.5,
-            goldRebalancingBand: 7,
-            maxSkimPct: 12,
-            maxBearRefillPct: 8,
-            goldTargetPct: 5
-        });
-
-        assertEqual(documentRef.getElementById('liquidityRunwayYears').value, 1.5, 'Optimizer uebernimmt kanonischen Runway');
-        assertEqual(documentRef.getElementById('rebalancingBand').value, 7, 'Optimizer uebernimmt Gold-Rebalancing-Band');
-        assertEqual(documentRef.getElementById('goldAllokationProzent').value, 5, 'Optimizer uebernimmt Gold-Zielquote');
-        assertEqual(documentRef.getElementById('goldAllokationAktiv').value, 'true', 'Gold wird bei Zielquote > 0 aktiviert');
     }
 
     console.log('Test 7: Monte-Carlo controls expose method semantics and CAPE precedence');
@@ -606,6 +449,7 @@ async function runSimulatorUiOrchestrationTests() {
 
         methodSelect.dispatchEvent({ type: 'change' });
         assertEqual(persistenceStorage.getItem('sim_mcMethode'), 'stationary', 'MC-Methode wird persistiert');
+        assertEqual(persistenceStorage.getItem('sim_mcMethodeQuelle'), 'nutzer', 'MS-1: Wahl im Formular setzt das Merkmal „nutzer“');
     }
 
     console.log('Test 8: Monte-Carlo cancel UI exposes running and cancelling states');
@@ -686,8 +530,9 @@ async function runSimulatorUiOrchestrationTests() {
         backtestUiModule.initializeBacktestUI();
 
         assert(Number.isInteger(Number(startYear.min)) && Number(startYear.min) <= 2000, 'Backtest start input receives provider minimum');
-        assertEqual(endYear.max, '2025', 'Backtest end input receives provider maximum');
-        assert(datasetHint.textContent.includes('Daten') && datasetHint.textContent.includes('2025'), 'Backtest dataset hint is visible');
+        // JD-2a: Das Maximum ist das Endjahr des Datenstands (jahresrobust).
+        assertEqual(endYear.max, String(HISTORICAL_DATENSTAND.endYear), 'Backtest end input receives provider maximum');
+        assert(datasetHint.textContent.includes('Daten') && datasetHint.textContent.includes(String(HISTORICAL_DATENSTAND.endYear)), 'Backtest dataset hint is visible');
         assertEqual(startButton.listeners.click.length, 1, 'Backtest start button has exactly one module click handler');
     }
 
@@ -717,7 +562,6 @@ async function runSelectionTextOrchestrationTests() {
     const dynamic = await import('../app/simulator/simulator-main-dynamic-flex.js');
     const rent = await import('../app/simulator/simulator-main-rent-adjust.js');
     const partner = await import('../app/simulator/simulator-main-partner.js');
-    const accumulation = await import('../app/simulator/simulator-main-accumulation.js');
     const bucket = await import('../app/simulator/simulator-main-3bucket.js');
     const { setFieldState } = await import('../app/shared/field-state.js');
     const { initInputPersistence } = await import('../app/simulator/simulator-main-input-persist.js');
@@ -772,11 +616,11 @@ async function runSelectionTextOrchestrationTests() {
             };
             const floorBinding = bindHouseholdPlanField({ doc, field: field('startFloorBedarf'), path: 'floorBedarf' });
             floorBinding.project(10000);
-            const applyCombined = new Function('writeBoundHouseholdPlanField', 'syncSelectionText', 'syncDynamicFlexPresetSelection', 'refreshDynamicFlexControls', 'refreshThreeBucketControls', 'resolveHouseholdSimulatorNeed', 'setFieldState', 'refreshRentAdjustmentPresentation', 'refreshPartnerPresentation', 'refreshAccumulationPresentation', `${functionSource('app/simulator/simulator-main-profiles.js', 'applyCombinedInputsToUI')}\nreturn applyCombinedInputsToUI;`)(
+            const applyCombined = new Function('writeBoundHouseholdPlanField', 'syncSelectionText', 'syncDynamicFlexPresetSelection', 'refreshDynamicFlexControls', 'refreshThreeBucketControls', 'resolveHouseholdSimulatorNeed', 'setFieldState', 'refreshRentAdjustmentPresentation', 'refreshPartnerPresentation', `${functionSource('app/simulator/simulator-main-profiles.js', 'applyCombinedInputsToUI')}\nreturn applyCombinedInputsToUI;`)(
                 writeBoundHouseholdPlanField,
                 bind, dynamic.syncDynamicFlexPresetSelection, dynamic.refreshDynamicFlexControls, bucket.refreshThreeBucketControls,
                 (id, value, overrides) => overrides?.[id] ?? value, setFieldState,
-                rent.refreshRentAdjustmentPresentation, partner.refreshPartnerPresentation, accumulation.refreshAccumulationPresentation);
+                rent.refreshRentAdjustmentPresentation, partner.refreshPartnerPresentation);
             const originalWrite = persistenceStorage.setItem;
             const writes = [];
             persistenceStorage.setItem = (key, value) => { writes.push([key, String(value)]); return originalWrite.call(persistenceStorage, key, value); };

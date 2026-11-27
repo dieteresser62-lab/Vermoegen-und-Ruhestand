@@ -7,6 +7,7 @@ import { syncPersonalLiquidity } from './simulator-personal-accounts.js';
 import { careAllowanceAnnual, careFormForPerson } from '../shared/care-benefits.js';
 import { fixedIncomeSurplus } from '../shared/fixed-income-budget.js';
 import { computeRentAdjRate } from '../shared/income-adjustment.js';
+import { rentBequestIncomeForYear } from './simulator-rent-bequest.js';
 export { decidedIncomeFlex } from '../shared/fixed-income-budget.js';
 
 /** Geschützte Vorjahresrate, gemeinsam für Jahresabschluss und Reserveprojektion.
@@ -55,7 +56,8 @@ export function calculateFixedIncomeForYear({ inputs, state, yearIndex, inflatio
         preset: inputs.pflegeKostenStaffelPreset, careForm: careFormForPerson(inputs, meta.grade, personIndex, { ...household, care }),
         inflationFactor, careValues: inputs.careValues }) : 0;
     const allowanceP1 = careAllowance(care?.p1, 0), allowanceP2 = careAllowance(care?.p2, 1);
-    if (!inputs.fixedIncome?.length && !allowanceP1 && !allowanceP2) return null;
+    const bequest = rentBequestIncomeForYear(state.portfolio, inputs, household, inflationFactor);
+    if (!inputs.fixedIncome?.length && !allowanceP1 && !allowanceP2 && !bequest) return null;
     const year = inputs.fixedIncomeReferenceYear + yearIndex;
     const primaryId = inputs.simulationPeople?.[0]?.profileId || inputs.simulationSourceProfileId || 'simulation';
     const partnerId = inputs.simulationPeople?.[1]?.profileId;
@@ -90,6 +92,7 @@ export function calculateFixedIncomeForYear({ inputs, state, yearIndex, inflatio
         persons.set(profileId, (persons.get(profileId) || 0) + amount);
         allowancePersons.push({ profileId, amount });
     }
+    if (bequest) persons.set(bequest.profileId, (persons.get(bequest.profileId) || 0) + bequest.income);
     const rows = [...persons].map(([profileId, amount]) => ({ profileId, amount }));
     return { total: rows.reduce((sum, row) => sum + row.amount, 0), persons: rows, ...(allowancePersons.length ? { pflegegeld: allowancePersons.reduce((sum, row) => sum + row.amount, 0), pflegegeld_personen: allowancePersons } : {}) };
 }

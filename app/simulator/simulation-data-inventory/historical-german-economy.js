@@ -2,9 +2,19 @@
 /** @import * as AnalysisTypes from '../../../typcheck/simulator-analysis.js' */
 "use strict";
 
+import HISTORICAL_DATENSTAND from '../historical-datenstand.js';
 import { historicalSeries, resolved, notApplicable } from './entry-builders.js';
 
-export const inflation_de = historicalSeries({
+/**
+ * Inventar der deutschen Wirtschaftsreihen Inflation, Geldmarkt und Lohn.
+ * Das letzte Qualitätssegment endet am Datenende; Texte nennen dessen Endjahr, Startjahre und quellenabhängige Angaben bleiben.
+ * Rohdaten- und Werte-Hashes kommen aus dem Datenstand.
+ *
+ * @param {typeof HISTORICAL_DATENSTAND} [stand] Datenstand; ohne Angabe der eingebettete.
+ */
+export function historicalGermanEconomySeries(stand = HISTORICAL_DATENSTAND) {
+    const { endYear, seriesHashes } = stand;
+    const inflation_de = historicalSeries({
         id: 'inflation_de',
         label: 'German annual consumer-price inflation',
         unit: 'percent_per_year',
@@ -20,8 +30,8 @@ export const inflation_de = historicalSeries({
         transformation: 'JST consecutive German CPI level changes through 1949; normalized 1925-1948 source levels are integer-quantized and 1949 is an explicit post-currency-reform splice. The price proxy excludes the separate 100:6.5 nominal write-down of major Reichsmark cash and bank/savings balances and is not a continuous-currency monetary-asset deflator across 1948. Published Destatis national consumer-price annual changes start in 1950; every seam rate stays inside one source series and HICP/HVPI is excluded.',
         license: resolved('JST-derived segment CC BY-NC-SA 4.0; Destatis segments Data Licence Germany - attribution - 2.0'),
         retrievedAt: resolved('2026-07-10'),
-        rawDataHash: resolved('83841d2c11df3a5e193aa07db3bdfe815cbbeea7f9f81c3526b197702a46bdb4'),
-        embeddedValueHash: '9ec87b5052d5e086517142c34213a4063e2be6ccdd8a5babf6d5722ffb76ae3a',
+        rawDataHash: resolved(seriesHashes.inflation_de.rawDataHash),
+        embeddedValueHash: seriesHashes.inflation_de.embeddedValueHash,
         externalValidationStatus: 'not_validated',
         qualitySegments: [
             {
@@ -50,14 +60,14 @@ export const inflation_de = historicalSeries({
             },
             {
                 startYear: 2025,
-                endYear: 2025,
+                endYear,
                 evidenceClass: 'official',
                 note: 'Destatis Verbraucherpreisindex for Germany from the pinned current annual table.'
             }
         ]
     });
 
-export const zinssatz_de = historicalSeries({
+    const zinssatz_de = historicalSeries({
         id: 'zinssatz_de',
         label: 'German cash and overnight money-market gross return proxy',
         unit: 'percent_per_year',
@@ -66,15 +76,15 @@ export const zinssatz_de = historicalSeries({
             'app/simulator/german-cash-money-market-chain.js:GERMAN_CASH_MONEY_MARKET_CHAIN',
             'app/simulator/simulator-data.js:HISTORICAL_DATA.*.zinssatz_de'
         ],
-        source: resolved('JST Macrohistory Database R6 DEU.stir (1925-1944); explicit 1944 carry-forward bridge (1945-1948); Deutsche Bundesbank overnight-money-market long series (1949-2025), with Fritz Knapp/Bundesbank source chain through 1975'),
+        source: resolved(`JST Macrohistory Database R6 DEU.stir (1925-1944); explicit 1944 carry-forward bridge (1945-1948); Deutsche Bundesbank overnight-money-market long series (1949-${endYear}), with Fritz Knapp/Bundesbank source chain through 1975`),
         seriesIdentifier: resolved('german_cash_money_market_proxy / GermanCashMoneyMarketChainV1'),
         currency: resolved('Historical German regimes/DEM through 1998; EUR from 1999; return percentages do not perform currency conversion, and the 1948 monetary-balance write-down is not implemented'),
         yearConvention: resolved('Published annual-average nominal rate in simulation year t, applied once through the existing shared cashBondReturn path to cash-like holdings and bond tranches'),
         transformation: 'JST DEU.stir is used directly through 1944; 1945-1948 carries the 1944 value forward as an explicit estimated bridge; Bundesbank annual-average reported Frankfurt overnight, FIBOR O/N, EONIA and EURSTR values are used directly from 1949. The shared bond application is a maturity-mismatched model proxy. No extra compounding, product cost, bank margin or tax is embedded.',
         license: resolved('JST-derived segment CC BY-NC-SA 4.0; Bundesbank/ESCB statistics reuse terms with attribution; ECB EURSTR administrator disclaimer applies'),
         retrievedAt: resolved('2026-07-29'),
-        rawDataHash: resolved('ea1608b5dee7e00ae7bf24bb651cb01cd3f0d5423b54cdf21b9f975cced30722'),
-        embeddedValueHash: 'cf5471a345234984ac3ff8de57bffdb3128c1046e01ec998198721325ede9b69',
+        rawDataHash: resolved(seriesHashes.zinssatz_de.rawDataHash),
+        embeddedValueHash: seriesHashes.zinssatz_de.embeddedValueHash,
         externalValidationStatus: 'not_validated',
         qualitySegments: [
             {
@@ -115,14 +125,14 @@ export const zinssatz_de = historicalSeries({
             },
             {
                 startYear: 2020,
-                endYear: 2025,
+                endYear,
                 evidenceClass: 'official',
                 note: 'EURSTR annual averages as published by Deutsche Bundesbank.'
             }
         ]
     });
 
-export const lohn_de = historicalSeries({
+    const lohn_de = historicalSeries({
         id: 'lohn_de',
         label: 'German average gross monthly earnings growth proxy without special payments',
         unit: 'percent_per_year',
@@ -131,15 +141,15 @@ export const lohn_de = historicalSeries({
             'app/simulator/german-gross-wage-growth-chain.js:GERMAN_GROSS_WAGE_GROWTH_CHAIN',
             'app/simulator/simulator-data.js:HISTORICAL_DATA.*.lohn_de'
         ],
-        source: resolved('JST Macrohistory Database R6 DEU.wage; Destatis Index der durchschnittlichen Bruttomonatsverdienste ohne Sonderzahlungen through 2025'),
+        source: resolved(`JST Macrohistory Database R6 DEU.wage; Destatis Index der durchschnittlichen Bruttomonatsverdienste ohne Sonderzahlungen through ${endYear}`),
         seriesIdentifier: resolved('german_average_gross_monthly_earnings_growth_proxy / GermanGrossWageGrowthChainV2'),
         currency: notApplicable(),
         yearConvention: resolved('Published year-over-year change for reporting year t is applied once in simulation year t'),
         transformation: '1925-1946 changes are derived from consecutive JST R6 nominal-wage levels. The 1925 start boundary and 1945 wartime break are separately classified; from 1947 the published Destatis annual change adjusts pension inputs once when rentAdjMode=wage. The 1947 source seam, 1948 currency-reform context, 1990/1991 territorial boundary, 2007 and 2022 method breaks and 1947-1955 precision limit are explicit. This remains a proxy, not the statutory German pension-adjustment series.',
         license: resolved('JST-derived segment CC BY-NC-SA 4.0; Destatis segment Data Licence Germany - attribution - version 2.0'),
         retrievedAt: resolved('2026-08-01'),
-        rawDataHash: resolved('cfd5c598a8bc846a96966fa8ff7388d80c30f3ada39edbfe90d39f234eef9d9b'),
-        embeddedValueHash: 'e10e581f6994e07ed0a943b3716dd8fd5dea7b8b272d47a546466af8701a3057',
+        rawDataHash: resolved(seriesHashes.lohn_de.rawDataHash),
+        embeddedValueHash: seriesHashes.lohn_de.embeddedValueHash,
         externalValidationStatus: 'not_validated',
         qualitySegments: [
             {
@@ -192,7 +202,7 @@ export const lohn_de = historicalSeries({
             },
             {
                 startYear: 2022,
-                endYear: 2025,
+                endYear,
                 evidenceClass: 'official',
                 note: 'Published Destatis annual changes from the earnings survey introduced in 2022.'
             }
@@ -220,3 +230,11 @@ export const lohn_de = historicalSeries({
             }
         ]
     });
+
+    return { inflation_de, zinssatz_de, lohn_de };
+}
+
+const GERMAN_ECONOMY_SERIES = historicalGermanEconomySeries();
+export const inflation_de = GERMAN_ECONOMY_SERIES.inflation_de;
+export const zinssatz_de = GERMAN_ECONOMY_SERIES.zinssatz_de;
+export const lohn_de = GERMAN_ECONOMY_SERIES.lohn_de;

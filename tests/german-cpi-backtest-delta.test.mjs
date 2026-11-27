@@ -1,3 +1,5 @@
+// JD-2a: Der Delta-Beleg ist eingefroren und gilt dem Grundbestand 1925–2025 (jahresrobust).
+import { grundbestandWerteHash } from './helpers/grundbestand-sicht.mjs';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -63,8 +65,8 @@ assertEqual(sha256(beforeBytes), fixture.beforeTarget.sha256, 'Post-Slice-02 tar
 assertEqual(sha256(afterBytes), fixture.afterTarget.sha256, 'Active target should match its pinned hash');
 assertEqual(
     fixture.afterTarget.inflationAnnualRateHash,
-    GERMAN_CPI_RESEARCH_CHAIN.annualRateHash,
-    'Delta fixture should pin the active inflation chain'
+    grundbestandWerteHash(GERMAN_CPI_RESEARCH_CHAIN.annualRates),
+    'Delta fixture should pin the active inflation chain (1925-2025 base)'
 );
 assert(
     fixture.beforeTarget.inflationAnnualRateHash !== fixture.afterTarget.inflationAnnualRateHash,

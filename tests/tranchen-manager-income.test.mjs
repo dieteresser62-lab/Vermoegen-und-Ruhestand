@@ -37,23 +37,22 @@ try {
 } finally { setAppTestDate(previous); }
 
 try {
-    const registry = { version: 1, profiles: { a: person('A <script>', 650, '2028-07-15'), b: person('B', 1650, '', 750),
-        outside: { ...person('Außenprofil', 9000, '2027-01-01'), meta: { name: 'Außenprofil', belongsToHousehold: false } } } };
+    const registry = { version: 1, profiles: { a: person('A <script>', 650, '2028-07-15'), b: person('B', 1650, '', 750) } };
     const original = JSON.stringify(registry);
     for (const [date, amount, stages] of [['2028-06-30', 2400, 1], ['2028-07-01', 3050, 0], ['2026-10-08', 2400, 1], ['2028-07-31', 3050, 0]]) {
         setAppTestDate(date);
-        const result = render(registry, 'outside');
+        const result = render(registry, 'b');
         assertEqual(result.projection.household.income, amount, 'Zentrale Uhr und Beginnmonat: ' + date);
         assertEqual(result.projection.household.incomeSteps.length, stages, 'Erreichte Stufen verschwinden, Rücksprung stellt sie wieder her');
         assert(!result.html.includes('A <script>') && result.html.includes('A &lt;script&gt;'), 'Personennamen bleiben sichere Ausgabe');
     }
-    assertEqual(JSON.stringify(registry), original, 'Datumssprünge und aktives Außenprofil schreiben keine Fachbytes');
+    assertEqual(JSON.stringify(registry), original, 'Datumssprünge und aktive zweite Person schreiben keine Fachbytes');
     setAppTestDate('2026-10-08');
-    for (const belongs of [true, false]) {
-        const single = { version: 1, profiles: { a: { ...person('Einzel', 650, '2028-07-15', 200), meta: { name: 'Einzel', belongsToHousehold: belongs } } } };
+    for (const meta of [{ name: 'Einzel', belongsToHousehold: true }, { name: 'Einzel' }]) {
+        const single = { version: 1, profiles: { a: { ...person('Einzel', 650, '2028-07-15', 200), meta } } };
         const result = render(single);
         assertEqual(result.projection.profiles[0].income, 200, 'Sonstige Einkünfte gelten vor Rentenbeginn auch im Einzelprofil');
-        assert(result.html.includes('<strong>200 €</strong>') && result.html.includes('<td>07.2028</td><td class="ds-num">850 €</td>'), 'Einzelansicht verwendet denselben Projektionspfad, auch außerhalb des Haushalts');
+        assert(result.html.includes('<strong>200 €</strong>') && result.html.includes('<td>07.2028</td><td class="ds-num">850 €</td>'), 'Einzelansicht verwendet denselben Projektionspfad, mit und ohne Altfeld');
         assert(result.hosts.managerPersonSummary.textContent.includes('ab 15.07.2028'), 'Kompakte Rente trägt ihren Zukunftsstatus');
     }
     const stages = { version: 1, profiles: { a: person('A', 100, '2028-10-01', 0, { [INCOME_KEY]: writeIncome([
@@ -101,16 +100,15 @@ try {
     const home = wert => ({ id: 'haus', bezeichnung: 'Hausanteil', nutzung: 'selbst', wert, stand: '2026-10', mieteNetto: 0, anpassung: 'keine' });
     const registry = { version: 1, profiles: {
         a: person('Max', 0, '', 0, { profile_immobilien_v1: writeImmobilien([home(450000)]) }),
-        b: person('Erika', 0, '', 0, { profile_immobilien_v1: writeImmobilien([home(210000)]) }),
-        outside: { ...person('Außenperson', 0, '', 0, { profile_immobilien_v1: writeImmobilien([home(900000)]) }), meta: { name: 'Außenperson', belongsToHousehold: false } }
+        b: person('Erika', 0, '', 0, { profile_immobilien_v1: writeImmobilien([home(210000)]) })
     } };
     const before = JSON.stringify(registry);
     const view = render(registry);
-    assert(view.html.replaceAll('\u00a0', ' ').includes('· Immobilien 660.000 €'), 'Haushalt & Plan zeigt nur die eigenen Immobilienanteile im Haushalt');
+    assert(view.html.replaceAll('\u00a0', ' ').includes('· Immobilien 660.000 €'), 'Haushalt & Plan zeigt die eigenen Immobilienanteile im Haushalt');
     assertEqual(view.projection.household.assets, 200, 'Große Vermögenssumme enthält weiter nur Geldvermögen');
     assertEqual(JSON.stringify(registry), before, 'Immobilienanzeige schreibt keine gespeicherten Werte');
     delete registry.profiles.a.data.profile_immobilien_v1; delete registry.profiles.b.data.profile_immobilien_v1;
-    assert(!render(registry).html.includes('data-household-immobilien'), 'Ohne Haushaltsimmobilien entfällt die Zusatzzeile trotz Außenperson');
+    assert(!render(registry).html.includes('data-household-immobilien'), 'Ohne Haushaltsimmobilien entfällt die Zusatzzeile');
     registry.profiles = { a: person('Max', 0, '', 0, { profile_immobilien_v1: writeImmobilien([home(450000)]) }) };
     assert(render(registry).html.replaceAll('\u00a0', ' ').includes('· Immobilien 450.000 €'), 'Auch ein Einzelhaushalt zeigt seinen Immobilienanteil');
 }

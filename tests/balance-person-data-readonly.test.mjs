@@ -11,7 +11,7 @@ import { PROFILE_STORAGE_KEYS, PROFILE_VALUE_KEYS } from '../app/profile/profile
 import { PersistenceFacade, persistenceStorage } from '../app/shared/persistence-facade.js';
 import { bindProfileNavigationHandoff } from '../app/profile/profile-navigation.js';
 import { createNavigationGuard } from '../app/shared/navigation-guard.js';
-import { evaluateBalanceFileInputs } from '../app/balance/balance-file-service.js';
+import { evaluateBalanceInputs } from '../app/balance/balance-evaluation.js';
 import { readBalanceHouseholdPlan, stageBalancePlanPatch } from '../app/profile/household-plan.js';
 import { getBalancePlanTrial } from '../app/balance/balance-plan-trial.js';
 import { renderBalanceInflationSource } from '../app/balance/balance-inflation-source.js';
@@ -24,7 +24,8 @@ try {
     for (const household of [false, true]) {
         const data = spb => ({ profile_person_schema_version: '1', profile_aktuelles_alter: '67', profile_sparer_pauschbetrag: String(spb), profile_tagesgeld: '10000',
             [CONFIG.STORAGE.LS_KEY]: JSON.stringify({ inputs: { floorBedarf: 10000, flexBedarf: 0 } }) });
-        const registry = { version: 1, profiles: { a: { meta: { id: 'a', name: 'Synthetisch A', belongsToHousehold: household }, data: data(0) }, b: { meta: { id: 'b', name: 'Synthetisch B', belongsToHousehold: household }, data: data(1500) } } };
+        const registry = { version: 1, profiles: { a: { meta: { id: 'a', name: 'Synthetisch A', belongsToHousehold: true }, data: data(0) },
+            ...(household ? { b: { meta: { id: 'b', name: 'Synthetisch B', belongsToHousehold: true }, data: data(1500) } } : {}) } };
         const records = { ...data(0), [PROFILE_STORAGE_KEYS.registry]: JSON.stringify(registry), [PROFILE_STORAGE_KEYS.current]: 'a', [PROFILE_STORAGE_KEYS.active]: 'a' };
         const writes = [];
         const backend = { name: 'balance-person-readback', async open() {}, async loadAll() { return { ...records }; }, async saveBatch({ deletes, upserts }) { writes.push(...upserts); deletes.forEach(k => delete records[k]); upserts.forEach(([k,v]) => records[k] = v); } };
@@ -43,7 +44,7 @@ try {
         assertEqual(spb.value, household ? '1.500' : '0', 'Haushaltsaggregation und expliziter SPB 0 erhalten');
         assert(spb.disabled && spb.readOnly && spb.dataset.noPersist === 'true', 'SPB ausschließlich Anzeige');
         assertEqual(source.textContent, 'Summe aus den Profilen', 'Kurze Herkunftszeile bleibt sichtbar');
-        assert(source.children[0].children[1].textContent.includes(household ? 'Haushaltsprofilen' : 'aktiven Profil'), 'Unveränderte Herkunft steht im Infofenster');
+        assert(source.children[0].children[1].textContent.includes('Haushaltsprofilen'), 'Unveränderte Herkunft steht im Infofenster');
         const baseline = await backend.loadAll();
         initUIReader(dom);
         const update = () => StorageManager.saveState({ inputs: UIReader.readAllInputs() });
@@ -75,7 +76,7 @@ try {
             const missing = { profile_person_schema_version: '1' }, complete = { ...missing, profile_geburtsdatum: '1958-03-14' };
             const records = { rs_current_profile: 'a', rs_active_profile: 'a', rs_profiles_v1: JSON.stringify({ version: 1, profiles: {
                 a: { meta: { id: 'a', name: 'Muster A', belongsToHousehold: true }, data: partner ? complete : missing },
-                b: { meta: { id: 'b', name: 'Muster B', belongsToHousehold: partner }, data: missing }
+                ...(partner ? { b: { meta: { id: 'b', name: 'Muster B', belongsToHousehold: true }, data: missing } } : {})
             } }) };
             let writes = 0, engineCalls = 0, cleared = 0;
             PersistenceFacade.resetPersistenceForTests({ name: 'Balancebereitschaft', async init() {}, async loadAll() { return { ...records }; }, async saveBatch() { writes++; } });
@@ -84,10 +85,10 @@ try {
             doc.createElement = tag => { const n = create(tag); n.append = (...children) => children.forEach(c => n.appendChild(c)); return n; };
             globalThis.document = doc; globalThis.window = { EngineAPI: { simulateSingleYear() { engineCalls++; } } };
             const renderer = { clearError() { cleared++; }, handleError(error) { throw error; } };
-            const update = new Function('refreshBalanceWealthHistory', 'refreshBalanceExpensesHistory', 'dom', 'readBalancePersonStatus',
+            const update = new Function('refreshBalanceExpensesHistory', 'dom', 'readBalancePersonStatus',
                 'showPersonDataStatus', 'createBlockedUpdateResult', 'UIRenderer', 'createUpdateFailureResult',
                 functionSource('app/balance/balance-main.js', 'update') + '\nreturn update;')(
-                () => {}, () => {}, {}, readBalancePersonStatus, showPersonDataStatus, createBlockedUpdateResult, renderer, error => { throw error; });
+                () => {}, {}, readBalancePersonStatus, showPersonDataStatus, createBlockedUpdateResult, renderer, error => { throw error; });
             const before = JSON.stringify(PersistenceFacade.exportAllSync().records);
             const result = update({ mode: 'commit_period', periodId: 'calendar-year:2026' });
             assertEqual(result.reason, 'person_data_incomplete', 'Produktiver Balance-Abschluss bleibt fachlich gesperrt');
@@ -99,72 +100,6 @@ try {
             assertEqual(doc.getElementById('personDataNotice').children[1].href, 'depot-tranchen-manager.html#personendaten', 'Balance verlinkt Ergänzungsband');
         }
     } finally { Object.assign(globalThis, saved); PersistenceFacade.resetPersistenceRuntimeForTests(); }
-}
-
-// Die Auswahl bestimmt den Rechenumfang unabhängig von der geöffneten Person.
-{
-    const { readBalancePersonStatus, readHouseholdPersonStatus, projectParticipatingPerson } = await import('../app/shared/person-data-status.js');
-    const { loadProfilverbundProfiles } = await import('../app/profile/profilverbund-balance.js');
-    const { createSelectionDocument, addField } = await import('./designsystem-selection-dom.mjs');
-    const saved = { document: globalThis.document, window: globalThis.window, sideEffects: UIReader.applySideEffectsFromInputs };
-    try {
-        const missing = { profile_person_schema_version: '1' };
-        const active = { ...missing, profile_geburtsdatum: '1961-03-14', profile_sparer_pauschbetrag: '0',
-            profile_rente_monatlich: '1234.567', profile_sonstige_einkuenfte: '100', profile_kirchensteuer_pct: '8' };
-        const other = { ...missing, profile_geburtsdatum: '1958-03-14', profile_sparer_pauschbetrag: '1500',
-            profile_rente_monatlich: '2000', profile_kirchensteuer_pct: '9' };
-        for (const live of [false, true]) for (const partnerComplete of [false, true]) {
-            const records = { ...(live ? active : {}), rs_current_profile: 'a', rs_active_profile: 'a', rs_profiles_v1: JSON.stringify({ version: 1, profiles: {
-                a: { meta: { id: 'a', name: 'Außenperson', belongsToHousehold: false }, data: active },
-                b: { meta: { id: 'b', name: 'Haushaltsperson', belongsToHousehold: true }, data: partnerComplete ? other : missing }
-            } }), [CONFIG.STORAGE.LS_KEY]: JSON.stringify({ annualPeriodMetadata: { lastCommittedPeriod: 'calendar-year:2025' } }) };
-            let writes = 0;
-            PersistenceFacade.resetPersistenceForTests({ name: 'Außenprofil', async init() {}, async loadAll() { return { ...records }; }, async saveBatch() { writes++; } });
-            await PersistenceFacade.init({ installLifecycleHooks: false, installTauriCloseHook: false });
-            const doc = createSelectionDocument(), create = doc.createElement;
-            doc.createElement = tag => { const node = create(tag); node.append = (...children) => children.forEach(child => node.appendChild(child)); return node; };
-            globalThis.document = doc; globalThis.window = { __profilverbundPersonSPB: 9999 };
-            const dom = { inputs: Object.fromEntries(['aktuellesAlter', 'renteAktiv', 'renteMonatlich', 'fixedIncomeAnnual', 'kirchensteuerSatz', 'sparerPauschbetrag'].map(key => [key, addField(doc, key)])), containers: {} };
-            initUIReader(dom); UIReader.applySideEffectsFromInputs = () => {};
-            const before = JSON.stringify(PersistenceFacade.exportAllSync().records);
-            assertEqual(readHouseholdPersonStatus().ready, partnerComplete, 'Simulatorbereitschaft richtet sich weiterhin nur nach dem Haushalt');
-            assertEqual(readBalancePersonStatus().ready, partnerComplete, 'Balance prüft das ausgewählte Mitglied B');
-            if (!partnerComplete) {
-                let blocked;
-                try { UIReader.readAllInputs(); } catch (error) { blocked = error; }
-                assert(blocked?.errors?.some(detail => detail.code === 'person_data_incomplete'), 'Fehlender Geburtstag von B sperrt den Reader');
-                assert(readBalancePersonStatus().message.includes('Haushaltsperson'), 'Sperrhinweis benennt B');
-                continue;
-            }
-            assertEqual(loadProfilverbundProfiles().map(entry => entry.profileId).join(), 'b', 'Loader liefert genau B');
-            assert(createProfileSyncHandlers({ dom, PROFILE_VALUE_KEYS }).syncProfileDerivedInputs(), 'Ausgewählte Person synchronisiert ihre eigenen Werte');
-            assertEqual(dom.inputs.aktuellesAlter.value, '67', 'Sync zeigt Alter von B');
-            assertEqual(dom.inputs.renteMonatlich.value, '2.000', 'Sync zeigt Einkommen von B');
-            assertEqual(dom.inputs.kirchensteuerSatz.value, '0.09', 'Sync zeigt Kirchensteuer von B');
-            assertEqual(dom.inputs.sparerPauschbetrag.value, '1.500', 'Sync zeigt SPB von B');
-            const input = UIReader.readAllInputs();
-            assertEqual(input.aktuellesAlter, 67, 'Reader verwendet Bs Alter');
-            assertEqual(input.renteMonatlich, 2000, 'Reader verwendet Bs Einkommen');
-            assertEqual(input.kirchensteuerSatz, 0.09, 'Reader verwendet Bs Kirchensteuer');
-            assertEqual(input.sparerPauschbetrag, 1500, 'Reader verwendet Bs SPB ohne veralteten globalen Wert');
-            assertEqual(persistenceStorage.getItem('rs_current_profile'), 'a', 'Geöffnete Identität bleibt A');
-            assertEqual(writes, 0, 'Bereitschaft, Sync und Projektion bleiben schreibfrei');
-            assertEqual(JSON.stringify(PersistenceFacade.exportAllSync().records), before, 'Personenzuordnung verändert keine Fachrecords');
-        }
-        // Fehlendes Datum der ungewählten Person sperrt B nicht.
-        const records = { rs_current_profile: 'a', rs_active_profile: 'a', rs_profiles_v1: JSON.stringify({ version: 1, profiles: {
-            a: { meta: { id: 'a', name: 'Außenperson', belongsToHousehold: false }, data: missing },
-            b: { meta: { id: 'b', name: 'Haushaltsperson', belongsToHousehold: true }, data: other }
-        } }) };
-        PersistenceFacade.resetPersistenceForTests({ name: 'Fehlendes Außenalter', async init() {}, async loadAll() { return { ...records }; }, async saveBatch() {} });
-        await PersistenceFacade.init({ installLifecycleHooks: false, installTauriCloseHook: false });
-        assert(readHouseholdPersonStatus().ready, 'Unvollständiges Außenprofil sperrt den Simulatorhaushalt nicht');
-        assert(readBalancePersonStatus().ready, 'Ungewählte Person sperrt Balance nicht');
-        assertEqual(UIReader.readAllInputs().renteMonatlich, 2000, 'Reader rechnet weiter mit B');
-        let mismatch;
-        try { projectParticipatingPerson(readHouseholdPersonStatus(), 'a'); } catch (cause) { mismatch = cause; }
-        assert(mismatch, 'Explizite Einzelprojektion des Simulators bleibt identitätsgebunden');
-    } finally { Object.assign(globalThis, { document: saved.document, window: saved.window }); UIReader.applySideEffectsFromInputs = saved.sideEffects; PersistenceFacade.resetPersistenceRuntimeForTests(); }
 }
 
 // Kalenderwirkung durch Sync, Reader, echte Haushaltsbrücke, Engine und Summary.
@@ -183,7 +118,7 @@ try {
                 [CONFIG.STORAGE.LS_KEY]: JSON.stringify({ inputs: { floorBedarf: 24000, flexBedarf: 12000 } }) });
             const a = data(1000, household ? '2024-07-01' : `${startYear}-07-01`), b = data(2000, `${startYear}-07-01`);
             const records = { ...a, rs_current_profile: 'a', rs_active_profile: 'a', rs_profiles_v1: JSON.stringify({ version: 1, profiles: {
-                a: { meta: { id: 'a', name: 'Muster <A&>', belongsToHousehold: household }, data: a },
+                a: { meta: { id: 'a', name: 'Muster <A&>', belongsToHousehold: true }, data: a },
                 ...(household ? { b: { meta: { id: 'b', name: 'Muster <B&>', belongsToHousehold: true }, data: b } } : {})
             } }), [CONFIG.STORAGE.LS_KEY]: JSON.stringify({ annualPeriodMetadata: { lastCommittedPeriod: `calendar-year:${year - 1}` } }) };
             let writes = 0;
@@ -292,7 +227,7 @@ try {
         };
 for (const date of ['', '2026-01-01', '2024-07-01']) {
     const data = { profile_person_schema_version: '1', profile_geburtsdatum: '1958-03-14', profile_rente_monatlich: '1234.567', profile_sonstige_einkuenfte: '100', profile_rentenbeginn: date };
-    const records = { ...data, rs_current_profile: 'a', rs_active_profile: 'a', rs_profiles_v1: JSON.stringify({ version: 1, profiles: { a: { meta: { id: 'a', name: 'Muster A', belongsToHousehold: false }, data } } }),
+    const records = { ...data, rs_current_profile: 'a', rs_active_profile: 'a', rs_profiles_v1: JSON.stringify({ version: 1, profiles: { a: { meta: { id: 'a', name: 'Muster A' }, data } } }),
         [CONFIG.STORAGE.LS_KEY]: JSON.stringify({ annualPeriodMetadata: { lastCommittedPeriod: 'calendar-year:2025' } }) };
     PersistenceFacade.resetPersistenceForTests({ name: 'Beleg', async init() {}, async loadAll() { return records; }, async saveBatch() { throw new Error('UNEXPECTED_WRITE'); } });
     await PersistenceFacade.init({ installLifecycleHooks: false, installTauriCloseHook: false });
@@ -306,12 +241,14 @@ for (const date of ['', '2026-01-01', '2024-07-01']) {
     assertEqual(input.aktuellesAlter, 67, 'Hashbeleg verwendet das feste Januaralter im Planungsjahr 2026');
     if (JSON.stringify(input) !== before || !result.ui?.spending) throw new Error('Ungültiger Beleg');
     assertEqual(JSON.stringify(input), before, 'Balanceeingaben bleiben unverändert');
-    assertEqual(createHash('sha256').update(JSON.stringify(previousLiquidityInput(result))).digest('hex'), '7d487a9cc56b551b7fce1d5433ca63d6e0b1216e0bbb28a7de49179a254b5eb2', 'Vollständige Balance-JSON-Bytes entsprechen dem BK-2-Sollstand: ' + (date || 'fehlender Beginn'));
+    // AP-1: Muster A ist ein Ein-Personen-Haushalt (früher Außenperson mit Formularvermögen). Der Sollwert ist für denselben
+    // Haushalt auf dem Stand 25385123 gerechnet; alle drei Rentenbeginne ergeben weiter dieselben Bytes.
+    assertEqual(createHash('sha256').update(JSON.stringify(previousLiquidityInput(result))).digest('hex'), '25bec15f81753294f4bcc933429a2fe9ca4a99fac07ff9ab62b5bafa71839c71', 'Vollständige Balance-JSON-Bytes entsprechen dem BK-2-Sollstand: ' + (date || 'fehlender Beginn'));
 }
     } finally { Object.assign(globalThis, { document: saved.document, window: saved.window, Date: saved.Date }); UIReader.applySideEffectsFromInputs = saved.sideEffects; PersistenceFacade.resetPersistenceRuntimeForTests(); }
 }
 
-// Derselbe produktive Updatekörper rechnet genau die angehakten Personen.
+// Derselbe produktive Updatekörper rechnet genau die Personen des Haushalts.
 {
     const pipeline = await import('../app/balance/balance-update-pipeline.js');
     const { functionSource, createSelectionDocument, addField } = await import('./designsystem-selection-dom.mjs');
@@ -328,14 +265,14 @@ for (const date of ['', '2026-01-01', '2024-07-01']) {
     const saved = { document: globalThis.document, window: globalThis.window, sideEffects: UIReader.applySideEffectsFromInputs };
     try {
         setAppTestDate('2026-01-02');
-        for (const selected of [[], ['b'], ['a', 'b']]) {
+        for (const selected of [['a'], ['a', 'b']]) {
             const data = (birthday, income, spb, tax) => ({ profile_person_schema_version: '1', profile_geburtsdatum: birthday,
                 profile_rente_monatlich: income, profile_sparer_pauschbetrag: spb, profile_kirchensteuer_pct: tax,
                 profile_tagesgeld: '50000', depot_tranchen: '[]' });
             const a = data('1961-03-14', '1000', '0', '8'), b = data('1958-03-14', '2000', '1500', '9');
             const records = { ...a, rs_current_profile: 'a', rs_active_profile: 'a', rs_profiles_v1: JSON.stringify({ version: 1, profiles: {
-                a: { meta: { id: 'a', name: 'Synthetisch A', belongsToHousehold: selected.includes('a') }, data: a },
-                b: { meta: { id: 'b', name: 'Synthetisch B', belongsToHousehold: selected.includes('b') }, data: b }
+                a: { meta: { id: 'a', name: 'Synthetisch A', belongsToHousehold: true }, data: a },
+                ...(selected.includes('b') ? { b: { meta: { id: 'b', name: 'Synthetisch B', belongsToHousehold: true }, data: b } } : {})
             } }) };
             PersistenceFacade.resetPersistenceForTests({ name: 'Auswahlupdate', async init() {}, async loadAll() { return { ...records }; }, async saveBatch() {} });
             await PersistenceFacade.init({ installLifecycleHooks: false, installTauriCloseHook: false });
@@ -353,14 +290,14 @@ for (const date of ['', '2026-01-01', '2024-07-01']) {
             let summaryScope;
             const renderer = { clearError() {}, renderContext() {}, renderBedarfAnpassungUI() {}, render() {},
                 formatDiagnosisPayload() { return null; }, renderDiagnosis() {}, handleError(error) { throw error; } };
-            const deps = { projectNextYearBudget, ...pipeline, persistenceStorage, PROFILVERBUND_STORAGE_KEYS: { mode: 'household_withdrawal_mode' }, evaluateBalanceFileInputs, readBalanceHouseholdPlan, stageBalancePlanPatch,
+            const deps = { projectNextYearBudget, ...pipeline, persistenceStorage, PROFILVERBUND_STORAGE_KEYS: { mode: 'household_withdrawal_mode' }, evaluateBalanceInputs, readBalanceHouseholdPlan, stageBalancePlanPatch,
                 dom, UIReader, UIUtils, StorageManager, UIRenderer: renderer,
                 getBalancePlanTrial, renderBalanceInflationSource,
                 readBalancePersonStatus, showPersonDataStatus, loadProfilverbundProfiles,
                 getCurrentProfileId: () => persistenceStorage.getItem('rs_current_profile'),
                 appState: { engineHandshake: pipeline.createEngineHandshake(engine, '') },
                 profileSyncHandlers: sync, profilverbundHandlers: handlers,
-                refreshBalanceWealthHistory() {}, refreshBalanceExpensesHistory() {},
+                refreshBalanceExpensesHistory() {},
                 postprocessBalanceAction, withGuardrailCardValues: value => value,
                 ANNUAL_MARKET_DATA_META_KEY: 'annualMarketDataMeta', updateExpensesBudget() {}, overviewScope,
                 buildBalanceOverviewSummary, storeOverviewSummary(summary) { summaryScope = summary.scope; return Promise.resolve(true); } };

@@ -18,8 +18,8 @@
     <div class="suite-shell">
         <header class="suite-header">
             <a class="suite-brand" href="index.html" data-profile-handoff><span data-suite-icon="landmark" aria-hidden="true"></span><span>Vermögen &amp; Ruhestand</span></a>
-            <div id="suiteContext" class="suite-context-row" aria-label="Seitenkontext"><span id="suiteProfileContext" class="suite-context" role="status" aria-live="polite" hidden></span><span class="pv-context-pill pv-quote-context"><span id="managerQuoteContext">Kurse: Datum unbekannt</span><span aria-hidden="true">·</span><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Details zu Kursständen und Speicherung" aria-describedby="managerQuoteInfo">ⓘ</button><span id="managerQuoteInfo" class="ds-info-pop" role="tooltip"><span id="managerQuoteDetails"></span><span>Profilwerte speichern automatisch · Tranchen beim Bestätigen.</span></span></span></span></div>
-            <button id="probelaufStart" type="button" class="suite-probelauf-start ds-button ds-button-secondary" aria-describedby="probelaufStatus" disabled>Spielbereich starten …</button>
+            <div id="suiteContext" class="suite-context-row" aria-label="Seitenkontext"><span id="suiteProfileContext" class="suite-context" role="status" aria-live="polite" hidden></span><span class="pv-context-pill pv-quote-context"><button type="button" id="managerQuoteRefresh" class="ds-button pv-quote-refresh" title="Kurse jetzt aktualisieren"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.8-4M4 4v4h4M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4"/></svg><span id="managerQuoteContext">Kurse: Datum unbekannt</span></button><span aria-hidden="true">·</span><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Details zu Kursständen und Speicherung" aria-describedby="managerQuoteInfo">ⓘ</button><span id="managerQuoteInfo" class="ds-info-pop" role="tooltip"><span id="managerQuoteDetails"></span><span>Profilwerte speichern automatisch · Tranchen beim Bestätigen.</span></span></span></span></div>
+            <button id="probelaufStart" type="button" class="suite-probelauf-start ds-button ds-button-secondary" aria-describedby="probelaufStatus" disabled>Spielbereich starten …</button><button id="probelaufEnd" type="button" class="suite-probelauf-end ds-button ds-button-secondary" data-probelauf-action="end" hidden>Spielbereich beenden</button>
         </header>
         <div id="probelaufStatus" class="suite-probelauf-status" role="status" aria-live="polite" hidden></div>
         <div id="suiteNavigationStatus" class="suite-navigation-status" role="alert" hidden></div>
@@ -43,7 +43,6 @@
                         <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="day">+1 Tag</button>
                         <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="month">+1 Monat</button>
                         <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="date">Datum wählen …</button>
-                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="end">Spielbereich beenden</button>
                     </div>
                 </aside>
 
@@ -51,7 +50,6 @@
 
         <header class="pv-heading ds-page-head"><div class="ds-page-copy"><h1 id="managerPageTitle">Personen &amp; Vermögen</h1></div>
             <div class="pv-heading-actions ds-page-actions">
-                <button type="button" id="updatePricesBtn" class="ds-button ds-button-secondary"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.8-4M4 4v4h4M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4"/></svg>Kurse aktualisieren</button>
                 <a href="Handbuch.html#haushalt-plan" data-profile-handoff class="ds-help-link ds-button ds-button-secondary ds-icon-button" title="Hilfe" aria-label="Hilfe öffnen"><span aria-hidden="true">?</span></a>
             </div>
         </header>
@@ -92,7 +90,7 @@
             <div class="ds-actions"><button id="managerPlanResume" type="button" class="ds-button ds-button-secondary" hidden>Planungsdaten zusammenführen</button><button id="managerPlanRetry" type="button" class="ds-button ds-button-secondary" hidden>Speichern wiederholen</button></div>
             <div id="managerPlanCareHint" class="ds-note" data-care-hint hidden></div>
             <div class="pv-need-fields">
-                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_floorBedarf">Grundbedarf (Floor)<small>ohne Pflege, muss immer gedeckt sein</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_floorBedarf" data-manager-plan-field="floorBedarf" disabled data-money-input></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_floorBedarf">Grundbedarf<small>ohne Pflege, muss immer gedeckt sein</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_floorBedarf" data-manager-plan-field="floorBedarf" disabled data-money-input></div>
                     <div class="pv-plan-field household-plan-field"><label for="managerPlan_flexBedarf">Wunschbedarf (Flex)<small>wird in schwachen Jahren gekürzt</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_flexBedarf" data-manager-plan-field="flexBedarf" disabled data-money-input></div>
                     <div class="pv-plan-field household-plan-field"><label for="managerPlan_minimumFlexAnnual">Mindest-Flex<small>Untergrenze der Kürzung</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_minimumFlexAnnual" data-manager-plan-field="minimumFlexAnnual" disabled data-money-input></div>
             </div>
@@ -185,7 +183,7 @@
         <div id="managerPersonPanel" role="tabpanel" tabindex="-1" hidden>
         <div id="managerProfileValues" class="profile-values pv-profile-grid">
             <div id="profileValidationStatus" class="profile-validation-status" role="alert" aria-live="assertive" hidden></div>
-<div id="personendaten" class="pv-person-toolbar"><p class="ds-help"><span id="managerPersonProfileName">–</span> · Balance und Simulator übernehmen die Werte.</p><button id="managerCardsToggleAll" aria-expanded="false" type="button" class="ds-button ds-button-secondary" aria-controls="managerPersonBody managerIncomeBody managerAssetsBody managerCareBody">▸ Alle Details zeigen</button></div>
+<div id="personendaten" class="pv-person-toolbar"><p class="ds-help"><span id="managerPersonProfileName">–</span> · Balance und Simulator übernehmen die Werte.</p></div>
 
 <section class="ds-card pv-profile-card pv-person-disclosure"><button id="managerPersonToggle" type="button" class="pv-card-summary ds-button" aria-expanded="false" aria-controls="managerPersonBody"><span class="pv-disclosure-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg></span><span><strong>Person &amp; Steuern</strong><span class="ds-help"><span id="managerPersonSummary"></span><span id="managerPersonInflowsSummary"></span></span></span><span id="managerPersonAction" class="pv-disclosure-action">▸ zeigen</span></button><div id="managerPersonBody" class="pv-card-body" role="region" aria-labelledby="managerPersonToggle" hidden><div id="managerBirthSupplement" class="ds-note ds-note-warning pv-birth-supplement" hidden><div><strong>Geburtsdatum einmal ergänzen</strong><p id="managerBirthSuggestion"></p></div><label for="managerBirthDate">Vollständiges Geburtsdatum (TT.MM.JJJJ)</label><input id="managerBirthDate" type="text" class="ds-input" placeholder="TT.MM.JJJJ" aria-describedby="managerBirthSuggestion managerBirthError"><button id="managerBirthApply" type="button" class="ds-button ds-button-primary">Übernehmen</button><p id="managerBirthError" role="status" aria-live="polite"></p></div><div class="pv-fields">
 <div class="pv-person-group"><h4>Person</h4><div class="form-group" data-person-field="profileGeburtsdatum"><label for="profileGeburtsdatum">Geburtsdatum</label><input id="profileGeburtsdatum" type="text" class="ds-input" placeholder="TT.MM.JJJJ" aria-describedby="profilePersonDateStatus"></div><p id="profilePersonDateStatus" class="ds-help ds-explanation"></p>
@@ -235,7 +233,7 @@
                     <div class="ds-unit-frame"><input type="text" id="profileGoldZiel" placeholder="7,5" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileGoldZielUnit"><span id="profileGoldZielUnit">%</span></div>
                 </div>
 <div class="form-group">
-                    <label for="profileGoldFloor">Floor-Anteil</label>
+                    <label for="profileGoldFloor">Mindestanteil</label>
                     <div class="ds-unit-frame"><input type="text" id="profileGoldFloor" placeholder="1" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileGoldFloorUnit"><span id="profileGoldFloorUnit">%</span></div>
                 </div>
 <div class="form-group">
@@ -257,7 +255,7 @@
                     <span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zu Pflegereserve" aria-describedby="managerFieldHelp6">i</button><span id="managerFieldHelp6" class="ds-info-pop" role="tooltip">Ziel innerhalb der Liquidität.</span></span>
                 </div></div><div id="managerCareBody" class="pv-card-body" role="region" aria-labelledby="managerCareToggle" hidden><span id="managerCareActive" class="ds-badge pv-care-chip" hidden>aktiv</span><div class="pv-fields">
 <div class="form-group">
-                    <div class="pv-label-help"><label for="profileHealthBucketInitialAmount">Zielbetrag</label><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zu Pflegebucket-Zielbetrag" aria-describedby="managerFieldHelp7">i</button><span id="managerFieldHelp7" class="ds-info-pop" role="tooltip">Diagnostisch inflationsindexiert, nominal gehalten.</span></span></div>
+                    <div class="pv-label-help"><label for="profileHealthBucketInitialAmount">Zielbetrag</label><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zum Zielbetrag der Pflegereserve" aria-describedby="managerFieldHelp7">i</button><span id="managerFieldHelp7" class="ds-info-pop" role="tooltip">Diagnostisch inflationsindexiert, nominal gehalten.</span></span></div>
                     <div class="ds-unit-frame"><input type="text" id="profileHealthBucketInitialAmount" placeholder="150000" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileHealthBucketInitialAmountUnit" data-money-input><span id="profileHealthBucketInitialAmountUnit">€</span></div>
                 </div>
 <div class="form-group">
@@ -287,7 +285,7 @@
                     <label for="profileHealthBucketCoverageMode">Deckungsmodus</label>
                     <select id="profileHealthBucketCoverageMode" class="ds-select">
                         <option value="care_additional_floor_only">Nur Pflege-Mehrkosten</option>
-                        <option value="floor_when_care_active">Floor-Shortfall bei Pflege</option>
+                        <option value="floor_when_care_active">Offener Grundbedarf bei Pflege</option>
                     </select>
                 </div>
 <div class="form-group">
@@ -342,18 +340,10 @@
         <div id="managerHistoryPanel" role="tabpanel" aria-labelledby="managerHistoryTab" tabindex="-1" hidden>
         <section id="managerWealthHistory" class="ds-plan-card manager-wealth-history" aria-labelledby="managerWealthTitle">
             <header class="ds-plan-card-head"><div class="ds-card-title"><h2 id="managerWealthTitle">Vermögensverlauf</h2><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Erläuterung zum Vermögensverlauf" aria-expanded="false" aria-describedby="managerWealthInfo" aria-controls="managerWealthInfo">ⓘ</button><span id="managerWealthInfo" class="ds-info-pop" role="tooltip">
-            Die Linie zeigt dein Vermögen aus Beständen und Tageskursen. Rauten sind Stände, die du erfasst hast. Bei einer Person siehst du nur ihre eigenen Werte.
-            <a href="Handbuch.html#vermoegensverlauf">Mehr im Handbuch</a></span></span></div>
-                <button id="managerCaptureWealthBtn" type="button" class="ds-button ds-button-secondary">Stand jetzt erfassen</button></header>
+            Die Linie zeigt dein Vermögen aus Beständen und Tageskursen. Bei einer Person siehst du nur ihre eigenen Werte.
+            <a href="Handbuch.html#vermoegensverlauf">Mehr im Handbuch</a></span></span></div></header>
             <div id="managerHistorySwitch" class="manager-history-switch" aria-label="Verlauf für Haushalt oder Person"></div>
             <p id="managerWealthContext" class="ds-source"></p><p id="managerWealthDailyNote" class="ds-source"></p>
-            <h3 id="managerWealthCapturedTitle" class="manager-history-group-title">Aus erfassten Ständen</h3>
-            <div id="managerWealthMetrics" class="wealth-metrics ds-kpi-strip ds-metric"></div>
-            <p id="managerWealthPersonHint" hidden><span id="managerWealthPersonHintText">Erfasste Stände gibt es für den Haushalt</span> <span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Erfasste Stände in der Haushaltsansicht" aria-expanded="false" aria-describedby="managerWealthPersonInfo" aria-controls="managerWealthPersonInfo">ⓘ</button><span id="managerWealthPersonInfo" class="ds-info-pop" role="tooltip">Ältere Stände enthalten Haushaltswerte ohne verlässliche Aufteilung je Person. Neue Erfassungen speichern immer den Haushalt und alle Haushaltsmitglieder, unabhängig von der gewählten Ansicht. <a class="ds-text-link" href="#verlauf" data-manager-view="history" data-manager-history-scope="household">Zur Haushaltsansicht →</a></span></span></p>
-            <p id="managerWealthStatus" role="status"></p><p id="managerWealthHint"></p>
-            <p id="managerWealthBasis" class="manager-wealth-basis"></p>
-            <div id="managerWealthChart" class="ds-chart-surface manager-wealth-chart"></div>
-            <ul id="managerWealthLegend" class="history-legend" aria-label="Diagrammlegende"></ul>
             <section class="manager-daily-history" aria-labelledby="managerDailyTitle">
                 <header class="history-heading"><div class="ds-card-title"><h3 id="managerDailyTitle" class="manager-history-group-title">Aus Tageskursen</h3><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Erläuterung zu den Tageskennzahlen" aria-expanded="false" aria-describedby="managerDailyInfo" aria-controls="managerDailyInfo">ⓘ</button><span id="managerDailyInfo" class="ds-info-pop" role="tooltip"></span></span></div>
                     <div id="managerHistoryPeriods" class="history-periods" role="group" aria-label="Zeitraum der Tageskurse">
@@ -366,11 +356,11 @@
                 </header>
                 <p id="managerDailyPeriod" class="manager-wealth-basis"></p>
                 <p id="managerDailyStatus" class="manager-wealth-basis"></p>
-                <div id="managerDailyAllocation" class="manager-daily-allocation" aria-label="Aufteilung am letzten Tagesabschluss"></div>
                 <div id="managerDailyMetrics" class="wealth-metrics ds-kpi-strip ds-metric"></div>
             </section>
-            <div id="managerWealthRecords" class="pv-care-row manager-wealth-records"><button id="managerWealthRecordsToggle" type="button" class="pv-card-summary ds-button" aria-expanded="false" aria-controls="managerWealthRecordsBody"><span><strong>Erfasste Vermögensstände</strong><span id="managerWealthRecordsSummary" class="ds-help"></span></span><span id="managerWealthRecordsAction" class="pv-disclosure-action">▸ zeigen</span></button>
-            <div id="managerWealthRecordsBody" class="manager-wealth-records-body" hidden><div id="managerWealthTable" class="ds-table-scroll ds-table-box" tabindex="0" role="region" aria-label="Erfasste Vermögensstände"></div></div></div>
+            <p id="managerWealthBasis" class="manager-wealth-basis"></p>
+            <div id="managerWealthChart" class="ds-chart-surface manager-wealth-chart"></div>
+            <ul id="managerWealthLegend" class="history-legend" aria-label="Diagrammlegende"></ul>
         </section>
         <div id="managerHistoryReturns" class="history-return-cards">
             <section id="managerHistoryRisk" class="ds-plan-card history-return-card" aria-label="Rendite und Risiko"></section>
@@ -381,17 +371,16 @@
         <div id="managerCarePanel" role="tabpanel" aria-labelledby="managerCareTab" tabindex="-1" hidden>
         <section class="pv-care-values" aria-labelledby="pflege">
             <p class="ds-explanation pv-care-intro">Pflegewerte des Haushalts. Balance, Simulator, Jahresabschluss und die Personenkarten rechnen mit genau diesen Werten.</p>
-            <p id="managerCareOwner" class="ds-note" hidden></p>
             <section class="ds-card pv-care-card" aria-labelledby="pflege">
                 <header class="pv-care-head"><h2 id="pflege" tabindex="-1">Pflege heute</h2><span class="ds-help">Grad, Form und eigenen Wert änderst du auf der Personenkarte.</span></header>
                 <div id="managerCareToday" class="pv-care-today"></div>
             </section>
             <section class="ds-card pv-care-card" aria-labelledby="managerCareAssumptionsTitle">
-                <header class="pv-care-head pv-care-assumptions-head"><div><h2 id="managerCareAssumptionsTitle">Annahmen für spätere Pflege</h2><p class="ds-help">Gelten für alle Personen im Haushalt, heute und in jedem Simulationsjahr.</p></div><button id="managerCareToggleAll" type="button" class="ds-button ds-button-secondary" aria-expanded="false" aria-controls="managerCareRowHomeBody managerCareRowHeimBody managerCareRowFlexBody managerCareRowRiseBody managerCareRowAllowanceBody">▸ Alle Details zeigen</button></header>
+                <header class="pv-care-head pv-care-assumptions-head"><div><h2 id="managerCareAssumptionsTitle">Annahmen für spätere Pflege</h2><p class="ds-help">Gelten für alle Personen im Haushalt, heute und in jedem Simulationsjahr.</p></div></header>
                 <div class="pv-care-rows">
                 <div class="pv-care-row" data-care-row="Home"><button id="managerCareRowHomeToggle" type="button" class="pv-card-summary ds-button" aria-expanded="false" aria-controls="managerCareRowHomeBody" data-care-row-toggle="Home"><span><strong id="managerCareRowHomeTitle">Pflege zu Hause</strong><span id="managerCareRowHomeSummary" class="ds-help"></span></span><span id="managerCareRowHomeAction" class="pv-disclosure-action">▸ zeigen</span></button>
                 <div id="managerCareRowHomeBody" class="pv-card-body pv-care-row-body" role="region" aria-labelledby="managerCareRowHomeToggle" hidden>
-                <div class="pv-care-preset-line"><div id="managerCarePreset" class="ds-segment pv-care-preset" role="group" aria-label="Kostenstaffel"><button type="button" class="ds-button ds-segment-button" data-care-preset="custom" aria-pressed="true">Eigene Werte</button><button type="button" class="ds-button ds-segment-button" data-care-preset="ambulant" aria-pressed="false">Ambulant</button><button type="button" class="ds-button ds-segment-button" data-care-preset="amtlich" aria-pressed="false">Amtlicher Durchschnitt</button></div><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Quellen der Pflegekostenstaffel" aria-expanded="false" aria-describedby="managerCareSourcesInfo">ⓘ</button><span id="managerCareSourcesInfo" class="ds-info-pop" role="tooltip">Vergleich Angehörige/Pflegedienst/24-Stunden-Betreuung je Grad, €/Monat: 300/600/– · 500/700/– · 800/1.500/3.600 · 1.200/2.667/4.200 · 1.800/4.000/4.500. „Amtlich“ nutzt Heimanteile nach Destatis 2023 und Heimwerte nach vdek. <a href="docs/reference/PFLEGE.html#kostenstaffel" target="_blank">Quellen und Einordnung</a></span></span><p id="managerCarePresetHint" class="ds-help"></p></div>
+                <div class="pv-care-preset-line"><div id="managerCarePreset" class="ds-segment pv-care-preset" role="group" aria-label="Kostenstaffel"><button type="button" class="ds-button ds-segment-button" data-care-preset="custom" aria-pressed="true">Eigene Werte</button><button type="button" class="ds-button ds-segment-button" data-care-preset="ambulant" aria-pressed="false">Ambulant</button><button type="button" class="ds-button ds-segment-button" data-care-preset="amtlich" aria-pressed="false">Amtlicher Durchschnitt</button></div><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Quellen der Pflegekostenstaffel" aria-expanded="false" aria-describedby="managerCareSourcesInfo">ⓘ</button><span id="managerCareSourcesInfo" class="ds-info-pop" role="tooltip">Vergleich Angehörige/Pflegedienst/24-Stunden-Betreuung je Grad, €/Monat: 300/600/– · 500/700/– · 800/1.500/3.600 · 1.200/2.667/4.200 · 1.800/4.000/4.500. „Amtlich“ nutzt Heimanteile nach Destatis 2023 und Heimwerte nach vdek. <a href="docs/reference/PFLEGE.html#kostenstaffel-und-kostenanstieg" target="_blank">Quellen und Einordnung</a></span></span><p id="managerCarePresetHint" class="ds-help"></p></div>
                 <div class="pv-care-split"><div class="ds-table-box"><table class="ds-table pv-care-table" aria-label="Pflege zu Hause je Grad"><thead><tr><th scope="col">Grad</th><th scope="col" data-care-form-cell>Übliche Form</th><th scope="col" class="ds-num">€/Monat</th><th scope="col" class="ds-num">€/Jahr</th></tr></thead><tbody>
                 <tr><th scope="row">1</th><td data-care-form-cell><select id="managerCareForm1" class="ds-select" data-care-field="pflegeStufe1Form" aria-label="Grad 1 · übliche Form"><option value="family">durch Angehörige</option><option value="home-support">mit externer Unterstützung</option><option value="residential">im Heim</option></select></td><td class="ds-num" id="managerCareMonthly1"></td><td class="ds-num"><div class="ds-unit-frame"><input id="managerCareCost1" class="ds-input" type="text" inputmode="decimal" lang="de" data-money-input data-care-field="pflegeStufe1Zusatz" aria-label="Grad 1 · Zusatzbedarf zu Hause in Euro pro Jahr"><span>€</span></div></td></tr>
                 <tr><th scope="row">2</th><td data-care-form-cell><select id="managerCareForm2" class="ds-select" data-care-field="pflegeStufe2Form" aria-label="Grad 2 · übliche Form"><option value="family">durch Angehörige</option><option value="home-support">mit externer Unterstützung</option><option value="residential">im Heim</option></select></td><td class="ds-num" id="managerCareMonthly2"></td><td class="ds-num"><div class="ds-unit-frame"><input id="managerCareCost2" class="ds-input" type="text" inputmode="decimal" lang="de" data-money-input data-care-field="pflegeStufe2Zusatz" aria-label="Grad 2 · Zusatzbedarf zu Hause in Euro pro Jahr"><span>€</span></div></td></tr>
@@ -399,7 +388,7 @@
                 <tr><th scope="row">4</th><td data-care-form-cell><select id="managerCareForm4" class="ds-select" data-care-field="pflegeStufe4Form" aria-label="Grad 4 · übliche Form"><option value="family">durch Angehörige</option><option value="home-support">mit externer Unterstützung</option><option value="residential">im Heim</option></select></td><td class="ds-num" id="managerCareMonthly4"></td><td class="ds-num"><div class="ds-unit-frame"><input id="managerCareCost4" class="ds-input" type="text" inputmode="decimal" lang="de" data-money-input data-care-field="pflegeStufe4Zusatz" aria-label="Grad 4 · Zusatzbedarf zu Hause in Euro pro Jahr"><span>€</span></div></td></tr>
                 <tr><th scope="row">5</th><td data-care-form-cell><select id="managerCareForm5" class="ds-select" data-care-field="pflegeStufe5Form" aria-label="Grad 5 · übliche Form"><option value="family">durch Angehörige</option><option value="home-support">mit externer Unterstützung</option><option value="residential">im Heim</option></select></td><td class="ds-num" id="managerCareMonthly5"></td><td class="ds-num"><div class="ds-unit-frame"><input id="managerCareCost5" class="ds-input" type="text" inputmode="decimal" lang="de" data-money-input data-care-field="pflegeStufe5Zusatz" aria-label="Grad 5 · Zusatzbedarf zu Hause in Euro pro Jahr"><span>€</span></div></td></tr>
                 </tbody></table></div>
-                <div class="ds-field"><label for="managerCareMaxFloor">Maximaler Pflege-Floor je Person</label><div class="ds-unit-frame"><input id="managerCareMaxFloor" class="ds-input" type="text" inputmode="decimal" lang="de" data-money-input data-care-field="pflegeMaxFloor"><span>€/Jahr</span></div><small class="ds-help">Deckel für den Zusatz zu Hause. Heimkosten sind nicht gedeckelt.</small></div></div>
+                <div class="ds-field"><label for="managerCareMaxFloor">Maximaler Grundbedarf mit Pflege je Person</label><div class="ds-unit-frame"><input id="managerCareMaxFloor" class="ds-input" type="text" inputmode="decimal" lang="de" data-money-input data-care-field="pflegeMaxFloor"><span>€/Jahr</span></div><small class="ds-help">Deckel für den Zusatz zu Hause. Heimkosten sind nicht gedeckelt.</small></div></div>
                 <p class="ds-help">Zusatz über die Kasse hinaus, solange jemand zu Hause gepflegt wird. Ein eigener Wert auf der Personenkarte ersetzt die Staffel im heutigen Grad.</p>
                 </div></div>
                 <div class="pv-care-row" data-care-row="Heim"><button id="managerCareRowHeimToggle" type="button" class="pv-card-summary ds-button" aria-expanded="false" aria-controls="managerCareRowHeimBody" data-care-row-toggle="Heim"><span><strong id="managerCareRowHeimTitle">Pflege im Heim</strong><span id="managerCareRowHeimSummary" class="ds-help"></span></span><span id="managerCareRowHeimAction" class="pv-disclosure-action">▸ zeigen</span></button>
@@ -434,7 +423,7 @@
 
     <div class="modal" id="managerPeopleModal" role="dialog" aria-modal="true" aria-labelledby="managerPeopleTitle" aria-hidden="true">
         <div class="modal-content ds-card pv-people-dialog" role="document">
-            <header class="pv-dialog-header"><div><h2 id="managerPeopleTitle">Personen verwalten</h2><p>Hier verwaltest du die Personen und ihre Zugehörigkeit zum Haushalt. <span id="managerPeopleCreateHint">Nach dem Anlegen siehst du die neue Person; ihre Werte pflegst du im jeweiligen Reiter.</span></p></div><button id="dismissPeopleModalBtn" type="button" class="ds-button ds-button-secondary" aria-label="Personenverwaltung schließen">Schließen</button></header>
+            <header class="pv-dialog-header"><div><h2 id="managerPeopleTitle">Personen verwalten</h2><p>Hier verwaltest du die Personen des Haushalts; ein Haushalt hat eine oder zwei Personen. <span id="managerPeopleCreateHint">Nach dem Anlegen siehst du die neue Person; ihre Werte pflegst du im jeweiligen Reiter.</span></p></div><button id="dismissPeopleModalBtn" type="button" class="ds-button ds-button-secondary" aria-label="Personenverwaltung schließen">Schließen</button></header>
             <div id="managerPeopleStatus" class="ds-note" role="status" aria-live="polite"></div>
             <div id="managerPeopleList"></div>
             <form id="managerPeopleForm"><div class="pv-fields"><div class="form-group"><label for="managerPersonName" id="managerPersonNameLabel">Neue Person</label><input id="managerPersonName" class="ds-input" placeholder="Name" required></div><div class="reconciliation-actions"><button id="managerPersonCreateBtn" type="submit" class="ds-button ds-button-primary">+ Person anlegen</button><button id="managerPersonRenameBtn" type="button" class="ds-button ds-button-primary" hidden>Umbenennen</button><button id="managerPersonRenameCancelBtn" type="button" class="ds-button ds-button-secondary" hidden>Abbrechen</button></div></div></form>

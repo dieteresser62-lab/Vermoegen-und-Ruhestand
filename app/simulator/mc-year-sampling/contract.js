@@ -77,7 +77,6 @@ export function resolveMonteCarloSamplingContractV1({
     startYearMode = 'UNIFORM',
     startYearFilter = 1970,
     startYearHalfLife = 20,
-    blockSize = 1,
     excludeEstimatedHistory = false,
     yearSamplingConfig = null
 } = /** @type {NonNullable<Parameters<typeof resolveMonteCarloSamplingContractV1>[0]>} */ ({})) {
@@ -92,13 +91,11 @@ export function resolveMonteCarloSamplingContractV1({
     const requestedConfig = yearSamplingConfig || buildYearSamplingConfig(normalizedMode, annualData, {
         startYearFilter,
         startYearHalfLife,
-        blockSize,
         excludeEstimatedHistory
     });
     const uniformConfig = normalizedMode === 'UNIFORM'
         ? requestedConfig
         : buildYearSamplingConfig('UNIFORM', annualData, {
-            blockSize,
             excludeEstimatedHistory
         });
     if (!uniformConfig?.allowedIndices?.length) {
@@ -117,9 +114,8 @@ export function resolveMonteCarloSamplingContractV1({
         .filter(index => index >= minStartIndex)
         .filter(index => !excludeEstimatedHistory
             || Number(annualData[index]?.jahr) >= ESTIMATED_HISTORY_CUTOFF_YEAR);
-    const capeInitialIndices = method === 'block'
-        ? capeIndices.filter(index => index <= annualData.length - Math.max(1, Math.round(Number(blockSize) || 1)))
-        : capeIndices;
+    // NG-9: Blöcke laufen zirkulär, deshalb ist jedes CAPE-Jahr auch für feste Blöcke ein gültiger Start.
+    const capeInitialIndices = capeIndices;
     const capeEffective = useCapeSampling === true && capeInitialIndices.length > 0;
 
     const baseInitialIndices = method === 'block'
@@ -145,10 +141,13 @@ export function resolveMonteCarloSamplingContractV1({
     const effectiveYearSamplingConfig = /** @type {SamplingConfig} */ (cloneYearSamplingConfig(
         capeEffective ? uniformConfig : requestedConfig
     ));
-    if (method === 'block') {
-        effectiveYearSamplingConfig.blockStartIndices = [...initialStartSampler.indices];
-        effectiveYearSamplingConfig.blockSampler = initialStartSampler;
-    }
+    // MS-1 (NG-8): CAPE wählt nur den ersten Block. Jeder spätere Blockstart zieht aus dem
+    // wirksamen Fenster; ohne CAPE ist das derselbe Pool wie für den ersten Block.
+    const blockStartSampler = method === 'block'
+        ? samplerFromIndices(effectiveYearSamplingConfig.blockStartIndices, effectiveYearSamplingConfig.blockSampler)
+        : (method === 'stationary'
+            ? samplerFromIndices(effectiveYearSamplingConfig.allowedIndices, effectiveYearSamplingConfig.allSampler)
+            : null);
     const drawableRegimes = assertDrawableRegimePools({
         method,
         initialStartSampler,
@@ -222,9 +221,7 @@ export function resolveMonteCarloSamplingContractV1({
     return {
         contract: publicContract,
         initialStartSampler,
-        blockStartSampler: method === 'block' || method === 'stationary'
-            ? initialStartSampler
-            : null,
+        blockStartSampler,
         effectiveYearSamplingConfig
     };
 }

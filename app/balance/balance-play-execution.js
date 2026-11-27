@@ -137,7 +137,17 @@ export function withProfileLiquidityTargets(entries, householdTarget, options) {
  */
 export function annualLiquidityInflowRouting(action, context) {
     if (!context) return null;
-    if (!context.entries?.length) return liquidityInflowRouting(context.input, action, context.spending, context.targetLiquidity);
+    const route = (entry, personalAction) => {
+        const { input, spending, targetLiquidity } = entry;
+        const routing = liquidityInflowRouting(input, personalAction, spending, targetLiquidity);
+        return { ...routing, profileId: entry.profileId, cashToday: input.tagesgeld,
+            cashTarget: resolveTargetTagesgeld(spending, targetLiquidity, input) };
+    };
+    if (!context.entries?.length) {
+        if (!Number.isFinite(context.input?.tagesgeld)) return null;
+        const person = route(context, action);
+        return { tagesgeld: person.tagesgeld, geldmarkt: person.geldmarkt, people: [person] };
+    }
     const entries = withProfileLiquidityTargets(context.entries, context.targetLiquidity);
     if (entries.some(entry => !Number.isFinite(entry.input?.tagesgeld))) return null;
     const net = entry => (action.quellen || []).filter(source => source.sourceProfileId === entry.profileId
@@ -145,14 +155,15 @@ export function annualLiquidityInflowRouting(action, context) {
     const weights = entries.map(net), total = weights.reduce((sum, value) => sum + value, 0);
     if (!(total > 0)) return null;
     let rest = cents(action.verwendungen?.liquiditaet || 0);
-    return entries.reduce((sum, entry, i) => {
+    const people = entries.map((entry, i) => {
         const incoming = i === entries.length - 1 ? rest : cents((action.verwendungen?.liquiditaet || 0) * weights[i] / total);
         rest = cents(rest - incoming);
         const personalAction = { quellen: (action.quellen || []).filter(source => source.sourceProfileId === entry.profileId
             || entries.length === 1 && !source.sourceProfileId), verwendungen: { liquiditaet: incoming } };
-        const routing = liquidityInflowRouting(entry.input, personalAction, entry.spending, entry.targetLiquidity);
-        return { tagesgeld: cents(sum.tagesgeld + routing.tagesgeld), geldmarkt: cents(sum.geldmarkt + routing.geldmarkt) };
-    }, { tagesgeld: 0, geldmarkt: 0 });
+        return route(entry, personalAction);
+    });
+    return { tagesgeld: cents(people.reduce((sum, person) => sum + person.tagesgeld, 0)),
+        geldmarkt: cents(people.reduce((sum, person) => sum + person.geldmarkt, 0)), people };
 }
 
 /** Nur die Werte, die die Beleganzeige braucht; keine Engine-Diagnosen im Dialogkontext. */
@@ -314,7 +325,7 @@ export async function preparePlayAction({ entries, controller, storage = persist
     let registry = JSON.parse(storage.getItem(REGISTRY));
     if (!registry?.profiles?.[activeId] || storage.getItem('rs_active_profile') !== activeId) throw new Error('Profilbestand nicht verfügbar.');
     registry.profiles[activeId].data = captureProfileData(storage);
-    const members = Object.keys(registry.profiles).filter(key => registry.profiles[key].meta.belongsToHousehold !== false).sort();
+    const members = Object.keys(registry.profiles).sort();
     const ids = entries.map(entry => entry.profileId).sort();
     if (!ids.length || new Set(ids).size !== ids.length || ids.some(key => !registry.profiles[key])
         || (ids.length > 1 && JSON.stringify(ids) !== JSON.stringify(members))) throw new Error('Anweisung passt nicht mehr zum Haushalt.');

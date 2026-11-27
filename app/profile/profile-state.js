@@ -286,14 +286,6 @@ export function readStoredProfileValue(storage, key) {
     return storage.getItem(key);
 }
 
-export function readStoredProfileNumber(storage, key, fallback = null) {
-    return parseStoredNumber(readStoredProfileValue(storage, key), fallback);
-}
-
-export function readStoredProfileBool(storage, key, fallback = null) {
-    return parseStoredBool(readStoredProfileValue(storage, key), fallback);
-}
-
 function normalizeOption(raw, allowed, fallback, transform = value => value) {
     const value = raw === null || raw === undefined || raw === ''
         ? fallback

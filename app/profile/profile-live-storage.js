@@ -48,9 +48,12 @@ function normalizeProfileDataEntries(data) {
         .map(([key, value]) => [key, String(value)]);
 }
 
+// SP-1b: Gleiches Ergebnis wie „alle löschen, alle setzen“, aber ohne gleiche Werte neu zu schreiben:
+// gelöscht werden nur Schlüssel, die in den Personendaten fehlen, gesetzt nur abweichende Werte.
 function replaceProfileScopedData(entries, storage) {
-    clearProfileScopedKeys(storage);
-    entries.forEach(([key, value]) => storage.setItem(key, value));
+    const next = new Map(entries);
+    listProfileScopedKeys(storage).filter(key => !next.has(key)).forEach(key => storage.removeItem(key));
+    entries.forEach(([key, value]) => { if (storage.getItem(key) !== value) storage.setItem(key, value); });
 }
 
 export function loadProfileDataIntoLocalStorage(data, storage = persistenceStorage) {

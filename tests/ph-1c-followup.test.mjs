@@ -1,8 +1,6 @@
-import { readFileSync } from 'node:fs';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { PersistenceFacade as P } from '../app/shared/persistence-facade.js';
 import { applyProfileManagementAction, validateProfileManagementAction } from '../app/profile/profile-manager-bindings.js';
-import { createProfileManagementRecovery } from '../app/profile/profile-management-recovery.js';
 import { recordIdentity } from '../app/shared/snapshot-restore.js';
 import { renderManagerPeople, syncManagerPeopleControls, projectManagerProfiles } from '../app/tranches/tranchen-manager-profiles.js';
 import { renderManagerProfiles } from '../app/tranches/tranchen-manager-renderer.js';
@@ -26,12 +24,11 @@ async function fixture(change = () => {}) {
     await P.init({ installLifecycleHooks: false, installTauriCloseHook: false });
     return { records, points, batches };
 }
+// SV-1: Wie die Personenverwaltung: prüfen, anwenden, speichern; ein Wiederherstellungspunkt entsteht nicht mehr.
 async function execute(request) {
-    const expectedRecords = validateProfileManagementAction(request);
-    const point = await createProfileManagementRecovery('Synthetische Personenaktion', { expectedRecords });
+    validateProfileManagementAction(request);
     assert(applyProfileManagementAction(request), request.kind + ': Aktion ausgeführt');
     await P.flush();
-    return point;
 }
 function people(records) {
     const nodes = Object.fromEntries(['managerPeopleList', 'managerPersonCreateBtn', 'managerPeopleForm', 'managerPersonRenameBtn'].map(id => [id, {}]));
@@ -39,28 +36,24 @@ function people(records) {
     return nodes.managerPeopleList.innerHTML;
 }
 
-// F7: Eine Haushaltsperson und eine Außenperson; Altflags zählen als Mitglied.
+// F7: Eine Haushaltsperson; Altflag `true` und fehlendes Flag gelten gleich.
 for (const explicit of [true, false]) {
     const { records, points, batches } = await fixture(registry => {
-        registry.profiles.muster_b.meta.belongsToHousehold = false;
-        if (!explicit) delete registry.profiles.muster_a.meta.belongsToHousehold;
+        delete registry.profiles.muster_b;
+        if (explicit) registry.profiles.muster_a.meta.belongsToHousehold = true;
+        else delete registry.profiles.muster_a.meta.belongsToHousehold;
     });
     const before = recordIdentity(records);
     const rows = people(records).split('</article>');
-    assert(/input disabled/.test(rows[0]) && rows[0].includes(HOUSEHOLD_MINIMUM_REASON), 'F7: Letztes Häkchen ist gesperrt und erklärt');
-    assert(/button[^>]*disabled[^>]*title="Ein Haushalt braucht mindestens eine Person\."[^>]*data-person-action="delete"/.test(rows[0]), 'F7: Letzter Löschknopf ist mit demselben Grund gesperrt');
-    assertEqual((rows[0].match(/data-person-disabled-reason=/g) || []).length, 2, 'F7: Häkchen und Löschknopf behalten ihren fachlichen Sperrgrund');
-    assert(/button[^>]*data-person-action="delete"/.test(rows[1]) && !/button[^>]*disabled/.test(rows[1]), 'F7: Außenperson bleibt löschbar');
-    for (const kind of ['delete', 'membership']) {
-        let message;
-        try { await execute({ kind, profileId: 'muster_a', belongs: false }); } catch (error) { message = error.message; }
-        assertEqual(message, HOUSEHOLD_MINIMUM_REASON, 'F7: Untergrenze vor Rückkehrpunkt: ' + kind);
-        assertEqual(points.size, 0, 'F7: Abweisung erzeugt keinen Punkt');
-        assertEqual(batches.length, 0, 'F7: Abweisung schreibt nichts');
-        assertEqual(recordIdentity(records), before, 'F7: Abweisung erhält alle Bytes');
-    }
-    await execute({ kind: 'delete', profileId: 'muster_b' });
-    assertEqual(householdMemberCount(JSON.parse(records.rs_profiles_v1)), 1, 'F7: Außenperson gelöscht, Haushaltsmitglied erhalten');
+    assert(/button[^>]*disabled[^>]*title="Ein Haushalt braucht mindestens eine Person\."[^>]*data-person-action="delete"/.test(rows[0]), 'F7: Letzter Löschknopf ist gesperrt und erklärt');
+    assertEqual((rows[0].match(/data-person-disabled-reason=/g) || []).length, 1, 'F7: Löschknopf behält seinen fachlichen Sperrgrund');
+    let message;
+    try { await execute({ kind: 'delete', profileId: 'muster_a' }); } catch (error) { message = error.message; }
+    assertEqual(message, HOUSEHOLD_MINIMUM_REASON, 'F7: Untergrenze vor Rückkehrpunkt');
+    assertEqual(points.size, 0, 'F7: Abweisung erzeugt keinen Punkt');
+    assertEqual(batches.length, 0, 'F7: Abweisung schreibt nichts');
+    assertEqual(recordIdentity(records), before, 'F7: Abweisung erhält alle Bytes');
+    assertEqual(householdMemberCount(JSON.parse(records.rs_profiles_v1)), 1, 'F7: Haushaltsperson erhalten');
 }
 {
     const controls = [
@@ -72,31 +65,26 @@ for (const explicit of [true, false]) {
     syncManagerPeopleControls(doc, true);
     assert(controls.every(control => control.disabled), 'F7: Laufender Schreibauftrag sperrt alle Personenaktionen');
     syncManagerPeopleControls(doc, false);
-    assert(controls[0].disabled && controls[1].disabled && !controls[2].disabled, 'F7: Freigabe erhält Untergrenzensperren und gibt Außenpersonen frei');
+    assert(controls[0].disabled && controls[1].disabled && !controls[2].disabled, 'F7: Freigabe erhält Untergrenzensperren und gibt übrige Aktionen frei');
 }
 
 // F4a: Ein fremder beschädigter Record darf keine Personenaktion sperren.
 for (const key of ['rs_data_backup_summary_v1', HOUSEHOLD_PLAN_KEY, EXPENSES_STORAGE_KEY, 'rs_daily_prices_v1']) {
-    for (const kind of ['delete', 'membership']) {
-        const { records, points } = await fixture((registry, records) => { records[key] = '{"fremd":true}'; });
-        const before = recordIdentity(records);
-        const point = await execute({ kind, profileId: 'muster_b', belongs: false });
-        assertEqual(recordIdentity(point.records), before, 'F4a: Vollständiger Vorherstand im Punkt: ' + key + '/' + kind);
-        assertEqual(records[key], '{"fremd":true}', 'F4a: Fremder Record bleibt bytegleich: ' + key + '/' + kind);
-        assertEqual(points.size, 1, 'F4a: Genau ein bestätigter Rückkehrpunkt');
-        const registry = JSON.parse(records.rs_profiles_v1);
-        assert(kind === 'delete' ? !registry.profiles.muster_b : registry.profiles.muster_b.meta.belongsToHousehold === false, 'F4a: Personenaktion trotz Fremdschaden gespeichert');
-    }
+    const { records, points } = await fixture((registry, records) => { records[key] = '{"fremd":true}'; });
+    await execute({ kind: 'delete', profileId: 'muster_b' });
+    assertEqual(records[key], '{"fremd":true}', 'F4a: Fremder Record bleibt bytegleich: ' + key);
+    assertEqual(points.size, 0, 'SV-1: Personenaktion legt keinen Punkt an');
+    assert(!JSON.parse(records.rs_profiles_v1).profiles.muster_b, 'F4a: Personenaktion trotz Fremdschaden gespeichert');
 }
 
-// Ein fremdes Profil wird unverändert mitgeführt; sein Fachinhalt gehört nicht zur Aktion.
-for (const kind of ['delete', 'membership']) {
+// Ein fremdes Profil wird unverändert mitgeführt; sein Fachinhalt gehört nicht zur Aktion (Altbestand mit drei Personen).
+{
     const { records } = await fixture(registry => {
-        registry.profiles.out = { meta: { id: 'out', name: 'Außenperson', belongsToHousehold: false }, data: { profile_tagesgeld: 'kaputt' } };
+        registry.profiles.other = { meta: { id: 'other', name: 'Musterperson 3' }, data: { profile_tagesgeld: 'kaputt' } };
     });
-    const foreign = JSON.stringify(JSON.parse(records.rs_profiles_v1).profiles.out);
-    await execute({ kind, profileId: 'muster_b', belongs: false });
-    assertEqual(JSON.stringify(JSON.parse(records.rs_profiles_v1).profiles.out), foreign, 'F4a: Unbeteiligte Person bleibt unverändert');
+    const foreign = JSON.stringify(JSON.parse(records.rs_profiles_v1).profiles.other);
+    await execute({ kind: 'delete', profileId: 'muster_b' });
+    assertEqual(JSON.stringify(JSON.parse(records.rs_profiles_v1).profiles.other), foreign, 'F4a: Unbeteiligte Person bleibt unverändert');
 }
 
 // Betroffene Daten und die nach aktiver Löschung geladene Person bleiben geprüft.
@@ -121,11 +109,10 @@ for (const bad of ['target', 'live', 'fallback', 'identity', 'registry']) {
     assertEqual(records.rs_active_profile, 'muster_b', 'F7: Geladene Person stimmt mit aktueller Person überein');
 }
 
-// Der Hinweis zählt alle Mitglieder, unabhängig von den zusätzlich gespeicherten Außenpersonen.
+// Der Hinweis zählt alle Personen.
 for (const count of [3, 4]) {
     const { records } = await fixture(registry => {
         for (let i = 2; i < count; i++) registry.profiles['member' + i] = { meta: { id: 'member' + i, name: 'Musterperson ' + i }, data: {} };
-        registry.profiles.out = { meta: { id: 'out', name: 'Außenperson', belongsToHousehold: false }, data: {} };
     });
     const registry = JSON.parse(records.rs_profiles_v1), expected = HOUSEHOLD_CURRENT_LIMIT_MESSAGE(count);
     assert(expected.startsWith(`Dein Haushalt hat ${count} Personen;`), '3: Meldung nennt die tatsächliche Zahl');
@@ -138,6 +125,4 @@ for (const count of [3, 4]) {
     renderManagerProfiles({ getElementById: id => id === 'managerHousehold' ? host : null }, projectManagerProfiles(registry, records.rs_current_profile));
     assert(host.innerHTML.includes(expected), '3: Haushaltskarte zählt Mitglieder');
 }
-const source = file => readFileSync(new URL('../' + file, import.meta.url), 'utf8');
-assert(source('Daten-Sicherung.html').includes('ältere Punkte vor dem Löschen aller Tranchen'), '5: Aufbewahrung ordnet die frühere Tranchenlöschung ein');
-assert(source('Handbuch.html').includes('Punkte vor dem Löschen aller Tranchen'), '5: Handbuch nennt den dauerhaften Depotpunkt');
+// SV-1: Punkte vor dem Löschen aller Tranchen sind mit der Archivleerung entfallen.

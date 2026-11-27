@@ -69,7 +69,7 @@ export function simulatorValidationFieldId(error) {
     const labels = {
         'Anzahl der Simulationen': 'mcAnzahl', 'Simulationsdauer in Jahren': 'mcDauer',
         'Blockgroesse in Jahren': 'mcBlockSize', 'Erwartete Blocklaenge in Jahren': 'mcBlockSize',
-        'Zufalls-Seed': 'mcSeed', 'Simulationsmethode': 'mcMethode', 'RNG-Modus': 'rngMode',
+        'Zufallsstartwert': 'mcSeed', 'Simulationsmethode': 'mcMethode', 'RNG-Modus': 'rngMode',
         'Startjahr-Modus': 'mcStartYearMode', 'Startjahr-Filter': 'mcStartYearFilter',
         'Startjahr-Halbwertszeit': 'mcStartYearHalfLife', 'Worker-Anzahl': 'mcWorkerCount',
         'Job-Timebudget in Millisekunden': 'mcWorkerBudget',
@@ -129,7 +129,7 @@ export function validateSimulatorInputs(inputs = /** @type {T} */ ({}), { horizo
     ) {
         errors.push({
             fieldId: 'liquidityRunwayYears',
-            message: `Liquiditäts-Runway muss zwischen ${LIQUIDITY_RUNWAY_CONTRACT_V1.minimumYears} und ${LIQUIDITY_RUNWAY_CONTRACT_V1.maximumYears} Jahren in ${LIQUIDITY_RUNWAY_CONTRACT_V1.stepYears}-Jahres-Schritten liegen.`
+            message: `Liquiditäts-Reichweite muss zwischen ${LIQUIDITY_RUNWAY_CONTRACT_V1.minimumYears} und ${LIQUIDITY_RUNWAY_CONTRACT_V1.maximumYears} Jahren in ${LIQUIDITY_RUNWAY_CONTRACT_V1.stepYears}-Jahres-Schritten liegen.`
         });
     }
 
@@ -170,7 +170,8 @@ export function validateSimulatorInputs(inputs = /** @type {T} */ ({}), { horizo
 
 export const SIMULATOR_CONTRACT_ERROR_MESSAGES_DE = Object.freeze({
     SIMULATOR_HISTORICAL_DATA_UNAVAILABLE: 'Historische Marktdaten sind nicht verfügbar: Lade oder prüfe den historischen Datenbestand, bevor du die Simulation erneut startest.',
-    SIMULATOR_STRESS_PRESET_UNKNOWN: 'Unbekanntes Stressszenario: Das gespeicherte Preset ist nicht mehr verfügbar. Öffne das Profil, wähle ein vorhandenes Stressszenario und speichere erneut.',
+    SIMULATOR_HISTORICAL_DATA_CONTRACT: 'Historische Marktdaten passen nicht zum Datenstand: Inhaltshash oder Randjahre weichen ab. Prüfe den historischen Datenbestand, bevor du die Simulation erneut startest.',
+    SIMULATOR_STRESS_PRESET_UNKNOWN: 'Unbekanntes Stressszenario: Das gespeicherte Szenario ist nicht mehr verfügbar. Öffne das Profil, wähle ein vorhandenes Stressszenario und speichere erneut.',
     SIMULATOR_STRESS_POOL_EMPTY: 'Historisches Stressszenario nicht ausführbar: Der zugehörige historische Rohpool ist leer. Wähle ein synthetisches Stressszenario oder prüfe den Datenbestand.',
     SIMULATOR_STRESS_SEQUENCE_INVALID: 'Stresssequenz unvollständig: Für mindestens ein Stressjahr fehlt eine gültige Rendite. Wähle ein anderes Szenario oder prüfe den Presetvertrag.',
     SIMULATOR_STRESS_INPUT_INVALID: 'Stressberechnung abgebrochen: Rendite-, Inflations- oder Golddaten sind ungültig. Prüfe den historischen Datenbestand.',
@@ -184,7 +185,7 @@ export const SIMULATOR_CONTRACT_ERROR_MESSAGES_DE = Object.freeze({
     MC_SAMPLING_DATA_EMPTY: 'Monte-Carlo-Sampling nicht ausführbar: Der historische Jahresdatenbestand ist leer. Prüfe oder lade die historischen Marktdaten und starte erneut.',
     MC_SAMPLING_METHOD_INVALID: 'Monte-Carlo-Sampling nicht ausführbar: Die gewählte Sampling-Methode ist unbekannt. Wähle eine verfügbare Methode und starte erneut.',
     MC_SAMPLING_NO_START_CANDIDATES: 'Monte-Carlo-Sampling nicht ausführbar: Der aktive Startjahrfilter liefert keine geeigneten Startjahre. Setze die Grenze früher oder lockere den Datenfilter.',
-    MC_SAMPLING_NO_BLOCK_START_CANDIDATES: 'Blockbootstrap nicht ausführbar: Für Filter und Blocklänge bleibt kein vollständiger Startblock. Setze die Startjahrgrenze früher oder verkürze den Block.',
+    MC_SAMPLING_NO_BLOCK_START_CANDIDATES: 'Blockbootstrap nicht ausführbar: Der aktive Startjahrfilter liefert kein Startjahr. Setze die Startjahrgrenze früher.',
     MC_SAMPLING_REGIME_TRANSITIONS_INVALID: 'Regime-Sampling nicht ausführbar: Für mindestens ein erreichbares Regime fehlen gültige Übergänge. Prüfe die Transitionsmatrix.',
     MC_SAMPLING_REGIME_POOL_EMPTY: 'Regime-Sampling nicht ausführbar: Der aktive Startjahrfilter enthält nicht alle erreichbaren Marktregime. Setze die Grenze früher oder wähle eine andere Sampling-Methode.',
     MC_SAMPLING_RUNTIME_CONTRACT_MISMATCH: 'Sampling-Lauf abgebrochen: Vorprüfung und Laufzeit verwenden unterschiedliche Methoden. Starte den Lauf mit unveränderten Einstellungen erneut.',
@@ -196,7 +197,7 @@ export const SIMULATOR_CONTRACT_ERROR_MESSAGES_DE = Object.freeze({
 });
 
 const ENGINE_FIELD_LABELS = Object.freeze({
-    aktuellesAlter: 'Alter', inflation: 'Inflation', floorBedarf: 'Grundbedarf (Floor)',
+    aktuellesAlter: 'Alter', inflation: 'Inflation', floorBedarf: 'Grundbedarf',
     flexBedarf: 'Wunschbedarf (Flex)', minimumFlexAnnual: 'Mindest-Flex',
     tagesgeld: 'Tagesgeld', geldmarktEtf: 'Geldmarkt-ETF', depotwertAlt: 'Altbestand',
     depotwertNeu: 'Neubestand', goldWert: 'Goldbestand', costBasisAlt: 'Einstand Altbestand',

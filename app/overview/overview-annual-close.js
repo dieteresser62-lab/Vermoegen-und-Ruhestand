@@ -5,7 +5,8 @@ import { projectAnnualCloseResult } from '../shared/annual-close-result.js';
 import { annualCloseArchiveReader } from '../shared/annual-close-evidence.js';
 import { projectAnnualCloseRecovery } from '../shared/annual-close-recovery.js';
 import { SnapshotArchive } from '../shared/snapshot-archive.js';
-import { createAnnualCoordinator, createAnnualNavigationLifecycle, consumeAnnualRetry, validateAnnualRetry } from '../shared/annual-coordinator.js';
+import { createAnnualCoordinator, createAnnualNavigationLifecycle, consumeAnnualRetry, validateAnnualRetry, annualExpensesYearError,
+    readAnnualResumeMarket, CORRUPT_BALANCE_STATE_MESSAGE } from '../shared/annual-coordinator.js';
 import { createAnnualOperationLock } from '../shared/annual-operation-lock.js';
 import { createAnnualCloseSession, createAnnualMonthSession, finalizeAnnualMonth, confirmAnnualMonthSummary } from '../shared/annual-close-session.js';
 import { createAnnualCloseDialog } from '../shared/annual-close-dialog.js';
@@ -46,7 +47,14 @@ export function bindOverviewAnnualClose({ doc, win, getModel, refresh, getImport
     coordinatorOptions = {}, createMonthSession = createAnnualMonthSession } = {}) {
     if (bound.has(doc)) return bound.get(doc);
     let pending = false, last = null, retrying = false;
-    const readState = () => JSON.parse(storage.getItem(CONFIG.STORAGE.LS_KEY) || '{}');
+    // JW-1a (Neon P1-2): Ein beschädigter Balance-Stand meldet sich verständlich statt mit einem Syntaxfehler.
+    const readState = () => {
+        const corrupt = () => Object.assign(new Error(CORRUPT_BALANCE_STATE_MESSAGE), { code: 'balance_state_corrupt' });
+        let state;
+        try { state = JSON.parse(storage.getItem(CONFIG.STORAGE.LS_KEY) || '{}'); } catch { throw corrupt(); }
+        if (!state || typeof state !== 'object' || Array.isArray(state)) throw corrupt();
+        return state;
+    };
     const model = annualTargetYear => projectAnnualClosePreparation(Number.isInteger(annualTargetYear)
         ? projectOverviewFromRecords({ registry: JSON.parse(storage.getItem('rs_profiles_v1')), activeId: storage.getItem('rs_current_profile'),
             liveData: persistence.exportAllSync().records, now: now(), annualTargetYear })
@@ -55,7 +63,8 @@ export function bindOverviewAnnualClose({ doc, win, getModel, refresh, getImport
     const context = () => {
         const next = model();
         return { activeId: storage.getItem('rs_current_profile'), active: storage.getItem('rs_active_profile'),
-            scope: next.scope?.key, date: now().toDateString(), synthetic: isSyntheticPriceMode(),
+            // JW-1a (Neon P2-6): Der Tageswechsel um Mitternacht schließt den offenen Dialog nicht; nur ein neues Jahr zählt.
+            scope: next.scope?.key, year: now().getFullYear(), synthetic: isSyntheticPriceMode(),
             people: readBalancePersonStatus({ storage, referenceYear: now().getFullYear() }).entries?.map(entry => ({ id: entry.profileId,
                 values: Object.fromEntries(Object.entries(entry.data).filter(([key]) => key.startsWith('profile_') && key !== 'profile_tagesgeld')) })),
             cash: captureCashPeople({ storage, ids: next.scope?.ids || [], activeId: next.activeId }),
@@ -103,6 +112,7 @@ export function bindOverviewAnnualClose({ doc, win, getModel, refresh, getImport
             try {
                 annualLease = await operationLock.acquire();
                 if (!annualLease) throw new Error('Eine andere Seite hält den Jahresbesitz.');
+                try { readState(); } catch (error) { status(error.message); openRecovery(); return { status: 'cancelled', error }; }
                 let before = model(); const targetYear = options.resume?.targetYear ?? before.occasion.closingYear;
                 if (before.recovery || readState().annualPeriodMetadata?.pendingCommit) { openRecovery(readState().annualPeriodMetadata?.pendingCommit?.snapshotId); return { status: 'cancelled' }; }
                 if (!options.resume) {
@@ -124,18 +134,17 @@ export function bindOverviewAnnualClose({ doc, win, getModel, refresh, getImport
                     });
                     const fingerprint = preparation.contextFingerprint();
                     try {
-                        reading = Promise.all([readers.prepareInflation({ targetYear, signal: controller.signal }), readers.prepareCape({ targetYear, signal: controller.signal })]);
+                        reading = readAnnualResumeMarket(options.resume, readers, controller.signal);
                         const [inflation, cape] = await reading; controller.signal.throwIfAborted();
                         if (fingerprint !== preparation.contextFingerprint()) throw new Error('Der Wiederaufnahmekontext wurde geändert.');
                         const people = captureCashPeople({ storage, ids: before.scope.ids, activeId: before.activeId });
-                        // Eine im Dialog gewählte Lesart des Hochs gilt auch für die Wiederaufnahme (FR-71);
-                        // passt sie nicht zum Kurs, bricht computeAnnualPlanUpdate ab statt still umzuschalten.
                         confirmedPreparation = { manualPrice: options.resume.price, preparedMarketData: { inflation, cape },
-                            adoptedPlanPatch: options.resume.adoptedPlanPatch, careValues: options.resume.careValues, careToday: options.resume.careToday,
-                            yearHigh: options.resume.yearHigh,
+                            adoptedPlanPatch: options.resume.adoptedPlanPatch, careValues: options.resume.careValues, careToday: options.resume.careToday, propertyValues: options.resume.propertyValues,
                             cash: options.resume.cash ?? { people, values: Object.fromEntries(people.map(person => [person.id, person.value])) } };
                     } finally { lease.unregister(); }
                 } else if (before.occasion?.annualState === 'open' || before.occasion?.annualState === 'unclear' && before.occasion.annualReason === 'missing_commit') {
+                    const expensesError = annualExpensesYearError(storage, targetYear, now());
+                    if (expensesError) throw expensesError;
                     confirmedPreparation = await preparation.prepare({ targetYear, model: before, getModel: model,
                         people: captureCashPeople({ storage, ids: before.scope.ids, activeId: before.activeId }), opener: options.opener,
                         validatePrice: value => ({ manualPrice: createManualAnnualQuote(value, `calendar-year:${targetYear}`).price }) });

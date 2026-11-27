@@ -24,13 +24,13 @@ function appendDescription(host, description, doc) {
  * @param {(context: import("../../typcheck/shared-ui.js").DialogContext) => import("../../typcheck/shared-ui.js").DialogBehavior} build
  * @returns {Promise<unknown>} Ausgewählter Wert oder Abbruchwert.
  */
-export function runPageDialog({ title, description = '', doc = globalThis.document, signal,
+export function runPageDialog({ title, description = '', notice, doc = globalThis.document, signal,
     opener = doc?.activeElement, returnFocus, id = 'pageDialog', cancelled = null, queue = false, createDialog } = {}, build) {
     if (!doc?.createElement || !doc?.body) return Promise.reject(new Error('Seitendialog benötigt ein verfügbares Dokument.'));
     if (signal?.aborted) return Promise.resolve(cancelled);
     if (activeDialogs.has(doc)) {
         if (!queue) return Promise.resolve(cancelled);
-        return dialogEnds.get(doc).then(() => runPageDialog({ title, description, doc, signal, opener, returnFocus, id, cancelled, queue, createDialog }, build));
+        return dialogEnds.get(doc).then(() => runPageDialog({ title, description, notice, doc, signal, opener, returnFocus, id, cancelled, queue, createDialog }, build));
     }
     let release;
     dialogEnds.set(doc, new Promise(resolve => { release = resolve; }));
@@ -69,6 +69,10 @@ export function runPageDialog({ title, description = '', doc = globalThis.docume
             const heading = doc.createElement('h2'); heading.id = titleId; heading.textContent = title;
             const text = doc.createElement('div'); text.id = descriptionId;
             appendDescription(text, description, doc); dialog.append(heading, text);
+            if (notice) {
+                const note = doc.createElement('p'); note.className = 'ds-note'; note.textContent = notice;
+                text.appendChild(note);
+            }
             behavior = build({ dialog, doc, finish, listen, reject });
             const cancel = () => { if (!behavior.blocked?.()) finish(); };
             listen(dialog, 'cancel', event => { event.preventDefault(); cancel(); });

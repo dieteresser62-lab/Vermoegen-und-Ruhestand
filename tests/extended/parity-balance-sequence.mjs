@@ -32,18 +32,22 @@ function setMarket(records, market) {
     records.rs_profiles_v1 = JSON.stringify(registry);
 }
 
-/** Only exogenous returns touch the independent holdings; no later simulator stock/state is accepted. */
+/** Only exogenous returns touch the independent holdings; no later simulator stock/state is accepted.
+ * KR-1c (NG-5): Wie im echten Jahresabschluss stehen Tagesgeld und Geldmarkt mit dem Zins des Jahres (Stand 31.12.) vor der
+ * Entscheidung; der Simulator bucht den Zins ebenfalls vor der Entscheidung. */
 function applyReturns(records, yearData) {
+    const cashRate = yearData.zinssatz / 100;
     changePeople(records, data => {
         const lots = normalizeTrancheCollection(JSON.parse(data.depot_tranchen), { mode: 'persisted' });
         for (const lot of lots) {
             const rate = lot.category === 'equity' ? yearData.rendite
                 : lot.category === 'gold' ? yearData.gold_eur_perf / 100
-                    : lot.category === 'bonds' ? yearData.zinssatz / 100 : 0;
+                    : lot.category === 'bonds' || lot.category === 'money_market' ? cashRate : 0;
             lot.currentPrice *= 1 + rate;
             lot.marketValue = lot.currentPrice * lot.shares;
         }
         data.depot_tranchen = JSON.stringify(normalizeTrancheCollection(lots, { mode: 'persisted' }));
+        data.profile_tagesgeld = String(Number(data.profile_tagesgeld) * (1 + cashRate));
     });
 }
 

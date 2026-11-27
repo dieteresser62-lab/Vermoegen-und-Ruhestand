@@ -2,7 +2,6 @@ import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { initProfileIndexLifecycle, initProfileSubpageLifecycle, whenProfilePageReady } from '../app/profile/profile-navigation.js';
 import { PersistenceFacade as p, resetPersistenceForTests } from '../app/shared/persistence-facade.js';
 import { buildSnapshot } from '../app/shared/snapshot-archive.js';
-import { restoreImportRecoverySnapshot } from '../app/shared/snapshot-restore.js';
 import { PARTNERSHIP_KEY, migratePartnershipRecord, readPartnership } from '../app/profile/household-partnership.js';
 import { migrateStoredPartnership } from '../app/profile/profile-partnership-migration.js';
 import { INCOME_KEY, INCOME_MIGRATION_KEY, incomeFromRecord } from '../app/profile/profile-income.js';
@@ -12,6 +11,8 @@ const legacy = JSON.stringify({ schemaVersion: 1, status: 'unmarried', inheritan
     homeAndTaxInheritance: { muster_martin: true }, testament: { muster_martin: { minimum: 200000, minimumStand: '2026-10' } } });
 const explicit = JSON.stringify({ ...JSON.parse(legacy), maritalPropertyRegime: 'community', activeInheritanceRule: { muster_martin: 'home-and-tax' } });
 const withoutRegime = ' { "inheritance": {}, "status": "married", "schemaVersion": 1 } ';
+// AK-1: Der frühere interne Rücksicherungsweg des Balance-Imports ist entfallen; hier wird der Altbestand direkt zurückgeschrieben.
+const restorePartnership = snapshot => p.replaceRecordsTransactional({ [PARTNERSHIP_KEY]: snapshot.records[PARTNERSHIP_KEY] }, { allowKey: key => key === PARTNERSHIP_KEY });
 async function load(kind) {
     const doc = { documentElement: { dataset: { suitePage: kind } }, contains: () => false,
         addEventListener() {}, getElementById: () => null };
@@ -40,12 +41,12 @@ for (const kind of ['index', 'balance']) for (const raw of [legacy, explicit, wi
     assertEqual(writes, raw === legacy ? 1 : 0, 'QS-I 2: erneuter Start ist bytegleich ohne Migrationswrite');
     const snapshot = buildSnapshot({ id: 'old', kind: 'full-backup-import-recovery', records: { ...records, [PARTNERSHIP_KEY]: raw } });
     const snapshotBytes = JSON.stringify(snapshot);
-    await restoreImportRecoverySnapshot(snapshot);
+    await restorePartnership(snapshot);
     await load(kind);
     assertEqual(records[PARTNERSHIP_KEY], migratePartnershipRecord(raw), 'QS-I 2: Laden nach Restore migriert den Livebestand');
     assertEqual(JSON.stringify(snapshot), snapshotBytes, 'QS-I 2: Snapshotbytes bleiben erhalten');
     if (raw === legacy) {
-        await restoreImportRecoverySnapshot(snapshot);
+        await restorePartnership(snapshot);
         fail = true;
         const warnings = [], warn = console.warn;
         console.warn = (...args) => warnings.push(args);

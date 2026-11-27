@@ -1,4 +1,7 @@
 import { inheritancePreview, homeAndTaxEstate, inheritanceTax, readPartnership, inheritsHomeAndTax } from '../app/profile/household-partnership.js';
+import { testamentFields } from '../app/tranches/tranchen-manager-testament.js';
+import { deathYearCashShare } from '../app/simulator/simulator-death-year-cash.js';
+import { measurementInputs } from './helpers/ek-1b-measurement.mjs';
 import { inheritanceNetProceeds } from '../app/profile/household-inheritance-sale.js';
 import { sellHomesForExternalCare } from '../app/simulator/simulator-home-sale.js';
 import { calculateFixedIncomeForYear } from '../app/simulator/simulator-fixed-income.js';
@@ -95,7 +98,8 @@ for (const percent of [0, 25, 100]) {
     const sold = simulateOneYear(result.newState, inputs, year, 1, null, 0, { p1Alive: false, p2Alive: true, care: { p2: external } }, 1, EngineAPI);
     assertClose(sold.logData.immobilienverkauf, 720000, .001, 'Alle geerbten Anteile stehen beim späteren Verkauf bereit');
 }
-assertClose(homeAndTaxEstate(1000000, 800000, 0).taxCash, 334285.7142857143, 1, 'Handrechnung Klasse III');
+// HP-4: 30 % des auf volle 100 € abgerundeten Erwerbs 800.000 + X − 20.000; vorher 334.285,71 € ohne Abrundung.
+assertClose(homeAndTaxEstate(1000000, 800000, 0).taxCash, 334260, 1, 'Handrechnung Klasse III');
 const limited = inheritancePreview(10000, 800000, 0, { homeAndTax: true });
 assert(limited.shortfall > 0 && limited.taxCash === 10000, 'Unzureichendes Geldvermögen bleibt als Steuerlücke sichtbar');
 assertEqual(inheritsHomeAndTax(readPartnership(null), 'max'), false, 'Altbestand ohne Häkchen ist aus');
@@ -133,6 +137,77 @@ for (const percent of [0, 50, 100]) {
     assertEqual(death.logData.inheritance.inheritedHome, 800000 * percent / 100, 'Nachlassquote bestimmt verbleibendes Haus');
     const next = simulateOneYear(death.newState, inputs, year, 1, null, 0, household, 1, EngineAPI);
     assertClose(next.logData.immobilienverkauf || 0, 720000 * percent / 100, .001, 'Folgejahr verkauft nur den geerbten Anteil');
+}
+
+// ER-2e (Befund 1830, FR-96): Kosten und Pflichtteil gelten auch bei „Immobilien und Steuergeld“. Erfundene Zahlen.
+{
+    const rule = { estateCosts: 20000, childrenProtected: true, minimum: 900000, minimumStand: '2026-01', maximumPercent: 0, home: 'life-estate' };
+    const preview = inheritancePreview(500000, 100000, 80, { homeAndTax: true, cash: 500000, testament: rule });
+    assertEqual(preview.estateCosts, 20000, '1830: Die Kosten gehen vor der Aufteilung ab');
+    assertClose(preview.taxCash, 81000, .001, 'Steuergeld für den gekürzten Erwerb');
+    assertClose(preview.childrenMoneyCut, 210200, .001, 'Der Zusatzanteil sinkt von 319.200 € auf 109.000 €');
+    assertClose(preview.leaves, 290000, .001, 'Der Pflichtteil bleibt nach Kosten vollständig bei den Kindern');
+    const shortfall = inheritancePreview(100000, 400000, 80, { homeAndTax: true, cash: 100000, testament: rule });
+    assertClose(shortfall.taxCash, 80000, .001, 'Bei großer Lücke bleibt das Steuergeld erhalten');
+    assertClose(shortfall.childrenShortfall, 240000, .001, 'Haus und Steuergeld werden nicht gekürzt, die Lücke steht als Hinweis');
+    const fields = testamentFields('muster_martin', 0, rule, true);
+    const locked = fields.slice(fields.indexOf('<fieldset'));
+    assert(locked.includes(' disabled>') && locked.includes('data-testament="minimum"') && locked.includes('data-testament="home"')
+        && !locked.includes('data-testament="estateCosts"') && !locked.includes('data-testament="childrenProtected"'),
+        '1830: Kosten und Pflichtteil stehen außerhalb des gesperrten Blocks; mindestens, höchstens und Immobilien bleiben gesperrt');
+    assert(fields.includes('Kosten und Pflichtteil oben gelten auch bei dieser Wahl.'), 'Der Sperrhinweis nennt die Ausnahme');
+}
+
+// Martin und Petra, „Haus + Steuer“, Petra erbt zusätzlich 50 %, Kosten 20.000 €, Pflichtteil-Schalter an.
+{
+    const martinPetra = await measurementInputs(0, 'martin-petra', '2026-10-28');
+    const death = testament => {
+        const inputs = { ...martinPetra, partnership: readPartnership({ ...martinPetra.partnership, inheritance: { muster_martin: 50, muster_petra: 0 },
+            ...(testament ? { testament: { muster_martin: testament }, activeInheritanceRule: { muster_martin: 'home-and-tax' } } : {}) }) };
+        return { inputs, result: simulateOneYear(initMcRunState(inputs), inputs, year, 0, null, 0, { p1Alive: false, p2Alive: true }, 1, EngineAPI) };
+    };
+    const plain = death().result.logData.inheritance;
+    const { inputs, result } = death({ estateCosts: 20000, childrenProtected: true });
+    const estate = result.logData.inheritance;
+    assertEqual(estate.homeAndTax, true, 'Immobilien und Steuergeld bleiben die aktive Regel');
+    assertEqual(estate.estateCosts, 20000, '1830: Die Kosten wirken bei Haus + Steuer');
+    assertClose(estate.inherited + estate.leaves + estate.estateCosts, estate.assets, .001, 'Der Geldnachlass wird vollständig zugeordnet');
+    assert(estate.childrenMoneyCut > 0 && estate.childrenShortfall > 0, 'Die Sicherung kürzt den Zusatzanteil und nennt die Restlücke');
+    assertClose(estate.inherited, estate.taxCash, .001, 'Gekürzt wird nur der Zusatzanteil, das Steuergeld bleibt');
+    assertEqual(estate.home, plain.home, 'Das Haus wird nicht gekürzt');
+    assert(estate.leaves > plain.leaves, 'Den Kindern bleibt mehr als ohne Sicherung');
+    assertClose(result.logData.portfolio_flow_delta, 0, .05, 'Die Jahresbuchungen bilanzieren Kosten und Kürzung');
+    const html = renderProtocolTable([result.logData], { source: 'mc', inputs });
+    assert(html.includes('Bestattungs- und Abwicklungskosten') && html.includes('Geldanteil gekürzt für den Pflichtteil der Kinder')
+        && html.includes('Pflichtteil der Kinder nicht voll gedeckt'), 'Das Erbe-ⓘ zeigt Kosten, Kürzung und Restlücke');
+    const transition = { deathThisYear: true, survivor: { deceasedProfileId: 'muster_martin', survivorProfileId: 'muster_petra' } };
+    assertEqual(deathYearCashShare({ inputs, transition, hasLifeEvents: true }), 0, 'Im Todesjahr zählt kein Nachlassgeld vorab zur Liquidität');
+}
+
+// Kosten über dem freien Tagesgeld: 10.000 € Tagesgeld, 590.000 € Depot, Haus 250.000 €, 80 % Zusatzanteil.
+{
+    const inputs = base();
+    inputs.home = [{ ...home, wert: 250000 }];
+    inputs.partnership = readPartnership({ schemaVersion: 1, status: 'unmarried', inheritance: { muster_a: 80 }, homeAndTaxInheritance: { muster_a: true },
+        activeInheritanceRule: { muster_a: 'home-and-tax' }, testament: { muster_a: { estateCosts: 20000, childrenProtected: true } } });
+    const portfolio = initMcRunState(inputs).portfolio;
+    for (const account of portfolio.personAccounts) { account.tagesgeld = account.profileId === 'muster_a' ? 10000 : 0; account.geldmarktEtf = 0; }
+    portfolio.depotTranchesAktien = [{ trancheId: 'nachlass', sourceProfileId: 'muster_a', category: 'equity', marketValue: 590000, costBasis: 295000, shares: 100 }];
+    portfolio.depotTranchesGold = []; portfolio.depotTranchesGeldmarkt = [];
+    portfolio.healthBucketTranches = []; portfolio.healthBucketCashOwners = [];
+    portfolio.healthBucketCashAmount = 0; portfolio.healthBucketGeldmarkt = 0;
+    const estate = homeAndTaxEstate(580000, 250000, 80, inheritanceNetProceeds({ cash: 10000, tranches: portfolio.depotTranchesAktien, estateCosts: 20000,
+        sparerPauschbetrag: portfolio.personAccounts[1].sparerPauschbetrag }), true);
+    const result = applyUnmarriedInheritance({ portfolio, inputs, inflationFactor: 1,
+        transition: { deathThisYear: true, survivor: { deceasedProfileId: 'muster_a', survivorProfileId: 'muster_b' } },
+        pension: { rente1BruttoEigen: 0, rente2BruttoEigen: 0 }, personalInterest: { items: [] }, actionResult: { steuer: 0 } });
+    assert(estate.childrenMoneyCut > 0 && !estate.childrenShortfall, 'Die Kürzung deckt den Pflichtteil');
+    assertClose(result.inheritance.inherited, estate.inherited, .001, 'Der Simulator rechnet wie die Erbaufteilung');
+    assertClose(250000 + estate.inherited, 415000, .001, 'Petra erhält genau die Hälfte des Nachlasses nach Kosten');
+    const transferred = portfolio.personAccounts[0].tagesgeld + result.inheritancePayment.paidCost + result.inheritancePayment.paidTax
+        + portfolio.depotTranchesAktien.reduce((sum, lot) => sum + lot.marketValue, 0);
+    assertClose(transferred, estate.inherited, .001, 'Tagesgeld und Depot übertragen genau den gekürzten Erwerb');
+    assertClose(result.abgang_erben, 580000 - estate.inherited, .001, 'Den übrigen Nettonachlass erhalten die Kinder');
 }
 
 // Kontrollierter Nachlass ohne Jahresentnahme: 400.000 Tagesgeld, 600.000 Depot, 800.000 Haus.

@@ -14,6 +14,13 @@
 
 Diese Pflichten gelten für Reviews im Handbetrieb und bei direkter Nutzung. Im orchestrierten Lauf geben Prüfvertrag und Antwortschema des Orchestrators Format und Freigaberegeln vor.
 
+### Prüfrahmen
+
+- Die App ist ein privates Einzelplatz-Werkzeug für einen Haushalt.
+- Ordne Befunde nach Wirkung ein (Zahl falsch, Daten gefährdet, Ablauf blockiert oder nur Qualität) und nenne Wahrscheinlichkeit im Alltag und Größenordnung.
+- Modellgrenzen, Einzelplatz-Härtung und Architektur sind nachrangig.
+- Regeländerungen gehören in einen Messauftrag.
+
 ### Engine-Modulbetrieb prüfen
 
 - `engine.js` ist aktuell ein reiner generierter Wrapper für `engine/index.mjs`; Fachtests und Worker importieren die Module direkt. Ein unveränderter Wrapper nach Fach-, Versions- oder API-Methodenänderungen hinter demselben Import ist erwartbar. Modulstand, Fachtests und `tests/engine-wrapper-contract.test.mjs` sind maßgeblich; Testpflichten und Zuständigkeiten aus `AGENTS.md` gelten weiter.

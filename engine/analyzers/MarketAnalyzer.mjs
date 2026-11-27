@@ -82,6 +82,8 @@ export const MarketAnalyzer = {
         if (hasAthBasis && /** @type {number} */ (abstandVomAthProzent) > 0 && jahreSeitAth === 0) {
             monateSeitAth = 12;
         }
+        const isRecoveryCandidate = abstandVomAthProzent !== null && abstandVomAthProzent > 10 &&
+            abstandVomAthProzent <= 20 && perf1Y > 10 && monateSeitAth > 6;
 
         // Szenario bestimmen
         /** @type {MarketKey} */
@@ -103,10 +105,9 @@ export const MarketAnalyzer = {
             // Tiefer Bärenmarkt
             sKey = 'bear_deep';
             reasons.push(`ATH-Abstand > 20% (${/** @type {number} */ (abstandVomAthProzent).toFixed(1)}%)`);
-        } else if (/** @type {number} */ (abstandVomAthProzent) > 10 && perf1Y > 10 && monateSeitAth > 6) {
-            // Erholung nach Korrektur
-            sKey = 'recovery';
-            reasons.push('Starkes Momentum nach Korrektur');
+        } else if (isRecoveryCandidate) {
+            // FR-90: Die Tagerechnung zählt das Hoch vom 31.12. des Vorjahres ab 11,95 Monaten mit.
+            sKey = monateSeitAth >= 11.95 ? 'recovery' : 'corr_young';
         } else if (/** @type {number} */ (abstandVomAthProzent) <= 15 && monateSeitAth <= 6) {
             // Junge Korrektur
             sKey = 'corr_young';
@@ -118,9 +119,8 @@ export const MarketAnalyzer = {
         }
 
         // Prüfung auf Erholung im Bärenmarkt
-        // Innerhalb von Bear/Recovery zusätzlich prüfen, ob eine Erholung
-        // nur ein Rally-Intermezzo im Bärenmarkt ist (höherer Risiko-Mode).
-        if (hasPreviousValue && (sKey === 'bear_deep' || sKey === 'recovery')) {
+        // Auch bei jungem Hoch greift die Prüfung für denselben Kandidatenkreis.
+        if (hasPreviousValue && (sKey === 'bear_deep' || isRecoveryCandidate)) {
             const last4years = [endeVJ, endeVJ_1, endeVJ_2, endeVJ_3].filter(/** @returns {v is number} */ v => /** @type {number} */ (v) > 0);
             const lowPoint = last4years.length > 0 ? Math.min(...last4years) : 0;
             const rallyFromLow = lowPoint > 0
@@ -136,6 +136,11 @@ export const MarketAnalyzer = {
                     `Rally v. Tief: ${rallyFromLow.toFixed(0)}%)`
                 );
             }
+        }
+        if (isRecoveryCandidate) {
+            reasons.unshift(sKey === 'corr_young'
+                ? 'Hoch im laufenden Jahr, seitdem gefallen'
+                : 'Starkes Momentum nach Korrektur');
         }
 
         // Stagflation prüfen

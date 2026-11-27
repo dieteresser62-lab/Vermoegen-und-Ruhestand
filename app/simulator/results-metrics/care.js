@@ -71,11 +71,11 @@ export function buildCareMetrics(results, inputs, moneyBasis = DEFAULT_EURO_MODE
         cards.push(
             buildCareEntryCard('Max. jährlicher Pflege-Mehrbedarf (real)', care.household?.maxAnnualAdditionalNeedRealEurP50, 'Median des je Lauf höchsten jährlichen Haushalts-Mehrbedarfs (P1 + P2): Pflegeausgaben minus eingesparter Grundbedarf, zu Preisen des Simulationsstarts.', null, true),
             buildCareEntryCard('Gesamter Pflege-Mehrbedarf (real)', care.household?.totalAdditionalNeedRealEurP50, 'Median der über Pflegejahre summierten Haushalts-Mehrbedarfe: Pflegeausgaben minus eingesparter Grundbedarf, zu Preisen des Simulationsstarts; nicht als depotfinanzierter Betrag interpretieren.', null, true),
-            buildCareEntryCard('Bedingte Shortfall-Rate', care.household?.shortfallRateWithCarePct, `Anteil der Shortfalls unter Läufen mit Pflegeeintritt; Stichprobe: ${care.household?.sampleSize || 0}.`, '%'),
-            buildCareEntryCard('Shortfall-Rate (o. Pflege)', care.household?.shortfallRateWithoutCarePct, `Anteil der Shortfalls unter Läufen ohne Pflegeeintritt; Stichprobe: ${care.household?.noCareSampleSize || 0}.`, '%'),
+            buildCareEntryCard('Anteil mit Fehlbetrag (mit Pflege)', care.household?.shortfallRateWithCarePct, `Anteil der Läufe mit Fehlbetrag unter Läufen mit Pflegeeintritt; Stichprobe: ${care.household?.sampleSize || 0}.`, '%'),
+            buildCareEntryCard('Anteil mit Fehlbetrag (o. Pflege)', care.household?.shortfallRateWithoutCarePct, `Anteil der Läufe mit Fehlbetrag unter Läufen ohne Pflegeeintritt; Stichprobe: ${care.household?.noCareSampleSize || 0}.`, '%'),
             endCard(true),
             endCard(false),
-            buildCareEntryCard('Geldvermögen: Gruppenmedian-Differenz (nicht kausal)', care.comparison?.endWealthNoCareMinusCareRealEur, 'Nicht gepaarter, nicht kausaler Gruppenvergleich: Median ohne Pflege minus Median mit Pflege, zu Preisen des Simulationsstarts. Unterschiede der Gruppen, etwa Lebensdauer und Pflegeeintritt, sind nicht kontrolliert.', null, true)
+            buildCareEntryCard('Geldvermögen: Gruppenmedian-Differenz (nicht kausal)', care.comparison?.endWealthNoCareMinusCareRealEur, 'Median ohne Pflege minus Median mit Pflege, zu Preisen des Simulationsstarts. Ein Minuswert bedeutet, dass die Gruppe mit Pflege den höheren Median hat. Die Rechnung ist ein nicht kausaler Vergleich zweier Gruppen.', null, true)
         );
     }
 

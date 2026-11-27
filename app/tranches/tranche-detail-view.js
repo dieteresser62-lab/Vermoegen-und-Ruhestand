@@ -3,6 +3,7 @@
 import { flowNumber, euro, euroCent, flowDate, quoteDate } from './sale-flow-steps.js';
 import { shownPrice } from './sale-flow-model.js';
 import { annualActionAssetClass } from '../balance/annual-action-progress.js';
+import { formatQuoteExchangeTime } from '../shared/designsystem-number-format.js';
 import { trancheDetailFigures, TQF_OPTIONS, tqfChoice, DETAIL_TAX_RATE, purchaseStockState } from './tranche-detail-model.js';
 
 const byId = (/** @type {Document} */ doc, /** @type {string} */ id) => doc.getElementById(id);
@@ -30,7 +31,7 @@ export function renderTrancheDetail(doc, { tranche, personName, history, deletio
     const names = { equity: Number(tranche.tqf) === 0.3 ? 'Aktienfonds' : Number(tranche.tqf) === 0.15 ? 'Mischfonds' : Number(tranche.tqf) === 0 ? 'Einzelaktie' : 'Aktien', bonds: 'Anleihen', gold: 'Gold', money_market: 'Geldmarkt' };
     const meta = byId(doc, 'trancheModalDescription');
     if (meta) meta.textContent = [names[assetClass] || 'Wertpapier', tranche.purchaseDate ? `gekauft am ${flowDate(tranche.purchaseDate)}` : ''].filter(Boolean).join(' · ');
-    renderQuoteCheck(doc, hasQuote(tranche) ? { status: 'stored', price: tranche.currentPrice, asOf: tranche.asOf, symbol: tranche.ticker }
+    renderQuoteCheck(doc, hasQuote(tranche) ? { status: 'stored', price: tranche.currentPrice, asOf: tranche.asOf, symbol: tranche.ticker, quoteExchange: tranche.quoteExchange }
         : { status: 'none', price: tranche.currentPrice });
     renderTrancheDetailFigures(doc, tranche);
     renderHistory(doc, history);
@@ -159,13 +160,14 @@ export function renderTqfChoices(doc, category, stored, onChange) {
 }
 
 /** Kursprüfung zeigt nur den Abrufstand; sie verändert keinen gespeicherten Kurs.
- * @param {Document} doc @param {{status: string, symbol?: string, exchange?: string, price?: number, asOf?: number|string|null}} result */
+ * @param {Document} doc @param {{status: string, symbol?: string, quoteExchange?: string|null, price?: number, asOf?: number|string|null}} result */
 export function renderQuoteCheck(doc, result) {
     const text = byId(doc, 'trancheQuoteText');
     if (!text) return;
     const date = quoteDate(result.asOf ?? null);
+    const stand = formatQuoteExchangeTime(result.quoteExchange, Number(result.asOf));
     text.textContent = result.status === 'pending' ? ' · Kurs wird geprüft …'
-        : ['ok', 'stored', 'stale'].includes(result.status) ? ` · Kurs ${euroCent(shownPrice(Number(result.price)))}${date ? ` vom ${flowDate(date)}` : ''}${result.status === 'stale' ? ' (älter als 7 Tage)' : ''}`
+        : ['ok', 'stored', 'stale'].includes(result.status) ? ` · Kurs ${euroCent(shownPrice(Number(result.price)))}${date ? ` vom ${flowDate(date)}` : ''}${stand ? ` · ${stand}` : ''}${result.status === 'stale' ? ' (älter als 7 Tage)' : ''}`
             : result.status === 'currency' ? ' · Kursdienst liefert keine Eurokurse'
                 : ` · ${Number(result.price) > 0 ? `Kurs ${euroCent(Number(result.price))} · ` : ''}kein Kursabruf für ${result.symbol || 'dieses Kürzel'}`;
     const reason = byId(doc, 'trancheTickerReason');

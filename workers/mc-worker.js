@@ -1,17 +1,16 @@
-/** @import {McWorkerRequest,CompiledScenario,SimulatorInputs,SweepParameters,NumericBuffers,WealthFan} from '../typcheck/rechenkern' */
+/** @import {McWorkerRequest,CompiledScenario,NumericBuffers,WealthFan} from '../typcheck/rechenkern' */
 "use strict";
 
 import { EngineAPI } from '../engine/index.mjs';
 import { formatSimulatorValidationError } from '../app/simulator/simulator-input-validation.js';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
-import { runSweepChunk } from '../app/simulator/sweep-runner.js';
 import { prepareHistoricalDataOnce } from '../app/simulator/simulator-engine-helpers.js';
 import { normalizeMonteCarloParametersV1 } from '../app/simulator/monte-carlo-parameters.js';
 import { wealthFanTransferables } from '../app/simulator/wealth-fan-aggregation.js';
+import { homeWealthFanTransferables } from '../app/simulator/wealth-home-fan.js';
 
 const scenarioCache = /** @type {Map<string,{compiledScenario:CompiledScenario;dataVersionKey:string}>} */ (new Map());
 const MAX_SCENARIO_CACHE_ENTRIES = 8;
-let sweepCache = /** @type {{baseInputs:SimulatorInputs;paramCombinations:SweepParameters[]}|null} */ (null);
 let dataVersion = /** @type {{annualDataHash:string;regimeHash:string}|null} */ (null);
 /**
 * @type {string | null}
@@ -26,7 +25,7 @@ function send(type, payload = {}, transferables = []) {
     /** @type {DedicatedWorkerGlobalScope} */ (/** @type {unknown} */ (self)).postMessage({ type, ...payload }, transferables);
 }
 
-/** @param {{buffers?:NumericBuffers;heatmap?:Uint32Array[];wealthFan?:WealthFan|null}} result */
+/** @param {{buffers?:NumericBuffers;heatmap?:Uint32Array[];wealthFan?:WealthFan|null;displayHomeValueFan?:import('../typcheck/rechenkern').HomeWealthFan|null}} result */
 function collectTransferables(result) {
     const transferables = [];
     if (result?.buffers) {
@@ -40,6 +39,7 @@ function collectTransferables(result) {
         }
     }
     transferables.push(...wealthFanTransferables(result?.wealthFan));
+    transferables.push(...homeWealthFanTransferables(result?.displayHomeValueFan));
     return [...new Set(transferables)];
 }
 
@@ -109,21 +109,9 @@ self.onmessage = /** @param {MessageEvent<McWorkerRequest>} event */ async event
 
     if (type === 'dispose') {
         scenarioCache.clear();
-        sweepCache = null;
         dataVersion = null;
         dataVersionKey = null;
         send('disposed', { jobId: message.jobId, generationId: message.generationId });
-        return;
-    }
-
-    if (type === 'sweep-init') {
-        const { jobId, generationId, baseInputs, paramCombinations } = message;
-        sweepCache = {
-            baseInputs,
-            paramCombinations
-        };
-        prepareHistoricalDataOnce();
-        send('ready', { jobId, generationId });
         return;
     }
 
@@ -168,6 +156,7 @@ self.onmessage = /** @param {MessageEvent<McWorkerRequest>} event */ async event
                 runRange,
                 logIndices,
                 collectWealthFan: message.collectWealthFan === true,
+                collectPersonOutcomes: message.collectPersonOutcomes === true,
                 onProgress: pct => {
                     send('progress', { jobId, generationId, pct, phase: 'run' });
                 },
@@ -182,48 +171,6 @@ self.onmessage = /** @param {MessageEvent<McWorkerRequest>} event */ async event
                 jobId,
                 generationId,
                 message: error ? formatSimulatorValidationError(error) : 'Worker job failed',
-                stack: /** @type {Error} */ (error)?.stack || ''
-            });
-        }
-        return;
-    }
-
-    if (type === 'sweep') {
-        const {
-            jobId,
-            generationId,
-            sweepRequest,
-            sweepConfig,
-            comboRange,
-            refP2Invariants
-        } = message;
-        try {
-            prepareHistoricalDataOnce();
-            const startedAt = performance.now();
-            if (!sweepCache || !sweepCache.baseInputs || !sweepCache.paramCombinations) {
-                throw new Error('Sweep cache missing; did you call sweep-init?');
-            }
-            const result = runSweepChunk({
-                baseInputs: sweepCache.baseInputs,
-                paramCombinations: sweepCache.paramCombinations,
-                comboRange,
-                sweepRequest: sweepRequest ?? sweepConfig,
-                refP2Invariants,
-                onProgress: completedUnits => {
-                    send('progress', {
-                        jobId, generationId, phase: 'sweep', comboRange, completedUnits
-                    });
-                },
-                engine: EngineAPI
-            });
-            const elapsedMs = performance.now() - startedAt;
-            send('result', { jobId, generationId, ...result, elapsedMs });
-        } catch (error) {
-            send('error', {
-                jobId,
-                generationId,
-                code: /** @type {Error & {code?:string}} */ (error)?.code || 'SWEEP_WORKER_ERROR',
-                message: /** @type {Error} */ (error)?.message || 'Worker sweep job failed',
                 stack: /** @type {Error} */ (error)?.stack || ''
             });
         }

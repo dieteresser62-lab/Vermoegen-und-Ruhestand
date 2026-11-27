@@ -27,7 +27,8 @@ assert(elements.indexOf(node('managerSectionNav')) < elements.indexOf(node('mana
 assert(planHost.parent === planPanel && node('managerPlanComparison').parent === planPanel,
     'Planformular und Planvergleich liegen gemeinsam im Planpanel außerhalb der ersetzbaren Renderhosts');
 assert(planPanel.attrs.role === 'tabpanel' && Object.hasOwn(planPanel.attrs, 'hidden'), 'Planpanel ist vor Auswahl verborgen und besitzt seine eigene Panelrolle');
-const household = planScope('household', ['z', 'a']), outside = planScope('single', ['out']);
+// `solo`: Einzelplan von Z, gültig, sobald Z allein im Haushalt ist (Bereichswechsel durch Löschen von A).
+const household = planScope('household', ['z', 'a']), solo = planScope('single', ['z']);
 const values = structuredClone(PLAN_DEFAULTS);
 values.decumulation.bondRefillThreshold = null;
 for (const changes of [{ minimumFlexAnnual: 25000 }, { liquidityRunwayYears: 1.1 }, { floorBedarf: NaN },
@@ -75,9 +76,9 @@ async function setup({ missing = false, corrupt = false, date = '2026-10-09', pl
         for (const [key, value] of batch.upserts) backend.set(key, String(value));
     } };
     P.resetPersistenceForTests(adapter); await P.init();
-    const registry = { version: 1, profiles: { z: { meta: { name: 'Z', belongsToHousehold: true }, data: {} }, a: { meta: { name: 'A', belongsToHousehold: true }, data: {} }, out: { meta: { name: 'Außen', belongsToHousehold: false }, data: {} } } };
+    const registry = { version: 1, profiles: { z: { meta: { name: 'Z', belongsToHousehold: true }, data: {} }, a: { meta: { name: 'A', belongsToHousehold: true }, data: {} } } };
     storage.setItem('rs_profiles_v1', JSON.stringify(registry)); storage.setItem('rs_current_profile', 'z'); storage.setItem('rs_active_profile', 'z');
-    const raw = buildPlanRecord(null, [{ scope: household, values: planValues }, { scope: outside, values: { ...values, floorBedarf: 9000 } }], { now: () => new Date('2026-01-01') }).raw;
+    const raw = buildPlanRecord(null, [{ scope: household, values: planValues }, { scope: solo, values: { ...values, floorBedarf: 9000 } }], { now: () => new Date('2026-01-01') }).raw;
     if (!missing) storage.setItem(HOUSEHOLD_PLAN_KEY, corrupt ? '{broken' : raw);
     await P.flush(); writes.length = 0;
     const doc = dom(), guard = createNavigationGuard({ decide: async () => true });
@@ -93,7 +94,7 @@ async function setup({ missing = false, corrupt = false, date = '2026-10-09', pl
         await field.fire('input');
     };
     return { doc, controller, guard, backend, writes, input, timers, raw,
-        switchTo: id => { active = id; storage.setItem('rs_current_profile', id); storage.setItem('rs_active_profile', id); controller.discard(); controller.refresh(); },
+        shrink: () => { const next = JSON.parse(storage.getItem('rs_profiles_v1')); delete next.profiles.a; storage.setItem('rs_profiles_v1', JSON.stringify(next)); controller.discard(); controller.refresh(); },
         fail: mode => { failWrite = mode === 'write'; failRollback = mode === 'rollback'; badRead = mode === 'read'; },
         hold: fn => { hold = fn; } };
 }
@@ -106,7 +107,7 @@ async function setup({ missing = false, corrupt = false, date = '2026-10-09', pl
     assertEqual(f.writes.length, 0, 'Vor Timerablauf kein Write');
     [...f.timers.values()][0](); await waitUntil(() => !f.controller.read().writing);
     assertEqual(f.writes.length, 1, 'Ein Batch wird genau einmal serialisiert');
-    assertEqual(readBalanceHouseholdPlan({ storage, profileId: 'a' }).entry.values.floorBedarf, 14000, 'Beide Mitglieder lesen denselben Plan, keine Doppelsumme');
+    assertEqual(readBalanceHouseholdPlan({ storage }).entry.values.floorBedarf, 14000, 'Beide Mitglieder lesen denselben Plan, keine Doppelsumme');
     assertEqual(f.doc.getElementById('managerPlanStatus').textContent, 'Gespeichert', 'Bestätigter Backendwrite zeigt Erfolg');
     let release; f.hold(() => new Promise(resolve => { release = resolve; }));
     const activeInput = f.doc.getElementById('managerPlan_floorBedarf'); activeInput.focus(); await activeInput.fire('focus');
@@ -123,23 +124,23 @@ async function setup({ missing = false, corrupt = false, date = '2026-10-09', pl
     assertEqual(JSON.parse(f.backend.get(HOUSEHOLD_PLAN_KEY)).entries[household.key].values.floorBedarf, 16000, 'Backend bestätigt jüngste Eingabe');
     await f.input('floorBedarf', '17000'); const oldTimer = [...f.timers.values()].at(-1);
     assertEqual(await f.controller.flush(), true, 'Vor Profilwechsel wird der Pendingwrite abgeschlossen');
-    f.switchTo('out');
-    assertEqual(f.doc.getElementById('managerPlanScope').textContent, 'Außen (allein gerechnet)', 'Außenperson zeigt ihren Einzelbereich');
+    f.shrink();
+    assertEqual(f.doc.getElementById('managerPlanScope').textContent, 'Z (allein gerechnet)', 'Einpersonenhaushalt zeigt seinen Einzelbereich');
     await f.input('floorBedarf', '9500'); const newTimer = [...f.timers.values()].at(-1);
-    assert(f.controller.read().dirty, 'Neuer Außenpersonenentwurf steht vor altem Timer aus');
+    assert(f.controller.read().dirty, 'Neuer Einzelplanentwurf steht vor altem Timer aus');
     assertEqual(f.timers.size, 1, 'Neuer Bereich wartet auf seinen eigenen Timer');
     oldTimer(); await waitUntil(() => !f.controller.read().writing);
-    assertEqual(f.writes.length, 4, 'Alter Timer schreibt trotz neuem Entwurf nach Profilwechsel nichts');
+    assertEqual(f.writes.length, 4, 'Alter Timer schreibt trotz neuem Entwurf nach Bereichswechsel nichts');
     assert(f.controller.read().dirty, 'Alter Timer lässt den neuen Entwurf ungeschrieben');
-    assertEqual(JSON.parse(f.backend.get(HOUSEHOLD_PLAN_KEY)).entries[outside.key].values.floorBedarf, 9000, 'Backend behält Außenpersonenstand bis zum eigenen Timer');
+    assertEqual(JSON.parse(f.backend.get(HOUSEHOLD_PLAN_KEY)).entries[solo.key].values.floorBedarf, 9000, 'Backend behält Einzelplanstand bis zum eigenen Timer');
     newTimer(); await waitUntil(() => !f.controller.read().writing);
-    assertEqual(f.writes.length, 5, 'Eigener neuer Timer bestätigt genau einen Außenpersonenwrite');
+    assertEqual(f.writes.length, 5, 'Eigener neuer Timer bestätigt genau einen Einzelplanwrite');
     assertEqual(f.controller.read().dirty, false, 'Eigener neuer Timer schließt den Entwurf ab');
     const persisted = JSON.parse(f.backend.get(HOUSEHOLD_PLAN_KEY));
-    assertEqual(persisted.entries[outside.key].values.floorBedarf, 9500, 'Außenperson schreibt nur Einzelplan');
+    assertEqual(persisted.entries[solo.key].values.floorBedarf, 9500, 'Einpersonenhaushalt schreibt nur seinen Einzelplan');
     assertEqual(persisted.entries[household.key].values.floorBedarf, 17000, 'Haushalt bleibt erhalten');
-    assertEqual(persisted.entries[outside.key].values.decumulation.bondRefillThreshold, null, 'Unsichtbarer nullable Strategiewert bleibt erhalten');
-    assertEqual(persisted.entries[outside.key].values.cape.value, 0, 'Unbearbeitetes CAPE bleibt unverändert');
+    assertEqual(persisted.entries[solo.key].values.decumulation.bondRefillThreshold, null, 'Unsichtbarer nullable Strategiewert bleibt erhalten');
+    assertEqual(persisted.entries[solo.key].values.cape.value, 0, 'Unbearbeitetes CAPE bleibt unverändert');
     f.controller.dispose();
 }
 // CAPE nutzt denselben bestätigten Autosave und bleibt auf den bearbeiteten Bereich begrenzt.
@@ -152,7 +153,7 @@ async function setup({ missing = false, corrupt = false, date = '2026-10-09', pl
     assertEqual(storage.getItem(HOUSEHOLD_PLAN_KEY), before, 'Feldfehler erhält bestätigten Plan bytegleich');
     await f.input('liquidityCashMonths', '24');
     assertEqual(await f.controller.flush(), true, 'Gültige Tagesgeldmonate lassen sich speichern');
-    assertEqual(readBalanceHouseholdPlan({ storage, profileId: 'a' }).entry.values.liquidityCashMonths, 24, 'Gespeicherte Tagesgeldmonate gelten für den Haushalt');
+    assertEqual(readBalanceHouseholdPlan({ storage }).entry.values.liquidityCashMonths, 24, 'Gespeicherte Tagesgeldmonate gelten für den Haushalt');
     const saved = storage.getItem(HOUSEHOLD_PLAN_KEY);
     await f.input('liquidityRunwayYears', '1');
     assertEqual(await f.controller.flush(), false, 'Reichweite unter Tagesgeldmonate wird im Manager nicht gespeichert');
@@ -166,11 +167,11 @@ async function setup({ missing = false, corrupt = false, date = '2026-10-09', pl
     const f = await setup({ date: '2026-10-20T23:30:00+02:00' });
     await f.input('cape.value', '27,4');
     assertEqual(await f.controller.flush(), true, 'Manuelle CAPE-Korrektur wird bestätigt');
-    const cape = readBalanceHouseholdPlan({ storage, profileId: 'a' }).entry.values.cape;
+    const cape = readBalanceHouseholdPlan({ storage }).entry.values.cape;
     assertEqual(JSON.stringify(cape), JSON.stringify({ value: 27.4, asOf: '2026-10-20', source: 'manuell' }), 'CAPE speichert Zahl, Eingabedatum und manuelle Herkunft');
     assertEqual(f.doc.getElementById('managerPlanCape').value, '27,4', 'CAPE zeigt eine Nachkommastelle');
     assertEqual(f.doc.getElementById('managerPlanCapeOrigin').textContent, 'manuell · 20.10.2026', 'Manuelle Herkunft erscheint unter CAPE');
-    const plan = readBalanceHouseholdPlan({ storage, profileId: 'z' }).entry.values;
+    const plan = readBalanceHouseholdPlan({ storage }).entry.values;
     assertPlanValues(plan);
     assertEqual(projectPlanToBalance(plan).marketCapeRatio, 27.4, 'Balance erhält den korrigierten CAPE aus dem Plan');
     assertEqual(projectPlanToSimulator(plan).marketCapeRatio, 27.4, 'Simulator erhält den korrigierten CAPE als Startwert');
@@ -180,10 +181,10 @@ async function setup({ missing = false, corrupt = false, date = '2026-10-09', pl
     field.focus(); await field.fire('focus'); await field.fire('blur'); f.doc.activeElement = null;
     await field.fire('change'); await f.controller.flush();
     assertEqual(storage.getItem(HOUSEHOLD_PLAN_KEY), raw, 'CAPE-Fokus und Blur ändern weder Wert noch Herkunft');
-    f.switchTo('out'); await f.input('cape.value', '29'); await f.controller.flush();
+    f.shrink(); await f.input('cape.value', '29'); await f.controller.flush();
     const persisted = JSON.parse(f.backend.get(HOUSEHOLD_PLAN_KEY));
     assertEqual(persisted.entries[household.key].values.cape.value, 27.4, 'Einzelkorrektur erhält den Haushalts-CAPE');
-    assertEqual(persisted.entries[outside.key].values.cape.source, 'manuell', 'Einzelbereich speichert eigene manuelle Herkunft');
+    assertEqual(persisted.entries[solo.key].values.cape.source, 'manuell', 'Einzelbereich speichert eigene manuelle Herkunft');
     assertEqual(f.doc.getElementById('managerPlanCape').value, '29,0', 'Ganzzahliger CAPE zeigt eine Nachkommastelle');
     f.controller.dispose();
 }
@@ -274,7 +275,7 @@ for (const options of [{ missing: true }, { corrupt: true }]) {
     const distribution = f.doc.querySelectorAll('[data-plan-segment]').find(node => node.dataset.planSegment === 'householdWithdrawalMode');
     await distribution.querySelectorAll('button')[1].fire('click'); await f.controller.flush();
     await distribution.querySelectorAll('button')[0].fire('click'); await f.controller.flush();
-    assertEqual(readBalanceHouseholdPlan({ storage, profileId: 'z' }).entry.values.householdWithdrawalMode, 'tax_optimized', 'Steueroptimiert bleibt erreichbar');
+    assertEqual(readBalanceHouseholdPlan({ storage }).entry.values.householdWithdrawalMode, 'tax_optimized', 'Steueroptimiert bleibt erreichbar');
     assertEqual(f.writes.length, 3, 'Jeder tatsächliche Verteilungswechsel hat einen Write');
     await distribution.querySelectorAll('button')[0].fire('click');
     assertEqual(f.timers.size, 0, 'Aktives Segment erzeugt keinen Dirtyzustand');
@@ -298,7 +299,7 @@ for (const options of [{ missing: true }, { corrupt: true }]) {
     assert(f.doc.getElementById('managerPlanInflation').textContent.includes('Inflation 2027 (+2,0 %)'), 'Gleichjähriger H1-Beleg folgt seiner eigenen Periodenkennung');
     const noEvidence = 'Inflationsfortschreibung noch nicht belegt';
     for (const next of [{ ...entry, periodId: 'calendar-year:2025' },
-        { ...entry, scope: outside, adopted: { ...outcome, snapshot: { ...outcome.snapshot, ageByPerson: { out: 70 } } } },
+        { ...entry, scope: solo, adopted: { ...outcome, snapshot: { ...outcome.snapshot, ageByPerson: { z: 71 } } } },
         { ...entry, adopted: { ...outcome, snapshot: { ...outcome.snapshot, plan: { ...values, floorBedarf: 13000 } } } }]) {
         put(next); f.controller.refresh();
         assertEqual(f.doc.getElementById('managerPlanInflation').textContent, noEvidence, 'Ungültiger/fremder/abweichender Beleg liefert keinen geratenen Nachweis');
@@ -374,8 +375,6 @@ for (const options of [{}, { adjusted: true }, { receipt: false }, { preview: 'm
         assert(host.innerHTML.includes('Vorschau heute:'), 'Manager fasst die heutige Vorschau in einer Zeile zusammen');
         assert(host.innerHTML.includes('data-preview-status="current"'), 'Fingerprint und heutiges Rechendatum gelten auch im Manager als aktuell');
     }
-    activeId = 'out'; controller.refresh();
-    assert(host.innerHTML.includes('data-plan-record-status="missing"') && host.innerHTML.includes('data-preview-status="missing"'), 'Außenperson übernimmt weder Haushaltsbeleg noch Haushaltsvorschau');
     assertEqual(writes, 0, 'Lesender Vergleich startet keinen Write');
     assertEqual(JSON.stringify([...records]), before, 'Plan, Beleg und übrige Records bleiben bytegleich');
     controller.dispose();
@@ -490,7 +489,7 @@ for (const matching of [false, true, 'active']) {
     assertEqual(f.writes.length, count, 'Aktive Customöffnung und Refresh ohne zusätzliche Writes');
     assertEqual(f.controller.read().revision, revision, 'Aktive Customöffnung ohne Fachrevision');
     assertEqual(f.doc.querySelector('[data-plan-dynamic-preset="custom"]').getAttribute('aria-pressed'), 'true', 'Customabsicht nach Refresh markiert');
-    f.switchTo('out');
+    f.shrink();
     assertEqual(f.doc.querySelector('[data-plan-dynamic-preset="custom"]').getAttribute('aria-pressed'), String(detectDynamicFlexPreset(values) === 'custom'), 'Neuer Bereich übernimmt keine fremde Öffnungsabsicht');
     assertEqual(JSON.stringify(JSON.parse(f.backend.get(HOUSEHOLD_PLAN_KEY)).entries[household.key].values), JSON.stringify(activated), 'Scopewechsel verändert bestätigten Haushalt nicht');
     f.controller.dispose();
@@ -580,7 +579,7 @@ for (const target of ['off', 'konservativ']) for (const confirmation of ['blur-a
     assertEqual(await f.controller.flush(), true, target + ': vollständiger korrigierter Batch bestätigt');
     assertEqual(f.writes.length, 1, target + ': genau ein Fachwrite');
     assertEqual(JSON.stringify(JSON.parse(f.backend.get(HOUSEHOLD_PLAN_KEY)).entries[household.key].values), JSON.stringify(expected), target + ': Backend bestätigt alle Presetwerte samt Faktor');
-    assertEqual(JSON.stringify(readBalanceHouseholdPlan({ storage, profileId: 'a' }).entry.values), JSON.stringify(expected), 'Planreader stimmt mit bestätigtem Backend überein');
+    assertEqual(JSON.stringify(readBalanceHouseholdPlan({ storage }).entry.values), JSON.stringify(expected), 'Planreader stimmt mit bestätigtem Backend überein');
     assert(f.writes.every(raw => JSON.stringify(JSON.parse(raw).entries[household.key].values) === JSON.stringify(expected)), 'Writerohstrings enthalten vollständigen Endplan mit Faktor 1.17 und keinen Zwischenwert 1');
     await click('custom');
     assertEqual(managerPlanFieldValue(field, 'goGoMultiplier'), 1.17, target + ': erneute Customöffnung erhält korrigierten Faktor');
@@ -646,7 +645,7 @@ for (const followup of ['new-correction', 'reopen', 'reset', 'scope-switch', 'di
     } else if (followup === 'reset') {
         f.controller.discard(); f.doc.activeElement = f.doc.body;
     } else if (followup === 'scope-switch') {
-        f.switchTo('out'); f.doc.activeElement = f.doc.body;
+        f.shrink(); f.doc.activeElement = f.doc.body;
     } else if (followup === 'dispose') {
         f.controller.dispose();
         const next = createManagerHouseholdPlan({ doc: f.doc, storage, persistence: P, getProfileId: () => 'z', runOperation: execute => execute() });
@@ -680,7 +679,7 @@ for (const followup of ['new-correction', 'reopen', 'reset', 'scope-switch', 'di
     const field = f.doc.getElementById('managerPlan_jointAssessment');
     assert(!field.checked && !field.closest('.pv-plan-field').hidden, 'FR-28: Paar sieht Zusammenveranlagung voreingestellt aus');
     await f.input('jointAssessment', true); await f.controller.flush();
-    assertEqual(readBalanceHouseholdPlan({ storage, profileId: 'z' }).entry.values.jointAssessment, true, 'FR-28: Schalter wird im Haushaltsplan bestätigt');
+    assertEqual(readBalanceHouseholdPlan({ storage }).entry.values.jointAssessment, true, 'FR-28: Schalter wird im Haushaltsplan bestätigt');
     assert(field.closest('#managerPartnership') && !field.closest('#managerHouseholdPlan'), 'Schalter wird außerhalb des Planformulars mit demselben Planbesitzer bedient');
     storage.setItem('household_partnership_v1', JSON.stringify({ schemaVersion: 1, status: 'unmarried', inheritance: {} }));
     await P.flush(); f.controller.refresh();
@@ -688,8 +687,8 @@ for (const followup of ['new-correction', 'reopen', 'reset', 'scope-switch', 'di
     storage.setItem('household_partnership_v1', JSON.stringify({ schemaVersion: 1, status: 'married', inheritance: {} }));
     await P.flush(); f.controller.refresh();
     assert(!field.closest('.pv-plan-field').hidden && field.checked, 'Zurück zur Ehe zeigt den gespeicherten Wert ohne neue Voreinstellung');
-    f.switchTo('out');
-    assert(field.closest('.pv-plan-field').hidden, 'FR-28: Außen-Einzelperson sieht den Schalter nicht');
-    assertEqual(readBalanceHouseholdPlan({ storage, profileId: 'z' }).entry.values.jointAssessment, true, 'Außenbereich verändert den Paarplan nicht');
+    f.shrink();
+    assert(field.closest('.pv-plan-field').hidden, 'FR-28: Einpersonenhaushalt sieht den Schalter nicht');
+    assertEqual(JSON.parse(f.backend.get(HOUSEHOLD_PLAN_KEY)).entries[household.key].values.jointAssessment, true, 'Einzelbereich verändert den Paarplan nicht');
     f.controller.dispose();
 }

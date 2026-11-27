@@ -2,7 +2,6 @@ import { summarizeBalanceAction } from '../app/balance/balance-action-summary.js
 import { installRealClock } from './helpers/fixed-real-clock.mjs';
 import { annualCloseArchiveReader } from '../app/shared/annual-close-evidence.js';
 import { SnapshotArchive } from '../app/shared/snapshot-archive.js';
-import { SummaryRenderer } from '../app/balance/balance-renderer-summary.js';
 import fs from 'node:fs';
 import ts from 'typescript';
 import { parseJavaScript } from '../scripts/javascript-syntax.mjs';
@@ -17,11 +16,10 @@ import { projectOverviewFromRecords } from '../app/overview/overview-main.js';
 import { projectOverviewWithAnnualArchive } from '../app/overview/overview-model.js';
 import { renderOverviewFocus } from '../app/overview/overview-renderer.js';
 import { createDialogFixture, prepareCloseFixture } from './close-dialog.test.mjs?fixture';
-import { annualServiceFixture, readyAnnualFixture, annualTestNow, annualTestMarketData, installAnnualLocks, installBalanceStorageForm } from './helpers/balance-storage-fixtures.mjs';
-import { UIBinder, initUIBinder, preserveUIBinderStateForTests } from '../app/balance/balance-binder.js';
+import { annualServiceFixture, readyAnnualFixture, annualTestNow, annualTestMarketData, installAnnualLocks } from './helpers/balance-storage-fixtures.mjs';
+import { preserveUIBinderStateForTests } from '../app/balance/balance-binder.js';
 import { UIRenderer } from '../app/balance/balance-renderer.js';
 import { getPageNavigationGuard } from '../app/shared/navigation-guard-dialog.js';
-import { EngineAPI } from '../engine/index.mjs';
 import { planScope, HOUSEHOLD_PLAN_KEY, buildPlanRecord } from '../app/profile/household-plan.js';
 import { dynamicFlexPresetPatch } from '../app/shared/dynamic-flex-presets.js';
 import { ANNUAL_PLAN_RECORD_KEY, annualPlanEntryKey, assertAnnualPlanRecord } from '../app/profile/annual-plan-record.js';
@@ -108,19 +106,6 @@ export async function verifySamePageAnnualArchive(destination) {
                 return point;
             };
             let start = () => f.open(), binding, renderer, outputs;
-            if (destination === 'balance') {
-                f.win.EngineAPI = EngineAPI;
-                const dom = installBalanceStorageForm(JSON.parse(f.storage.getItem(CONFIG.STORAGE.LS_KEY)).inputs, sample.values);
-                dom.controls = { annualTestOpener: f.doc.createElement('button'), btnJahresUpdate: f.doc.createElement('button'), btnJahresUpdateLog: f.doc.createElement('button') };
-                dom.expenses = { yearSelect: { value: '2026' } }; dom.containers = {}; dom.outputs = {};
-                initUIBinder(dom, { inputs: {} }, () => ({ ok: true }), () => {});
-                binding = preserveUIBinderStateForTests().handlers;
-                outputs = Object.fromEntries(['balanceActionPeriod', 'balanceActionPreviewTitle'].map(id => [id, f.doc.createElement('button')]));
-                Object.values(outputs).forEach(node => f.doc.body.append(node));
-                renderer = new SummaryRenderer({ outputs, controls: dom.controls });
-                UIRenderer.renderContext = () => renderer.renderContext();
-                start = () => UIBinder.handleJahresabschluss();
-            }
             try {
                 const closing = start();
                 await prepareCloseFixture(f.doc);
@@ -148,13 +133,14 @@ export async function verifySamePageAnnualArchive(destination) {
                 const evidence = async () => JSON.stringify({ records: await f.persistence.readPersistedRecords(), batches: f.batches, snapshots: [...f.snapshots] });
                 const afterQuote = await evidence(), readsBefore = payloadReads, nodesBefore = f.doc.querySelectorAll('dialog').length;
                 f.refresh(); renderer?.renderContext();
-                assertEqual((binding?.getAnnualModel() || f.model).occasion.annualState, 'unclear', destination + ': reines Rendern erkennt späteren Kurswrite');
+                // JW-1a (Fable P2-2): Nach dem Vorabpunkt eines Erstabschlusses bleibt das Jahr trotz Kurswrite offen.
+                assertEqual((binding?.getAnnualModel() || f.model).occasion.annualState, 'open', destination + ': späterer Kurswrite führt nicht in die Jahresklärung');
                 if (outputs) {
                     // WT-1: Die heutige Aktion steht als Vorschauzeile auf den Januar nach dem anstehenden Abschluss 2026.
-                    assertEqual(outputs.balanceActionPreviewTitle.textContent, 'Vorschau auf den Plan 2027', 'Heutige Aktion bleibt trotz ungeklärter Periode eine Vorschau für den anstehenden Abschluss');
+                    assertEqual(outputs.balanceActionPreviewTitle.textContent, 'Vorschau auf den Plan 2027', 'Heutige Aktion bleibt eine Vorschau für den anstehenden Abschluss');
                 } else {
                     const host = f.doc.getElementById('overviewFocus');
-                    assert(host.isConnected && !host.hidden && /<button[^>]*data-overview-annual>Jahresstatus klären<\/button>/.test(host.innerHTML), 'Produktiver Startseitenrenderer zeigt den Klärungsknopf');
+                    assert(host.isConnected && !host.hidden && /<button[^>]*data-overview-annual>Abschluss starten<\/button>/.test(host.innerHTML), 'Produktiver Startseitenrenderer zeigt den Startknopf statt der Klärung');
                 }
                 assertEqual(await evidence(), afterQuote, 'Reines Rendern erhält bestätigte Finanzbytes, Batches und Snapshotzahl');
                 assertEqual(payloadReads, readsBefore, 'Kein eigener Readerrefresh nach dem Versuch und keine Refreshschleife');
@@ -182,7 +168,7 @@ export async function verifyAnnualFinalReadGuards(destination) {
         render: UIRenderer.renderContext, doc: globalThis.document, win: globalThis.window, date: getAppTestDate() };
     const restoreBinder = preserveUIBinderStateForTests(), restoreLocks = installAnnualLocks();
     try {
-        for (const change of ['resume', ...(destination === 'balance' ? ['exception'] : []), 'error', 'profile', 'scope', 'year']) {
+        for (const change of ['resume', 'error', 'profile', 'scope', 'year']) {
             setAppTestDate('2027-01-02');
             const sample = markerlessAnnualFixture(), f = await overviewAnnualFixture({ sample, archived: true, now: appNow });
             // Die Fixture startet mit aktueller, leerer Archivevidenz.
@@ -202,19 +188,8 @@ export async function verifyAnnualFinalReadGuards(destination) {
                 const answer = await saved.refresh.call(this, context); answers.push(answer); return answer;
             };
             let binding, renderer, start = options => options ? f.controls.start(options) : f.open();
-            if (destination === 'balance') {
-                f.win.EngineAPI = EngineAPI;
-                const dom = installBalanceStorageForm(JSON.parse(f.storage.getItem(CONFIG.STORAGE.LS_KEY)).inputs, sample.values);
-                dom.controls = {}; dom.containers = {}; dom.outputs = {};
-                initUIBinder(dom, { inputs: {} }, () => ({ ok: true }), () => {});
-                binding = preserveUIBinderStateForTests().handlers;
-                renderer = new SummaryRenderer({ outputs: {}, controls: {} });
-                UIRenderer.renderContext = () => renderer.renderContext();
-                start = options => UIBinder.handleJahresabschluss(options);
-            }
             try {
                 const exception = new Error('SYNTHETIC_PREPARATION_EXCEPTION');
-                if (change === 'exception') binding.closeCoordinator.prepare = async () => { finishing = true; throw exception; };
                 if (change === 'resume') finishing = true;
                 const closing = start(change === 'resume' ? { resume: { profileId: 'invalid', targetYear: 2026 } } : undefined)
                     .catch(error => { assert(error === exception, 'Nachlesung erhält die ursprüngliche geworfene Binderausnahme'); return { status: 'thrown' }; });
@@ -229,7 +204,7 @@ export async function verifyAnnualFinalReadGuards(destination) {
                     { allowKey: key => ['rs_current_profile', 'rs_active_profile'].includes(key) });
                 if (change === 'scope') {
                     const registry = JSON.parse(f.storage.getItem('rs_profiles_v1'));
-                    registry.profiles.muster_b.meta.belongsToHousehold = false;
+                    delete registry.profiles.muster_b;
                     await f.persistence.replaceRecordsTransactional({ rs_profiles_v1: JSON.stringify(registry) }, { allowKey: key => key === 'rs_profiles_v1' });
                 }
                 if (change === 'year') setAppTestDate('2028-01-02');
@@ -320,7 +295,7 @@ try {
     await verifyAnnualFinalReadGuards('overview');
 
     // Reale Seitenbinder klären auch einen absichtlich veralteten offenen Anzeigestand.
-    for (const destination of ['overview', 'balance']) for (const stale of [false, true]) for (const decision of ['cancel', 'not_committed']) {
+    for (const destination of ['overview']) for (const stale of [false, true]) for (const decision of ['cancel', 'not_committed']) {
         const sample = readyAnnualFixture(), registry = JSON.parse(sample.records.rs_profiles_v1);
         const strip = raw => {
             const state = JSON.parse(raw);
@@ -336,31 +311,18 @@ try {
         const context = { targetYear: 2026, activeId: sample.records.rs_current_profile, scope: sample.scope };
         await annualCloseArchiveReader.refresh(context);
         assertEqual(f.model.occasion.annualState, 'open', destination + ': absichtlich alter offener Anzeigestand');
+        // JW-1a (Fable P2-2): Nur ein Vorabpunkt mit Jahresmetadaten, die live fehlen, verlangt noch eine Klärung.
+        const pointRecords = SnapshotArchive.captureCurrentRecords({ keys: Object.keys(sample.records), getItem: key => sample.records[key] });
+        pointRecords[CONFIG.STORAGE.LS_KEY] = JSON.stringify({ ...JSON.parse(pointRecords[CONFIG.STORAGE.LS_KEY]),
+            annualPeriodMetadata: { schemaVersion: 1, lastCommittedPeriod: 'calendar-year:2025', pendingCommit: null } });
         const point = SnapshotArchive.buildSnapshot({ id: 'isolated-before', kind: 'annual-close-pre-mutation',
-            createdAt: annualTestNow().toISOString(), activeProfileId: context.activeId,
-            records: SnapshotArchive.captureCurrentRecords({ keys: Object.keys(sample.records), getItem: key => sample.records[key] }) });
+            createdAt: annualTestNow().toISOString(), activeProfileId: context.activeId, records: pointRecords });
         f.snapshots.set(point.id, point);
         const lots = JSON.parse(sample.records.depot_tranchen); lots[0].currentPrice += 1;
         registry.profiles[context.activeId].data.depot_tranchen = JSON.stringify(lots);
         await f.persistence.replaceRecordsTransactional({ depot_tranchen: JSON.stringify(lots), rs_profiles_v1: JSON.stringify(registry) }, { allowKey: key => ['depot_tranchen', 'rs_profiles_v1'].includes(key) });
         if (!stale) await annualCloseArchiveReader.refresh(context);
         let start = () => f.open(), binding;
-        if (destination === 'balance') {
-            f.win.EngineAPI = EngineAPI;
-            const dom = installBalanceStorageForm(JSON.parse(f.storage.getItem(CONFIG.STORAGE.LS_KEY)).inputs, sample.values);
-            dom.controls = { annualTestOpener: f.doc.createElement('button'), btnJahresUpdate: f.doc.createElement('button'), btnJahresUpdateLog: f.doc.createElement('button') };
-            dom.expenses = { yearSelect: { value: '2026' } }; dom.containers = {}; dom.outputs = {};
-            initUIBinder(dom, {}, () => ({ ok: true }), () => {});
-            binding = preserveUIBinderStateForTests().handlers;
-            start = () => UIBinder.handleJahresabschluss();
-            if (!stale) {
-                const outputs = Object.fromEntries(['balanceActionPeriod', 'balanceActionPreviewTitle'].map(id => [id, f.doc.createElement('button')]));
-                new SummaryRenderer({ outputs, controls: dom.controls }).renderContext();
-                // WT-1: Die vorläufige Aktion steht als zugeklappte Vorschauzeile unter dem Plan, getrennt vom Jahresstatus.
-                assert(outputs.balanceActionPreviewTitle.textContent.startsWith('Vorschau auf den Plan'), 'Balance trennt die vorläufige Aktion vom Jahresstatus');
-                assertEqual(binding.getAnnualModel().occasion.annualState, 'unclear', 'Summary und Bindermodell stimmen überein');
-            }
-        }
         const before = await storageEvidence(f);
         assertEqual(f.doc.querySelectorAll('[data-page-dialog-host]').length, 0, 'Archivlesen und Binden öffnen kein Popup');
         const closing = start();
@@ -379,30 +341,16 @@ try {
             assertEqual(f.doc.querySelectorAll('[data-page-dialog-host]').length, 0, destination + ': Offenklärung führt direkt in normale Vorbereitung');
             const metadata = JSON.parse(f.storage.getItem(CONFIG.STORAGE.LS_KEY)).annualPeriodMetadata;
             assertEqual(metadata.lastCommittedPeriod, null, 'Offenentscheidung ist kein Jahreserfolg');
-            if (destination === 'overview') {
-                await f.doc.getElementById('annualConfirmBtn').fire('click');
-                assertEqual((await closing).status, 'already_committed', 'Startseitenabschluss folgt ohne zweite Klärungsfrage');
-                assertEqual(f.model.occasion.annualState, 'done', 'Abschließende Archivlesung erhält bestätigten Jahresstatus');
-                assertEqual(f.snapshots.size, 3, 'Isolierter Punkt plus einmaliger Jahres- und Monatsbeleg');
-                assertEqual(f.batches.filter(batch => batch.upserts.some(([key]) => key === ANNUAL_PLAN_RECORD_KEY)).length, 1, 'Genau ein fachlicher Jahreswrite nach Offenklärung');
-                assertEqual(f.doc.querySelectorAll('[data-page-dialog-host]').length, 0, 'Coordinatorabschluss wiederholt die Klärung nicht');
-                const receipt = Object.values(JSON.parse(f.storage.getItem(ANNUAL_PLAN_RECORD_KEY)).entries)[0];
-                checkAction(f.doc.getElementById('balanceAnnualClose'), receipt);
-                assertEqual(f.doc.querySelector('[data-annual-combined-result]').querySelector('.close-dialog-result-main').children[0], f.doc.querySelector('[data-annual-action-result]'), 'Startseite zeigt Handlung bereits im ersten Ergebnis direkt nach Alles gespeichert');
-                await f.doc.getElementById('annualCloseBtn').fire('click');
-            } else {
-                await f.doc.getElementById('annualConfirmBtn').fire('click');
-                assertEqual((await closing).status, 'already_committed', 'Balanceabschluss folgt ohne zweite Klärungsfrage');
-                assertEqual(binding.getAnnualModel().occasion.annualState, 'done', 'Balance behält nach Nachlesung den bestätigten Jahresstatus');
-                assertEqual(f.snapshots.size, 3, 'Balance erhält isolierten Punkt plus Jahres- und Monatsbeleg');
-                assertEqual(f.batches.filter(batch => batch.upserts.some(([key]) => key === ANNUAL_PLAN_RECORD_KEY)).length, 1, 'Balance schreibt genau einen fachlichen Jahresbatch');
-                assertEqual(f.doc.querySelectorAll('[data-page-dialog-host]').length, 0, 'Balanceabschluss wiederholt die Offenklärung nicht');
-                assertEqual(JSON.parse(f.storage.getItem(CONFIG.STORAGE.LS_KEY)).lastState.cumulativeInflationFactor, 1.025, 'Balance wendet Jahresinflation nach Offenklärung genau einmal an');
-                const receipt = Object.values(JSON.parse(f.storage.getItem(ANNUAL_PLAN_RECORD_KEY)).entries)[0];
-                checkAction(f.doc.getElementById('balanceAnnualClose'), receipt);
-                assertEqual(f.doc.querySelector('[data-annual-combined-result]').querySelector('.close-dialog-result-main').children[0], f.doc.querySelector('[data-annual-action-result]'), 'Balance zeigt dieselbe belegte Handlung bereits im ersten Ergebnis');
-                await f.doc.getElementById('annualCloseBtn').fire('click');
-            }
+            await f.doc.getElementById('annualConfirmBtn').fire('click');
+            assertEqual((await closing).status, 'already_committed', 'Startseitenabschluss folgt ohne zweite Klärungsfrage');
+            assertEqual(f.model.occasion.annualState, 'done', 'Abschließende Archivlesung erhält bestätigten Jahresstatus');
+            assertEqual(f.snapshots.size, 3, 'Isolierter Punkt plus einmaliger Jahres- und Monatsbeleg');
+            assertEqual(f.batches.filter(batch => batch.upserts.some(([key]) => key === ANNUAL_PLAN_RECORD_KEY)).length, 1, 'Genau ein fachlicher Jahreswrite nach Offenklärung');
+            assertEqual(f.doc.querySelectorAll('[data-page-dialog-host]').length, 0, 'Coordinatorabschluss wiederholt die Klärung nicht');
+            const receipt = Object.values(JSON.parse(f.storage.getItem(ANNUAL_PLAN_RECORD_KEY)).entries)[0];
+            checkAction(f.doc.getElementById('balanceAnnualClose'), receipt);
+            assertEqual(f.doc.querySelector('[data-annual-combined-result]').querySelector('.close-dialog-result-main').children[0], f.doc.querySelector('[data-annual-action-result]'), 'Startseite zeigt Handlung bereits im ersten Ergebnis direkt nach Alles gespeichert');
+            await f.doc.getElementById('annualCloseBtn').fire('click');
         }
         binding?.closeCoordinator.dispose(); f.close();
     }
@@ -440,6 +388,8 @@ try {
             for (const id of ['expenses', 'budget', 'cash', 'market', 'care', 'preview']) binding.activate(id);
             assert(confirm.disabled && !binding.firstUnvisited(), 'Sieben Besuche ohne Pflegebestätigung reichen nicht aus');
             await binding.root.querySelector('[data-annual-care-confirm]').fire('click');
+            // JA-4 (NG-13): Die Muster-Stände liegen vor dem 31.12. und werden je Person bestätigt.
+            for (const node of binding.root.querySelectorAll('[data-tagesgeld-confirm-person]')) await node.fire('click');
             binding.activate('cash');
             const fields = binding.root.querySelectorAll('[data-tagesgeld-person]');
             assert(!confirm.disabled && !binding.hasVisited('month'), 'Sieben Besuche mit bestätigten Pflegewerten und gültigem Tagesgeld geben den Jahresknopf ohne Ergebnisbesuch frei');
@@ -646,6 +596,9 @@ try {
         for (const id of ['expenses', 'budget']) await root.querySelector(`[data-close-dialog-activate=\"${id}\"]`).fire('click');
         assertEqual(readiness.textContent, 'Noch offen: Tagesgeld am 31.12.2026', 'Jahresendstand bekommt kein zusätzliches Verb');
         await root.querySelector(`[data-close-dialog-activate=\"${'cash'}\"]`).fire('click');
+        // JA-4 (NG-13): Die Muster-Stände liegen vor dem 31.12.; erst die Bestätigung je Person schließt den Schritt.
+        assertEqual(row('cash').dataset.state, 'current', 'NG-13: alter Stand bleibt nach dem Ansehen offen');
+        for (const node of root.querySelectorAll('[data-tagesgeld-confirm-person]')) await node.fire('click');
         assertEqual(row('cash').dataset.state, 'done', 'TG-1: gültige Vorbelegung zählt nach dem Ansehen auch im Jahresabschluss');
         assertEqual(readiness.textContent, 'Noch offen: Pflegewerte prüfen', 'Marktdatenhinweis ergänzt kein zweites Verb');
         await root.querySelector('[data-close-dialog-activate="care"]').fire('click');
@@ -894,7 +847,7 @@ try {
         }
     }
     // Echter Restore und neue Dokumentgeneration; beide Seitenbinder erhalten denselben Beschluss.
-    for (const destination of ['overview', 'balance']) {
+    for (const destination of ['overview']) {
         const f = await overviewAnnualFixture({ archived: true, coordinatorOptions: { confirmRestore: async () => true,
             prepareMarketData: async () => ({ ok: false, results: { inflation: annualTestMarketData.inflation,
                 cape: annualTestMarketData.cape, errors: [{ step: 'ETF & Nachrücken', error: 'ETF fehlt' }] }, error: new Error('ETF fehlt') }) } });
@@ -912,9 +865,10 @@ try {
         await f.doc.getElementById('annualCloseBtn').fire('click');
         await f.doc.getElementById('overviewAnnualLog').fire('click');
         assert(!f.doc.getElementById('annualRetryBtn').hidden, 'Fehlerprotokoll bleibt nach Schließen mit Handkursretry bedienbar');
-        f.doc.getElementById('annualHandPrice').value = '161.5'; await f.doc.getElementById('annualRetryBtn').fire('click');
+        f.doc.getElementById('annualHandPrice').value = '161,5'; await f.doc.getElementById('annualRetryBtn').fire('click');
         const requestRaw = f.win.session.get('balance.annual-retry.once');
         assert(requestRaw, 'Echter Restore legt tabgebundenen Wiederaufnahmeauftrag ab');
+        assertEqual(JSON.parse(requestRaw).price, 161.5, 'Handkursretry speichert den Kurs mit Dezimalkomma');
         assertEqual(JSON.parse(requestRaw).adoptedPlanPatch.floorBedarf, 21000, 'Einmalauftrag erhält den bestätigten Planpatch');
         assertEqual(JSON.parse(requestRaw).cash.values[personId], confirmedCash, 'Einmalauftrag erhält die bestätigten Jahresend-Cashwerte');
         const restored = await f.persistence.readPersistedRecords(), snapshots = [...f.snapshots.values()];
@@ -928,14 +882,6 @@ try {
         const request = resumed.controls.consumeRetry();
         assert(request && resumed.controls.consumeRetry() === null, 'Startseite konsumiert Auftrag synchron genau einmal');
         let resume = request => resumed.controls.resume(request);
-        if (destination === 'balance') {
-            resumed.win.EngineAPI = EngineAPI;
-            const dom = installBalanceStorageForm(JSON.parse(resumed.storage.getItem(CONFIG.STORAGE.LS_KEY)).inputs, readyAnnualFixture().values);
-            dom.controls = { annualTestOpener: resumed.doc.createElement('button'), btnJahresUpdate: resumed.doc.createElement('button'), btnJahresUpdateLog: resumed.doc.createElement('button') };
-            dom.expenses = { yearSelect: { value: '2026' } }; dom.containers = {}; dom.outputs = {};
-            initUIBinder(dom, {}, () => ({ ok: true }), () => {});
-            resume = request => UIBinder.resumeAnnualRetry(request);
-        }
         const result = await resume(request); resumed.refresh();
         assertEqual(result.status, 'already_committed', 'Neue Startseitengeneration setzt dieselbe Jahresperiode fort');
         assertEqual(result.status, 'already_committed', destination + ': tatsächlicher Seitenbinder übernimmt den Wiederaufnahmebeschluss');
@@ -948,7 +894,6 @@ try {
         assertEqual(JSON.parse(resumed.storage.getItem(CONFIG.STORAGE.LS_KEY)).annualMarketDataMeta.source, 'Manueller Schlusskurs', 'Wiederaufnahme verwendet eingegebenen Handkurs');
         assertEqual((await resume(request)).status, 'cancelled', 'Verbrauchter Auftrag startet keinen zweiten Jahreswrite');
         await resumed.doc.getElementById('annualCloseBtn').fire('click');
-        if (destination === 'balance') preserveUIBinderStateForTests().handlers.closeCoordinator.dispose();
         resumed.close();
     }
 } finally { restoreBinder(); restoreLocks(); UIRenderer.toast = old.toast; globalThis.document = old.doc; globalThis.window = old.win; setAppTestDate(old.date); PersistenceFacade.resetPersistenceRuntimeForTests(); }

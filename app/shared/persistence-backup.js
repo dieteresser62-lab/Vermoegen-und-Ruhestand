@@ -2,6 +2,6 @@ export { FULL_BACKUP_TYPE, FULL_BACKUP_APP_ID, FULL_BACKUP_LEGACY_SCHEMA_VERSION
 export { validateProfileManagementRecords, validatePersistenceDomainRecords } from './persistence-backup/domain-validation.js';
 export { buildFullPersistenceBackup, createFullBackupFilename, createRecoveryBackupFilename, buildRecoveryPersistenceBackup, normalizeFullPersistenceBackup } from './persistence-backup/format.js';
 export { assertFullBackupAllowed } from './persistence-backup/guard.js';
-export { downloadJsonFile, downloadFullPersistenceBackup, downloadRecoveryPersistenceBackup } from './persistence-backup/download.js';
+export { downloadJsonFile, deliverBackupFile, downloadFullPersistenceBackup, downloadRecoveryPersistenceBackup } from './persistence-backup/download.js';
 export { importFullPersistenceBackup } from './persistence-backup/restore.js';
 export { bindFullBackupButton, bindFullBackupImport } from './persistence-backup/bindings.js';

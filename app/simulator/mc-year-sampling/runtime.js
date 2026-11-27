@@ -52,7 +52,7 @@ function enforceEffectiveYearUniverse({
 }
 
 /**
- * Initializes the method-specific state shared by Monte Carlo and Sweep.
+ * Initializes the method-specific state of a Monte-Carlo path.
  * The function deliberately does not allocate or advance an RNG stream.
  */
 /** @param {{state:SimulationState;method:string;blockSize:number;rand:Random;samplingResolution:SamplingResolution;annualData:HistoricalYear[];startYearIndex:number}} options */
@@ -95,6 +95,8 @@ export function initializeMonteCarloSamplingStateV1({
             mode: STATIONARY_BOOTSTRAP_METHOD,
             cdf: Array.isArray(startSampler?.cdf) ? startSampler : null,
             startIndices,
+            // NG-9: Fortsetzung läuft zirkulär entlang des wirksamen Fensters.
+            poolIndices: samplingResolution.effectiveYearSamplingConfig?.allowedIndices ?? null,
             initialStartIndex: startYearIndex
         });
     }

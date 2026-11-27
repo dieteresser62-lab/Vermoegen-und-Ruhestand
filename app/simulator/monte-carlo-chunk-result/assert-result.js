@@ -31,6 +31,8 @@ export function assertMonteCarloChunkResultV1(result, {
         throw contractError(`runRange.count ${count} does not match expected count ${expectedCount}.`);
     }
 
+    if (result.careAid != null) assertCareAidRuns(result.careAid, count);
+    if (result.droppedExpense != null) assertCareAidRuns(result.droppedExpense, count, 'droppedExpense');
     assertBuffers(result.buffers, count);
     assertTypedFields(result.pathSummaries, MONTE_CARLO_PATH_SUMMARY_FIELDS, count, 'pathSummaries');
     assertTypedFields(result.pathMissingness, MONTE_CARLO_PATH_MISSINGNESS_FIELDS, count, 'pathMissingness');
@@ -144,6 +146,17 @@ export function assertMonteCarloChunkResultV1(result, {
         seenMetaIndices.add(index);
     }
     return result;
+}
+
+/** FR-84: Läufe mit Hilfe zur Pflege (NK-2: ebenso Läufe mit entfallener Ausgabe), drei gleich lange Listen, höchstens so viele
+ * Einträge wie Läufe. @param {any} careAid @param {number} count @param {string} [name] */
+export function assertCareAidRuns(careAid, count, name = 'careAid') {
+    if (!careAid || typeof careAid !== 'object') throw contractError(`${name} must be an object.`);
+    for (const field of ['runIndices', 'firstYears', 'sumsNominal']) assertFiniteNumberList(careAid[field], `${name}.${field}`);
+    const length = careAid.runIndices.length;
+    if (careAid.firstYears.length !== length || careAid.sumsNominal.length !== length || length > count || length === 0) {
+        throw contractError(`${name} lists must have the same length between 1 and the run count.`);
+    }
 }
 
 /** @param {Omit<import('../../../typcheck/rechenkern').MonteCarloChunkResult,"schemaVersion">} result */

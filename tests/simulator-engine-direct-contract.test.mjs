@@ -1,6 +1,7 @@
 import * as facade from '../app/simulator/simulator-engine-direct.js';
 import { simulateOneYear } from '../app/simulator/simulator-engine-direct/year-entry.js';
 import { SIMULATOR_YEAR_OUTCOME_KINDS, SIMULATOR_TECHNICAL_ERROR_CODES } from '../app/simulator/simulator-engine-direct/outcomes.js';
+import { observeYearOutcomesForTests, observeYearContextForTests } from '../app/simulator/simulator-engine-direct/year-diagnostics.js';
 import { initializePortfolio } from '../app/simulator/simulator-portfolio.js';
 import { normalizeHouseholdContext, euros, resolveCapeRatio } from '../app/simulator/simulator-engine-direct-utils.js';
 import { makeDefaultCareMeta, sampleNextYearData, computeRunStatsFromSeries, calcCareCost,
@@ -9,9 +10,13 @@ import { makeDefaultCareMeta, sampleNextYearData, computeRunStatsFromSeries, cal
 const expected = { simulateOneYear, SIMULATOR_YEAR_OUTCOME_KINDS, SIMULATOR_TECHNICAL_ERROR_CODES,
     initMcRunState: initializePortfolio, normalizeHouseholdContext, euros, resolveCapeRatio,
     makeDefaultCareMeta, sampleNextYearData, computeRunStatsFromSeries, calcCareCost,
-    computeHouseholdFlexFactor, computeCareMortalityMultiplier, updateCareMeta };
+    computeHouseholdFlexFactor, computeCareMortalityMultiplier, updateCareMeta,
+    // FR-84: Tests und Messungen beobachten das endgültige Jahresergebnis samt Geldvermögen und Grundbedarf ohne Pflege.
+    observeYearOutcomesForTests,
+    // NK-3: Tests beobachten den Jahreskontext für die Geldbilanz je Person.
+    observeYearContextForTests };
 assertEqual(JSON.stringify(Object.keys(facade).sort()), JSON.stringify(Object.keys(expected).sort()),
-    'Die Simulatorfassade erhält genau die bisherigen öffentlichen Namen');
+    'Die Simulatorfassade erhält genau die bisherigen öffentlichen Namen und die Beobachtungen aus FR-84 und NK-3');
 for (const [name, value] of Object.entries(expected)) {
     assert(facade[name] === value, `${name}: Fassade und Definitionsmodul teilen dieselbe Bindung`);
 }

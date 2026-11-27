@@ -1,0 +1,90 @@
+{
+  "beschreibung": "Regimezählung, Übergänge und historische Stresspools aller Jahre des Datenstands; neu erzeugt mit npm run jahresdaten:sollwerte",
+  "datenstand": {
+    "startYear": 1925,
+    "endYear": 2025,
+    "contentHash": "c79350c5abf2dee2feeaae65c88ed5e58487f878cb598fdffc132fbf48d01e79"
+  },
+  "verteilung": {
+    "BULL": 40,
+    "BEAR": 6,
+    "SIDEWAYS": 49,
+    "STAGFLATION": 6
+  },
+  "uebergaenge": {
+    "BULL": {
+      "total": 40,
+      "BULL": 18,
+      "BEAR": 2,
+      "SIDEWAYS": 17,
+      "STAGFLATION": 3
+    },
+    "BEAR": {
+      "total": 6,
+      "BULL": 1,
+      "BEAR": 1,
+      "SIDEWAYS": 4,
+      "STAGFLATION": 0
+    },
+    "SIDEWAYS": {
+      "total": 48,
+      "BULL": 19,
+      "BEAR": 3,
+      "SIDEWAYS": 26,
+      "STAGFLATION": 0
+    },
+    "STAGFLATION": {
+      "total": 6,
+      "BULL": 2,
+      "BEAR": 0,
+      "SIDEWAYS": 1,
+      "STAGFLATION": 3
+    }
+  },
+  "stresspools": {
+    "GREAT_DEPRESSION_29_33": [
+      1929,
+      1930,
+      1931,
+      1932,
+      1933
+    ],
+    "WWII_40s": [
+      1939,
+      1940,
+      1941,
+      1942,
+      1943,
+      1944,
+      1945
+    ],
+    "DOUBLE_BEAR_00s": [
+      1929,
+      1930,
+      1931,
+      1946,
+      1947,
+      1948,
+      1973,
+      1974,
+      2001,
+      2002
+    ],
+    "STAGFLATION_70s": [
+      1946,
+      1947,
+      1948,
+      1973,
+      1974,
+      2022
+    ],
+    "STAGFLATION_SUPER": [
+      1946,
+      1947,
+      1948,
+      1973,
+      1974,
+      2022
+    ]
+  }
+}

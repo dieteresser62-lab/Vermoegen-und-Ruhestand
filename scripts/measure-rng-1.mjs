@@ -100,7 +100,6 @@ for (const part of selection.split(',')) {
         } else {
             const { runMonteCarloChunk } = await load('app/simulator/monte-carlo-runner.js');
             const { MONTE_CARLO_MISSINGNESS_CODE } = await load('app/simulator/monte-carlo-chunk-result.js');
-            const { createStressReplayCaptureRequest } = await load('app/simulator/stress-replay-path-materializer.js');
             for (const [name, inputs] of Object.entries(scenarios)) {
                 const wealth = [], budgets = [], withdrawalP10s = [], careYears = [], householdCareYears = [], restrictedYears = [];
                 const aliveYears = [[], []], deathAges = [[], []], censored = [0, 0];
@@ -110,35 +109,32 @@ for (const part of selection.split(',')) {
                     const count = Math.min(50, defaults.anzahl - start), indices = Array.from({ length: count }, (_, i) => start + i);
                     const chunk = await runMonteCarloChunk({ inputs, monteCarloParams: defaults,
                         widowOptions: inputs.widowOptions, useCapeSampling: false, runRange: { start, count },
-                        logIndices: new Set(indices), stressReplayCapture: createStressReplayCaptureRequest(indices), engine: EngineAPI });
+                        logIndices: new Set(indices), engine: EngineAPI });
                     if (!chunk.financialMetricsValid || chunk.batchStatus !== 'completed' || chunk.technicalInventory.technicalError) throw new Error('Technischer MC-Fehler.');
                     digest.update(JSON.stringify(chunk)); failures += chunk.totals.failCount;
                     const s = chunk.pathSummaries;
                     wealth.push(...s.finalValueRealEur); restrictedYears.push(...s.minimumFlexAffectedYearCount);
                     for (let i = 0; i < count; i++) if (chunk.pathMissingness.realWithdrawalP10RealEur[i] === MONTE_CARLO_MISSINGNESS_CODE.OBSERVED) withdrawalP10s.push(s.realWithdrawalP10RealEur[i]);
                     for (const meta of chunk.runMeta) {
-                        const years = meta.stressReplayCapture.years;
+                        const years = meta.logDataRows;
                         const payments = meta.logDataRows.filter(row => row.recordType === 'financial_year' && row.Regime !== 'accumulation')
                             .map(row => (row.floor_brutto + row.flex_haushalt_erfuellt) / row.inflation_factor_cum);
                         if (payments.some(value => !Number.isFinite(value))) throw new Error('Budgetdaten fehlen.');
                         if (payments.length) budgets.push(mean(payments));
                         let hadCare = false, personYearsInCare = 0, yearsWithAnyCare = 0;
-                        for (const year of years) {
-                            const e = year.householdEvents[0];
+                        for (const row of years) {
                             let careThisYear = false;
                             for (const p of [1, 2]) {
-                                const alive = e?.[`p${p}Alive`];
-                                if (e?.[`careMetaP${p}`]?.active) { hadCare = careThisYear = true; personYearsInCare += alive === 1 ? 1 : .5; }
+                                if (row[`CareP${p}_Active`]) { hadCare = careThisYear = true; personYearsInCare += row[`Person${p}Alive`] === 1 ? 1 : .5; }
                             }
                             if (careThisYear) yearsWithAnyCare++;
                         }
                         for (const p of [1, 2]) {
                             if (p === 2 && !inputs.partner?.aktiv) continue;
                             let duration = 0, died = false;
-                            for (const year of years) {
-                                const e = year.householdEvents[0];
-                                if (e) duration += e[`p${p}Alive`] === 1 ? 1 : .5;
-                                if (e && e[`p${p}Alive`] === 0) { died = true; break; }
+                            for (const row of years) {
+                                duration += row[`Person${p}Alive`] === 1 ? 1 : .5;
+                                if (row[`Person${p}Alive`] === 0) { died = true; break; }
                             }
                             aliveYears[p - 1].push(duration);
                             if (died) deathAges[p - 1].push((p === 1 ? inputs.startAlter : inputs.partner.startAlter) + duration);
@@ -159,7 +155,7 @@ for (const part of selection.split(',')) {
                     meanYearsUnderMinimumFlex: mean(restrictedYears), budgetRealAnnualP10: q(budgets, .1), budgetObservedPaths: budgets.length,
                     withdrawalRealAnnualP10OfP10: q(withdrawalP10s, .1), withdrawalObservedPaths: withdrawalP10s.length };
                 result.measurements.mc = { parameters: defaults, cape: false, scenarios: scenariosResult,
-                    counting: 'App-Vorgabe (35 Jahre, Markov, Blockgröße 5), 2000 Pfade. Budget-P10 = P10 des mittleren realen Jahresverbrauchs (Grundbedarf inklusive Pflege plus gezahlter Haushaltsflex, einschließlich Einkommensdeckung) je Pfad über abgeschlossene Entnahmejahre. Zusätzlich Entnahme-P10 der App (P10 der jährlichen realen Entnahme-P10 je Pfad); fehlende Beobachtungen ausgeschlossen. Lebens- und Pflegezeiten einschließlich Schattenjahren nach Ruin, Sterbejahr halb. Lebensdauer am Horizont rechtszensiert; Haushaltspflegejahre zusätzlich als Kalenderjahre mit mindestens einer gepflegten Person.' };
+                    counting: 'App-Vorgabe (35 Jahre, Markov, Blockgröße 5), 2000 Pfade. Budget-P10 = P10 des mittleren realen Jahresverbrauchs (Grundbedarf inklusive Pflege plus gezahlter Haushaltsflex, einschließlich Einkommensdeckung) je Pfad über abgeschlossene Entnahmejahre. Zusätzlich Entnahme-P10 der App (P10 der jährlichen realen Entnahme-P10 je Pfad); fehlende Beobachtungen ausgeschlossen. Lebens- und Pflegezeiten aus den MC-Protokollzeilen (ohne Schattenjahre nach Ruin; Ruin zensiert wie der Horizont), Sterbejahr halb. Lebensdauer am Horizont rechtszensiert; Haushaltspflegejahre zusätzlich als Kalenderjahre mit mindestens einer gepflegten Person.' };
                 save();
             }
         }

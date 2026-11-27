@@ -24,6 +24,7 @@ Projektweite Regeln für die lokale Browser-/Tauri-App und beide Betriebsarten: 
   - `docs/reference/DATA_SOURCES.md`
   - `engine/README.md` (Engine-API)
 - Test-Infrastruktur: `tests/README.md`
+- Jahresdaten: neue Datenjahre und amtliche Jahreswerte nur nach [Jahresdaten pflegen](docs/reference/JAHRESDATEN.md) liefern, keinen Code ändern.
 - Desktop-Konfiguration: `src-tauri/tauri.conf.json`
 - Orchestrator-Konfiguration (Pfadklassen, Testbefehl, Ablaufschalter, optionale Rollenbelegung): `orchestrator.toml`
 - Anweisungsdateien synchron und widerspruchsfrei halten:
@@ -49,7 +50,7 @@ Projektweite Regeln für die lokale Browser-/Tauri-App und beide Betriebsarten: 
 - **Abschluss:** Nach einem Finalreview ohne Befunde archiviert der Orchestrator die Laufdokumente unter `docs/internal/archive/`. `merge_completed_branch = false`: Der Zielbranch bleibt ungemergt ausgecheckt. Die gesteuerte Sitzung fährt danach den Browser-Smoke und merged den Branch erst anschließend lokal in `main`; der lokale `post-merge`-Hook baut dabei die EXE. Gepusht wird nie.
 - Der Implementierer bleibt im Auftragsumfang: keine Branches anlegen oder wechseln, nicht stagen, committen, pushen oder mergen; keine eigenen Slice-Dokumente neben dem Orchestrator-Arbeitsplan.
 - **Codex-Implementierer-Sandbox:** kein Netz; nur Repository und privater Scratch-Ordner (`TMPDIR`) sind beschreibbar. `.git/`, `.orchestrator/`, `inbox/`, `outbox/`, Agentenverzeichnisse wie `.codex/`/`.claude/` bleiben schreibgeschützt. Vom Home-Verzeichnis ist nur das Codex-Programmpaket sichtbar. `node`/`npm` kommen aus dem System, Abhängigkeiten aus `node_modules/` im Repo. `npm install` und Netzzugriffe scheitern; fehlende Abhängigkeit: `OPERATOR-PREREQUISITE-MISSING`.
-- **Hängererkennung:** Nach 15 Minuten ohne Implementiererausgabe (laufende Befehle ausgenommen) oder einem Befehl über 60 Minuten bricht der Orchestrator ab und wiederholt den Aufruf. Große Monte-Carlo-/Sweep-Läufe gehören deshalb nicht in gezielte Agententests.
+- **Hängererkennung:** Nach 15 Minuten ohne Implementiererausgabe (laufende Befehle ausgenommen) oder einem Befehl über 60 Minuten bricht der Orchestrator ab und wiederholt den Aufruf. Große Monte-Carlo-Läufe gehören deshalb nicht in gezielte Agententests.
 - Nur der Orchestrator fährt die volle Suite, außerhalb der Sandbox. `node tests/run-single.mjs <datei>` ist erlaubt. Gescheiterte Port-, Browser- oder Unterprozessstarts (etwa `spawnSync … EPERM` bei `node`-Kindprozessen) sind kein Stoppgrund; im Bericht als in der Sandbox nicht ausführbar nennen.
 - Die Orchestratoranfrage bestimmt Antwortformat und Ablauf. Alle drei Rollen erhalten die ersten 12.000 Zeichen dieser Datei. `CLAUDE.md`, `CODEX.md` und `GEMINI.md` gelten nur im Handbetrieb und bei direkter CLI-Nutzung; der Orchestrator liest sie nicht.
 
@@ -73,6 +74,13 @@ Es gelten die Stoppgründe des Orchestrators. Der Implementierer hält an und me
 Im Handbetrieb gelten zusätzlich die Stoppbedingungen der jeweiligen Anweisung.
 
 ## Quellen und Prüfung
+
+### Prüfrahmen
+
+- Die App ist ein privates Einzelplatz-Werkzeug für einen Haushalt.
+- Ordne Befunde nach Wirkung ein (Zahl falsch, Daten gefährdet, Ablauf blockiert oder nur Qualität) und nenne Wahrscheinlichkeit im Alltag und Größenordnung.
+- Modellgrenzen, Einzelplatz-Härtung und Architektur sind nachrangig.
+- Regeländerungen gehören in einen Messauftrag.
 
 ### Ausführung
 
@@ -99,9 +107,9 @@ Im Handbetrieb gelten zusätzlich die Stoppbedingungen der jeweiligen Anweisung.
 - Verpflichtend nach Änderungen an:
   - `engine/`,
   - `workers/`,
-  - DOM-freie Runner wie Monte Carlo, Sweep oder Auto-Optimize,
+  - DOM-freie Runner wie Monte Carlo oder Backtest,
   - Persistenz- oder Datenverträge in Profil-/Tranchen-Modulen,
-  - gemeinsam genutzte Formatter, Feature-Flags oder Engine-Contracts.
+  - gemeinsam genutzte Formatter oder Engine-Contracts.
 - Nach Änderungen an `engine/` oder an der öffentlichen `EngineAPI` bleiben Fachtests und Vertragsprüfungen verpflichtend; ein unveränderter Wrapper ist erwartbar. Der Wrappervertrag wird durch `tests/engine-wrapper-contract.test.mjs` in `npm test` geprüft; im orchestrierten Lauf fährt die volle Suite allein der Orchestrator.
 - Gezielte Fehlersuche mit `node tests/run-single.mjs <datei>` ist zulässig. Berichten, wenn nicht die ganze Suite lief.
 

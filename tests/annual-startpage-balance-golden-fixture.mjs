@@ -1,68 +1,23 @@
 import { prepareCloseFixture } from './close-dialog.test.mjs?fixture';
-import { captureCashPeople } from '../app/profile/profile-cash-update.js';
-import { annualServiceFixture, readyAnnualFixture, annualTestNow, STORAGE_FIXTURE_KINDS } from './helpers/balance-storage-fixtures.mjs';
-import { createSnapshotHandlers } from '../app/balance/balance-binder-snapshots.js';
-import { createAnnualSnapshot } from '../app/shared/annual-coordinator.js';
-import { commitAnnualPlanUpdate } from '../app/balance/balance-annual-storage-commit.js';
+import { annualServiceFixture, readyAnnualFixture } from './helpers/balance-storage-fixtures.mjs';
 import { EngineAPI } from '../engine/index.mjs';
 import { PersistenceFacade } from '../app/shared/persistence-facade.js';
 import { UIRenderer } from '../app/balance/balance-renderer.js';
 import { bindOverviewAnnualClose } from '../app/overview/overview-annual-close.js';
 import { projectOverviewFromRecords } from '../app/overview/overview-main.js';
-import { UIBinder, initUIBinder, preserveUIBinderStateForTests } from '../app/balance/balance-binder.js';
 import { createDialogFixture } from './close-dialog.test.mjs?fixture';
-import { installAnnualLocks, installBalanceStorageForm } from './helpers/balance-storage-fixtures.mjs';
+import { installAnnualLocks } from './helpers/balance-storage-fixtures.mjs';
 import { appNow, getAppTestDate, setAppTestDate } from '../app/shared/app-clock.js';
 import { SnapshotArchive } from '../app/shared/snapshot-archive.js';
 import { annualUntil } from './overview-annual-close.test.mjs?fixture';
 import { CONFIG } from '../app/balance/balance-config.js';
 import { ANNUAL_PLAN_RECORD_KEY } from '../app/profile/annual-plan-record.js';
 
-// Jede Bestandsart läuft in einem eigenen Prozess; Dienstgegenprobe einmal.
+// Jede Bestandsart läuft in einem eigenen Prozess.
 export async function runGoldenMatrix(kind) {
-if (kind === STORAGE_FIXTURE_KINDS[0]) {
-const savedToast = UIRenderer.toast;
-try {
-    UIRenderer.toast = () => {};
-    assert(typeof globalThis.document === 'undefined' && typeof globalThis.window === 'undefined', 'Beide Dienstadapter laufen ohne Seitenglobale');
-    for (const kind of STORAGE_FIXTURE_KINDS) for (const strategy of ['standard', '3_bucket_jilge']) for (const cape of [0, 25]) {
-        const label = `${kind}/${strategy}/${cape}`, sample = readyAnnualFixture(kind, strategy, cape);
-        const run = async balance => {
-            const env = await annualServiceFixture({ sample });
-            const calls = [];
-            const api = { ...EngineAPI, simulateSingleYear(input, lastState) {
-                const output = EngineAPI.simulateSingleYear(input, lastState);
-                calls.push(JSON.stringify({ input, lastState, output })); return output;
-            } };
-            const people = captureCashPeople({ ids: sample.scope.ids, activeId: sample.records.rs_current_profile });
-            const cash = { people, values: Object.fromEntries(people.map(person => [person.id, person.value - 1.25])) };
-            const options = { confirmedPreparation: { cash } };
-            const service = balance ? createSnapshotHandlers({ dom: { inputs: {}, controls: {} }, appState: {},
-                getReferenceDate: annualTestNow, getProfileId: () => env.storage.getItem('rs_current_profile'),
-                confirmAnnual: env.options.confirmAnnual, flushLiveState: () => env.persistence.flush(),
-                engineLoader: { load: async () => api }, operationLock: env.options.operationLock,
-                createAnnualSnapshot: options => createAnnualSnapshot({ ...options, snapshotId: 'annual-before' }),
-                runAnnualUpdate: env.options.prepareMarketData,
-                reportAnnualError: env.options.reportError,
-                commitLiveState: options => commitAnnualPlanUpdate({ ...options, storage: env.storage, persistence: env.persistence })
-            }) : env.create({ engineLoader: { load: async () => api } });
-            const result = await (balance ? service.handleJahresabschluss(options) : service.close(options));
-            assertEqual(result.status, 'already_committed', label + ': produktiver Abschluss bestätigt');
-            return { result, calls, records: await env.persistence.readPersistedRecords(), snapshots: [...env.snapshots.values()] };
-        };
-        const start = await run(false), balance = await run(true);
-        assertEqual(JSON.stringify(balance.calls), JSON.stringify(start.calls), label + ': komplette Engineargumente und Ergebnisse bytegleich');
-        assertEqual(JSON.stringify(balance.result), JSON.stringify(start.result), label + ': vollständige Dienstresultate bytegleich');
-        assertEqual(JSON.stringify(balance.records), JSON.stringify(start.records), label + ': alle H3-Records einschließlich Plan, Beleg, Cash, Marker, Verlauf und Summary bytegleich');
-        assertEqual(JSON.stringify(balance.snapshots), JSON.stringify(start.snapshots), label + ': vollständige Rückkehrpunkte ohne Feldfilter bytegleich');
-    }
-} finally { UIRenderer.toast = savedToast; PersistenceFacade.resetPersistenceRuntimeForTests(); }
-
-}
-
-// H4: dieselbe Goldenmatrix jetzt über beide tatsächlichen Seitenbinder und Schritt 6.
+// H4: Goldenmatrix über den tatsächlichen Startseitenbinder und Schritt 6 (die Balance hat keinen eigenen Abschluss mehr).
 const previousPage = { doc: globalThis.document, win: globalThis.window, date: getAppTestDate(), toast: UIRenderer.toast, snapshot: SnapshotArchive.createSnapshot };
-const restoreLocks = installAnnualLocks(), restoreBinder = preserveUIBinderStateForTests();
+const restoreLocks = installAnnualLocks();
 try {
     setAppTestDate('2027-01-02'); UIRenderer.toast = () => {};
     SnapshotArchive.createSnapshot = (record, options) => previousPage.snapshot.call(SnapshotArchive, { ...record, id: record.kind === 'annual-close-pre-mutation' ? 'annual-before' : 'month-before' }, options);
@@ -77,25 +32,17 @@ try {
             profile.data[CONFIG.STORAGE.LS_KEY] = JSON.stringify(state);
         }
         sample.records.rs_profiles_v1 = JSON.stringify(registry);
-        const run = async balance => {
+        const run = async () => {
             const env = await annualServiceFixture({ sample });
             const { doc } = createDialogFixture(); const win = { document: doc, EngineAPI }; globalThis.document = doc; globalThis.window = win;
             let model, controls;
             const refresh = () => { model = projectOverviewFromRecords({ registry: JSON.parse(env.storage.getItem('rs_profiles_v1')), activeId: env.storage.getItem('rs_current_profile'), liveData: env.persistence.exportAllSync().records, now: appNow() }); };
             refresh();
             let closing;
-            if (balance) {
-                const dom = installBalanceStorageForm(JSON.parse(env.storage.getItem(CONFIG.STORAGE.LS_KEY)).inputs, sample.values);
-                dom.controls = { annualTestOpener: doc.createElement('button'), btnJahresUpdate: doc.createElement('button'), btnJahresUpdateLog: doc.createElement('button') };
-                dom.expenses = { yearSelect: { value: '2026' } }; dom.containers = {}; dom.outputs = {};
-                initUIBinder(dom, {}, () => ({ ok: true }), () => {});
-                closing = UIBinder.handleJahresabschluss();
-            } else {
-                const focus = doc.createElement('section'); focus.id = 'overviewFocus'; doc.body.append(focus);
-                controls = bindOverviewAnnualClose({ doc, win, getModel: () => model, refresh, now: appNow, engineLoader: { load: async () => EngineAPI },
-                    coordinatorOptions: { snapshotId: 'annual-before' } });
-                closing = controls.start();
-            }
+            const focus = doc.createElement('section'); focus.id = 'overviewFocus'; doc.body.append(focus);
+            controls = bindOverviewAnnualClose({ doc, win, getModel: () => model, refresh, now: appNow, engineLoader: { load: async () => EngineAPI },
+                coordinatorOptions: { snapshotId: 'annual-before' } });
+            closing = controls.start();
             await prepareCloseFixture(doc); await annualUntil(() => doc.getElementById('annualConfirmBtn') && !doc.getElementById('annualConfirmBtn').disabled);
             if (adjusted) {
                 await doc.getElementById('balanceAnnualClose').querySelector('[data-annual-plan-toggle]').fire('click');
@@ -119,16 +66,14 @@ try {
             assertEqual(JSON.stringify(receipt.adjustedFields), JSON.stringify(expectedFields), label + ': genaue Feldpfade der bewussten Änderung');
             if (!adjusted) for (const path of ['floorBedarf', 'flexBedarf', 'minimumFlexAnnual']) assertEqual(receipt.adopted.snapshot.plan[path], receipt.recommended.snapshot.plan[path], label + ': vorausgewählter Vorschlag genau übernommen');
             await doc.getElementById('annualCloseBtn').fire('click');
-            if (balance) preserveUIBinderStateForTests().handlers.closeCoordinator.dispose(); else controls.dispose();
+            controls.dispose();
             return { records, result };
         };
-        const start = await run(false), balance = await run(true);
-        assertEqual(JSON.stringify(balance.records), JSON.stringify(start.records), label + ': tatsächliche Binder erzeugen bytegleiche H3-Records');
-        assertEqual(JSON.stringify(balance.result), JSON.stringify(start.result), label + ': tatsächliche Binder liefern bytegleiche Ergebnisse');
+        await run();
     }
 } finally {
     SnapshotArchive.createSnapshot = previousPage.snapshot; UIRenderer.toast = previousPage.toast;
     globalThis.document = previousPage.doc; globalThis.window = previousPage.win; setAppTestDate(previousPage.date);
-    restoreBinder(); restoreLocks(); PersistenceFacade.resetPersistenceRuntimeForTests();
+    restoreLocks(); PersistenceFacade.resetPersistenceRuntimeForTests();
 }
 }

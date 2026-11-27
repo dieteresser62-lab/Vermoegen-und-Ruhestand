@@ -53,7 +53,7 @@ export const HOUSEHOLD_PLAN_GROUPS = [
 export const HOUSEHOLD_PLAN_FIELDS = [
     {
         "path": "floorBedarf",
-        "label": "Grundbedarf (Floor)",
+        "label": "Grundbedarf",
         "hint": "muss immer gedeckt sein",
         "infoHint": "Zahlst du Kranken- und Pflegeversicherung nicht als pflichtversicherter Rentner über die Rente (zum Beispiel freiwillig gesetzlich oder privat versichert), gehören die Beiträge in den Grundbedarf. Die App zieht sie sonst nirgends ab.",
         "group": 0,

@@ -6,7 +6,8 @@ import type {SimulatorControl} from './simulator-ui.js';
 /** Planfelder sind Inputs oder Selects; checked gehört nur zu Checkboxen. */
 export type PlanControl = SimulatorControl;
 export type PropertyLayers = [string, (point: H.Point)=>number, (point: H.Point)=>number][];
-export type InheritancePreview = ReturnType<typeof import('../app/profile/household-partnership.js').inheritancePreview> & Partial<P.Estate>;
+export type InheritancePreview = ReturnType<typeof import('../app/profile/household-partnership.js').inheritancePreview> & Partial<P.Estate> & {moveOutTax?: number}
+    & {taxCash?: number; taxCashSaleTax?: number; missingCostBasis?: boolean};
 export type BindPlanField = (options: {
     doc: Document; field: PlanControl; path: string; nativeOnly?: boolean; row?: Element;
     onChange?: (field: PlanControl)=>void; onFocusStateChange?: (state?: {correctionChanged?: boolean})=>void;

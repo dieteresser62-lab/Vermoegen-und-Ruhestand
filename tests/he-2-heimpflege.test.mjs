@@ -1,3 +1,6 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
 import { readLE1References } from './helpers/le-1-expectations.mjs';
 import { readGU1References } from './helpers/gu-1-expectations.mjs';
 import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
@@ -11,7 +14,7 @@ import { EngineAPI } from '../engine/index.mjs';
 import { inputs as fixtureInputs, runFixture } from './extended/parity-replay-fixture.mjs';
 import { initMcRunState, simulateOneYear, makeDefaultCareMeta, calcCareCost } from '../app/simulator/simulator-engine-wrapper.js';
 import { priceMonteCarloCareForYear, createMonteCarloLifeState, updateMonteCarloLifeEventsForYear } from '../app/simulator/mc-life-events.js';
-import { normalizeWidowOptions } from '../app/simulator/simulator-sweep-utils.js';
+import { normalizeWidowOptions } from '../app/simulator/simulator-run-utils.js';
 import { homeRentForYear } from '../app/simulator/simulator-home-sale.js';
 import { unmarriedYearShares } from '../app/simulator/simulator-unmarried.js';
 import { rng } from '../app/simulator/simulator-utils.js';
@@ -246,7 +249,8 @@ function runYear(inputs, { p1, p2 = null, yearIndex, p1Alive = true, p2Alive = i
     const shares = unmarriedYearShares(portfolio, inputs, { p1, p2 }, false, { p1Alive: true, p2Alive: true }, HEIM[0] + 6000 + 18000);
     assertEqual(shares[0].care, 46368, 'Unverheiratet: Heimkosten und eigene Ausgaben bei der Person im Heim');
     assertEqual(shares[1].care, 18000, 'Unverheiratet: Person zu Hause trägt nur ihren Pflegezusatz');
-    assertEqual(shares[0].share, .5, 'Unverheiratet: gemeinsamer Bedarf weiter nach Vermögensanteil');
+    // NK-2 (FR-84 Punkt 18): Ab dem Heimeintritt trägt die Person zu Hause den gemeinsamen Bedarf allein (vorher nach Vermögensanteil 50 %).
+    assertEqual(`${shares[0].share} · ${shares[1].share}`, '0 · 1', 'Unverheiratet: Person im Heim zahlt nichts zum gemeinsamen Bedarf zu Hause');
 }
 
 // Backtest mit heutigem Grad „im Heim“: Ergebnisbytes wie vor HE-2 (Stand 6db1c695).
@@ -254,7 +258,7 @@ function runYear(inputs, { p1, p2 = null, yearIndex, p1Alive = true, p2Alive = i
     const inputs = { ...structuredClone(fixtureInputs), careToday: { grade: 4, form: 'residential', progression: 'usual', additionalMonthly: null, allowanceAsIncome: false },
         pflegeGradeConfigs: structuredClone(staffel), pflegeMaxFloor: 120000, pflegeRampUp: 1 };
     const bytes = JSON.stringify(runFixture({ input: inputs }));
-    assertEqual(createHash('sha256').update(bytes).digest('hex'), readLE1References(readGU1References(readPFA1References('a009df6f52d67541ad51378408de54fe29afd7d23d2e653b217c83d58ba56769'))),
+    assertEqual(createHash('sha256').update(bytes).digest('hex'), readKR1cReferences(readLE1References(readGU1References(readPFA1References('a009df6f52d67541ad51378408de54fe29afd7d23d2e653b217c83d58ba56769')))),
         'FR-73: Backtest rechnet heutige Heimpflege automatisch');
 }
 

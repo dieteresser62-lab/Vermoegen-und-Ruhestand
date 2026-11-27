@@ -184,11 +184,7 @@ console.log('Test 4b: strategy reader exposes only the canonical runway input');
     assert(!Object.hasOwn(canonical, 'runwayTargetMonths'), 'Reader should not emit legacy runway target');
     assert(!Object.hasOwn(canonical, 'targetEq'), 'Reader should not emit the removed equity target');
 
-    const migrated = readStrategyInputs(createDocumentMock({
-        runwayMinMonths: '24',
-        runwayTargetMonths: '42'
-    }));
-    assertEqual(migrated.liquidityRunwayYears, 3.5, 'Legacy target months should migrate before the legacy minimum');
+    // AL-S: Monatsangaben der Laufzeit werden nicht mehr umgerechnet; der Fall der Monats-Migration entfällt.
 
     const defaults = readStrategyInputs(createDocumentMock());
     assertEqual(defaults.liquidityRunwayYears, 5, 'Missing strategy runway should use the five-year default');

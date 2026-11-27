@@ -76,7 +76,10 @@ const view = action => ({ cash: () => 0, liquidity: id => id === MARTIN ? (actio
     assert(flexHeavy.rows.some(entry => entry.row.personalPayout?.attacked?.some(row => row.profileId === PETRA)), 'P1-3: Rückgriff auf Petra steht im Protokoll');
     const floorHeavy = run(80000, 20000);
     assertEqual(floorHeavy.outcome.kind, 'ruin', 'P1-3: reicht beider Vermögen nicht, scheitert der Lauf');
-    assert(/^Gesamtvermögen/.test(floorHeavy.outcome.reason), `P1-3: Grund ist das Gesamtvermögen, nicht der persönliche Anteil (${floorHeavy.outcome.reason})`);
+    // KR-1c (NG-5): Mit dem Zins vor der Entscheidung bleibt Petra 2014 ein kleiner Depotrest; der Rückfallverkauf erkennt 2015 dieselbe
+    // Haushaltslücke mit seinem Text. Beleg in fixtures/kr-1c-expectation-deltas.json. KR-1c-b: genau dieser Grund.
+    assertEqual(floorHeavy.outcome.reason, 'Entnahme (33904) < Floor (78109) und nicht genug Assets',
+        'P1-3: Grund ist die Haushaltslücke im Rückfallverkauf, nicht der persönliche Anteil');
     assertEqual(floorHeavy.outcome.ruinYear, 2015, 'P1-3: Ruin erst 2015, wenn beide nicht reichen (vorher 2014 mit Geld bei Petra)');
     // LZ-1: Martin füllt seine Liquidität seither ohne Petras Tagesgeld auf (Rückgriff über Petras Verkäufe); er zahlt dadurch bis 2014 selbst.
     assert(floorHeavy.rows.some(entry => entry.row.personalPayout?.attacked?.some(row => row.profileId === PETRA)

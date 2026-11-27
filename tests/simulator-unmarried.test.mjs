@@ -54,7 +54,10 @@ const assets={personAccounts:[{profileId:'a',tagesgeld:75000},{profileId:'b',tag
 const shares=unmarriedYearShares(assets,{simulationPeople:[{profileId:'a'},{profileId:'b'}]}, {},false,{p1Alive:true,p2Alive:true},0);
 same(unmarriedWithdrawalPlan(shares,10000,assets).items.map(r=>r.withdrawalAmount),[7500,2500],'Gemeinsame Ausgaben nach Jahresanfangsanteilen');
 const careShares=unmarriedYearShares(assets,{simulationPeople:[{profileId:'a'},{profileId:'b'}]}, {p2:{active:true,zusatzFloorZiel:30000}},false,{p1Alive:true,p2Alive:true},30000);
-same(unmarriedWithdrawalPlan(careShares,40000,assets).items.map(r=>r.withdrawalAmount),[15000,25000],'Pflege zuerst eigenes Vermögen, Rest vom Partner');
+// FR-84: Die eigene Pflege bleibt bei der Person; was ihr Vermögen nach dem eigenen Anteil nicht trägt, schätzt der Plan als Hilfe zur Pflege.
+const carePlan=unmarriedWithdrawalPlan(careShares,40000,assets);
+same(carePlan.items.map(r=>r.withdrawalAmount),[7500,32500],'FR-84: Pflege bleibt bei der Person, kein Übergang auf den Partner');
+assertEqual(carePlan.careAid,7500,'FR-84: 30.000 € Pflege, 22.500 € eigenes Geld nach dem eigenen Anteil, 7.500 € voraussichtlich vom Staat');
 for(const status of ['unmarried','married'])for(const percent of [0,50,100]){
  const result=calculateFixedIncomeForYear({inputs:{partnership:{status,inheritance:{a:percent}},fixedIncomeReferenceYear:2026,simulationPeople:[{profileId:'a'},{profileId:'b'}],fixedIncome:[{id:'immobilie:x',profileId:'a',art:'sonstige',betragMonat:650,ab:null,bis:null,anpassung:'inflation'}]},state:{survivor:{deceasedProfileId:'a',survivorProfileId:'b'}},yearIndex:1,inflationFactor:1.1,household:{p1Alive:false,p2Alive:true},deathThisYear:false});
  assertClose(result.total,7800*1.1*(status==='married'?1:percent/100),1e-8,'Miete folgt dem geerbten Immobilienanteil');
@@ -107,9 +110,13 @@ assertEqual(saleYear.kind,'success','Erbschaftsteuer ohne Tagesgeld und Geldmark
 assertClose(saleYear.logData.vk.vkGes,initialStock-saleYear.logData.wertAktien+(saleYear.logData.kaufAkt||0),.1,'Eigene und geerbte Steuerverkäufe zählen genau einmal');
 const impossibleTaxInput={...structuredClone(inputs),partnership:{status:'unmarried',inheritance:{muster_a:100}},home:[{profileId:'muster_a',wert:100000000,stand:'2026-10'}]};
 const taxRuin=simulateOneYear(initMcRunState(impossibleTaxInput),impossibleTaxInput,year,0,null,0,household,1,EngineAPI);
-assertEqual(taxRuin.kind,'success','FR-61 verkauft die Immobilie vor einem drohenden Steuerruin');
-assertEqual(taxRuin.logData.immobilien_notverkauf,true,'Notverkauf wird auch im Todesjahr protokolliert');
-assertClose(taxRuin.logData.immobilienverkauf,90000000,.01,'90 Prozent stehen vor der Nachlassrechnung bereit');
+// NK-2 (FR-84 Punkt 17, Nachtrag 4): Die ungedeckte Erbschaftsteuer bleibt als Schuld; im Todesjahr kein Notverkauf, erst im Folgejahr.
+assertEqual(taxRuin.kind,'success','NK-2: eine ungedeckte Erbschaftsteuer beendet den Lauf nicht');
+assert(!taxRuin.logData.immobilien_notverkauf&&taxRuin.logData.steuer_offen>0,'NK-2: im Todesjahr kein Notverkauf, die Steuer bleibt als Schuld');
+const taxNext=simulateOneYear(structuredClone(taxRuin.newState),impossibleTaxInput,year,1,null,0,household,1,EngineAPI);
+assertEqual(`${taxNext.kind} · ${taxNext.logData.immobilien_notverkauf}`,'success · true','NK-2: im Folgejahr verkauft der Haushalt die geerbte Immobilie für die Schuld');
+assertClose(taxNext.logData.immobilienverkauf,90000000,.01,'90 Prozent des Werts stehen für die Schuld bereit');
+assert(!(taxNext.logData.steuer_offen>0),'NK-2: nach dem Verkauf ist die Schuld bezahlt');
 const { buildMonteCarloRuinLogRow }=await import('../app/simulator/mc-log-builder.js');
 // Die reine Nachlassrechnung oben liefert weiterhin einen echten Steuerfehlbetrag;
 // ihre Projektion bleibt unabhängig vom neuen Verkauf im Jahreskoordinator prüfbar.
@@ -128,15 +135,17 @@ const lossPayment=payPersonalExtraCost(lossPortfolio,'b',10000,{items:[{profileI
 assertClose(lossPayment.extraTax,-prior.taxDue,.01,'Steuerverkauf mit Verlust erstattet die bereits bezahlte Jahressteuer');
 assertClose(lossPortfolio.tagesgeld,prior.taxDue,.01,'Erstattung geht auf das Tagesgeld der lebenden Person');
 assertClose(lossAction.steuer,0,.01,'Jahressteuer berücksichtigt auch neue Verluste aus dem Steuerverkauf');
-// FR-81: Fehlt einer Person nur ein Teil ihres Flex-Anteils, ist das eine Kürzung; fehlt ihr Anteil am Grundbedarf, bleibt es Ruin.
-const { unmarriedFlexCut }=await import('../app/simulator/simulator-unmarried.js');
+// FR-81/FR-84: Reihenfolge je Person Grundbedarf, eigene Pflege, Flex. Fehlt nur Flex, ist das eine Kürzung; fehlt eigene Pflege,
+// trägt sie der Staat; eine Lücke im Grundbedarf deckt der Partner (im Simulator, nicht in dieser Aufteilung).
+const { unmarriedPayoutAccounting }=await import('../app/simulator/simulator-unmarried.js');
 const cutAmounts={payout:50000,incomeConsumed:30000,netFloorYear:30000,floor:60000};
-const flexOnly=unmarriedFlexCut({items:[{profileId:'a',planned:40000,amount:40000},{profileId:'b',planned:40000,amount:32000}]},cutAmounts);
-same(flexOnly,[{profileId:'b',amount:8000}],'FR-81: B zahlt ihren Grundbedarfsanteil (30.000 €), nur 8.000 € Flex fehlen');
-assertEqual(unmarriedFlexCut({items:[{profileId:'a',planned:40000,amount:40000},{profileId:'b',planned:40000,amount:29000}]},cutAmounts),null,'FR-81: Unter dem Grundbedarfsanteil bleibt es Ruin');
-assertEqual(unmarriedFlexCut({items:[{profileId:'a',planned:40000,amount:30000}]},{payout:20000,incomeConsumed:20000,netFloorYear:30000,floor:50000}),null,'FR-81: Liegt der Grundbedarf über dem Plan, ist jeder fehlende Euro Grundbedarf');
-same(unmarriedFlexCut({items:[{profileId:'a',planned:40000,amount:40000}]},{payout:30000,incomeConsumed:20000,netFloorYear:35000,floor:55000}),[],'FR-81: Ganzer Plan gezahlt, Rest nicht verteilt: kein persönlicher Ruin');
-same(unmarriedFlexCut({items:[{profileId:'a',planned:50000,amount:25000}]},{payout:20000,incomeConsumed:30000,netFloorYear:0,floor:20000}),[{profileId:'a',amount:25000}],'FR-81: Verbrauchte Einkünfte über dem Floor zählen nur bis zum Floor als Grundbedarf');
+const account=(items,amounts,care=[])=>unmarriedPayoutAccounting({items:items.map((item,i)=>({profileId:item.profileId,care:care[i]||0}))},{items},amounts)
+    .map(row=>({profileId:row.profileId,floorGap:Math.round(row.floorGap),careAid:Math.round(row.careAid),flexCut:Math.round(row.flexCut)}));
+same(account([{profileId:'a',planned:40000,amount:40000},{profileId:'b',planned:40000,amount:32000}],cutAmounts)[1],{profileId:'b',floorGap:0,careAid:0,flexCut:8000},'FR-81: B zahlt ihren Grundbedarfsanteil (30.000 €), nur 8.000 € Flex fehlen');
+same(account([{profileId:'a',planned:40000,amount:40000},{profileId:'b',planned:40000,amount:29000}],cutAmounts)[1],{profileId:'b',floorGap:1000,careAid:0,flexCut:10000},'FR-84: Unter dem Grundbedarfsanteil fehlen 1.000 € Grundbedarf (Partner deckt), der Flex ist ganz gekürzt');
+same(account([{profileId:'a',planned:40000,amount:30000}],{payout:20000,incomeConsumed:20000,netFloorYear:30000,floor:50000})[0],{profileId:'a',floorGap:10000,careAid:0,flexCut:0},'FR-81: Liegt der Grundbedarf über dem Plan, ist jeder fehlende Euro Grundbedarf');
+same(account([{profileId:'a',planned:50000,amount:25000}],{payout:20000,incomeConsumed:30000,netFloorYear:0,floor:20000})[0],{profileId:'a',floorGap:0,careAid:0,flexCut:25000},'FR-81: Verbrauchte Einkünfte über dem Floor zählen nur bis zum Floor als Grundbedarf');
+same(account([{profileId:'a',planned:30000,amount:30000},{profileId:'b',planned:50000,amount:41000}],{payout:80000,incomeConsumed:0,netFloorYear:70000,floor:70000},[0,20000])[1],{profileId:'b',floorGap:0,careAid:4000,flexCut:5000},'FR-84: Erst Grundbedarf, dann Pflege, dann Flex; fehlende Pflege trägt der Staat');
 {
     // FR-81: Das Handlungs-ⓘ nennt die Flex-Kürzung je Person wie einen Rückgriff.
     const { protocolActionExplanation }=await import('../app/simulator/protocol-renderer.js');

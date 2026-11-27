@@ -3,6 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
+import { HISTORICAL_END_YEAR } from './lib/historical-end-year.mjs';
+import { GRUNDBESTAND_END_YEAR } from './lib/jahresdaten/grundbestand.mjs';
+import { fortschreibungAnwenden } from './lib/jahresdaten/fortschreibung.mjs';
+import * as goldKette from './lib/jahresdaten/ketten/gold.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIRECTORY, '..');
@@ -22,8 +26,10 @@ const OUTPUT_PATH = path.join(
 const VERIFY_ONLY = process.argv.includes('--verify-only');
 
 const START_YEAR = 1925;
-const END_YEAR = 2025;
-const EXPECTED_YEAR_COUNT = END_YEAR - START_YEAR + 1;
+const END_YEAR = HISTORICAL_END_YEAR;
+// Die Originale bauen den Grundbestand bis GRUND_END_YEAR; spätere Jahre bis END_YEAR kommen aus den Jahreslieferungen.
+const GRUND_END_YEAR = GRUNDBESTAND_END_YEAR;
+const EXPECTED_YEAR_COUNT = GRUND_END_YEAR - START_YEAR + 1;
 const TROY_OUNCES_PER_KILOGRAM = 32.15074656862798;
 const DEM_PER_EUR = 1.95583;
 
@@ -396,10 +402,10 @@ function readWorldBankAnnualGoldUsd() {
     const values = {};
     for (const row of rows.slice(headerRowIndex + 2)) {
         const year = Number(row[0]);
-        if (!Number.isInteger(year) || year < 1999 || year > END_YEAR) continue;
+        if (!Number.isInteger(year) || year < 1999 || year > GRUND_END_YEAR) continue;
         values[year] = positiveNumber(row[goldColumn], `World Bank Gold ${year}`);
     }
-    for (let year = 1999; year <= END_YEAR; year += 1) {
+    for (let year = 1999; year <= GRUND_END_YEAR; year += 1) {
         if (!Number.isFinite(values[year])) {
             fail('World Bank annual gold observation is missing', { year });
         }
@@ -423,7 +429,7 @@ function selectObservations(values, predicate) {
 
 function buildZeroObservations(annualReturnsPct, jstUsdRates) {
     const observations = [];
-    for (let year = START_YEAR; year <= END_YEAR; year += 1) {
+    for (let year = START_YEAR; year <= GRUND_END_YEAR; year += 1) {
         const value = annualReturnsPct[year];
         const isBridgeYear = year >= 1945 && year <= 1950;
         if (isBridgeYear && value !== 0) {
@@ -465,16 +471,7 @@ function buildZeroObservations(annualReturnsPct, jstUsdRates) {
 }
 
 function annualReturnPct(currentLevel, previousLevel, year) {
-    const value = ((currentLevel / previousLevel) - 1) * 100;
-    if (!Number.isFinite(value) || value <= -100) {
-        fail('Calculated annual gold return is invalid', {
-            year,
-            currentLevel,
-            previousLevel,
-            value
-        });
-    }
-    return Object.is(value, -0) ? 0 : value;
+    return goldKette.goldRenditeProzent(currentLevel, previousLevel, year, fail);
 }
 
 function buildAnnualReturns() {
@@ -489,7 +486,7 @@ function buildAnnualReturns() {
         SOURCE_FILES.bundesbankUsdEur,
         'BBEX3.A.USD.EUR.BB.AC.A04',
         1999,
-        2025
+        GRUND_END_YEAR
     );
     const worldBankGoldUsd = readWorldBankAnnualGoldUsd();
     const annualReturnsPct = {};
@@ -536,10 +533,10 @@ function buildAnnualReturns() {
         gold1998EurPerTroyOunce,
         1999
     );
-    for (let year = 2000; year <= END_YEAR; year += 1) {
+    for (let year = 2000; year <= GRUND_END_YEAR; year += 1) {
         annualReturnsPct[year] = annualReturnPct(
-            worldBankGoldUsd[year] / bundesbankUsdEur[year],
-            worldBankGoldUsd[year - 1] / bundesbankUsdEur[year - 1],
+            goldKette.goldEurJeUnze(worldBankGoldUsd[year], bundesbankUsdEur[year]),
+            goldKette.goldEurJeUnze(worldBankGoldUsd[year - 1], bundesbankUsdEur[year - 1]),
             year
         );
     }
@@ -621,7 +618,7 @@ function buildArtifact() {
         label: 'Gold annual return proxy in German investor currency',
         coverage: {
             startYear: START_YEAR,
-            endYear: END_YEAR,
+            endYear: GRUND_END_YEAR,
             yearCount: EXPECTED_YEAR_COUNT
         },
         unit: 'percent_per_year',
@@ -653,7 +650,7 @@ function buildArtifact() {
                 },
                 {
                     startYear: 2000,
-                    endYear: 2025,
+                    endYear: GRUND_END_YEAR,
                     convention: 'annual_average_world_bank_gold_divided_by_annual_average_usd_eur'
                 }
             ],
@@ -683,7 +680,7 @@ function buildArtifact() {
             },
             {
                 startYear: 1999,
-                endYear: 2025,
+                endYear: GRUND_END_YEAR,
                 value: 'EUR',
                 conversion: 'World Bank USD per troy ounce divided by Bundesbank/ECB USD per EUR annual average'
             }
@@ -745,7 +742,7 @@ function buildArtifact() {
             },
             {
                 startYear: 2000,
-                endYear: 2025,
+                endYear: GRUND_END_YEAR,
                 evidenceClass: 'derived',
                 sourceSeries: 'World Bank Gold USD/troy ounce divided by Bundesbank/ECB USD/EUR annual averages'
             }
@@ -831,28 +828,13 @@ function buildArtifact() {
 }
 
 function renderModule(artifact) {
-    return Buffer.from(`/**
- * Generated by scripts/build-gold-german-investor-chain.mjs.
- * Do not edit by hand.
- */
-"use strict";
-
-function deepFreeze(value, seen = new WeakSet()) {
-    if (value === null || typeof value !== 'object' || seen.has(value)) return value;
-    seen.add(value);
-    for (const child of Object.values(value)) deepFreeze(child, seen);
-    return Object.freeze(value);
-}
-
-export const GOLD_GERMAN_INVESTOR_CHAIN = deepFreeze(${JSON.stringify(artifact, null, 2)});
-
-export const GOLD_GERMAN_INVESTOR_ANNUAL_RETURNS =
-    GOLD_GERMAN_INVESTOR_CHAIN.annualReturnsPct;
-`, 'utf8');
+    const [[, text]] = goldKette.schreiben(artifact);
+    return Buffer.from(text, 'utf8');
 }
 
 function main() {
-    const artifact = buildArtifact();
+    // Jahre nach dem Grundbestand hängt dieselbe Fortschreibung an wie `npm run jahresdaten -- <Jahr> --uebernehmen`.
+    const artifact = fortschreibungAnwenden(goldKette, buildArtifact(), { root: PROJECT_ROOT, endYear: END_YEAR });
     const generated = renderModule(artifact);
 
     if (VERIFY_ONLY) {

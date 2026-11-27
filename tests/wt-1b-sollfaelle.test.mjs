@@ -1,30 +1,17 @@
 // WT-1b (Nachschritt zu WT-1, Gutachten WT1-FABLE): Sollfälle als dauerhafte Node-Tests, wo möglich über den echten Renderer.
 // Nur synthetische Beispieldaten.
-import { EngineAPI } from '../engine/index.mjs';
 import { MockDocument } from './helpers/balance-page-fixture.mjs';
 import { renderCard, editRegistry, clean } from './helpers/wt-1-balance-render.mjs';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { ANNUAL_PLAN_RECORD_KEY } from '../app/profile/annual-plan-record.js';
 import { projectAnnualTodoPlan, projectCashRefill, cashRefillMonthlyBase, saleEntryHref, stockTrancheId } from '../app/balance/annual-todo.js';
-import { createTodoPlan, createTodoResult, createCashRefill, createHiddenBearBlock, createPlanProgressNote, createPlanDetails } from '../app/shared/annual-todo-view.js';
+import { createTodoPlan, createTodoResult, createCashRefill, createPlanProgressNote, createPlanDetails } from '../app/shared/annual-todo-view.js';
 import { describePlanAction } from '../app/balance/balance-action-summary.js';
-import { prepareMarketPreview, projectMarketPreview, planMainAction, unavailableBudgetComparison, hiddenBearPricesUnreliable } from '../app/balance/balance-market-preview.js';
+import { unavailableMarketPreview, highPriceProblem } from '../app/balance/balance-market-preview.js';
 import { renderBalanceMarketPreview } from '../app/balance/balance-market-preview-renderer.js';
-import { createAnnualMarketChoice } from '../app/shared/annual-market-choice.js';
 import { projectBalanceActionOrigin } from '../app/balance/balance-action-origin.js';
-import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input-storage.js';
-import { planScope } from '../app/profile/household-plan.js';
-import { annualTestMarketData as marketData, annualTestNow as now } from './helpers/balance-storage-fixtures.mjs';
-import { annualRecordStorage, computeAnnualPlanUpdate } from '../app/balance/balance-annual-storage.js';
-import { projectAnnualMarketReadings } from '../app/balance/balance-annual-market-preview.js';
-import { emptyHistorySymbol, historyDay, DAILY_PRICES_KEY } from '../app/tranches/tranchen-history-store.js';
-import { createAnnualCloseDialog } from '../app/shared/annual-close-dialog.js';
-import { evaluateAnnualPlanPreview } from '../app/shared/annual-plan-editor.js';
-import { projectAnnualPreview } from '../app/balance/balance-annual-preview.js';
 import { createAnnualTodoResult } from '../app/shared/annual-close-result.js';
-import { createDialogFixture, prepareCloseFixture } from './close-dialog.test.mjs?fixture';
-import { captureCashPeople } from '../app/profile/profile-cash-update.js';
-import { displayMonthlyDown } from '../app/shared/display-rounding.js';
+import { createDialogFixture } from './close-dialog.test.mjs?fixture';
 import { initTranchenManagerPage, startTranchenManagerPage, openManagerOverviewTarget } from '../app/tranches/tranchen-manager-page.js';
 import { PersistenceFacade } from '../app/shared/persistence-facade.js';
 import { createTranchenPageDom, createLocalStorageMock, installGlobals, MockElement, addManagerDialogDom } from './tranchen-manager-page.test.mjs';
@@ -100,15 +87,8 @@ function planDone(records, cash) {
         assert(helga.card.includes('Anleihen verkaufen') && !helga.card.includes('Handlung prüfen'), `Soll 2: Helga und Werner (${variant}) mit passendem Verb`);
     }
     const action = beleg(createMusterHaushaltRecords('2026-10-23', 'renate')).adopted.action;
-    const main = planMainAction(action);
-    assertEqual(main.text, 'Anleihen verkaufen', 'Soll 2: Bärenblock und Wahl nehmen dasselbe Verb');
-    assertEqual(Math.round(main.netAmount), 44448, 'Soll 2: mit Netto-Betrag');
     const result = text(createTodoResult(new MockDocument(), projectAnnualTodoPlan({ confirmed: { year: 2026, action }, people: [{ id: 'muster_renate', name: 'Renate' }] })));
     assert(result.includes('Anleihen verkaufenca. 45.000 €netto') && !result.includes('Handlung prüfen'), 'Soll 2: Ergebnis im Jahresabschluss mit demselben Verb (44.448 € aufgerundet, „ca.“ wie die Karte)');
-    const variant = monthlyBudget => ({ monthlyBudget, mainAction: main });
-    const choice = text(createAnnualMarketChoice(new MockDocument(), { yearEndDate: '2025-12-31', high: { high: { value: 165.79, asOf: '2026-08-12' } },
-        comparison: { rule: variant(3000), high: variant(2900), difference: { monthlyBudget: -100 } } }, null, () => {}));
-    assert(choice.includes('Anleihen verkaufen 45.000 €') && !choice.includes('Handlung prüfen'), 'Soll 2: Wahl mit Verb und Betrag (44.448 € aufgerundet)');
     assertEqual(describePlanAction({ type: 'TRANSACTION', quellen: [], verwendungen: { bonds: 5000 } }).verb, 'Anleihen kaufen', 'Soll 2: reiner Anleihekauf');
 }
 
@@ -136,34 +116,22 @@ function planDone(records, cash) {
     assertEqual(october.previewYear, 2026, 'Soll 5: im Oktober 2026 ist der nächste Abschluss „Jahr 2026“');
 }
 
-// Soll 6 (P3-7): Kurse nicht belastbar → genau eine kleine Zeile; sonst nichts zum Jahreshoch.
+// Soll 6 (P3-7): Kurse nicht belastbar → genau eine kleine Zeile; sonst nichts zum Allzeithoch in „Was zu tun ist“ (FR-89).
 {
     const stale = await renderCard(createMusterHaushaltRecords('2026-10-23', 'max-erika'), '2026-11-12');
-    assertEqual(stale.market, 'Kurse älter als 10 Tage – verdeckter Bärenmarkt nicht prüfbar · Kurse holen →', `Soll 6: Zeile bei alten Kursen (${stale.market})`);
+    assertEqual(stale.market, 'Kurse älter als 10 Tage – Allzeithoch nicht belastbar · Kurse holen →', `Soll 6: Zeile bei alten Kursen (${stale.market})`);
     const link = walk(stale.doc.getElementById('balanceMarketPreviewBody')).find(node => node.tagName?.toLowerCase() === 'a');
     assertEqual(link?.getAttribute('href'), 'Daten-Sicherung.html#kursdienst', 'Soll 6: „Kurse holen →“ führt zum Kursdienst');
     const fresh = await renderCard(createMusterHaushaltRecords('2026-10-23', 'max-erika'));
-    assertEqual(fresh.market, '', 'Soll 6: frische Kurse ohne verdeckten Bären → nichts zum Jahreshoch');
-    const other = { withoutQuote: true, withoutQuoteReason: 'Das Projektionsjahr ist bereits abgeschlossen.', quote: null, yearEndDate: null, readingsEqual: true,
-        comparison: unavailableBudgetComparison('Das Projektionsjahr ist bereits abgeschlossen.') };
-    assert(!hiddenBearPricesUnreliable(other), 'Soll 6: andere Gründe ohne Kurszeile');
+    assertEqual(fresh.market, '', 'Soll 6: frische Kurse → keine Zeile');
+    const other = unavailableMarketPreview('Das Projektionsjahr ist bereits abgeschlossen.');
+    assertEqual(highPriceProblem(other), null, 'Soll 6: andere Gründe ohne Kurszeile');
     const doc = new MockDocument();
     renderBalanceMarketPreview(doc, other);
     assert(doc.getElementById('balanceMarketPreview').hidden, 'Soll 6: andere Gründe → nichts');
 }
 
 // Soll 7 (P3-8): Kaufpläne mit neutralen Sätzen.
-const bearView = (() => {
-    const records = createMusterHaushaltRecords('2026-12-15', 'max-erika');
-    const registry = JSON.parse(records.rs_profiles_v1);
-    const calc = buildBalanceEngineInputFromStorage({ storage: { getItem: key => records[key] ?? null }, scope: planScope('household', Object.keys(registry.profiles)), referenceYear: 2026 });
-    const day = date => Date.parse(`${date}T00:00:00Z`) / 86400000, dates = ['2025-12-31', '2026-03-31', '2026-08-12', '2026-12-14'];
-    const prices = { version: 1, symbols: { 'VWCE.DE': { currency: 'EUR', days: dates.map(day), closes: [120, 140, 165.79, 126], queried: [[day(dates[0]), day(dates[3])]] } } };
-    const prepared = prepareMarketPreview({ inputs: { endeVJ: 120, endeVJ_1: 100, endeVJ_2: 90, endeVJ_3: 80, ath: 120, jahreSeitAth: 0 }, dailyPrices: /** @type {any} */ (prices),
-        today: '2026-12-15', yearEndDate: '2025-12-31', hasAnnualClose: true });
-    const run = market => EngineAPI.simulateSingleYear({ ...structuredClone(calc.engineInput), ...market }, structuredClone(calc.engineLastState));
-    return projectMarketPreview(prepared, { stored: run(prepared.inputs), rule: run(prepared.ruleInputs), high: run(prepared.highInputs) });
-})();
 {
     const sophie = await renderCard(createMusterHaushaltRecords('2026-10-23', 'sophie'));
     assert(sophie.card.includes('Die App bucht nichts – du entscheidest, wann du kaufst.') && !sophie.card.includes('wann du verkaufst'), 'Soll 7: Kaufplan in der Karte neutral');
@@ -172,55 +140,6 @@ const bearView = (() => {
     const result = text(createTodoResult(new MockDocument(), plan));
     assert(!result.includes('Den Stand verfolgst du') && result.includes('du entscheidest, wann du kaufst'), 'Soll 7: Ergebnis ohne „Stand“ bei Kaufplänen');
     assert(createPlanDetails(new MockDocument(), plan, action).text.includes('wann du kaufst'), 'Soll 7: Details & Drucken neutral');
-    assert(text(createHiddenBearBlock(new MockDocument(), bearView)).includes('Verkauf im Januar'), 'Soll 7: Verkauf bleibt „Verkauf im Januar“');
-    const buying = structuredClone(bearView);
-    for (const key of ['rule', 'high']) buying.comparison[key].mainAction = { type: 'TRANSACTION', text: 'Aktien kaufen', netAmount: 9400 };
-    const buyText = text(createHiddenBearBlock(new MockDocument(), buying));
-    assert(buyText.includes('Kauf im Januar') && !buyText.includes('Verkauf im Januar'), 'Soll 7: Kauf heißt im Bärenblock „Kauf im Januar“');
-}
-
-// Soll 8 (P3-10): Wahl im Schritt „Plan“ rechnet mit geänderten Planwerten; offen steht „Monatsbudget J+1 · nach deiner Wahl“.
-{
-    const key = 'ruhestandsmodellValues_v29_guardrails';
-    const records = createMusterHaushaltRecords('2026-12-15');
-    const state = JSON.parse(records[key]);
-    state.annualPeriodMetadata.pendingCommit = { periodId: 'calendar-year:2026', snapshotId: 'wt1b-before', phase: 'writes_started' };
-    records[key] = JSON.stringify(state);
-    const storage = annualRecordStorage(records), draft = computeAnnualPlanUpdate({ targetYear: 2026, marketData, storage, now });
-    const days = ['2025-12-31', '2026-06-15', '2026-12-31'].map(historyDay);
-    storage.setItem(DAILY_PRICES_KEY, JSON.stringify({ version: 1, symbols: { 'VWCE.DE': { ...emptyHistorySymbol(), currency: 'EUR', days, closes: [150, 250, 160.2], queried: [[days[0], days[2]]] } } }));
-    const { doc } = createDialogFixture(); let binding;
-    const calls = [];
-    const model = { occasion: { previousYear: 2026, previousMonth: 12 }, expenses: { complete: true } };
-    const people = captureCashPeople({ storage, registry: JSON.parse(records.rs_profiles_v1), activeId: records.rs_current_profile, ids: draft.scope.ids });
-    const ui = createAnnualCloseDialog({ document: doc, getModel: () => model, isCommitActive: () => false,
-        projectMarketReadings: opts => projectAnnualMarketReadings({ ...opts, storage, engineLoader: { load: async () => EngineAPI } }),
-        projectPreview: opts => projectAnnualPreview({ ...opts, storage }),
-        evaluatePlan: async opts => { const result = await evaluateAnnualPlanPreview({ ...opts, storage, now, engineLoader: { load: async () => EngineAPI } }); calls.push({ opts, result }); return result; } });
-    const pending = ui.showAnnualPreparation({ targetYear: 2026, model, people, onReady: handle => { binding = handle; } });
-    binding.updateMarketData({ values: marketData, errors: {} });
-    const settle = () => new Promise(resolve => setTimeout(resolve, 40));
-    await settle(); await prepareCloseFixture(doc, { marketReading: null }); await settle(); binding.activate('preview'); await settle();
-    const all = () => walk(doc.body);
-    const summaryBudget = () => {
-        const term = all().find(node => node.tag === 'dt' && /^Monatsbudget \d{4}$/.test(node.textContent));
-        return term ? `${term.textContent} · ${term.parent.children.find(node => node.tag === 'dd').textContent}` : null;
-    };
-    const option = id => clean(all().find(node => node.dataset?.annualMarketReading === id).parent.children.map(node => node.textContent).join(''));
-    assertEqual(summaryBudget(), 'Monatsbudget 2027 · nach deiner Wahl', 'Soll 8: offene Wahl → „Monatsbudget 2027 · nach deiner Wahl“');
-    const before = option('year_high');
-    const floor = doc.getElementById('annualPlan_floorBedarf'); floor.value = '35.000'; await floor.fire('input');
-    for (let turn = 0; turn < 50 && option('year_high') === before; turn++) await settle();
-    const changed = calls.filter(call => call.opts.adoptedPlanPatch && call.opts.yearHigh).at(-1);
-    assert(changed, 'Soll 8: Wahl rechnet mit den geänderten Planwerten');
-    // FR-78: Wahl und Zusammenfassung zeigen das Monatsbudget abgerundet nach der Monatsstaffel.
-    const money = value => `${Math.round(displayMonthlyDown(value)).toLocaleString('de-DE')} €`;
-    assert(option('year_high') !== before && option('year_high').includes(`Monatsbudget ${money(changed.result.adopted.monthlyBudget)}`), `Soll 8: Betrag der Wahl neu (${before} → ${option('year_high')})`);
-    assertEqual(summaryBudget(), 'Monatsbudget 2027 · nach deiner Wahl', 'Soll 8: auch nach der Änderung offen');
-    const radio = all().find(node => node.dataset?.annualMarketReading === 'year_high'); radio.checked = true; await radio.fire('change');
-    for (let turn = 0; turn < 50 && !/€$/.test(summaryBudget() || ''); turn++) await settle();
-    assertEqual(clean(summaryBudget()), `Monatsbudget 2027 · ${money(changed.result.adopted.monthlyBudget)}`, 'Soll 8: nach der Wahl derselbe Betrag wie an der Wahl');
-    binding.close(true); await pending.catch(() => null);
 }
 
 // Soll 9 (P3-4): Details & Drucken mit ISIN und Cent.
@@ -248,8 +167,13 @@ const bearView = (() => {
 
 // Gutachten WT1-FABLE Befund 11: Rückfall im Rendern. Ein Beleg, dessen Liquiditätsquelle den heutigen Bestand übersteigt,
 // lässt die Aufbereitung werfen; Reserven rechnen dann neu, die Karte zeigt weiter den Beleg, die Seite bricht nicht ab.
-{
-    const records = createMusterHaushaltRecords('2026-10-23', 'max-erika');
+// ATH-1b (FR-89, Ergänzung 3): Der Kurs liegt höchstens 5 % unter dem Tageshoch der Spielkurse vom 12.08.2026 und gilt als
+// Höchststand (heiß gelaufen); nach ATH-1 ohne Grundrauschen waren es 125.000 € und 124.363 €.
+for (const [variant, expected, planText] of [
+    ['grund', 'nach Umsetzung180.000 €', 'Aktien verkaufenca. 90.000 €'],
+    ['teilweise', 'nach Umsetzung179.363 €', 'Noch offen']
+]) {
+    const records = createMusterHaushaltRecords('2026-10-23', 'max-erika', variant);
     const record = JSON.parse(records[ANNUAL_PLAN_RECORD_KEY]), entry = Object.values(record.entries)[0];
     entry.adopted.action.quellen.push({ kind: 'liquiditaet', source: 'Liquidität', sourceProfileId: 'muster_a', sourceProfileName: 'Max', brutto: 5000000, steuer: 0, netto: 5000000 });
     entry.adopted.action.verwendungen.aktien = 5000000;
@@ -258,6 +182,6 @@ const bearView = (() => {
     let shown = null;
     try { shown = await renderCard(records); } finally { console.warn = warn; }
     assertEqual(warned, 1, 'Befund 11: Aufbereitung des Belegs wirft, der Rückfall greift');
-    assert(shown.values.includes('nach Umsetzung180.500 €'), `Befund 11: Reserven mit der Neuberechnung (179.185 €, angezeigt 180.500 €, nicht 179.500 € aus dem Beleg) (${shown.values})`);
-    assert(shown.card.includes('Aktien verkaufenca. 89.500 €'), 'Befund 11: Karte zeigt weiter den Beleg (ca. 89.500 €)');
+    assert(shown.values.includes(expected), `Befund 11: Reserven mit dem gerundeten Verkauf aus der Neuberechnung (${shown.values})`);
+    assert(shown.card.includes(planText), `Befund 11: Karte zeigt weiter den Beleg (${variant})`);
 }

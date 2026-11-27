@@ -1,7 +1,7 @@
 /** @import * as P from "../../typcheck/profile-ui.js" */
 import { readBoundHouseholdPlanField } from '../shared/household-plan-fields.js';
 import { appNow } from '../shared/app-clock.js';
-import { PersistenceFacade, persistenceStorage } from '../shared/persistence-facade.js';
+import { PersistenceFacade, persistenceStorage, syncWriteBlockMessage } from '../shared/persistence-facade.js';
 import { isValidLiquidityRunwayYears } from '../../types/liquidity-runway-contract.js';
 import { validateLongevitySettings } from '../simulator/dynamic-flex-longevity-contract.js';
 import { loadProfileRegistry } from './profile-registry.js';
@@ -51,24 +51,20 @@ export const BALANCE_PLAN_INPUT_KEYS = Object.freeze([...PLAN_FIELDS, 'capeRatio
     'entnahmeStrategie', 'bondTargetFactor', 'drawdownTrigger', 'bondRefillThreshold']);
 
 /** Explizite Einzelpläne lesen; vorhandene Einpersonen-Haushaltspläne behalten ihren Bereich. */
-/** @param {string[]} ids @param {import("../../typcheck/datenvertraege.js").RecordReader} storage @param {boolean} [belongsToHousehold] @returns {import("../../typcheck/datenvertraege.js").PlanScope|null} */
-export function memberPlanScope(ids, storage, belongsToHousehold = true) {
+/** @param {string[]} ids @param {import("../../typcheck/datenvertraege.js").RecordReader} storage @returns {import("../../typcheck/datenvertraege.js").PlanScope|null} */
+export function memberPlanScope(ids, storage) {
     const single = ids.length === 1 ? planScope('single', ids) : null;
     return single && readHouseholdPlan({ scope: single, storage }).status === 'valid'
-        ? single : planScope(belongsToHousehold ? 'household' : 'single', ids);
+        ? single : planScope('household', ids);
 }
 
 /** Gemeinsame Bereichsauswahl; der Aufrufer entscheidet über ungültige Pläne. */
 /** @param {P.SelectedPlanOptions} [options] */
-function readSelectedHouseholdPlan({ storage = persistenceStorage, profileId = null } = {}) {
+function readSelectedHouseholdPlan({ storage = persistenceStorage } = {}) {
     const loaded = loadProfileRegistry(storage);
     if (['corrupt', 'unavailable'].includes(loaded.status)) throw loaded.error || new Error('Profilbestand nicht lesbar.');
-    const profiles = loaded.value?.profiles || {};
-    const members = Object.keys(profiles).filter(id => profiles[id].meta?.belongsToHousehold !== false);
-    const current = profileId || storage.getItem('rs_current_profile');
-    const scope = profileId && profiles[profileId]?.meta?.belongsToHousehold === false
-        ? planScope('single', [profileId])
-        : members.length ? memberPlanScope(members, storage) : current ? planScope('single', [current]) : null;
+    const members = Object.keys(loaded.value?.profiles || {});
+    const scope = members.length ? memberPlanScope(members, storage) : null;
     const plan = readHouseholdPlan({ scope, storage });
     return { ...plan, scope };
 }
@@ -81,8 +77,7 @@ export function readBalanceHouseholdPlan(options = {}) {
     return plan;
 }
 
-/** Simulator rechnet den ausgewählten Haushalt, ohne Auswahl die geöffnete Person.
- * Ein expliziter Außenbereich bleibt unabhängig vom gemeinsamen Haushalt.
+/** Simulator rechnet den Haushalt; ohne Profil gibt es keinen Planbereich.
  * Der ungültige Status erlaubt dem Zustandsbesitzer, Planverlust zu synchronisieren.
  */
 /** @param {P.SelectedPlanOptions} [options] @returns {P.PlanRead & {scope: import("../../typcheck/datenvertraege.js").PlanScope|null}} */
@@ -97,7 +92,7 @@ export const SIMULATOR_PLAN_FIELD_MAP = Object.freeze({
     drawdownTrigger: 'decumulation.drawdownTrigger', bondRefillThreshold: 'decumulation.bondRefillThreshold'
 });
 export const SIMULATOR_LEGACY_PLAN_FIELDS = Object.freeze([...Object.keys(SIMULATOR_PLAN_FIELD_MAP),
-    'householdWithdrawalMode', 'runwayTargetMonths', 'runwayMinMonths']);
+    'householdWithdrawalMode']);
 
 /** Nur vorhandene Formularfelder projizieren; unsichtbare Werte bleiben im Plan.
  * Zahlen werden validiert, niemals still begrenzt oder durch Defaults ersetzt.
@@ -159,7 +154,7 @@ export function stripBalancePlanInputs(inputs) {
 export function stageBalancePlanPatch({ scope, patch, storage = persistenceStorage,
     persistence = PersistenceFacade, now = appNow, navigationOperation } = {}) {
     navigationOperation?.check();
-    if (persistence.hasSyncWriteBlocks?.() || globalThis.window?.__profileRecoveryBlocker) throw new Error('Planänderung wegen Wiederherstellung gesperrt.');
+    if (persistence.hasSyncWriteBlocks?.() || globalThis.window?.__profileRecoveryBlocker) throw new Error(syncWriteBlockMessage());
     assertPlanScope(scope);
     if (!plain(patch) || Object.keys(patch).some(key => !PLAN_FIELDS.includes(key))) throw new Error('Unbekanntes Planfeld.');
     const loaded = readHouseholdPlan({ scope, storage });
@@ -329,7 +324,7 @@ export async function patchHouseholdPlan({ scope, patch, storage = persistenceSt
     if (!plain(patch) || Object.keys(patch).some(key => !PLAN_FIELDS.includes(key))) throw new Error('Unbekanntes Planfeld.');
     const check = () => {
         navigationOperation?.check();
-        if (persistence.hasSyncWriteBlocks?.()) throw new Error('Planänderung gesperrt. Bitte den bestätigten Bestand wiederherstellen.');
+        if (persistence.hasSyncWriteBlocks?.()) throw new Error(syncWriteBlockMessage());
         if (!isCurrent()) throw new Error('Planbereich hat sich geändert.');
     };
     check();

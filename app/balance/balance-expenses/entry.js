@@ -58,7 +58,6 @@ export function initExpensesTab(domRefs, options = {}) {
     context.detailTarget = null;
     context.recoveryOptions = createDefaultRecoveryOptions(options);
     context.onChange = typeof options.onChange === 'function' ? options.onChange : null;
-    context.onImportSuccess = typeof options.onImportSuccess === 'function' ? options.onImportSuccess : null;
     context.pendingImport = null;
     state.profileIds = [];
     state.recoveryExported = false;

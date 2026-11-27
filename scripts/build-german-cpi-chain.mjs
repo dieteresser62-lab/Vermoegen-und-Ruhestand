@@ -3,6 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
+import { HISTORICAL_END_YEAR } from './lib/historical-end-year.mjs';
+import { currentTableAnnualRates, currentTableConstruction } from './lib/german-cpi-current-table.mjs';
+import { GRUNDBESTAND_END_YEAR } from './lib/jahresdaten/grundbestand.mjs';
+import { fortschreibungAnwenden } from './lib/jahresdaten/fortschreibung.mjs';
+import * as inflationKette from './lib/jahresdaten/ketten/inflation.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIRECTORY, '..');
@@ -15,6 +20,11 @@ const DATA_DIRECTORY = path.join(
 const ORIGINAL_DATA_DIRECTORY = path.join(DATA_DIRECTORY, 'originals');
 const OUTPUT_PATH = path.join(PROJECT_ROOT, 'app', 'simulator', 'german-cpi-chain.js');
 const VERIFY_ONLY = process.argv.includes('--verify-only');
+const END_YEAR = HISTORICAL_END_YEAR;
+// Die Originale bauen den Grundbestand bis GRUND_END_YEAR; spätere Jahre bis END_YEAR kommen aus den Jahreslieferungen.
+const GRUND_END_YEAR = GRUNDBESTAND_END_YEAR;
+// Die gepinnte Langreihe (Stand 2025-06) endet 2024; alle Jahre danach bis zum Endjahr liefert die aktuelle Jahrestabelle.
+const LONG_SERIES_LAST_YEAR = 2024;
 const DESTATIS_ROUNDED_LEVEL_RATE_TOLERANCE_PP = 0.05;
 const JST_PROXY_REFERENCE_YEAR = 1938;
 const JST_PROXY_REFERENCE_LEVEL = 126;
@@ -330,29 +340,7 @@ function validatePublishedRate(levelRecords, rateRecords, territory, household, 
 }
 
 function extractCurrentDestatisValue(html, entryId, expectedCaptionText, year) {
-    const entryMarker = `<div class="c-toggle__entry" id="${entryId}">`;
-    const entryIndex = html.indexOf(entryMarker);
-    if (entryIndex < 0) fail('Destatis HTML table entry is missing', { entryId });
-    const captionIndex = html.indexOf('<caption>Verbraucherpreisindex für Deutschland', entryIndex);
-    const tableEndIndex = html.indexOf('</table>', captionIndex);
-    if (captionIndex < 0 || tableEndIndex < 0) {
-        fail('Destatis HTML total-index table is missing', { entryId });
-    }
-    const table = html.slice(captionIndex, tableEndIndex);
-    if (!table.includes(expectedCaptionText)) {
-        fail('Destatis HTML table caption is unexpected', { entryId, expectedCaptionText });
-    }
-    const rowMatch = table.match(new RegExp(
-        `<th[^>]*scope="row"[^>]*>${year}</th>[\\s\\S]*?<td>([^<]+)</td>`
-    ));
-    if (!rowMatch) fail('Destatis HTML annual value is missing', { entryId, year });
-    const value = Number(rowMatch[1].trim().replace(',', '.'));
-    if (!Number.isFinite(value)) fail('Destatis HTML annual value is invalid', {
-        entryId,
-        year,
-        rawValue: rowMatch[1]
-    });
-    return value;
+    return inflationKette.extractCurrentDestatisValue(html, entryId, expectedCaptionText, year, fail);
 }
 
 const sourceBuffers = Object.fromEntries(Object.entries(SOURCE_FILES).map(([sourceId, source]) => [
@@ -396,41 +384,23 @@ const rateRecords = rowsToRecords(
     'csv-611xx-02'
 );
 const currentHtml = sourceBuffers.destatisCurrent.toString('utf8');
-const current2025Level = extractCurrentDestatisValue(
-    currentHtml,
-    '236128',
-    '2020=100',
-    2025
-);
-const current2025Rate = extractCurrentDestatisValue(
-    currentHtml,
-    '236130',
-    'Veränderungsraten zum Vorjahr in %',
-    2025
-);
-if (current2025Level !== 121.9 || current2025Rate !== 2.2) {
-    fail('Pinned Destatis current values changed unexpectedly', {
-        current2025Level,
-        current2025Rate
-    });
-}
-const longSeries2024Level = destatisValue(
+const longSeriesLastLevel = destatisValue(
     levelRecords,
     'Deutschland',
     'Verbraucherpreisindex',
-    2024,
-    'Destatis Germany CPI 2024 level'
+    LONG_SERIES_LAST_YEAR,
+    `Destatis Germany CPI ${LONG_SERIES_LAST_YEAR} level`
 );
-if (
-    Math.abs((((current2025Level / longSeries2024Level) - 1) * 100) - current2025Rate)
-    > DESTATIS_ROUNDED_LEVEL_RATE_TOLERANCE_PP
-) {
-    fail('Destatis 2025 published rate is inconsistent with the annual-average levels', {
-        longSeries2024Level,
-        current2025Level,
-        current2025Rate
-    });
-}
+// Jedes Folgejahr: Plausibilitätsrahmen statt fester Werte und Rate gegen die Änderung der Jahresdurchschnitte.
+const currentTableRates = currentTableAnnualRates({
+    longSeriesLastYear: LONG_SERIES_LAST_YEAR,
+    longSeriesLastLevel,
+    endYear: GRUND_END_YEAR,
+    readLevel: year => extractCurrentDestatisValue(currentHtml, '236128', '2020=100', year),
+    readRate: year => extractCurrentDestatisValue(currentHtml, '236130', 'Veränderungsraten zum Vorjahr in %', year),
+    tolerancePp: DESTATIS_ROUNDED_LEVEL_RATE_TOLERANCE_PP,
+    fail
+});
 
 const annualRates = {};
 for (let year = 1925; year <= 1949; year += 1) {
@@ -456,7 +426,7 @@ for (let year = 1963; year <= 1991; year += 1) {
         year
     );
 }
-for (let year = 1992; year <= 2024; year += 1) {
+for (let year = 1992; year <= LONG_SERIES_LAST_YEAR; year += 1) {
     annualRates[year] = validatePublishedRate(
         levelRecords,
         rateRecords,
@@ -465,7 +435,7 @@ for (let year = 1992; year <= 2024; year += 1) {
         year
     );
 }
-annualRates[2025] = current2025Rate;
+Object.assign(annualRates, currentTableRates);
 
 const official1948Level = positiveNumber(
     destatisValue(
@@ -516,10 +486,10 @@ if (Math.abs(normalized1949Level - Math.round(normalized1949Level)) <= 1e-6) {
 }
 proxyRateResolutions.push(100 / normalized1949Level);
 
-if (Object.keys(annualRates).length !== 101) fail('German CPI chain must contain 101 annual rates', {
+if (Object.keys(annualRates).length !== GRUND_END_YEAR - 1925 + 1) fail(`German CPI chain must contain ${GRUND_END_YEAR - 1925 + 1} annual rates`, {
     count: Object.keys(annualRates).length
 });
-for (let year = 1925; year <= 2025; year += 1) {
+for (let year = 1925; year <= GRUND_END_YEAR; year += 1) {
     if (!Number.isFinite(annualRates[year]) || !(annualRates[year] > -100)) {
         fail('German CPI annual rate is invalid', { year, value: annualRates[year] });
     }
@@ -527,8 +497,8 @@ for (let year = 1925; year <= 2025; year += 1) {
 
 const indexLevels = {};
 let indexLevel = 100;
-for (let year = 1925; year <= 2025; year += 1) {
-    indexLevel *= 1 + (annualRates[year] / 100);
+for (let year = 1925; year <= GRUND_END_YEAR; year += 1) {
+    indexLevel = inflationKette.inflationIndexstand(indexLevel, annualRates[year]);
     if (!Number.isFinite(indexLevel) || !(indexLevel > 0)) {
         fail('German CPI synthetic index level is invalid', { year, indexLevel });
     }
@@ -552,12 +522,12 @@ const sourceMetadata = Object.fromEntries(Object.entries(SOURCE_FILES).map(([sou
 const rawDataHash = sha256Canonical(Object.fromEntries(
     Object.entries(sourceMetadata).map(([sourceId, source]) => [sourceId, source.sha256])
 ));
-const chain = {
+const grundbestand = {
     schemaVersion: 'GermanCpiResearchChainV1',
     revision: '2026-07-29.3',
     seriesId: 'german_consumer_price_inflation',
     unit: 'percent change from prior-year annual average',
-    period: { startYear: 1925, endYear: 2025 },
+    period: { startYear: 1925, endYear: GRUND_END_YEAR },
     base: { year: 1924, syntheticLevel: 100 },
     sourceFiles: sourceMetadata,
     rawDataHash,
@@ -660,7 +630,7 @@ const chain = {
         },
         {
             startYear: 1992,
-            endYear: 2024,
+            endYear: LONG_SERIES_LAST_YEAR,
             evidenceClass: 'official',
             territory: 'Germany',
             populationConcept: 'Verbraucherpreisindex',
@@ -668,44 +638,22 @@ const chain = {
             construction: 'Published Destatis annual change; checked against consecutive annual-average levels.'
         },
         {
-            startYear: 2025,
-            endYear: 2025,
+            startYear: LONG_SERIES_LAST_YEAR + 1,
+            endYear: GRUND_END_YEAR,
             evidenceClass: 'official',
             territory: 'Germany',
             populationConcept: 'Verbraucherpreisindex',
             sourceId: 'destatisCurrent',
-            construction: 'Published Destatis annual change, checked against the 2024 and 2025 annual-average levels.'
+            construction: currentTableConstruction(LONG_SERIES_LAST_YEAR, GRUND_END_YEAR)
         }
     ],
     annualRates,
     indexLevels
 };
 
-const output = `/**
- * GENERATED DATA ARTIFACT - DO NOT EDIT MANUALLY.
- * Build with: npm run build:german-cpi-data
- *
- * JST-derived values are licensed under CC BY-NC-SA 4.0.
- * Destatis values are licensed under Data Licence Germany - attribution - 2.0.
- * See data/historical/german-cpi-chain/LICENSE.md.
- */
-"use strict";
-
-function deepFreezeGermanCpiData(value, seen = new WeakSet()) {
-    if (value === null || typeof value !== 'object' || seen.has(value)) return value;
-    seen.add(value);
-    for (const child of Object.values(value)) deepFreezeGermanCpiData(child, seen);
-    return Object.freeze(value);
-}
-
-export const GERMAN_CPI_RESEARCH_CHAIN = deepFreezeGermanCpiData(${JSON.stringify(chain, null, 4)});
-
-export const GERMAN_CPI_INFLATION_RATES =
-    GERMAN_CPI_RESEARCH_CHAIN.annualRates;
-
-export const GERMAN_CPI_SYNTHETIC_INDEX_LEVELS =
-    GERMAN_CPI_RESEARCH_CHAIN.indexLevels;
-`;
+// Jahre nach dem Grundbestand hängt dieselbe Fortschreibung an wie `npm run jahresdaten -- <Jahr> --uebernehmen`.
+const chain = fortschreibungAnwenden(inflationKette, grundbestand, { root: PROJECT_ROOT, endYear: END_YEAR });
+const [[, output]] = inflationKette.schreiben(chain);
 
 if (VERIFY_ONLY) {
     if (!fs.existsSync(OUTPUT_PATH)) fail('Generated German CPI module is missing', {

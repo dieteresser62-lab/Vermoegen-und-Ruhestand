@@ -38,10 +38,13 @@ export function withGuardrailCardValues(formatted, raw) {
         const operator = caution || minimum !== mirrored ? '≥' : '≤';
         const cautionActive = caution && source.value >= source.threshold;
         const cautionTriggered = caution && source.details?.budgetFloorBlocked === true;
-        return { ...guardrail, status: caution ? (cautionActive ? 'warn' : 'ok') : guardrail.status, cardValue: cardFormat(source.value, drawdown),
+        // HL-1 (H-GT2-1): Unter der Zielreichweite ist keine Mindestgrenze verletzt; die Karte warnt nur.
+        const belowTarget = source.name.startsWith('Runway (vs. Ziel)') && guardrail.status === 'danger';
+        return { ...guardrail, status: caution ? (cautionActive ? 'warn' : 'ok') : belowTarget ? 'warn' : guardrail.status,
+            cardValue: cardFormat(source.value, drawdown),
             rule: source.rule || 'max',
             cardThreshold: `${operator} ${cardFormat(source.threshold, drawdown)}`,
-            cardTriggered: cautionTriggered };
+            cardTriggered: cautionTriggered, ...(belowTarget ? { cardBelowTarget: true } : {}) };
     }) };
 }
 
@@ -112,6 +115,7 @@ export function buildGuardrails(guardrailData = []) {
             ? g.name === 'Budget-Floor Deckung' ? 'Deckungsziel nicht erreicht' : 'Mindestgrenze unterschritten'
             : 'Grenze überschritten';
         status.textContent = g.cardTriggered === true ? 'Löst aus'
+            : g.cardBelowTarget === true ? 'Unter Ziel'
             : g.name === 'Vorsicht beim Budget-Floor' && g.status === 'warn' ? 'Vorsicht aktiv'
                 : { ok: 'Eingehalten', warn: 'Nahe der Grenze', danger: breach, info: 'Hinweis' }[g.status] || 'Hinweis';
         card.appendChild(status);

@@ -128,6 +128,11 @@ export function readDailyPrices(storage = persistenceStorage) {
     const raw = pending.get(storage)?.get(DAILY_PRICES_KEY);
     return loadHistoryRecord(raw !== undefined ? raw : storage.getItem(DAILY_PRICES_KEY), assertDailyPrices);
 }
+/** Beginn der Kurshistorie als Datum; fehlt oder ist er ungültig, `null` (Lückenprüfung des Allzeithochs, ATH-1b).
+ * @param {D.RecordReader} [storage] @returns {string|null} */
+export function readHistoryStartDate(storage = persistenceStorage) {
+    return loadHistoryRecord(storage.getItem(WEALTH_HISTORY_START_KEY), assertHistoryStart).value?.startDate ?? null;
+}
 /** @returns {H.PriceRecord} */
 export function emptyHistorySymbol() {
     return { currency: null, days: [], closes: [], queried: [], failures: 0, lastError: null };

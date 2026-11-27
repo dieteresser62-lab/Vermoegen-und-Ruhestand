@@ -14,6 +14,7 @@ import {
     serializeHistoricalBacktestJson
 } from '../app/simulator/historical-backtest-export.js';
 import { exportBacktestLogData } from '../app/simulator/simulator-backtest.js';
+import { renderProtocolTable } from '../app/simulator/protocol-renderer.js';
 import { canonicalizeHistoricalContractValue, sha256Hex } from '../app/simulator/historical-backtest-contract.js';
 
 console.log('--- Historical Backtest Export Tests ---');
@@ -412,9 +413,48 @@ function baseResult(outcomeKind = 'completed') {
     assert(csv.includes('-0.125'), 'CSV retains raw signed ratios with a dot decimal separator');
     assert(csv.includes('12345.67'), 'CSV retains raw financial numbers without localized grouping');
     assert(csv.includes('"\'=CMD(""quoted"";'), 'CSV protects formula text and escapes delimiters and quotes');
-    assert(csv.includes("'+unsafe") && csv.includes("'-unsafe"), 'CSV protects plus/minus formula prefixes');
+    assert(csv.includes("'+unsafe"), 'CSV protects a plus formula prefix');
+    const negative = baseResult();
+    negative.rows[0].row.CutReason = '-unsafe';
+    assert(serializeHistoricalBacktestCsv(negative).includes("'-unsafe"), 'CSV protects a minus formula prefix');
     assert(!csv.includes('<span'), 'CSV never calls HTML display formatters');
     assertEqual(HISTORICAL_BACKTEST_CSV_CONTRACT.missingValue, '', 'CSV missing values use empty cells');
+    for (const [status, statusText, hint, hintText] of [
+        ['disabled', 'Ausgeschaltet', 'dynamic_flex_off', 'Dynamischer Flex ist ausgeschaltet'],
+        ['contract_ready', 'Bereit', 'contract_not_active', 'Dynamischer Flex noch inaktiv'],
+        ['safety_static_flex', 'Statischer Flex', 'safety_static_flex', 'Statischer Flex zur Sicherheit'],
+        ['active', 'Aktiv', 'fallback_no_cape', 'Ersatzrechnung ohne CAPE-Wert'],
+        ['active', 'Aktiv', 'fallback_no_cape_return', 'Ersatzrechnung ohne CAPE-Rendite'],
+        ['active', 'Aktiv', 'fallback_no_real_return', 'Ersatzrechnung ohne reale Rendite'],
+        ['active', 'Aktiv', 'ok', 'Ohne Ersatzrechnung'],
+        [undefined, '', 'no_vpw', 'Keine VPW-Daten'],
+        ['legacy_status', 'Unbekannt', 'unknown_status', 'Unbekannter VPW-Status']
+    ]) {
+        const withVpw = baseResult();
+        const [entry] = withVpw.rows;
+        if (status) entry.vpw = { status };
+        entry.vpwFallbackHint = hint;
+        const table = renderProtocolTable(withVpw.rows, { source: 'backtest', logDetailLevel: 'detailed' });
+        assert(table.includes('VPW-Status') && table.includes('VPW-Hinweis')
+            && table.includes(`>${statusText}</td>`) && table.includes(`>${hintText}</td>`), `VPW-Tabelle übersetzt ${hint}`);
+        const csv = serializeHistoricalBacktestCsv(withVpw);
+        assert(csv.split('\n')[0].endsWith(';VPW-Status;VPW-Hinweis')
+            && csv.endsWith(`;${statusText};${hintText}`), `VPW-CSV übersetzt ${hint}`);
+        const raw = JSON.parse(serializeHistoricalBacktestJson(withVpw, { exportedAt: '2026-07-19T10:00:00.000Z' }));
+        assertEqual(raw.result.rows[0].vpw?.status, status, 'JSON führt den VPW-Status als Rohwert');
+        assertEqual(raw.result.rows[0].vpwFallbackHint, hint, 'JSON führt den VPW-Hinweis als Rohwert');
+    }
+    for (const [key, label] of [['engine_guard_primary', 'Reguläre Schutzregel für den Grundbedarf'],
+        ['floor_covered_by_pension', 'Grundbedarf durch Renten und feste Einkünfte gedeckt'], ['accumulation_phase', 'Ansparphase']]) {
+        const withGuard = baseResult();
+        withGuard.rows[0].row.GuardNote = key;
+        const table = renderProtocolTable(withGuard.rows, { source: 'backtest', logDetailLevel: 'detailed' });
+        assert(table.includes('Schutzregel Grund') && table.includes(label) && !table.includes(key), 'Detailliertes Protokoll nennt den deutschen Grund');
+        const csv = serializeHistoricalBacktestCsv(withGuard);
+        assert(csv.split('\n')[0].split(';').includes('Schutzregel Grund') && csv.endsWith(';' + label) && !csv.includes(key), 'CSV exportiert denselben deutschen Grund');
+        const raw = JSON.parse(serializeHistoricalBacktestJson(withGuard, { exportedAt: '2026-07-19T10:00:00.000Z' }));
+        assertEqual(raw.result.rows[0].row.GuardNote, key, 'JSON exportiert den ursprünglichen Schlüssel');
+    }
     const csvContext = { entry: result.rows[0], result, record: result.historicalYearRecords[0] };
     const readColumn = id => HISTORICAL_BACKTEST_CSV_COLUMNS.find(column => column.id === id)?.read(csvContext);
     assertEqual(readColumn('flex_household_required_nominal_eur'), 6000,

@@ -7,11 +7,16 @@ import {
 import {
     annualData,
     HISTORICAL_DATA,
-    HISTORICAL_DATA_MANIFEST
+    HISTORICAL_DATA_MANIFEST,
+    HISTORICAL_DATENSTAND
 } from '../app/simulator/simulator-data.js';
 import { canonicalizeHistoricalContractValue } from '../app/simulator/historical-backtest-contract.js';
 import { SIMULATION_DATA_INVENTORY } from '../app/simulator/simulation-data-inventory.js';
 import { applyAnnualReturnsToPortfolio } from '../app/simulator/simulator-year-portfolio.js';
+
+// JD-1: Endjahr und Jahresanzahl kommen aus dem Datenstand; Werte bis 2025 bleiben fest.
+const DATA_END_YEAR = HISTORICAL_DATENSTAND.endYear;
+const DATA_YEAR_COUNT = DATA_END_YEAR - HISTORICAL_DATENSTAND.startYear + 1;
 
 console.log('--- German Cash/Money-Market Chain Tests ---');
 
@@ -23,8 +28,8 @@ console.log('Test 1: identity, sources, convention and applicability are pinned'
 assertEqual(GERMAN_CASH_MONEY_MARKET_CHAIN.schemaVersion, 'GermanCashMoneyMarketChainV1', 'Chain schema should be versioned');
 assertEqual(GERMAN_CASH_MONEY_MARKET_CHAIN.seriesId, 'german_cash_money_market_proxy', 'Chain should use the canonical neutral ID');
 assertEqual(GERMAN_CASH_MONEY_MARKET_CHAIN.coverage.startYear, 1925, 'Chain should start in 1925');
-assertEqual(GERMAN_CASH_MONEY_MARKET_CHAIN.coverage.endYear, 2025, 'Chain should end in 2025');
-assertEqual(GERMAN_CASH_MONEY_MARKET_CHAIN.coverage.yearCount, 101, 'Chain should contain 101 years');
+assertEqual(GERMAN_CASH_MONEY_MARKET_CHAIN.coverage.endYear, DATA_END_YEAR, 'Chain should end at the data status end year');
+assertEqual(GERMAN_CASH_MONEY_MARKET_CHAIN.coverage.yearCount, DATA_YEAR_COUNT, `Chain should contain ${DATA_YEAR_COUNT} years`);
 assert(Object.isFrozen(GERMAN_CASH_MONEY_MARKET_CHAIN), 'Generated chain should be deeply immutable');
 assertEqual(
     GERMAN_CASH_MONEY_MARKET_CHAIN.returnConvention.runtimeMeasure,
@@ -100,14 +105,15 @@ assertEqual(Object.hasOwn(GERMAN_CASH_MONEY_MARKET_CHAIN.sourceExtraction, 'visu
 console.log('✓ source identities and terms OK');
 
 console.log('Test 3: the 101-year chain is contiguous and is the sole runtime projection');
-for (let year = 1925; year <= 2025; year += 1) {
+for (let year = 1925; year <= DATA_END_YEAR; year += 1) {
     const rate = GERMAN_CASH_MONEY_MARKET_ANNUAL_RETURNS[year];
     assert(Number.isFinite(rate), `${year} annual return should be finite`);
     assertEqual(HISTORICAL_DATA[year].zinssatz_de, rate, `${year} runtime history should use the generated return`);
     assertEqual(annualData[year - 1925].zinssatz, rate, `${year} sampling data should use the generated return`);
 }
-assertEqual(Object.keys(GERMAN_CASH_MONEY_MARKET_ANNUAL_RETURNS).length, 101, 'Return chain should contain 101 years');
-const runtimeSource = fs.readFileSync(new URL('../app/simulator/simulator-data.js', import.meta.url), 'utf8');
+assertEqual(Object.keys(GERMAN_CASH_MONEY_MARKET_ANNUAL_RETURNS).length, DATA_YEAR_COUNT, `Return chain should contain ${DATA_YEAR_COUNT} years`);
+const runtimeSource = ['simulator-data.js', 'historical-data-records.js']
+    .map(file => fs.readFileSync(new URL(`../app/simulator/${file}`, import.meta.url), 'utf8')).join('\n');
 assertEqual(
     /zinssatz_de:\s*-?\d/.test(runtimeSource),
     false,
@@ -129,7 +135,7 @@ assertEqual(
         { startYear: 1997, endYear: 1998, evidenceClass: 'official' },
         { startYear: 1999, endYear: 2018, evidenceClass: 'official' },
         { startYear: 2019, endYear: 2019, evidenceClass: 'official' },
-        { startYear: 2020, endYear: 2025, evidenceClass: 'official' }
+        { startYear: 2020, endYear: DATA_END_YEAR, evidenceClass: 'official' }
     ]),
     'Evidence segments should expose every source and benchmark seam'
 );

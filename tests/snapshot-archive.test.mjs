@@ -9,7 +9,8 @@ import {
     readSnapshot,
     toSnapshotIndexEntry,
     validateSnapshot,
-    writeSnapshot
+    writeSnapshot,
+    isVisibleRestorePoint
 } from '../app/shared/snapshot-archive.js';
 
 function createMemorySnapshotStorage() {
@@ -54,13 +55,13 @@ console.log('Test 1: buildSnapshot normalisiert Schema und erzeugt stabile ID');
     assert(snapshot.id.startsWith('snapshot_2026-06-02T18-00-00-000Z--Profil-2026'), 'ID wird aus Zeit und bereinigtem Label gebildet');
     assertEqual(snapshot.schemaVersion, 1, 'Schema-Version ist 1');
     assertEqual(snapshot.snapshotType, SNAPSHOT_TYPE, 'Snapshot-Type ist kanonisch');
-    assertEqual(SNAPSHOT_KINDS.balanceImportRecovery, 'balance-import-recovery',
-        'Balance-Import-Recovery ist im kanonischen Kind-Register enthalten');
+    assertEqual(SNAPSHOT_KINDS.internalRecovery, 'internal-recovery',
+        'SV-1: Interne Rücksicherung ist im kanonischen Kind-Register enthalten');
     assertEqual(SNAPSHOT_KINDS.fullBackupImportRecovery, 'full-backup-import-recovery',
         'Vollbackup-Recovery ist im kanonischen Kind-Register enthalten');
     assertEqual(snapshot.recordCount, 2, 'recordCount ignoriert null/undefined Records');
     assertEqual(snapshot.records.balance_expenses_v1, '42', 'Record-Werte werden als Strings normalisiert');
-    assertEqual(snapshot.restoreScope.profileRegistryMode, 'preserve-by-default', 'Default-Restore-Scope wird gesetzt');
+    assertEqual(snapshot.restoreScope, undefined, 'SV-1: Kein eigener Wiederherstellungsumfang mehr');
 }
 
 console.log('Test 2: captureCurrentRecords nutzt Snapshot-Key-Policy');
@@ -157,27 +158,19 @@ console.log('Test 4: SnapshotArchive delegiert an In-Memory-Fake-Storage');
     assert(storage.calls.includes(`read:${first.id}`), 'readSnapshot delegiert readSnapshot');
 }
 
-console.log('Test 5: toSnapshotIndexEntry markiert fehlende activeProfileId als nicht standard-restorable');
+console.log('Test 5: toSnapshotIndexEntry hält Art und Anzahl ohne Nutzdaten');
 {
     const snapshot = buildSnapshot({
         label: 'Ohne Profil',
         kind: SNAPSHOT_KINDS.fullBackupImportRecovery,
         createdAt: '2026-06-02T18:00:00.000Z',
-        records: { balance_expenses_v1: 'x' },
-        restoreScope: {
-            profileRegistryMode: 'replace-all-rollback',
-            profileLiveDataMode: 'replace-all-rollback'
-        }
+        records: { balance_expenses_v1: 'x' }
     });
     const indexEntry = toSnapshotIndexEntry(snapshot);
-    assertEqual(indexEntry.standardRestorable, false, 'Snapshot ohne activeProfileId ist nicht standard-restore-faehig');
+    assertEqual(indexEntry.records, undefined, 'Index enthält keine Nutzdaten');
     assertEqual(indexEntry.recordCount, 1, 'Index enthaelt recordCount');
     assertEqual(indexEntry.kind, SNAPSHOT_KINDS.fullBackupImportRecovery,
         'Index behaelt den registrierten Vollbackup-Recovery-Kind');
-    assertEqual(indexEntry.restoreScope.profileRegistryMode, 'replace-all-rollback',
-        'Index behaelt den Registry-Restore-Scope');
-    assertEqual(indexEntry.restoreScope.profileLiveDataMode, 'replace-all-rollback',
-        'Index behaelt den Profil-Livedaten-Restore-Scope');
 }
 
 console.log('Snapshot archive tests passed.');
@@ -202,7 +195,8 @@ for (const input of [
     assertEqual((await listSnapshots({ storage: { listSnapshots: async () => [a, z] } }))[0].id, 'z', 'Gleiche Zeitpunkte werden stabil nach ID sortiert');
 }
 
-assertEqual(SNAPSHOT_KINDS.householdPlanMigrationRecovery, 'household-plan-migration-recovery', 'Planumstellung hat eine eigene dauerhafte Art');
-const migrationPoint = buildSnapshot({ kind: SNAPSHOT_KINDS.householdPlanMigrationRecovery, label: 'Vor Umstellung Haushalt & Plan', records: { household_plan_v1: 'synthetischer Rohstring' } });
-assertEqual(migrationPoint.kind, 'household-plan-migration-recovery', 'Neue Art verwendet unverändertes Snapshotschema');
-assertEqual(migrationPoint.records.household_plan_v1, 'synthetischer Rohstring', 'Archiv erhält Planbytes für bestehendes Zurückholen');
+// SV-1: Sichtbar sind nur Monatsabschluss, Jahresabschluss und vor dem Einspielen; interne Rücksicherungen bleiben verborgen.
+assertEqual(['monthly-close-pre-mutation', 'annual-close-pre-mutation', 'full-backup-import-recovery', 'internal-recovery', 'manual']
+    .map(kind => isVisibleRestorePoint({ kind })).join(','), 'true,true,true,false,false', 'Nur drei Arten erscheinen auf Daten & Sicherung');
+const legacyScope = validateSnapshot({ ...buildSnapshot({ kind: 'manual', records: { a: '1' } }), restoreScope: { profileRegistryMode: 'preserve-by-default' } });
+assertEqual(legacyScope.restoreScope, undefined, 'Ältere Punkte mit Wiederherstellungsumfang bleiben lesbar; das Feld entfällt');

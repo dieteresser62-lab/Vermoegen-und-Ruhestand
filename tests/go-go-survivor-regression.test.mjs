@@ -8,7 +8,8 @@ import { ffgInput } from './helpers/ff-g-scenarios.mjs';
 // Synthetischer Nullrenditepfad: keine Pflege/Rente, lange Restdauer und hohes
 // CAPE. Die Sicherheitsstufe bleibt 0, damit allein die Altersgrenze entscheidet.
 function runCouple(olderPerson, withDeath, usePreviousAgeRule = false) {
-    const inputs = { ...householdInput(100000, 100000), survivorFloorPercent: 70, survivorFlexPercent: 75, survivorMinimumFlexPercent: 75,
+    const inputs = { ...householdInput(100000, 100000), partnership: { status: 'married' },
+        survivorFloorPercent: 70, survivorFlexPercent: 75, survivorMinimumFlexPercent: 75,
         startAlter: olderPerson === 1 ? 79 : 73,
         partner: { aktiv: true, startAlter: olderPerson === 2 ? 79 : 73,
             geschlecht: 'w', brutto: 0, monatsrente: 0 },
@@ -57,6 +58,8 @@ for (const olderPerson of [1, 2]) {
     const previous = runCouple(olderPerson, true, true);
     runCouple(olderPerson, false);
     const year = survivor[2];
+    // FR-88 (vorschüssige VPW-Rate) senkt die Rate, VB-1 (§ 17 ErbStG) senkt die Ehe-Erbschaftsteuer im Todesjahr (85.500 → 40.000 Euro).
+    // Zusammen (RK-1-Merge): FR-88 allein 58.800 und 49.200 Euro, VB-1 allein 60.000 und 51.600 Euro, vor beiden 60.000 und 50.400 Euro.
     assertEqual(year.result.logData.entnahme_effektiv, 60000,
         'Im Nullrenditepfad erhält die überlebende Person mit 75 Jahren 60.000 Euro');
     assertEqual(previous[2].result.logData.entnahme_effektiv, 50400,

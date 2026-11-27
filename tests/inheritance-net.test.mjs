@@ -4,7 +4,7 @@ import { applyUnmarriedInheritance } from '../app/simulator/simulator-inheritanc
 import { personalAssetValues } from '../app/simulator/simulator-unmarried.js';
 import { syncPersonalLiquidity } from '../app/simulator/simulator-personal-accounts.js';
 import { beginPersonalTaxYear, recordPersonalDisposal } from '../app/simulator/simulator-personal-tax.js';
-import { homeWasSold, sellHomesForEmergency } from '../app/simulator/simulator-home-sale.js';
+import { homeKey, homeWasSold, sellHomesForEmergency } from '../app/simulator/simulator-home-sale.js';
 import { renderProtocolTable } from '../app/simulator/protocol-renderer.js';
 import { getProtocolColumns, readProtocolValue } from '../app/simulator/protocol-columns.js';
 import { EngineAPI } from '../engine/index.mjs';
@@ -30,10 +30,14 @@ function inherit(portfolio, inputs = inputsFor(), actionResult = { steuer: 0 }) 
         survivor: { deceasedProfileId: 'muster_a', survivorProfileId: 'muster_b' } }, inflationFactor: 1,
         pension: { rente1BruttoEigen: 0, rente2BruttoEigen: 0 }, personalInterest: { items: [] }, actionResult });
 }
+// HP-4: Die Steuer gilt für den auf volle 100 € abgerundeten Erwerb T = 800.000 + X − 20.000. X ist die kleinste Stufe, deren Nettoerlös
+// 30 % von T deckt: X = (0,3 × T − fester Teil des Nettoerlöses) / (1 − Verkaufssteueranteil). Alte Werte ohne Abrundung im HP-4-Beleg.
+const netX = (taxable, saleShare = 0, offset = 0) => (.3 * taxable - offset) / (1 - saleShare);
+const SALE = .5 * .26375;
 for (const cash of [0, 200000]) for (const own of [0, 100000]) {
     const portfolio = portfolioFor(cash, own), result = inherit(portfolio), estate = result.inheritance;
-    // X - (X - Tagesgeld) * 0,5 * 26,375 % = (800.000 + X - 20.000) * 30 %.
-    const expectedX = (234000 - cash * .5 * .26375) / (.7 - .5 * .26375);
+    // X - (X - Tagesgeld) * 0,5 * 26,375 % = 30 % von T; T = 1.191.800 € (ohne Tagesgeld) bzw. 1.145.400 € (200.000 € Tagesgeld).
+    const expectedX = cash ? netX(1145400, SALE, cash * SALE) : netX(1191800, SALE);
     assertClose(estate.taxCash, expectedX, .001, 'Handrechnung Netto-X einschließlich Verkaufssteuer');
     assertClose(estate.taxCash - result.inheritancePayment.extraTax, estate.tax, 1, 'X deckt Erbschaft- und Verkaufssteuer');
     assertClose(result.inheritancePayment.shortfall, 0, .001, 'Keine ungedeckte Steuer');
@@ -47,7 +51,7 @@ for (const cash of [0, 200000]) for (const own of [0, 100000]) {
 }
 for (const [cash, tranches] of [[1000000, []], [0, [{ ...lot, costBasis: 1000000 }]]]) {
     const estate = inherit(portfolioFor(cash, 0, tranches)).inheritance;
-    assertClose(estate.taxCash, 334285.7142857143, .001, 'Nur Tagesgeld oder Depot ohne Gewinn: X wie bisher');
+    assertClose(estate.taxCash, netX(1114200), .001, 'Nur Tagesgeld oder Depot ohne Gewinn: X = 30 % von 1.114.200 €');
     assertEqual(estate.taxCashSaleTax, 0, 'Ohne Verkaufsgewinn keine Zusatzsteuer');
 }
 const missing = inheritancePreview(1000000, 800000, 0, { homeAndTax: true });
@@ -56,7 +60,8 @@ for (const lossCarry of [0, 200000]) {
     const portfolio = portfolioFor(0, 100000), survivor = portfolio.personAccounts[1];
     survivor.sparerPauschbetrag = 1000; survivor.taxState = { lossCarry };
     const estate = inherit(portfolio).inheritance;
-    const expected = lossCarry ? 334285.7142857143 : (234000 - 1000 * .26375) / (.7 - .5 * .26375);
+    // Mit 1.000 € Pauschbetrag ohne Verlustvortrag reicht schon die Stufe T = 1.191.300 €.
+    const expected = lossCarry ? netX(1114200) : netX(1191300, SALE, 1000 * .26375);
     assertClose(estate.taxCash, expected, .001, 'Kleinstes X nutzt verfügbaren Freibetrag und Verlustvortrag');
     assertClose(personalAssetValues(portfolio)[0].value, 100000, 1, 'Kein überschüssiges X durch doppelte Jahressteuerreserve');
     const preview = inheritancePreview(1000000, 800000, 0, { homeAndTax: true, tranches: [lot],
@@ -69,7 +74,7 @@ for (const lossCarry of [0, 200000]) {
     recordPersonalDisposal(portfolio, { sourceProfileId: 'muster_b', tqf: 0 }, 2000, 1000);
     const result = inherit(portfolio, inputsFor(), { steuer: 0, personalAnnualTaxes: [{ profileId: 'muster_b', taxDue: 0,
         saleTaxDue: 0, taxCashAdjustment: 0, details: {} }] });
-    assertClose(result.inheritance.taxCash, 411881.1881188119, .001, 'Bereits verbrauchter Freibetrag wird nicht nochmals für X genutzt');
+    assertClose(result.inheritance.taxCash, netX(1191800, SALE), .001, 'Bereits verbrauchter Freibetrag wird nicht nochmals für X genutzt');
     assertClose(result.inheritancePayment.shortfall, 0, .001, 'Zahlung trotz verbrauchtem Freibetrag gedeckt');
 }
 {
@@ -133,12 +138,15 @@ for (const ownMoneyMarket of [false, true]) {
     assertEqual(sale, null, 'Abgegangenes Haus löst keinen späteren Verkauf aus');
 }
 for (const status of ['married', 'unmarried']) for (const self of [false, true]) for (const percent of [0, 100]) {
-    const inputs = inputsFor(); inputs.partnership = { status }; inputs.home[0].nutzung = self ? 'selbst' : 'vermietet';
-    const estate = { deceasedProfileId: 'muster_a', survivorProfileId: 'muster_b', assets: 1000000, home: 800000,
-        inheritedHome: 800000 * percent / 100, inherited: 1000000 * percent / 100, percent, tax: 0, leaves: 0, pensionEnds: 0 };
-    const html = renderProtocolTable([{ jahr: 1, inheritance: estate, erbschaftsteuer: 0, abgang_erben: 0 }], { source: 'mc', inputs });
-    assertEqual(html.includes('Familienheim-Befreiung angenommen'), status === 'married' && self && percent > 0, 'Hinweis nur bei wirksamer Befreiung');
-    if (status === 'married' && self && percent) assert(html.includes(FAMILY_HOME_CONDITIONS), 'Familienheim-Bedingungen im Steuer-ⓘ');
+    const inputs = inputsFor();
+    inputs.partnership = { status, inheritance: { muster_a: percent }, marriedInheritance: { muster_a: percent } };
+    inputs.home[0].nutzung = self ? 'selbst' : 'vermietet';
+    const estate = inherit(portfolioFor(0, 100000), inputs);
+    const exempt = status === 'married' && self && percent > 0;
+    assertEqual(estate.inheritance.exemptHome, exempt ? 800000 : undefined, 'Nachlassprotokoll übernimmt den berechneten Familienheimabzug');
+    const html = renderProtocolTable([{ jahr: 1, ...estate }], { source: 'mc', inputs });
+    assertEqual(html.includes('Familienheim-Befreiung angenommen'), exempt, 'Hinweis nur bei wirksamer Befreiung');
+    if (exempt) assert(html.includes(FAMILY_HOME_CONDITIONS), 'Familienheim-Bedingungen im Steuer-ⓘ');
 }
 for (const sale of [false, true]) for (const level of ['normal', 'detailed']) {
     const entry = { jahr: 2000, row: sale ? { immobilienverkauf: 720000, immobilienverkauf_jahr: 2000 } : {} };
@@ -154,11 +162,12 @@ for (const sale of [false, true]) for (const level of ['normal', 'detailed']) {
 {
     const inputs = inputsFor(); inputs.partnership = { status: 'married' };
     inputs.home.push({ ...home, id: 'zweites-haus' });
-    const death = { jahr: 2, abgang_erben: 0, erbschaftsteuer: 0, inheritance: { deceasedProfileId: 'muster_a', survivorProfileId: 'muster_b',
-        assets: 1000000, inherited: 1000000, home: 1600000, inheritedHome: 1600000, percent: 100, tax: 0, leaves: 0, pensionEnds: 0 } };
+    const death = { jahr: 2, ...inherit(portfolioFor(0, 100000), inputs) };
     assert(renderProtocolTable([death], { inputs }).includes('Steuerfrei ist nur das Familienheim – bei mehreren selbst genutzten Immobilien die wertvollste.'), 'Protokoll erklärt die einzige begünstigte Immobilie');
     inputs.home.pop(); inputs.home.push({ ...home, id: 'wohnung', nutzung: 'vermietet' });
     const sale = { jahr: 1, immobilienverkauf: 720000, immobilienverkauf_personen: [{ profileId: 'muster_a', homeId: 'haus', amount: 720000 }] };
-    death.inheritance.home = death.inheritance.inheritedHome = 800000;
-    assert(!renderProtocolTable([sale, death], { inputs }).includes('Familienheim-Befreiung angenommen'), 'Nach Verkauf des Familienheims kein Hinweis für die verbleibende Mietwohnung');
+    const portfolio = portfolioFor(0, 100000);
+    portfolio.homeSales = [homeKey(inputs.home[0], 0)];
+    const deathAfterSale = { jahr: 2, ...inherit(portfolio, inputs) };
+    assert(!renderProtocolTable([sale, deathAfterSale], { inputs }).includes('Familienheim-Befreiung angenommen'), 'Nach Verkauf des Familienheims kein Hinweis für die verbleibende Mietwohnung');
 }

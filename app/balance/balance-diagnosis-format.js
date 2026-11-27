@@ -17,14 +17,17 @@ export function formatDiagnosisPayload(raw) {
     if (!raw) return null;
     const formatted = { ...raw };
     const guardrails = Array.isArray(raw.guardrails) ? raw.guardrails : [];
-    const isAtLeast = (value, threshold) => value >= threshold;
-    const isAtMost = (value, threshold) => value <= threshold;
+    // HL-1 (H-GT2-1): Der Status nutzt dieselbe Toleranz wie die Notiz; „Exakt auf …“ ist nie zugleich verletzt oder knapp.
+    const isAtLeast = (value, threshold) => value >= threshold || isAtThreshold(value, threshold);
+    const isAtMost = (value, threshold) => value <= threshold || isAtThreshold(value, threshold);
     formatted.guardrails = guardrails.map(g => {
         const rule = g.rule || 'max';
         let status = 'ok';
         const thresholdNote = buildThresholdNote(g, rule);
         if ((rule === 'max' && !isAtMost(g.value, g.threshold)) || (rule === 'min' && !isAtLeast(g.value, g.threshold))) {
             status = 'danger';
+        } else if (isAtThreshold(g.value, g.threshold)) {
+            status = 'ok';
         } else if (
             (rule === 'max' && g.value < g.threshold && g.value > g.threshold * 0.90) ||
             (rule === 'min' && g.value > g.threshold && g.value < g.threshold * 1.10)
@@ -74,11 +77,10 @@ export function formatDiagnosisPayload(raw) {
         };
     });
 
-    // NEU: 3-Bucket Jilge Diagnostics in Guardrails injizieren
     if (raw.threeBucket && raw.threeBucket.is3Bucket) {
         const tb = raw.threeBucket;
-        guardrails.push({
-            name: '3-Bucket Jilge',
+        formatted.guardrails.push({
+            name: '3-Töpfe',
             value: tb.isBadYear ? 'Börsencrash erkannt (Verkauf Anleihen)' : 'Normaljahr (Verkauf Aktien)',
             threshold: tb.isBadYear ? 'Crash-Modus' : 'Standard-Modus',
             status: tb.isBadYear ? 'warn' : 'ok'
@@ -95,12 +97,16 @@ export function formatDiagnosisPayload(raw) {
     return formatted;
 }
 
+/** Wert liegt im Rahmen der Rechenungenauigkeit auf der Schwelle. */
+function isAtThreshold(value, threshold) {
+    return Math.abs(value - threshold) <= Math.max(1e-9, Math.abs(threshold) * 1e-9);
+}
+
 function buildThresholdNote(g, rule) {
     if (!g || typeof g.value !== 'number' || !isFinite(g.value) || typeof g.threshold !== 'number' || !isFinite(g.threshold)) {
         return null;
     }
-    const epsilon = Math.max(1e-9, Math.abs(g.threshold) * 1e-9);
-    if (Math.abs(g.value - g.threshold) <= epsilon) {
+    if (isAtThreshold(g.value, g.threshold)) {
         return rule === 'min' ? 'Exakt auf Mindestniveau.' : 'Exakt auf Obergrenze.';
     }
     if (rule === 'min' && g.value > g.threshold && g.value < g.threshold * 1.10) {

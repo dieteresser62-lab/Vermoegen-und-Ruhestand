@@ -15,16 +15,14 @@ import { UIReader, initUIReader } from '../app/balance/balance-reader.js';
 import { CONFIG } from '../app/balance/balance-config.js';
 import { loadProfilverbundProfiles } from '../app/profile/profilverbund-balance.js';
 import { createProfilverbundHandlers } from '../app/balance/balance-main-profilverbund.js';
-import { evaluateBalanceFileInputs, exportBalanceFile, importBalanceFile } from '../app/balance/balance-file-service.js';
-import { normalizeBalanceImportDocument } from '../app/balance/balance-binder-imports.js';
+import { evaluateBalanceInputs } from '../app/balance/balance-evaluation.js';
 import { createBalanceCommitBaseFingerprint, assertBalanceCandidateFresh, prepareEngineLastState,
     projectBalancePlanHistory, persistBalanceUpdate } from '../app/balance/balance-update-pipeline.js';
-import { StorageManager, initStorageManager } from '../app/balance/balance-storage.js';
+import { StorageManager } from '../app/balance/balance-storage.js';
 import { initializeHouseholdPlanPage } from '../app/profile/household-plan-dialog.js';
 import { migrateHouseholdPlans } from '../app/profile/household-plan-migration.js';
 import { documentDouble } from './helpers/page-dialog-dom.mjs';
 import { buildBalanceOverviewSummary } from '../app/overview/overview-model.js';
-import { createMarketdataHandlers } from '../app/balance/balance-annual-marketdata.js';
 import { assertAnnualPlanRecord, annualPlanEntryKey } from '../app/profile/annual-plan-record.js';
 import * as pipeline from '../app/balance/balance-update-pipeline.js';
 import { createProfileSyncHandlers } from '../app/balance/balance-main-profile-sync.js';
@@ -83,21 +81,17 @@ function calculate(handlers) {
     handlers.updateProfilverbundGlobals(profiles, inputData);
     const state = StorageManager.loadState(), plan = readBalanceHouseholdPlan();
     const history = projectBalancePlanHistory(state, profiles, plan);
-    const result = evaluateBalanceFileInputs({ inputData, persistentState: history.persistentState,
+    const result = evaluateBalanceInputs({ inputData, persistentState: history.persistentState,
         profiles: history.profiles, profileId: storage.getItem('rs_current_profile'), profilverbundHandlers: handlers, engineApi: EngineAPI });
     const summary = buildBalanceOverviewSummary({ modelResult: result.modelResult, monthlyBudget: 5000,
         metadata: state.annualPeriodMetadata, scope: plan.scope, now: appNow(), profileActions: window.__profilverbundActionResults });
     return { ...result, inputData, profiles, state, plan, summary };
 }
-function fixture(planValues, { outsider = false, synthetic = false } = {}) {
+function fixture(planValues, { single = false, synthetic = false } = {}) {
     const records = createMusterHaushaltRecords('2026-10-09');
     delete records[HOUSEHOLD_PLAN_KEY];
     const registry = JSON.parse(records.rs_profiles_v1);
-    if (outsider) {
-        const own = registry.profiles.muster_a;
-        own.meta.belongsToHousehold = false;
-        registry.profiles = { muster_a: own };
-    }
+    if (single) registry.profiles = { muster_a: registry.profiles.muster_a };
     if (synthetic) {
         registry.profiles.muster_a.data.profile_gold_rebal_band = '18';
         registry.profiles.muster_a.data.profile_rente_monatlich = '1100';
@@ -282,22 +276,22 @@ try {
         const handlers = createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS: { mode: 'household_withdrawal_mode' } });
         handlers.initProfilverbundBalance = () => {};
         const state = {};
-        const deps = { projectNextYearBudget, getBalancePlanTrial, renderBalanceInflationSource, initBalancePlanTrial() {}, syncDynamicFlexPresetSelection() {}, refreshDynamicFlexControls() {}, ...pipeline, buildBalanceEngineInputFromStorage, stripBalancePlanInputs, persistenceStorage: storage, PROFILVERBUND_STORAGE_KEYS: { mode: 'household_withdrawal_mode' }, evaluateBalanceFileInputs, readBalanceHouseholdPlan, stageBalancePlanPatch,
-            dom, UIReader: reader, UIUtils, StorageManager: { ...StorageManager, initSnapshots() {} }, UIRenderer: renderer,
+        const deps = { projectNextYearBudget, getBalancePlanTrial, renderBalanceInflationSource, initBalancePlanTrial() {}, syncDynamicFlexPresetSelection() {}, refreshDynamicFlexControls() {}, ...pipeline, buildBalanceEngineInputFromStorage, stripBalancePlanInputs, persistenceStorage: storage, PROFILVERBUND_STORAGE_KEYS: { mode: 'household_withdrawal_mode' }, evaluateBalanceInputs, readBalanceHouseholdPlan, stageBalancePlanPatch,
+            dom, UIReader: reader, UIUtils, StorageManager, UIRenderer: renderer,
             readBalancePersonStatus, showPersonDataStatus, loadProfilverbundProfiles,
             getCurrentProfileId: () => storage.getItem('rs_current_profile'), appState: state,
             profileSyncHandlers: createProfileSyncHandlers({ dom, PROFILE_VALUE_KEYS }), profilverbundHandlers: handlers,
-            refreshBalanceWealthHistory() {}, refreshBalanceExpensesHistory() {}, postprocessBalanceAction,
+            refreshBalanceExpensesHistory() {}, postprocessBalanceAction,
             withGuardrailCardValues: value => value, ANNUAL_MARKET_DATA_META_KEY: 'annualMarketDataMeta',
             updateExpensesBudget() {}, overviewScope, buildBalanceOverviewSummary,
             storeOverviewSummary: () => Promise.resolve(true), initPersistence: () => P.init({ installLifecycleHooks: false }),
             initializeProfilePage: async () => true, initializeHouseholdPlanPage, migrateHouseholdPlans,
-            openBalanceDataTarget() {}, consumeAnnualRetry: () => null, getPersistenceStatus: () => ({}),
+            getPersistenceStatus: () => ({}),
             initVersionHandshake() {
                 if (start === 'engine_failure') throw new Error('Synthetischer Engine-Startfehler');
                 return state.engineHandshake = pipeline.createEngineHandshake(engine, '');
-            }, renderPersistenceStartupWarning() {}, initializeBalanceWealthHistory() {},
-            initUIReader(refs) { initUIReader(refs); readerReady = true; }, initStorageManager,
+            }, renderPersistenceStartupWarning() {},
+            initUIReader(refs) { initUIReader(refs); readerReady = true; },
             initUIRenderer() {}, initUIBinder() {}, initExpensesTab() {}, expensesPageStorage: {},
             syncTranchenToInputs() {}, initDynamicFlexControls() {}, UIBinder: { bindUI() { bindings++; } },
             debouncedUpdate() {}, tranchenStorageBound: false, HOUSEHOLD_PLAN_KEY,
@@ -413,10 +407,10 @@ try {
     setAppTestDate('2026-10-09');
     globalThis.window = { EngineAPI };
     globalThis.document = { getElementById: () => null };
-    for (const kind of ['Muster', 'synthetische Echtform', 'Außenperson']) for (const strategy of ['standard', '3_bucket_jilge']) for (const cape of [0, 25]) {
+    for (const kind of ['Muster', 'synthetische Echtform', 'Einzelperson']) for (const strategy of ['standard', '3_bucket_jilge']) for (const cape of [0, 25]) {
         const selected = { ...structuredClone(values), cape: { value: cape, asOf: null, source: null },
             decumulation: { mode: strategy, bondTargetFactor: 5, drawdownTrigger: 15, bondRefillThreshold: null } };
-        const records = fixture(selected, { outsider: kind === 'Außenperson', synthetic: kind === 'synthetische Echtform' });
+        const records = fixture(selected, { single: kind === 'Einzelperson', synthetic: kind === 'synthetische Echtform' });
         const { handlers } = await install(records, selected);
         const before = calculate(handlers);
         const scope = before.plan.scope;
@@ -451,126 +445,6 @@ try {
             const state = JSON.parse(person.data[recordKey]);
             assert(BALANCE_PLAN_INPUT_KEYS.every(key => !Object.hasOwn(state.inputs, key) && !Object.hasOwn(state.profilverbundHouseholdInputs, key)), label + ': auch Periodenwrite ohne Plankopien');
         }
-    }
-
-    // Geöffnete Außenperson A neben zwei angehakten Mitgliedern B/C:
-    // Der bestehende Rechenvertrag verwendet B/C, fremde Planänderungen sind gesperrt.
-    {
-        const records = fixture(values), registry = JSON.parse(records.rs_profiles_v1);
-        registry.profiles.muster_a.meta.belongsToHousehold = false;
-        registry.profiles.muster_c = structuredClone(registry.profiles.muster_b);
-        registry.profiles.muster_c.meta.id = 'muster_c';
-        registry.profiles.muster_c.meta.name = 'Synthetisch C';
-        registry.profiles.muster_b.data.profile_tagesgeld = '13500';
-        records.rs_profiles_v1 = json(registry);
-        const scope = planScope('household', ['muster_b', 'muster_c']);
-        const ownScope = planScope('single', ['muster_a']);
-        records[HOUSEHOLD_PLAN_KEY] = buildPlanRecord(null, [{ scope, values },
-            { scope: ownScope, values: { ...structuredClone(values), floorBedarf: 1234 } }], { now: appNow }).raw;
-        const { dom, handlers } = await install(records);
-        const doc = createSelectionDocument();
-        doc.createDocumentFragment = () => doc.createElement('div');
-        globalThis.document = doc;
-        dom.inputs = Object.fromEntries(Object.entries(dom.inputs).map(([key, original]) => {
-            const field = addField(doc, key);
-            Object.assign(field, { value: original.value, checked: original.checked, type: original.type,
-                className: original.classList.contains('currency') ? 'currency' : '' });
-            return [key, field];
-        }));
-        initUIReader(dom); UIReader.applyHouseholdPlanInputs();
-        const planBytes = storage.getItem(HOUSEHOLD_PLAN_KEY), seen = [];
-        const metadataTime = 1760000000000;
-        const engine = { ...EngineAPI, simulateSingleYear(input, state) {
-            seen.push(structuredClone(input));
-            if (input.depotLastUpdate === metadataTime) assertEqual(JSON.parse(storage.getItem(recordKey)).inputs.depotLastUpdate, metadataTime, 'Metadaten sind vor dem Engine-Aufruf bestätigt');
-            return EngineAPI.simulateSingleYear(input, state);
-        } };
-        window.EngineAPI = engine;
-        const errors = [], summaries = [];
-        const deps = { projectNextYearBudget, getBalancePlanTrial, renderBalanceInflationSource, initBalancePlanTrial() {}, syncDynamicFlexPresetSelection() {}, refreshDynamicFlexControls() {}, ...pipeline, buildBalanceEngineInputFromStorage, stripBalancePlanInputs, persistenceStorage: storage, PROFILVERBUND_STORAGE_KEYS: { mode: 'household_withdrawal_mode' }, evaluateBalanceFileInputs, readBalanceHouseholdPlan, stageBalancePlanPatch,
-            dom, UIReader, UIUtils, StorageManager,
-            UIRenderer: { clearError() {}, renderContext() {}, renderBedarfAnpassungUI() {}, render() {},
-                formatDiagnosisPayload() { return null; }, renderDiagnosis() {}, handleError(error) { errors.push(error); } },
-            readBalancePersonStatus, showPersonDataStatus, loadProfilverbundProfiles,
-            getCurrentProfileId: () => storage.getItem('rs_current_profile'),
-            appState: { engineHandshake: pipeline.createEngineHandshake(engine, ''), pendingInputMetadata: { depotLastUpdate: metadataTime } },
-            profileSyncHandlers: createProfileSyncHandlers({ dom, PROFILE_VALUE_KEYS }), profilverbundHandlers: handlers,
-            refreshBalanceWealthHistory() {}, refreshBalanceExpensesHistory() {}, postprocessBalanceAction,
-            withGuardrailCardValues: value => value, ANNUAL_MARKET_DATA_META_KEY: 'annualMarketDataMeta',
-            updateExpensesBudget() {}, overviewScope, buildBalanceOverviewSummary,
-            storeOverviewSummary(summary) { summaries.push(summary); return Promise.resolve(true); } };
-        const update = new Function(...Object.keys(deps), functionSource('app/balance/balance-main.js', 'update') + '\nreturn update;')(...Object.values(deps));
-        StorageManager.loadState(); // Technische Bestandsmigration erfolgt vor dem Kandidatenlauf wie beim Seitenstart.
-        assertEqual(readBalanceHouseholdPlan().scope.key, scope.key, 'Außenpersonöffnung behält den ausgewählten Haushaltsrechenbereich');
-        assertEqual(readBalanceHouseholdPlan({ profileId: 'muster_a' }).scope.key, ownScope.key, 'Ausdrücklicher Personenleser trennt den eigenen Einzelbereich');
-        assertEqual(UIReader.readAllInputs().floorBedarf, 30000, 'Reader verwendet Haushaltsbedarf statt Außenpersonenbedarf 1234');
-        assertEqual(json(UIReader.readHouseholdPlanPatch()), '{}', 'Personenänderung erzeugt keinen Planpatch');
-        const priorLastStates = Object.fromEntries(Object.entries(JSON.parse(storage.getItem('rs_profiles_v1')).profiles)
-            .map(([id, profile]) => [id, json(JSON.parse(profile.data[recordKey]).lastState)]));
-        const mainLastState = json(StorageManager.loadState().lastState);
-        const inputWrite = update({ mode: 'persist_inputs' });
-        assert(inputWrite.ok && inputWrite.persistence.persisted, 'Produktiver Main persistiert bei geöffneter Außenperson und leerem Planpatch');
-        await inputWrite.overviewPersistence;
-        await P.flush();
-        const written = JSON.parse(storage.getItem('rs_profiles_v1'));
-        for (const [id, profile] of Object.entries(written.profiles)) assertEqual(json(JSON.parse(profile.data[recordKey]).lastState), priorLastStates[id], 'Produktiver Eingabewrite schreibt keinen Profil-LastState fort: ' + id);
-        assertEqual(json(StorageManager.loadState().lastState), mainLastState, 'Produktiver Eingabewrite schreibt keinen Haupt-LastState fort');
-        assertEqual(JSON.parse(written.profiles.muster_b.data[recordKey]).inputs.tagesgeld, 13500, 'Geänderter personenbezogener Cashwert erreicht die Fachpersistenz');
-        assertEqual(storage.getItem(HOUSEHOLD_PLAN_KEY), planBytes, 'Personenwrite erhält alle Haushalts- und Einzelplanrohbytes');
-        assertEqual(seen[0].depotLastUpdate, metadataTime, 'Engine erhält bestätigte Metadaten aus ihrem Speicherbesitzer');
-        assertEqual(seen[0].floorBedarf, 30000, 'Produktive Rechnung verwendet denselben Bereich wie der Reader');
-        assertEqual(summaries[0].scope.key, scope.key, 'Jahreszusammenfassung bindet den ausgewählten Haushalt B/C');
-        assertEqual(storage.getItem('rs_current_profile'), 'muster_a', 'Fachwrite erhält die geöffnete Außenpersonidentität');
-        const beforeRejected = json(P.exportAllSync().records), summaryCount = summaries.length;
-        dom.inputs.floorBedarf.value = '35000';
-        const rejected = update({ mode: 'persist_inputs' });
-        assert(rejected.ok, 'Lesende Planprojektion ignoriert eine programmatische Fremdbelegung');
-        assertEqual(storage.getItem(HOUSEHOLD_PLAN_KEY), planBytes, 'Programmatische Fremdbelegung schreibt keinen Planpatch');
-        assertEqual(summaries.length, summaryCount + 1, 'Reguläre Planrechnung aktualisiert nur die Planvorschau');
-        UIReader.applyHouseholdPlanInputs();
-        const periodState = StorageManager.loadState();
-        periodState.annualPeriodMetadata.pendingCommit = { periodId: 'calendar-year:2026', snapshotId: 'synthetic-recovery', phase: 'validating' };
-        StorageManager.saveState(periodState);
-        const committed = update({ mode: 'commit_period', periodId: 'calendar-year:2026' });
-        assert(committed.ok && committed.persistence.persisted, 'Auch produktiver Periodenwrite lässt leeren Außenpersonenpatch passieren');
-        await committed.overviewPersistence;
-        await P.flush();
-        assertEqual(storage.getItem(HOUSEHOLD_PLAN_KEY), planBytes, 'Periodenwrite erhält gemeinsame und eigene Planbytes');
-        assertEqual(storage.getItem('annual_plan_record_v1'), annualBytes, 'Außenpersonenperiodenwrite verändert keinen H3-Beleg');
-
-        addField(doc, 'profilverbund-profile-list');
-        const errorBox = addField(doc, 'errorDisplay');
-        dom.containers = { error: errorBox };
-        const bound = createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS: { mode: 'household_withdrawal_mode' } });
-        UIReader.applyHouseholdPlanInputs();
-        bound.initProfilverbundBalance();
-        const modeSelect = dom.inputs['profilverbund-withdrawal-mode'];
-        const beforeMode = json(P.exportAllSync().records);
-        modeSelect.dispatchEvent({ type: 'change', target: modeSelect });
-        assertEqual(errorBox.textContent, '', 'Gleiches Modusereignis der Außenperson löst keinen Abbruch aus');
-        modeSelect.value = 'proportional';
-        modeSelect.dispatchEvent({ type: 'change', target: modeSelect });
-        assert(errorBox.textContent.includes('Außenperson'), 'Produktiver Moduslistener weist fremde Entnahmemodusänderung ausdrücklich ab');
-        assertEqual(json(P.exportAllSync().records), beforeMode, 'Moduslistener schreibt weder Plan noch alten Moduskey teilweise');
-
-        const outsideOnly = JSON.parse(storage.getItem('rs_profiles_v1'));
-        outsideOnly.profiles.muster_b.meta.belongsToHousehold = false;
-        outsideOnly.profiles.muster_c.meta.belongsToHousehold = false;
-        storage.setItem('rs_profiles_v1', json(outsideOnly));
-        UIReader.applyHouseholdPlanInputs();
-        assertEqual(UIReader.readAllInputs().floorBedarf, 1234, 'Ohne Auswahl verwendet der Reader den eigenen Außenpersonenplan');
-        const ownTrial = getBalancePlanTrial(document); ownTrial.start(); ownTrial.update({ floorBedarf: 2345 });
-        await ownTrial.adopt(() => ['floorBedarf']); UIReader.applyHouseholdPlanInputs();
-        dom.inputs.floorBedarf.value = '2345';
-        const ownWrite = update({ mode: 'persist_inputs' });
-        assert(ownWrite.ok, 'Produktiver Main schreibt ohne Mitglieder den eigenen Außenpersonenbereich');
-        await ownWrite.overviewPersistence;
-        await P.flush();
-        const ownChanged = JSON.parse(storage.getItem(HOUSEHOLD_PLAN_KEY));
-        assertEqual(ownChanged.entries[ownScope.key].values.floorBedarf, 2345, 'Ausdrücklicher Planpatch erreicht ausschließlich den eigenen Bereich');
-        assertEqual(json(ownChanged.entries[scope.key]), json(JSON.parse(planBytes).entries[scope.key]), 'Eigener Außenpersonenwrite erhält den fremden Haushaltsbereich bytegleich');
-        globalThis.document = { getElementById: () => null };
-        globalThis.window = { EngineAPI };
     }
 
     const records = fixture(values), { dom, handlers } = await install(records);
@@ -624,13 +498,14 @@ try {
     throws(() => assertBalanceCandidateFresh(baseFingerprint, fingerprint(readBalanceHouseholdPlan())), 'Nach Kandidatenbildung geänderter Plan macht Kandidaten veraltet');
     const householdBytes = json(readBalanceHouseholdPlan().entry);
     stageBalancePlanPatch({ scope: outsideScope, patch: { floorBedarf: 999 } });
-    assertEqual(json(readBalanceHouseholdPlan().entry), householdBytes, 'Außenpersonenpatch verändert nur seinen eigenen Bereich');
+    assertEqual(json(readBalanceHouseholdPlan().entry), householdBytes, 'Patch eines fremden Einzelbereichs verändert nur diesen Bereich');
 
     UIReader.applyHouseholdPlanInputs();
     storage.setItem('sim_marketCapeRatio', '19');
-    const market = createMarketdataHandlers({ dom, appState: {}, now: () => new Date('2027-01-02T12:00:00Z'), debouncedUpdate() {}, applyAnnualInflation() {},
-        navigationLifecycle: { run: (_options, callback) => callback({ controller: new AbortController(), check() {}, commit() {} }) } });
-    await market.handleFetchCapeAuto({ preparedResult: { capeRatio: 31.27, capeAsOf: '2026-12-31', capeSource: 'synthetic-test', capeFetchStatus: 'ok_synthetic' } });
+    // Der frühere CAPE-Handler der Balance ist entfernt; der Test setzt Eingabefelder und capeMeta so, wie er sie hinterließ.
+    const cape = { capeRatio: 31.27, capeAsOf: '2026-12-31', capeSource: 'synthetic-test', capeFetchStatus: 'ok_synthetic' };
+    dom.inputs.marketCapeRatio.value = '31.3'; if (dom.inputs.capeRatio) dom.inputs.capeRatio.value = '31.3';
+    const capeState = StorageManager.loadState() || {}; capeState.capeMeta = { ...(capeState.capeMeta || {}), ...cape }; StorageManager.saveState(capeState);
     const patch = UIReader.readHouseholdPlanPatch();
     assertEqual(json(patch.cape), '{"value":31.3,"asOf":"2026-12-31","source":"synthetic-test"}', 'Bestätigter Jahres-CAPE samt Provenienz folgt bestehender Anzeigepräzision');
     stageBalancePlanPatch({ scope, patch });
@@ -638,32 +513,8 @@ try {
     assertEqual(UIReader.readAllInputs().capeRatio, 31.3, 'Reloadprojektion verwendet Jahres-CAPE statt alten Simulator-CAPE');
     assertEqual(storage.getItem('annual_plan_record_v1'), annualBytes, 'CAPE-Weg erhält Jahresbelegbytes');
 
-    const forExport = calculate(handlers);
-    persistBalanceUpdate({ mode: 'persist_inputs', profilverbundRuns: forExport.profilverbundRuns, profilverbundHandlers: handlers,
-        storageManager: StorageManager, persistentState: forExport.state, inputData: forExport.inputData, modelResult: forExport.modelResult, householdPlan: forExport.plan });
-    const exported = exportBalanceFile();
-    assertEqual(exported.validationWarnings, undefined, 'Produktiver Export ohne Plankopien erfüllt weiterhin Dateivertrag');
-    assertEqual(normalizeBalanceImportDocument(exported).payload.inputs.floorBedarf, 35000, 'Export projiziert bestätigten Bedarf');
-    const previousPlan = storage.getItem(HOUSEHOLD_PLAN_KEY), previousState = storage.getItem(recordKey);
-    let rolledBack = 0;
-    const navigationOperation = { phase: 'prepare', check() {}, commit() { this.phase = 'commit'; } };
-    let failed = false;
-    try {
-        await importBalanceFile(exported, { navigationOperation, applyInputs: inputs => UIReader.applyStoredInputs(inputs),
-            update: async mode => {
-                if (mode === 'preview') return { ok: true };
-                stageBalancePlanPatch({ scope, patch: { floorBedarf: 45000 } });
-                storage.setItem(recordKey, '{"inputs":{}}');
-                return { ok: false };
-            }, replace: async () => ({ recoverySnapshotId: 'synthetic-recovery' }),
-            rollback: async () => { rolledBack++; storage.setItem(recordKey, previousState); } });
-    } catch (error) { failed = error.code === 'post_replace_validation_failed'; }
-    assert(failed && rolledBack === 1, 'Fehlgeschlagene Importabschlussprüfung ruft bestehenden Rollback auf');
-    assertEqual(storage.getItem(HOUSEHOLD_PLAN_KEY), previousPlan, 'Importrollback erhält gemeinsame Planrohbytes');
-    assertEqual(storage.getItem(recordKey), previousState, 'Importrollback erhält Balancebytes');
     storage.setItem(HOUSEHOLD_PLAN_KEY, '{"version":2,"entries":{}}');
     throws(() => UIReader.readAllInputs(), 'Zukünftiger Plan sperrt Rechnung statt Altkopien zu lesen');
-    throws(() => exportBalanceFile(), 'Beschädigter Plan wird auch im Export nicht als fehlend behandelt');
     storage.removeItem(HOUSEHOLD_PLAN_KEY);
     UIReader.applyHouseholdPlanInputs();
     dom.inputs.floorBedarf.value = '12345';

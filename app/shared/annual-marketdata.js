@@ -2,6 +2,7 @@ import { marketPriceAdapter, isSyntheticPriceMode } from './market-price-adapter
 import { appNow } from './app-clock.js';
 import { SYNTHETIC_MARKET_SOURCE } from './probelauf-prices.js';
 import { AppError, CONFIG } from '../balance/balance-config.js';
+import { parseLocalizedNumber } from '../balance/balance-utils.js';
 import { loadStoredBalanceStateFromData } from '../profile/profile-state.js';
 import { deriveCompletedCalendarYear } from '../balance/balance-annual-period.js';
 import { persistenceStorage } from './persistence-facade.js';
@@ -17,6 +18,7 @@ export const ANNUAL_PERIOD_METADATA_KEY = 'annualPeriodMetadata';
 const ANNUAL_PERIOD_PREFIX = 'calendar-year:';
 const ANNUAL_CLOSE_WINDOW_START_DAY = 27;
 const ANNUAL_CLOSE_WINDOW_END_DAY = 31;
+const berlinTradingDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' });
 // Broad VWCE.DE guard: keeps the existing whole-euro UI value positive and rejects proxy scaling failures.
 const ANNUAL_CLOSE_PRICE_MIN = 0.5;
 const ANNUAL_CLOSE_PRICE_MAX = 100000;
@@ -65,8 +67,9 @@ export function createAnnualMarketDataRequest(periodId) {
     if (!Number.isInteger(targetYear) || targetYear < 1900 || targetYear > 9999) return null;
     if (periodId !== `${ANNUAL_PERIOD_PREFIX}${targetYear}`) return null;
 
-    const period1 = Math.floor(Date.UTC(targetYear, 11, ANNUAL_CLOSE_WINDOW_START_DAY) / 1000);
-    const period2 = Math.floor(Date.UTC(targetYear + 1, 0, 1) / 1000);
+    // Berliner Mitternacht im Winter liegt um 23 Uhr UTC am Vortag.
+    const period1 = Date.UTC(targetYear, 11, ANNUAL_CLOSE_WINDOW_START_DAY, -1) / 1000;
+    const period2 = Date.UTC(targetYear + 1, 0, 1, -1) / 1000;
     if (!Number.isFinite(period1) || !Number.isFinite(period2)) return null;
 
     return {
@@ -120,9 +123,7 @@ export function validateAnnualPreparationValue(type, value, targetYear) {
  * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
 export function createManualAnnualValue(type, raw, targetYear) {
-    const text = String(raw ?? '').trim();
-    if (!text || !/^-?\d+(?:[.,]\d+)?$/.test(text)) throw new AppError('Bitte eine gültige Zahl eingeben.');
-    const value = Number(text.replace(',', '.'));
+    const value = parseManualAnnualNumber(raw);
     if (type === 'etf') return createManualAnnualQuote(value, `calendar-year:${targetYear}`);
     const source = 'Manuelle Ergänzung';
     return validateAnnualPreparationValue(type, type === 'inflation'
@@ -131,6 +132,13 @@ export function createManualAnnualValue(type, raw, targetYear) {
         : { capeRatio: value, capeAsOf: `${targetYear}-12-31`, capeSource: source,
             // Bestehender Status für lokale Ersatzwerte; die Herkunft bleibt ausdrücklich manuell.
             sourceLabel: source, capeFetchStatus: 'ok_fallback_stored', capeUpdatedAt: appNow().toISOString() }, targetYear);
+}
+
+/** @param {unknown} raw */
+export function parseManualAnnualNumber(raw) {
+    const { valid, value } = parseLocalizedNumber(raw, { allowCurrencySymbol: false, singleSeparatorAsDecimal: true });
+    if (!valid || value === null) throw new AppError('Bitte eine gültige Zahl eingeben.');
+    return value;
 }
 
 /**
@@ -165,6 +173,7 @@ export function selectAnnualCloseQuote(data, {
     const timestamps = result?.timestamp;
     const closes = result?.indicators?.quote?.[0]?.close;
     if (!Array.isArray(timestamps) || !Array.isArray(closes)) return null;
+    const { windowStart, windowEnd } = createAnnualMarketDataRequest(`calendar-year:${targetYear}`);
 
     let selected = null;
     const length = Math.min(timestamps.length, closes.length);
@@ -175,20 +184,16 @@ export function selectAnnualCloseQuote(data, {
         if (!isPlausibleAnnualClosePrice(price)) continue;
 
         const date = new Date(timestamp * 1000);
-        if (!Number.isFinite(date.getTime()) || date.getUTCFullYear() !== targetYear) continue;
-        const month = date.getUTCMonth() + 1;
-        const day = date.getUTCDate();
-        if (
-            month !== 12 ||
-            day < ANNUAL_CLOSE_WINDOW_START_DAY ||
-            day > ANNUAL_CLOSE_WINDOW_END_DAY
-        ) continue;
+        if (!Number.isFinite(date.getTime())) continue;
+        const asOf = berlinTradingDate.format(date);
+        if (asOf < windowStart || asOf > windowEnd) continue;
 
         if (!selected || timestamp > selected.timestamp) {
             selected = {
                 price,
-                date,
-                asOf: isoDateFromUtcParts(targetYear, month, day),
+                // date wird als Kalendertag angezeigt, timestamp liefert den tatsächlichen Zeitpunkt.
+                date: date.toISOString().slice(0, 10) === asOf ? date : new Date(`${asOf}T00:00:00Z`),
+                asOf,
                 timestamp,
                 ticker,
                 source,
@@ -442,12 +447,15 @@ export function createAnnualMarketDataReaders({ storage = persistenceStorage, no
             throw new AppError('Das CAPE-Zieljahr ist ungültig.');
         }
         const nowIso = now().toISOString();
-        const stored = readStoredCapeMeta();
+        let stored = null, storedCapeWarning;
+        try { stored = readStoredCapeMeta(); }
+        catch { storedCapeWarning = 'Der gespeicherte Balance-Stand ist für den CAPE-Abruf nicht lesbar.'; }
+        const localNote = storedCapeWarning ? { storedCapeWarning } : {};
         if (isSyntheticPriceMode()) {
             const resolved = await marketPriceAdapter('cape', { year: targetYear }, () => { throw new Error('Unerwarteter CAPE-Netzpfad.'); });
             operation.check();
             return { ...resolved, capeFetchStatus: 'ok_synthetic', capeUpdatedAt: nowIso,
-                sourceLabel: SYNTHETIC_MARKET_SOURCE, errors: [] };
+                sourceLabel: SYNTHETIC_MARKET_SOURCE, errors: [], ...localNote };
         }
         try {
             const page = await fetchTextWithTimeout(CAPE_SOURCES.PRIMARY.url, CAPE_FETCH_TIMEOUT_MS, operation);
@@ -461,14 +469,14 @@ export function createAnnualMarketDataReaders({ storage = persistenceStorage, no
                 throw new Error(`CAPE-Stand ${parsed.capeAsOf} liegt vor Oktober ${targetYear}.`);
             }
             return { ...parsed, capeSource: CAPE_SOURCES.PRIMARY.id, capeFetchStatus: 'ok_primary',
-                capeUpdatedAt: nowIso, sourceLabel: CAPE_SOURCES.PRIMARY.label, errors: [] };
+                capeUpdatedAt: nowIso, sourceLabel: CAPE_SOURCES.PRIMARY.label, errors: [], ...localNote };
         } catch (error) {
             operation.check();
             // Altwerte dienen nur dem Hinweis, niemals als automatisch bestätigte Jahresquelle.
             return { capeRatio: null, capeAsOf: null, capeSource: null,
                 capeFetchStatus: 'error_no_source_no_stored', capeUpdatedAt: nowIso,
                 sourceLabel: 'keine', lastStoredCape: stored, manualHint: capeManualHint(stored),
-                errors: [error.message] };
+                errors: [error.message], ...localNote };
         }
     };
 

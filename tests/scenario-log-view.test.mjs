@@ -1,5 +1,5 @@
 import { setEuroMode, getEuroMode } from '../app/simulator/euro-display.js';
-import { bindScenarioLogView, disposeScenarioLogView, renderScenarioList, scenarioGroupEntries, focusSelectedScenario } from '../app/simulator/scenario-log-view.js';
+import { bindScenarioLogView, disposeScenarioLogView, renderScenarioList, scenarioGroupEntries } from '../app/simulator/scenario-log-view.js';
 import { buildScenarioEntries, renderScenarioWealthChart } from '../app/simulator/scenario-wealth-chart.js';
 import { displayMonteCarloResults, WORST_LOG_DETAIL_KEY } from '../app/simulator/simulator-results.js';
 import { projectScenarioLogV2, serializeScenarioLogExportV2, serializeScenarioLogCsvV2 } from '../app/simulator/monte-carlo-export.js';
@@ -26,7 +26,7 @@ class Element {
     removeChild(node) { this.children.splice(this.children.indexOf(node), 1); }
     click() { downloads++; }
 }
-const ids = ['monteCarloPersonNotice', 'scenarioGroups', 'scenarioSelectionDisclosure', 'scenarioSelectionSummary', 'scenarioSelectedHeading', 'scenarioPrevious', 'scenarioNext', 'scenarioList', 'scenarioWealthChart', 'mcWealthMode', 'scenarioLogContainer', 'scenarioSelector', 'scenarioLogOutput', 'scenarioProtocolSummary', 'scenarioExportButtons', 'exportScenarioLogJson', 'exportScenarioLogCsv', 'toggle-log-detail', 'toggle-care-details', 'monteCarloResults', 'wealthDistribution', 'toastContainer', 'stressReplayFixButton', 'stressReplayStatus', 'stressReplaySelectedScenarioEmpty', 'stressReplaySelectedScenarioDetails', 'stressReplaySelectedScenarioLabel', 'stressReplaySelectedScenarioWealth', 'stressReplaySelectedScenarioCare'];
+const ids = ['monteCarloPersonNotice', 'scenarioGroups', 'scenarioSelectionDisclosure', 'scenarioSelectionSummary', 'scenarioSelectedHeading', 'scenarioPrevious', 'scenarioNext', 'scenarioList', 'scenarioWealthChart', 'mcWealthMode', 'scenarioLogContainer', 'scenarioSelector', 'scenarioLogOutput', 'scenarioProtocolSummary', 'scenarioExportButtons', 'exportScenarioLogJson', 'exportScenarioLogCsv', 'toggle-log-detail', 'toggle-care-details', 'monteCarloResults', 'wealthDistribution', 'toastContainer'];
 const hosts = Object.fromEntries(ids.map(id => [id, new Element(id)]));
 for (const id of ['scenarioComparison', 'scenarioComparisonChart', 'scenarioComparisonChartBasis', 'scenarioLogAnalysis', 'scenarioPathsHeading', 'scenarioListBasis', 'scenarioProtocolBasis']) hosts[id] = new Element(id);
 const doc = { getElementById: id => hosts[id] || null, createElement: () => new Element('download'), body: new Element('body') };
@@ -37,6 +37,24 @@ const worst = { key: 'worst', label: 'Worst Case des Geldendvermögens', sourceI
 const median = { ...worst, key: 'p50', label: 'Median des Geldendvermögens', logDataRows: [{ ...row, portfolio_total_end: 200 }] };
 const logs = { characteristic: [worst, median], random: [{ ...worst, key: 'random_0' }] };
 const entries = buildScenarioEntries(logs);
+// ER-2e (Befund 1810): „Todesfall“ zeigt Pfade, in denen eine Person stirbt und zwei Folgejahre gerechnet sind, jeden Lauf einmal.
+const deathRows = [row, { ...row, jahr: 2, Person1Alive: 0, Person2Alive: 1 },
+    { ...row, jahr: 3, Person1Alive: 0, Person2Alive: 1 }, { ...row, jahr: 4, Person1Alive: 0, Person2Alive: 1 }];
+const deathPaths = { characteristic: [{ ...worst, logDataRows: deathRows },
+    { ...median, sourceIdentity: { absoluteRunIndex: 1 }, logDataRows: deathRows.slice(0, 3) }],
+random: [{ ...worst, key: 'random_0', logDataRows: deathRows },
+    { ...worst, key: 'random_2', sourceIdentity: { absoluteRunIndex: 2 }, logDataRows: [...deathRows.slice(0, 3),
+        { ...deathRows[3], recordType: 'terminal_death', financiallyEvaluable: false }] }] };
+const deathBinding = bindScenarioLogView({ document: doc, logs: deathPaths, onSelect() {}, onMode() {} });
+deathBinding.switchGroup('death');
+assert(hosts.scenarioGroups.innerHTML.includes('data-scenario-group="death"><span>Todesfall</span> <span class="scenario-group-count">1</span>')
+    && hosts.scenarioList.getAttribute('aria-label') === 'Szenarien: Todesfall', '1810: Todesfall ist eine eigene Gruppe mit echter Anzahl');
+assertEqual(hosts.scenarioList.children.map(item => item.getAttribute('data-scenario-id')).join(','), 'char_worst',
+    'Nur der Lauf mit Todesfall und zwei gerechneten Folgejahren steht einmal in der Gruppe');
+deathBinding.choose('char_worst');
+assertEqual(deathBinding.activeGroup, 'death', 'Die Auswahl eines Todesfall-Pfads bleibt in der Gruppe');
+assert(hosts.scenarioSelectedHeading.innerHTML.includes('Ausgewählt · Nach Todesfall'), 'Der Auswahlkopf nennt die Gruppe');
+disposeScenarioLogView(doc);
 const list = renderScenarioList(entries, 'char_worst', 'real');
 assert(list.includes('role="option"') && list.includes('aria-selected="true"'), 'Eine aktive Gruppe besitzt echte Optionen');
 assertEqual((list.match(/tabindex="0"/g) || []).length, 1, 'Genau eine Option ist Tab-Einstieg');
@@ -54,7 +72,7 @@ const fifteen = renderScenarioList(buildScenarioEntries({ random: Array.from({ l
 assertEqual((fifteen.match(/role="option"/g) || []).length, 15, 'Alle Stichproben sind gleichwertige Zeilen');
 assert(!fifteen.includes('#15') && fifteen.includes('Worst Case'), 'Stichproben behalten Quellnamen statt Nummern');
 const ruinedList = renderScenarioList(buildScenarioEntries({ characteristic: [{ ...worst, failed: true, logDataRows: [{ jahr: 3, recordType: 'terminal_ruin' }] }] }), 'char_worst', 'real', { startYear: 2026 });
-assert(ruinedList.includes('<small class="scenario-value is-ruin">Ruin 2028</small>'), 'Ruinlauf zeigt Kalenderjahr im rechten Wertbereich');
+assert(ruinedList.includes('<small class="scenario-value is-ruin">Vermögen aufgebraucht 2028</small>'), 'Ruinlauf zeigt Kalenderjahr im rechten Wertbereich');
 let selectionCalls = [], modeCalls = [];
 let binding;
 for (let iteration = 0; iteration < 3; iteration++) binding = bindScenarioLogView({ document: doc, logs, onSelect: (id, source) => selectionCalls.push({ id, source }), onMode: mode => modeCalls.push(mode), chartOptions: { initialWealth: 80 } });
@@ -167,7 +185,6 @@ try {
         assertEqual(hosts.scenarioLogOutput.writes - writes, 2, `${source}: genau eine Invalidierung und eine Protokolldarstellung`);
         assert(window.globalCurrentScenarioData.rows === worst.logDataRows, `${source}: Download verwendet exakt die aktuellen Rohzeilen`);
         assert(!hosts.scenarioLogAnalysis.hidden && hosts.scenarioLogAnalysis.innerHTML.includes('Worst Case des Geldendvermögens · Pfad 1'), `${source}: Auffälliges folgt derselben Quelle`);
-        assertEqual(hosts.stressReplaySelectedScenarioLabel.textContent, 'Worst Case des Geldendvermögens', `${source}: Replayprojektion folgt derselben Auswahl`);
         hosts.exportScenarioLogJson.onclick(); hosts.exportScenarioLogCsv.onclick();
         assertEqual(await blobs.at(-2).text(), jsonOracle, `${source}: vollständiger JSON-Download bleibt bytegleich`);
         assertEqual(await blobs.at(-1).text(), csvOracle, `${source}: vollständiger CSV-Download bleibt bytegleich`);
@@ -211,7 +228,6 @@ try {
     for (const scenario of [worst, median]) {
         hosts.scenarioList.dispatch('click', pick('char_' + scenario.key));
         assert(window.globalCurrentScenarioData.rows === scenario.logDataRows, 'Gültiger Listenwechsel erhält exakte Rohquelle');
-        assertEqual(hosts.stressReplaySelectedScenarioLabel.textContent, scenario.label, 'Replayquelle folgt gültigem Listewechsel');
         hosts.exportScenarioLogJson.onclick(); hosts.exportScenarioLogCsv.onclick();
         assertEqual(await blobs.at(-2).text(), serializeScenarioLogExportV2(projectScenarioLogV2(scenario.logDataRows)), 'Gültiger Listenwechsel erhält vollständiges V2-JSON');
         assertEqual(await blobs.at(-1).text(), serializeScenarioLogCsvV2(projectScenarioLogV2(scenario.logDataRows)), 'Gültiger Listenwechsel erhält vollständiges V2-CSV');
@@ -239,7 +255,6 @@ try {
     run(invalid);
     assertEqual(window.globalCurrentScenarioData, null, 'Darstellungsfehler invalidiert den alten Exportpfad');
     assert(hosts.scenarioLogAnalysis.hidden, 'Darstellungsfehler entfernt alte Pfadkarten');
-    assertEqual(hosts.stressReplaySelectedScenarioDetails.hidden, true, 'Darstellungsfehler entfernt die alte Replayprojektion');
     const previousDownloads = downloads; hosts.exportScenarioLogJson.onclick();
     assertEqual(downloads, previousDownloads, 'Fehler erzeugt keinen Download des alten Laufs');
     run(logs); run(null);
@@ -337,7 +352,7 @@ const careNames = renderScenarioList(buildScenarioEntries({ characteristic: [{ .
 assert(careNames.includes('data-scenario-group="care"') && careNames.includes('Höchster Pflege-Mehrbedarf') && !careNames.includes('realer'), 'Pflegegruppenkennung bleibt erhalten, Anzeigename behauptet keine feste Geldbasis');
 
 // Echte Binder-Ereignisse: Fokus getrennt von Auswahl, Scrollsichtbarkeit,
-// Gruppenmerker, Leergruppe, Navigation und Replayöffnung.
+// Gruppenmerker, Leergruppe und Navigation.
 {
     const b = bindScenarioLogView({ document: doc, logs, onSelect: (id, source) => selectionCalls.push({ id, source }), onMode() {}, chartOptions: { startYear: 2026 } });
     const option = id => hosts.scenarioList.children.find(e => e.getAttribute('data-scenario-id') === id);
@@ -393,15 +408,6 @@ assert(careNames.includes('data-scenario-group="care"') && careNames.includes('H
     assert(hosts.scenarioPrevious.disabled && hosts.scenarioNext.disabled, 'Leergruppe sperrt Navigation');
     hosts.scenarioWealthChart.dispatch('click', pick('char_p50'));
     assertEqual(b.activeGroup, 'wealth', 'Linienklick aktiviert passende Gruppe');
-    hosts.scenarioSelectionDisclosure.open = false;
-    const replayOption = option(b.selectedId), callsBeforeReplay = selectionCalls.length;
-    replayOption.focusCalls = []; replayOption.scrollCalls = [];
-    replayOption.onFocus = () => assert(hosts.scenarioSelectionDisclosure.open, 'Direkter Replay-Rückweg öffnet die Auswahl vor dem Fokus');
-    assert(focusSelectedScenario(doc) && hosts.scenarioSelectionDisclosure.open, 'Replay öffnet dieselbe Auswahl');
-    assertEqual(doc.activeElement.getAttribute('data-scenario-id'), b.selectedId, 'Replay fokussiert aktuelle Option');
-    assertEqual(replayOption.focusCalls.length, 1, 'Direkter Replay-Rückweg fokussiert einmal');
-    assert(replayOption.focusCalls[0]?.preventScroll !== true, 'Direkter Replay-Rückweg erlaubt Seitenscrollen zur aktuellen Option');
-    assertEqual(selectionCalls.length, callsBeforeReplay, 'Replayfokus löst keine neue Auswahl aus');
     assert(hosts.scenarioSelectedHeading.innerHTML.includes('>Startjahr: 2026</span>') && hosts.scenarioSelectedHeading.innerHTML.includes('>1 Logzeilen</span>'), 'Kopf zeigt echtes Startjahr und Loganzahl');
     assert(hosts.scenarioSelectionSummary.textContent.includes('Median'), 'Schmale Zusammenfassung folgt Auswahl');
     disposeScenarioLogView(doc);
@@ -446,7 +452,7 @@ assert(careNames.includes('data-scenario-group="care"') && careNames.includes('H
     assert(!render({ ...worst, logDataRows: [{ jahr: 1, Person1Alive: '0', CareP2_Active: '1' }] }).includes('scenario-person-mark'), 'Unbekannte Personenfelder erfinden kein Ereignis');
     assert(render({ ...worst, failed: false, endVermoegen: 0 }).includes('>0\u00a0€') && !render({ ...worst, failed: false, endVermoegen: 0 }).includes('is-ruin'), 'Nullvermögen ohne Ruin bleibt ein Betrag');
     assert(render({ ...worst, endVermoegen: null }).includes('>Messung fehlt</small>'), 'Fehlender Wert bleibt ausdrücklich fehlend');
-    assert(render({ ...worst, failed: true, logDataRows: [{ jahr: 3, recordType: 'terminal_ruin' }] }).includes('scenario-value is-ruin">Ruin Jahr 3'), 'Ruin ohne Kalenderbasis ersetzt den Betrag');
+    assert(render({ ...worst, failed: true, logDataRows: [{ jahr: 3, recordType: 'terminal_ruin' }] }).includes('scenario-value is-ruin">Vermögen aufgebraucht Jahr 3'), 'Ruin ohne Kalenderbasis ersetzt den Betrag');
     const middle = { ...median, key: 'p25', label: 'Zwischenlauf' };
     const eventLogs = { characteristic: [worst, middle, events.key === worst.key ? { ...events, key: 'p50' } : events], random: [{ ...worst, key: 'sample' }] };
     let callbacks = [];
@@ -471,7 +477,7 @@ assert(careNames.includes('data-scenario-group="care"') && careNames.includes('H
     assert(heading.includes('Person 1 Pflege 2035 · † 2040') && heading.includes('Person 2 † 2028') && heading.includes('>15 Logzeilen</span>'), 'Auswahlkopf enthält dieselben Personenmarken und tatsächliche Rohzeilenanzahl');
     assert(!heading.includes('ds-note'), 'Auswahlkopf enthält kompakte Marken statt Notizkästen');
     assert(hosts.scenarioGroups.innerHTML.includes('class="scenario-group-count">3</span>') && hosts.scenarioGroups.innerHTML.includes('class="scenario-group-count">0</span>'), 'Gruppensegmente geben echte separate Anzahlen aus');
-    for (const button of hosts.scenarioGroups.children) assertEqual(button.getAttribute('aria-pressed'), String(button.getAttribute('data-scenario-group') === 'wealth'), 'Vier Segmente besitzen den richtigen gedrückten Zustand');
+    for (const button of hosts.scenarioGroups.children) assertEqual(button.getAttribute('aria-pressed'), String(button.getAttribute('data-scenario-group') === 'wealth'), 'Die Segmente besitzen den richtigen gedrückten Zustand');
     b.switchGroup('sample');
     expectNavigation('‹ Vorheriges', 'Nächstes ›', 'Vorheriges', 'Nächstes');
     assert(!hosts.scenarioSelectedHeading.innerHTML.includes('scenario-selected-events'), 'Ereignisloser Auswahlkopf enthält keinen leeren Ereignisbereich');
@@ -489,7 +495,7 @@ assert(careNames.includes('data-scenario-group="care"') && careNames.includes('H
     disposeScenarioLogView(doc);
     const ruined = { ...worst, failed: true, logDataRows: [row, { jahr: 3, recordType: 'terminal_ruin' }, { ...row, jahr: 4 }] };
     bindScenarioLogView({ document: doc, logs: { characteristic: [ruined] }, chartOptions: { startYear: 2026 }, onSelect() {}, onMode() {} });
-    assert(hosts.scenarioSelectedHeading.innerHTML.includes('class="is-ruin">Ruin 2028') && hosts.scenarioSelectedHeading.innerHTML.includes('>3 Logzeilen</span>'), 'Ruinkopf behält Ruinjahr und zählt sämtliche Rohzeilen einschließlich Terminal-/Schattenzeilen');
+    assert(hosts.scenarioSelectedHeading.innerHTML.includes('class="is-ruin">Vermögen aufgebraucht 2028') && hosts.scenarioSelectedHeading.innerHTML.includes('>3 Logzeilen</span>'), 'Ruinkopf behält Ruinjahr und zählt sämtliche Rohzeilen einschließlich Terminal-/Schattenzeilen');
     disposeScenarioLogView(doc);
 }
 
@@ -562,8 +568,17 @@ assert(careNames.includes('data-scenario-group="care"') && careNames.includes('H
     assert(!panels.scenarioComparisonChartPanel.hidden && panels.scenarioSelectedChartPanel.hidden, 'Umschalter kehrt zu den Vergleichspfaden zurück');
     hosts.scenarioList.dispatch('click', pick('char_p50'));
     assert(!panels.scenarioSelectedChartPanel.hidden && toggleBinding.selectedId === 'char_p50', 'Listenwahl zeigt das gewählte Szenario im Diagramm');
-    toggleBinding.showChart('comparison');
-    assert(focusSelectedScenario(doc) && !panels.scenarioSelectedChartPanel.hidden, 'Replay-Rückweg zeigt das gewählte Szenario');
     disposeScenarioLogView(doc);
     for (const id of ['scenarioChartView', 'scenarioComparisonChartPanel', 'scenarioSelectedChartPanel']) delete hosts[id];
+}
+
+// HP-6: Mit Immobilie trägt der Listeneintrag keine Zusatzzeile; die Aufteilung steht in Maus-Hinweis und Ansage.
+{
+    const homeRow = { ...row, portfolio_total_end: 200000, immobilien_wert_end: 450000, immobilien_selbst_end: 450000 };
+    const homeList = renderScenarioList(buildScenarioEntries({ characteristic: [{ ...worst, endVermoegen: 200000, logDataRows: [homeRow] }] }), 'char_worst', 'nominal');
+    const split = 'davon Geldvermögen 200.000 € · Immobilien 450.000 €';
+    assert(!homeList.includes('<br>') && !homeList.includes('scenario-money-detail') && /<small class="scenario-value">[^<]*<\/small>/.test(homeList),
+        'HP-6: Listeneintrag mit Immobilie bleibt einzeilig');
+    assert(homeList.includes(`title="650.000 € · ${split}"`) && homeList.includes(`aria-label="Worst Case des Geldendvermögens · 650.000 € · ${split}`),
+        'HP-6: Aufteilung im Maus-Hinweis und in der Ansage des Eintrags');
 }

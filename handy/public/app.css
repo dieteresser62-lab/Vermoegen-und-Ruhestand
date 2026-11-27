@@ -66,6 +66,14 @@ main {
 .delta.schlecht { color: var(--bad); }
 .delta .seit { font-weight: 400; color: var(--text-muted); }
 
+/* Woche, Monat und 52 Wochen: Zahlen grün oder rot wie die Tagesänderung, Text gedämpft */
+.vz.gut { color: var(--good); }
+.vz.schlecht { color: var(--bad); }
+.verlauf { margin-top: 10px; font-size: 14px; color: var(--text-muted); }
+.verlauf p { margin: 2px 0; }
+.verlauf .vz { font-weight: 500; }
+.verlauf .vhinweis { margin-top: 4px; font-size: 12px; }
+
 /* Personen */
 .person {
   margin-bottom: 12px;
@@ -91,6 +99,7 @@ main {
 .person .summe { grid-column: 2; grid-row: 1; justify-self: end; font: 500 22px/1.2 var(--font-serif); }
 .person .delta { grid-column: 2; grid-row: 2; justify-self: end; margin: 0; font-size: 14px; }
 .person .anzahl { grid-column: 1; grid-row: 2; font-size: 14px; color: var(--text-muted); }
+.person .pverlauf { grid-column: 1 / 3; grid-row: 3; font-size: 13px; color: var(--text-muted); }
 .person .pfeil { grid-column: 3; grid-row: 1 / span 2; color: var(--text-muted); transition: transform .2s; }
 .person[open] .pfeil { transform: rotate(180deg); }
 
@@ -108,6 +117,7 @@ main {
 .tranche .tdetail { font-size: 13px; color: var(--text-muted); }
 .tranche .delta { justify-self: end; margin: 0; font-size: 13px; white-space: nowrap; }
 .tranche .alt { color: var(--accent); }
+.tranche .tverlauf { grid-column: 1 / -1; font-size: 12px; color: var(--text-muted); }
 .tranche .tquelle { grid-column: 1 / -1; font-size: 12px; color: var(--text-muted); opacity: .85; }
 
 /* Stand und Aktualisieren */

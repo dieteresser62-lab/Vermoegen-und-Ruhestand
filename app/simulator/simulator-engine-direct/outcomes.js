@@ -40,7 +40,7 @@ export function validateRequiredYearReturns(yearData) {
         ? null
         : buildTechnicalErrorOutcome(
             SIMULATOR_TECHNICAL_ERROR_CODES.YEAR_DATA_RETURN_INVALID,
-            `Ungültige Jahresrenditen (${SIMULATOR_TECHNICAL_ERROR_CODES.YEAR_DATA_RETURN_INVALID}). Der Lauf wurde ohne Ruinwertung beendet.`,
+            `Ungültige Jahresrenditen (${SIMULATOR_TECHNICAL_ERROR_CODES.YEAR_DATA_RETURN_INVALID}). Der Lauf wurde beendet, ohne zu prüfen, ob das Vermögen reicht.`,
             null,
             { invalidFields }
         );

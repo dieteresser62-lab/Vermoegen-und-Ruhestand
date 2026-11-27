@@ -1,9 +1,10 @@
 // FR-73 Punkt 8 (geändert 12.11.2026): Pflegekosten steigen je Kalenderjahr um die Inflation und zusätzlich um eine erste Rate
 // bis einschließlich eines Wechseljahrs, danach um eine zweite Rate. Der Preisschritt in ein Kalenderjahr y nimmt die Rate von y.
-// Ohne Importe; Simulator, Backtest, Balance und Jahresabschluss rechnen über dieselben Funktionen.
+// Simulator, Backtest, Balance und Jahresabschluss rechnen über dieselben Funktionen.
+import { appNow } from './app-clock.js';
 
-/** Eingabegrenzen für das letzte Jahr der ersten Rate (GN-2b, Gemini 5). */
-export const CARE_DRIFT_YEAR_RANGE = Object.freeze({ min: 2026, max: 2100 });
+/** Eingabegrenzen für ein neues Bis-Jahr. Im Spielbereich gilt das Jahr der Fachuhr. */
+export const CARE_DRIFT_YEAR_RANGE = Object.freeze({ get min() { return appNow().getFullYear(); }, max: 2100 });
 /** Vorgabe: + 5 % bis einschließlich 2035, ab 2036 + 2 % über der Inflation. */
 export const CARE_DRIFT_SCHEDULE_DEFAULT = Object.freeze({ firstPercent: 5, untilYear: 2035, afterPercent: 2 });
 /** Erste Rate, die ohne gespeicherte zweite Rate als Vorgabe gilt. Die alte Vorgabe 3,5 % kommt hier schon als 5 % an:

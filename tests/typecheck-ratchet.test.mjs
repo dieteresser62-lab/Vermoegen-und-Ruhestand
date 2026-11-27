@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import os from 'node:os';
 import { checkTypeRatchet, inspectTypeDirectives } from '../scripts/typecheck-ratchet.mjs';
+import { eigenesRepoPruefen, gitFreieUmgebung } from './helpers/git-isoliert.mjs';
 
 const current = ['app/strict.js'];
 assertEqual(checkTypeRatchet(current, current, { app: 1 }, { app: 1 }).length, 0, 'gleiche Ausnahmezahl ist grün');
@@ -10,6 +11,8 @@ assertEqual(checkTypeRatchet(current, current, { app: 2 }, { app: 1 }).length, 1
 assertEqual(checkTypeRatchet(current, current, { app: 0 }, { app: 1 }).length, 0, 'weniger Ausnahmen sind erlaubt');
 assertEqual(checkTypeRatchet(current, current, { neu: 1 }, { app: 1 }).length, 1, 'neuer Ordner hat zunächst keine Ausnahmen');
 assertEqual(checkTypeRatchet([], current, {}, {}).length, 1, 'strenge Liste darf nicht schrumpfen');
+assertEqual(checkTypeRatchet([], current, {}, {}, () => false).length, 0, 'gelöschte Dateien verlassen die strenge Liste');
+assertEqual(checkTypeRatchet([], [...current, 'app/geloescht.js'], {}, {}, file => file !== 'app/geloescht.js').length, 1, 'nur gelöschte Dateien dürfen fehlen');
 assertEqual(checkTypeRatchet([...current, 'app/new.js'], current, {}, {}).length, 0, 'strenge Liste darf wachsen');
 assertEqual(checkTypeRatchet(current, current, {}, { app: -1 }).length, 1, 'negative Grenze ist ungültig');
 assertEqual(inspectTypeDirectives('const text = "// @ts-expect-error";').exceptions, 0, 'Literal zählt nicht');
@@ -24,7 +27,8 @@ assert(!inspectTypeDirectives('const text = "// @ts-nocheck";').noCheck, 'Abscha
 const root = mkdtempSync(path.join(os.tmpdir(), 'tp10-ratchet-'));
 const project = path.resolve(import.meta.dirname, '..');
 const write = (file, text) => writeFileSync(path.join(root, file), text);
-const run = (command, args) => spawnSync(command, args, { cwd: root, encoding: 'utf8', maxBuffer: 1024 * 1024 });
+const gitEnv = gitFreieUmgebung();
+const run = (command, args) => spawnSync(command, args, { cwd: root, env: gitEnv, encoding: 'utf8', maxBuffer: 1024 * 1024 });
 try {
     for (const folder of ['app', 'scripts', 'typcheck']) mkdirSync(path.join(root, folder));
     symlinkSync(path.join(project, 'node_modules'), path.join(root, 'node_modules'), 'junction');
@@ -42,6 +46,7 @@ try {
             '-c', 'core.hooksPath=/dev/null', '-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'fixture']]) {
         const result = run('git', args);
         assertEqual(result.status, 0, `synthetische Git-Basis: ${result.error?.message || result.stderr}`);
+        if (args[0] === 'init') eigenesRepoPruefen(root, gitEnv);
     }
     const check = () => run(process.execPath, ['scripts/check-types.mjs']);
     let result = check();

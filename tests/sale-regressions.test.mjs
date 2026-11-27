@@ -50,7 +50,7 @@ for (const requested of [1000, 1000 / 0.7, 10000]) {
     const result = applyForcedSaleLiquidityCoverage({ forcedShortfall: 10000, portfolio,
         engineInput: {}, market: { sKey: 'bear_deep' }, is3Bucket: true, isBadYear: true,
         depotTranchesAktien: portfolio.depotTranchesAktien, depotTranchesGold: [],
-        equityBeforeForced: 200000, goldBeforeForced: 0, combinedTaxRawAggregate: {}, captureTransactions: true });
+        equityBeforeForced: 200000, goldBeforeForced: 0, combinedTaxRawAggregate: {} });
     assertEqual(result.didForcedSale, true, 'Notverkauf findet Anleihen');
     assertEqual(result.bondSaleAmountDelta, 10000, 'Anleihen decken die Lücke');
     assertEqual(result.unmetLiquidityDelta, 0, 'Vorhandene Anleihen zählen nicht als Fehlbetrag');

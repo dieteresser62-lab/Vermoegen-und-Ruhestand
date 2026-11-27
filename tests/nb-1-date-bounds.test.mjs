@@ -5,6 +5,7 @@ import { createProbelaufController, PROBELAUF_STATE_KEY } from '../app/shared/pr
 import { appTestDateBounds, advanceCalendarDate, getAppTestDate, setAppTestDate } from '../app/shared/app-clock.js';
 import { createTimeLapse } from '../app/shared/probelauf-timelapse.js';
 import { areaSessionStorage } from '../app/shared/persistence-area-storage.js';
+import { HANDBOOK_MUSTER_DATE, MUSTER_HAUSHALTE } from '../app/demo/muster-haushalte.js';
 
 const RealDate = globalThis.Date;
 const fixed = new RealDate('2026-10-30T12:00:00').getTime();
@@ -43,4 +44,20 @@ try {
     assertEqual(JSON.stringify(await P.readPersistedRecords()), before, 'Start erhält sämtliche gespeicherten Bytes');
     assertEqual((await c.end(() => true)).status, 'reloaded', 'Vorhandener Weg Spielbereich beenden bleibt erreichbar');
     assertEqual(f.realBytes(), real, 'Beenden des Altbestands erhält echte Daten');
+    // JV-1: Der Sprung auf den 02.01.2027 gelingt von jedem Tag ab dem Handbuchdatum (Max und Erika) und für alle Beispiele vom Handbuchdatum aus.
+    const failed = [];
+    const starts = [];
+    for (let day = HANDBOOK_MUSTER_DATE; day < '2027-01-02'; day = advanceCalendarDate(day, 'day')) starts.push(['max-erika', day]);
+    for (const household of MUSTER_HAUSHALTE.slice(1)) starts.push([household.id, HANDBOOK_MUSTER_DATE]);
+    for (const [householdId, day] of starts) {
+        setAppTestDate(null);
+        const play = await playFixture('tauri', {});
+        let controller = await play.boot();
+        await controller.start(() => ({ source: 'demo', householdId, variantId: 'grund', testDate: day }));
+        controller = await play.boot();
+        const result = await controller.changeDate('2027-01-02');
+        controller = await play.boot();
+        if (result.status !== 'reloaded' || controller.state?.testDate !== '2027-01-02' || controller.blocked) failed.push(`${householdId} ${day}`);
+    }
+    assertEqual(failed.join(', '), '', `JV-1: Sprung auf 02.01.2027 von ${starts.length} Starttagen`);
 } finally { P.resetPersistenceForTests(); setAppTestDate(null); globalThis.Date = RealDate; }

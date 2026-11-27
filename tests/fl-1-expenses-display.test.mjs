@@ -16,8 +16,8 @@ const store = { version: 1, years: { 2025: { months: { 1: { profiles: { a: plain
 const before = JSON.stringify(store);
 const rows = prepareExpensesHistoryMetrics(store, 2026, { includeSegments: true });
 assertEqual(JSON.stringify(rows[0].segments), JSON.stringify({ floor: 0, flex: 0, unallocated: 100 }), 'FL-1: Altjahr ist vollständig grau');
-assertEqual(JSON.stringify(rows[1].segments), JSON.stringify({ floor: 240, flex: 40, unallocated: 200 }), 'FL-1: Jahressegmente ohne Zahlungsabzug; nicht lesbare Aufteilung grau');
-for (const row of rows) assertEqual(Object.values(row.segments).reduce((a, b) => a + b, 0), row.annualUsed, 'FL-1: Summe der Jahressegmente gleich Jahressumme');
+assertEqual(JSON.stringify(rows[1].segments), JSON.stringify({ floor: 240, flex: 40, unallocated: 200 }), 'FL-1: Jahressegmente verrechnen die Erstattung mit Flex; ungeteilte Monate bleiben grau');
+assertEqual(rows[1].annualUsed, 480, 'FL-1: Jahressaldo enthält die Erstattung');
 assert(prepareExpensesHistoryMetrics(store, 2026).every(row => !Object.hasOwn(row, 'segments')), 'FL-1: Personenprojektion ohne Segmente');
 const { doc } = createDialogFixture();
 const add = (tag, id) => { const node = doc.createElement(tag); node.id = id; doc.body.append(node); return node; };
@@ -108,19 +108,75 @@ const forecastTile = add('div', 'forecastTile'), forecast = doc.createElement('s
 Object.defineProperty(forecast, 'parentElement', { get: () => forecastTile }); forecastTile.append(forecast);
 const create = doc.createElement; doc.createElement = tag => { const node = create(tag); node.style = {}; return node; };
 renderExpensesPage(doc, { ...view, personId: 'a' });
-assertEqual(doc.getElementById('expensesForecastNote').textContent, `Mittelwert aus ${view.stats.monthsWithData} positiven Ausgabenmonaten × 12`, 'FL-2: Personenhochrechnung nennt denselben Mittelwert');
+assertEqual(doc.getElementById('expensesForecastNote').textContent, `Mittelwert aus ${view.stats.monthsWithData} Monaten × 12`, 'FL-2: Personenhochrechnung nennt denselben Mittelwert');
+renderExpensesPage(doc, view);
+const categoriesHost = doc.getElementById('expensesCategories');
+const refundRow = categoriesHost.children.find(row => row.children[0].textContent.includes('Erstattung'));
+const livingRow = categoriesHost.children.find(row => row.children[0].textContent === 'Alltag');
+assertEqual(refundRow.children[2].textContent, '−20 €', 'NG-14c: Wofür zeigt die Erstattung negativ');
+assertEqual(refundRow.children[1].children[0].style.width, '0%', 'NG-14c: Erstattung ohne Balken');
+assertEqual(livingRow.querySelector('.expense-category-flex').style.width, '50%', 'NG-14c: Flexanteil im Balken trägt die Erstattung');
+assertEqual(doc.getElementById('expensesCategoriesNeeds').textContent, 'Grundbedarf 240 € (50 %) · Flex 40 € (8,3 %) · ohne Aufteilung 200 € (41,7 %)', 'NG-14c: Fußzeile enthält den Jahressaldo je Anteil');
+const pairYear = { months: { 1: { profiles: { a: split, b: {
+    categories: { Ausflug: -200, Versicherung: 300 },
+    categoryNeeds: { Ausflug: { floor: 0, flex: -200 }, Versicherung: { floor: 300, flex: 0 } }
+} } } } };
+const pairStore = { version: 1, years: { 2026: pairYear } };
+const pairView = projectExpenses({ ...args, store: pairStore, people: [...args.people, { id: 'b', name: 'Erika' }] });
+renderExpensesPage(doc, pairView);
+assertEqual(doc.getElementById('expensesCategoriesNeeds').textContent, 'Grundbedarf 240 € (50 %) · Flex 240 € (50 %)', 'NG-14c: Erstattungsüberschuss einer Person mindert den Grundbedarf der anderen Person nicht');
+assertEqual(JSON.stringify(prepareExpensesHistoryMetrics(pairStore, 2026, { includeSegments: true })[0].segments),
+    JSON.stringify({ floor: 240, flex: 240, unallocated: 0 }), 'NG-14c: Jahresdiagramm begrenzt den Grundbedarf je Person');
+const partialStore = structuredClone(pairStore);
+partialStore.years[2026].months[2] = { profiles: { a: {
+    categories: { Wohnen: -750, Freizeit: -150, Versicherung: 1200 }, categoryNeeds: {
+        Wohnen: { floor: -750, flex: 0 }, Freizeit: { floor: 0, flex: -150 }, Versicherung: { floor: 1200, flex: 0 }
+    }
+} } };
+const partialPeople = [...args.people, { id: 'b', name: 'Erika' }];
+const footer = () => doc.getElementById('expensesCategoriesNeeds');
+const showActualParts = expected => {
+    const partial = projectExpenses({ ...args, store: partialStore, people: partialPeople });
+    renderExpensesPage(doc, partial);
+    const [{ segments }] = prepareExpensesHistoryMetrics(partialStore, 2026, { includeSegments: true });
+    assertEqual(footer().textContent, expected, 'Wofür zählt die importierten Beträge im Haushaltsmonat');
+    assertEqual(JSON.stringify(segments), JSON.stringify({ floor: 0, flex: 390, unallocated: 0 }), 'Jahresdiagramm zeigt dieselben Ist-Anteile');
+    return partial;
+};
+const partial = showActualParts('Flex 390 € (100 %)');
+assertEqual(partial.stats.annualForecast, pairView.stats.annualForecast, 'Die Hochrechnung verwendet weiter nur vollständige Monate');
+assertEqual(JSON.stringify(partial.needs.annualForecast), JSON.stringify(pairView.needs.annualForecast), 'Auch die Aufteilung der Hochrechnung nutzt nur vollständige Monate');
+delete partialStore.years[2026].months[1].profiles.b;
+renderExpensesPage(doc, projectExpenses({ ...args, store: partialStore, people: partialPeople }));
+assert(!footer().hidden && footer().textContent === 'Flex 190 € (100 %)', 'Wofür zeigt die Ist-Aufteilung auch ohne einen vollständigen Monat');
 renderExpensesPage(doc, view);
 assertEqual(forecastTile.dataset.tone, '', 'FL-1: Hochrechnung unter Budget ohne Warnfärbung');
 assert(text(doc.getElementById('expensesForecastDeviation')).includes('−'), 'FL-1: Hochrechnung nennt signierte Budgetabweichung');
 renderExpensesPage(doc, { ...view, stats: { ...view.stats, annualForecast: 2700 } });
 assertEqual(forecastTile.dataset.tone, 'warning', 'FL-1: Hochrechnung über Budget warm hervorgehoben');
 assert(text(doc.getElementById('expensesForecastDeviation')).includes('+300') && text(doc.getElementById('expensesForecastDeviation')).includes('12,5 % über Budget'), 'FL-1: Hochrechnung mit Betrag und Prozent');
-for (const [floor, flex, unallocated, expectedParts] of [[100, 100, 0, ['Floor', 'Flex']], [0, 100, 0, ['Flex']], [100, 0, 100, ['Floor', 'ohne Aufteilung']]]) {
-    renderExpensesPage(doc, { ...view, categories: [{ name: 'Muster', amount: floor + flex + unallocated, share: 100, floor, flex, unallocated }] });
+for (const [floor, flex, unallocated, expectedParts] of [[100, 100, 0, ['Grundbedarf', 'Flex']], [0, 100, 0, ['Flex']], [100, 0, 100, ['Grundbedarf', 'ohne Aufteilung']]]) {
+    renderExpensesPage(doc, { ...view, categories: [{ name: 'Muster', amount: floor + flex + unallocated, share: 100, unallocated }],
+        categorySegments: new Map([['Muster', { floor, flex }]]) });
     const totals = doc.getElementById('expensesCategoriesNeeds');
     assertEqual(totals.textContent.split(' · ').map(part => part.replace(/ [\d.]+\s€.*$/, '')).join(','), expectedParts.join(','), 'FL-2b: Wofür-Fußzeile lässt jeden Nullteil weg');
     assert(!totals.hidden, 'FL-2b: Vorhandene Aufteilung bleibt sichtbar');
 }
-renderExpensesPage(doc, { ...view, needs: { ...view.needs, monthsWithBreakdown: 0 } });
+for (const [refund, expected, unallocatedWidth] of [
+    [60, 'Grundbedarf 150 € (62,5 %) · Flex 50 € (20,8 %) · ohne Aufteilung 40 € (16,7 %)', 40 / 240 * 100],
+    [160, 'Grundbedarf 150 € (75 %) · Flex 50 € (25 %)', 0]
+]) {
+    const withRefund = { version: 1, years: { 2026: { months: {
+        1: { profiles: { a: { categories: { Wohnen: -200 }, categoryNeeds: { Wohnen: { floor: -150, flex: -50 } } } } },
+        2: { profiles: { a: { categories: { Wohnen: -100 } } } },
+        3: { profiles: { a: { categories: { Erstattung: refund } } } }
+    } } } };
+    const [{ segments }] = prepareExpensesHistoryMetrics(withRefund, 2026, { includeSegments: true });
+    assertEqual(segments.unallocated, Math.max(0, 100 - refund), 'NG-14b: Ungeteilter Jahressaldo hat Untergrenze null');
+    renderExpensesPage(doc, projectExpenses({ ...args, store: withRefund }));
+    assertEqual(doc.getElementById('expensesCategoriesNeeds').textContent, expected, 'NG-14b: Wofür-Anteile verwenden den begrenzten Jahressaldo');
+    assertEqual(doc.getElementById('expensesCategories').querySelector('.expense-category-unallocated').style.width, `${unallocatedWidth}%`, 'NG-14b: Kopfzeile und Balken verwenden dieselben Segmente');
+}
+renderExpensesPage(doc, projectExpenses({ ...args, year: 2025 }));
 assert(doc.getElementById('expensesCategoriesNeeds').hidden && doc.getElementById('expensesCategoriesNeeds').textContent === '', 'FL-2b: Ohne jede Aufteilung keine Floor/Flex-Fußzeile');
 assertEqual(JSON.stringify(store), before, 'FL-1: Alle Anzeigen erhalten den Store bytegleich');

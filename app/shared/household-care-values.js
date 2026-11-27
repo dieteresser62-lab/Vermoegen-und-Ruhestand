@@ -6,9 +6,11 @@ export const CARE_RESIDENTIAL_SOURCE = 'https://www.vdek.com/presse/pressemittei
 export const DEFAULT_RESIDENTIAL_COMPONENTS = Object.freeze({ care: 2088, board: 1068, invest: 521 });
 /** § 43c SGB XI: Zuschuss auf den Pflegeanteil im 1., 2., 3. und ab dem 4. Heimjahr. */
 export const RESIDENTIAL_SUBSIDY_RATES = Object.freeze([0.15, 0.30, 0.50, 0.75]);
+/** Pflegegeld (§ 37 SGB XI) je Pflegegrad in Euro pro Monat, Stand 2026-01; einzige Stelle für diese Beträge. */
+export const CARE_ALLOWANCE_MONTHLY = Object.freeze({ 2: 347, 3: 599, 4: 800, 5: 990 });
 export const DEFAULT_CARE_VALUES = Object.freeze({
     version: 1,
-    allowance: Object.freeze({ values: Object.freeze({ 2: 347, 3: 599, 4: 800, 5: 990 }), asOf: '2026-01', source: CARE_ALLOWANCE_SOURCE, origin: 'mitgeliefert', validFrom: '2025-01' }),
+    allowance: Object.freeze({ values: CARE_ALLOWANCE_MONTHLY, asOf: '2026-01', source: CARE_ALLOWANCE_SOURCE, origin: 'mitgeliefert', validFrom: '2025-01' }),
     residential: Object.freeze({ monthly: 3364, components: DEFAULT_RESIDENTIAL_COMPONENTS, asOf: '2026-07', source: CARE_RESIDENTIAL_SOURCE, origin: 'mitgeliefert', validFrom: '2026-07' }),
     confirmedForYear: null
 });

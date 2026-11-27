@@ -1,6 +1,6 @@
 import { formatCurrency } from '../shared/shared-formatting.js';
-import { computeSpent } from './balance-expenses-metrics.js';
-import { parseCategoryCsv, EXPENSE_CSV_CATEGORY_NEEDS } from './balance-expenses-csv.js';
+import { computeSpent, expenseConvention, expenseConventions } from './balance-expenses-metrics.js';
+import { parseCategoryCsv, EXPENSE_CSV_CATEGORY_NEEDS, EXPENSE_CSV_LINE_TOTALS } from './balance-expenses-csv.js';
 import { loadExpensesStore, saveExpensesStore, getExpensesYearData, getExpensesMonthData, EXPENSES_STORAGE_KEY } from './balance-expenses-storage.js';
 import { PersistenceFacade, persistenceStorage } from '../shared/persistence-facade.js';
 import { appNow } from '../shared/app-clock.js';
@@ -142,6 +142,7 @@ export function importExpenses({ targets, confirm, storage = persistenceStorage,
             await bound(() => operation(() => { check(); }, deadline));
             allowed(); onProgress('');
             const initial = loadExpensesStore(storage), prepared = [], seen = new Set();
+            const candidate = structuredClone(initial);
             const planSource = storage.getItem(PLANNED_EXPENSES_KEY);
             const scope = readBalanceHouseholdPlan({ storage }).scope;
             for (const target of targets) {
@@ -153,11 +154,20 @@ export function importExpenses({ targets, confirm, storage = persistenceStorage,
                 const text = await bound(() => target.text());
                 await bound(checkPersisted);
                 const categories = parseCategoryCsv(text);
-                prepared.push({ ...target, categories, categoryNeeds: categories[EXPENSE_CSV_CATEGORY_NEEDS], total: computeSpent(categories).spent,
+                getExpensesMonthData(getExpensesYearData(candidate, year), month).profiles[profileId] = { categories };
+                prepared.push({ ...target, categories, categoryNeeds: categories[EXPENSE_CSV_CATEGORY_NEEDS],
                     plannedExpenseChoices: plannedExpenseImportChoices({ storage, scope, year, month, profileId, store: initial }),
                     replacing: Boolean(initial.years?.[year]?.months?.[month]?.profiles?.[profileId]) });
             }
             if (!prepared.length) throw new Error('Keine Importziele vorhanden.');
+            const directions = new Map();
+            for (const target of prepared) {
+                if (!directions.has(target.year)) directions.set(target.year, expenseConventions(candidate.years[target.year]));
+                target.direction = directions.get(target.year).get(target.profileId);
+                target.total = computeSpent(target.categories, target.direction).spent;
+                const lines = target.categories[EXPENSE_CSV_LINE_TOTALS];
+                target.grossExpenses = target.direction < 0 ? lines.negative : lines.positive;
+            }
             const accepted = await bound(() => confirm(prepared, { signal: requestAbort.signal }));
             await bound(checkPersisted);
             if (!accepted) return { status: 'cancelled', results: [] };
@@ -243,23 +253,23 @@ export function requestExpensesPreview(targets, { doc = globalThis.document, sig
             const origin = doc.createElement('p'); origin.dataset.expensesPreviewOrigin = ''; origin.textContent = (target.source === EXAMPLE_SOURCE ? 'Beispieldaten (Spielbereich)' : 'CSV-Datei')
                 + (target.replacing ? ' · Vorhandene Monatsdaten werden ersetzt.' : ' · Neuer Monatsimport.'); section.appendChild(origin);
             const needsHint = doc.createElement('p'); needsHint.className = 'ds-help';
-            needsHint.textContent = target.categoryNeeds ? 'Spalte ‚Bedarf‘ erkannt. Floor und Flex werden je Kategorie getrennt gespeichert.' : 'ohne Aufteilung – zählt nur im Gesamt';
+            needsHint.textContent = target.categoryNeeds ? 'Spalte ‚Bedarf‘ erkannt. Grundbedarf und Flex werden je Kategorie getrennt gespeichert.' : 'ohne Aufteilung – zählt nur im Gesamt';
             section.appendChild(needsHint);
+            const direction = target.direction ?? expenseConvention(target.categories);
             if (target.categoryNeeds) {
                 const scroll = doc.createElement('div'); scroll.className = 'ds-table-scroll';
                 const table = doc.createElement('table'); table.className = 'ds-table';
                 const head = doc.createElement('thead'), header = doc.createElement('tr');
-                for (const label of ['Kategorie', 'Floor', 'Flex', 'Summe']) {
+                for (const label of ['Kategorie', 'Grundbedarf', 'Flex', 'Summe']) {
                     const cell = doc.createElement('th'); cell.textContent = label; cell.scope = 'col'; header.appendChild(cell);
                 }
                 head.appendChild(header); table.appendChild(head);
                 const body = doc.createElement('tbody');
-                const direction = computeSpent(target.categories).sum < 0 ? -1 : 1;
                 let floor = 0, flex = 0;
                 const appendRow = (parent, name, values, total = false) => {
                     const row = doc.createElement('tr'); row.dataset[total ? 'expensesPreviewSum' : 'expensesPreviewCategory'] = '';
                     const label = doc.createElement('th'); label.scope = 'row'; label.textContent = name; row.appendChild(label);
-                    values.forEach((value, index) => { const cell = doc.createElement('td'); cell.className = 'num'; cell.textContent = index < 2 && value === 0 ? '—' : formatCurrency(value); row.appendChild(cell); });
+                    values.forEach((value, index) => { const cell = doc.createElement('td'); cell.className = 'num'; cell.textContent = index < 2 && value === 0 ? '—' : formatCurrency(value || 0); row.appendChild(cell); });
                     parent.appendChild(row);
                 };
                 for (const [name, value] of Object.entries(target.categories)) {
@@ -270,7 +280,7 @@ export function requestExpensesPreview(targets, { doc = globalThis.document, sig
                 const foot = doc.createElement('tfoot'); appendRow(foot, 'Summe', [floor, flex, target.total], true); table.appendChild(foot);
                 scroll.appendChild(table); section.appendChild(scroll);
             } else {
-                for (const [name, value] of Object.entries(target.categories)) { const row = doc.createElement('p'); row.dataset.expensesPreviewCategory = ''; row.textContent = `${name}: ${formatCurrency(Math.abs(value))}`; section.appendChild(row); }
+                for (const [name, value] of Object.entries(target.categories)) { const row = doc.createElement('p'); row.dataset.expensesPreviewCategory = ''; row.textContent = `${name}: ${formatCurrency(direction * value || 0)}`; section.appendChild(row); }
                 const sum = doc.createElement('p'); sum.dataset.expensesPreviewSum = ''; sum.textContent = `Summe: ${formatCurrency(target.total)}`; section.appendChild(sum);
             }
             dialog.appendChild(section);

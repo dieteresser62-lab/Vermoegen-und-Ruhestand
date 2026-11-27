@@ -84,7 +84,7 @@ export function readExpensesStoreForUi() {
 }
 
 export function formatCurrency(value) {
-    return UIUtils.formatBalanceCurrency(Math.abs(value || 0));
+    return UIUtils.formatBalanceCurrency(value || 0);
 }
 
 export function getProfiles() {

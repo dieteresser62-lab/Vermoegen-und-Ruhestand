@@ -264,6 +264,8 @@ for (const kind of ['index', 'subpage']) for (const failsFirst of [false, true])
     const records = { rs_profiles_v1: JSON.stringify({ version: 1, profiles: {
         test: { meta: { id: 'test', name: 'Synthetische Person', belongsToHousehold: true }, data }
     } }), rs_current_profile: 'test', rs_active_profile: 'test', ...data };
+    // SP-1b: Der Indexstart schreibt die aktive ID nur, wenn sie abweicht; hier fehlt sie, damit der eine Bootstrapwrite sichtbar bleibt.
+    if (kind === 'index') delete records.rs_active_profile;
     resetPersistenceForTests({ name: 'parallel-lifecycle', open: async () => {}, loadAll: async () => records,
         async saveBatch() { flushes++; await gate.promise; } });
     await PersistenceFacade.init({ installLifecycleHooks: false, debounceMs: 60000 });

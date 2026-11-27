@@ -146,12 +146,6 @@ export function readStrategyInputs(doc = globalThis.document) {
                 LIQUIDITY_RUNWAY_CONTRACT_V1.defaultYears,
                 doc
             ) }
-            : {}),
-        ...(doc?.getElementById?.('runwayTargetMonths')
-            ? { runwayTargetMonths: readNumber('runwayTargetMonths', NaN, doc) }
-            : {}),
-        ...(doc?.getElementById?.('runwayMinMonths')
-            ? { runwayMinMonths: readNumber('runwayMinMonths', NaN, doc) }
             : {})
     });
     return {

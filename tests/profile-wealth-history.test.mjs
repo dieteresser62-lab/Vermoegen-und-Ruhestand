@@ -124,7 +124,7 @@ for (const mutate of [b => b.globals[WEALTH_HISTORY_START_KEY] = '{}', b => b.gl
     const prices = { version: 1, symbols: { 'TEST.DE': { currency: 'EUR', days: [day, day + 3], closes: [100, 110], queried: [[day, day + 3]], failures: 0, lastError: null } } };
     const fixture = { version: 1, profiles: {
         a: { meta: { id: 'a', name: 'A' }, data: { depot_tranchen: JSON.stringify([{ ...lot, purchaseDate: '2025-01-02' }]), profile_tagesgeld: '50' } },
-        b: { meta: { id: 'b', name: 'B', belongsToHousehold: false }, data: { depot_tranchen: '[]', profile_tagesgeld: '500' } }
+        b: { meta: { id: 'b', name: 'B' }, data: { depot_tranchen: '[]', profile_tagesgeld: '500' } }
     } };
     const freeze = value => { Object.freeze(value); Object.values(value).forEach(child => { if (child && typeof child === 'object') freeze(child); }); return value; };
     freeze(fixture); freeze(prices);
@@ -136,11 +136,10 @@ for (const mutate of [b => b.globals[WEALTH_HISTORY_START_KEY] = '{}', b => b.gl
     }, today: context.today });
     assertEqual(JSON.stringify(projected.householdHistory.points), JSON.stringify(overview.points), 'Manager und Übersicht zeigen dieselben belegten Haushaltswerte');
     assertEqual(projected.profiles[0].history.metrics.change, 100, 'Personenkarten verwenden belegte Tagesveränderung');
-    assertEqual(projected.profiles[1].history.end.total, 500, 'Profil außerhalb Haushalt behält eigene Verlaufsreihe');
-    assertEqual(projected.householdHistory.end.total, 1150, 'Außenprofil trägt nicht zur Haushaltsverlaufsreihe bei');
+    assertEqual(projected.profiles[1].history.end.total, 500, 'Zweite Person behält eigene Verlaufsreihe');
+    assertEqual(projected.householdHistory.end.total, 1650, 'Haushaltsverlauf summiert beide Personen');
     const nodes = new Map(['managerHousehold', 'managerProfileTabs', 'managerPageTitle'].map(id => [id, { innerHTML: '', textContent: '' }]));
     renderManagerProfiles({ getElementById: id => nodes.get(id) }, projected);
-    assert(nodes.get('managerHousehold').innerHTML.includes('Außerhalb Haushalt') && !nodes.get('managerHousehold').innerHTML.includes('pv-active'), 'Außenprofil besitzt eigene Karte mit Haushaltszuordnung ohne Auswahlrahmen');
     assert(nodes.get('managerHousehold').innerHTML.includes('managerHistoryStartForm'), 'Beginnbedienung sitzt an der Haushaltskarte');
     assertEqual(JSON.stringify(fixture), raw, 'Kartenprojektion und Rendern verändern auch eingefrorene Registry nicht');
 }

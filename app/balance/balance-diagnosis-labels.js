@@ -4,28 +4,7 @@
 
 const OTHER = 'Sonstiger Grund';
 
-/** Status des Mindest-Flex. */
-export const MINIMUM_FLEX_STATUS_LABELS = Object.freeze({
-    inactive_zero: 'Nicht gesetzt',
-    not_needed: 'Nicht benötigt',
-    applied: 'Angewandt',
-    applied_limited_by_final_smoothing: 'Geglättet angewandt',
-    limited_by_final_quantization: 'Durch Endrundung begrenzt',
-    limited_by_available_flex: 'Durch verfügbaren Flex begrenzt',
-    blocked_emergency: 'Blockiert',
-    limited_by_flex_budget: 'Durch Flex-Budget begrenzt',
-    overridden_by_severe_flex_emergency: 'In schwerer Flex-Notlage bewusst überstimmt'
-});
-
-/** Gründe, warum der Mindest-Flex nicht greift. */
-export const MINIMUM_FLEX_BLOCK_LABELS = Object.freeze({
-    alarm_active: 'Alarmmodus aktiv',
-    no_open_flex_need: 'kein offener Flex-Bedarf',
-    no_open_depot_flex_need: 'kein offener Flex-Bedarf aus dem Depot',
-    covered_by_pension_surplus: 'Einkünfte decken den Bedarf',
-    floor_minimum_flex_not_covered: 'Floor-/Mindest-Flex-Deckung unzureichend',
-    minimum_runway_not_restorable: 'Mindest-Runway nicht wiederherstellbar'
-});
+export { MINIMUM_FLEX_STATUS_LABELS, MINIMUM_FLEX_BLOCK_LABELS, minimumFlexStatusText, minimumFlexBlockText } from '../shared/minimum-flex-display.js';
 
 /** Gründe der Transaktionsdiagnostik. */
 export const TRANSACTION_BLOCK_LABELS = Object.freeze({
@@ -43,10 +22,6 @@ function label(labels, code, fallback = OTHER) {
     return Object.hasOwn(labels, key) ? labels[key] : Object.hasOwn(labels, key.toLowerCase()) ? labels[key.toLowerCase()] : fallback;
 }
 
-/** @param {unknown} status */
-export const minimumFlexStatusText = status => label(MINIMUM_FLEX_STATUS_LABELS, status || 'inactive_zero', 'Sonstiger Status');
-/** @param {unknown} reason */
-export const minimumFlexBlockText = reason => label(MINIMUM_FLEX_BLOCK_LABELS, reason);
 /** @param {unknown} reason */
 export const transactionBlockText = reason => (reason ? label(TRANSACTION_BLOCK_LABELS, reason) : TRANSACTION_BLOCK_LABELS.none);
 

@@ -1,5 +1,5 @@
-import { createBalanceCloseCoordinator, createAnnualMonthSession } from '../app/balance/balance-close-coordinator.js';
-import { createAnnualModalHandlers } from '../app/balance/balance-annual-modal.js';
+import { createAnnualCloseSession as createBalanceCloseCoordinator, createAnnualMonthSession } from '../app/shared/annual-close-session.js';
+import { createAnnualCloseDialog as createAnnualModalHandlers } from '../app/shared/annual-close-dialog.js';
 import { createDialogFixture, prepareCloseFixture, settleAnnualReading } from './close-dialog.test.mjs?fixture';
 import { dialogElements } from '../app/shared/close-dialog.js';
 import { createNavigationGuard } from '../app/shared/navigation-guard.js';
@@ -29,7 +29,7 @@ try {
     const root = doc.getElementById('balanceAnnualClose');
     assertEqual(root.querySelectorAll('[data-close-dialog-step]').length, 7, 'Jahresdialog hat sieben Vorbereitungsschritte');
     const symbols = dialogElements(root).filter(node => node.className === 'close-dialog-step-symbol').map(node => node.textContent);
-    assertEqual(symbols.join(','), '✓,2,–,4,5,6,7', 'Haken steht für angesehen; offene und unbestätigte Schritte behalten ihre Nummer');
+    assertEqual(symbols.join(','), '1,2,3,4,5,6,7', 'OP-3: Jeder Reiter zeigt seine Nummer, auch angesehen oder neutral; den Stand nennt die Pille');
     assert(!root.querySelector('[data-close-dialog-step="month"]') && !root.querySelector('[data-close-dialog-group]'), 'Kein zusätzlicher Monatsschritt und keine Jahres-/Januargruppe');
     assert(!doc.getElementById('annualMonthStepConfirm'), 'Vorabzugang bietet keine schreibende Monatsbestätigung');
     assertEqual(root.querySelectorAll('[data-tagesgeld-person]').length, 2, 'Jahresendstand für jede Haushaltsperson genau einmal');
@@ -243,87 +243,4 @@ try {
         assert(dialogElements(doc.getElementById('annualResults')).some(node => node.textContent === 'Jahr 2026 gespeichert. Der Monatsabschluss konnte nicht gespeichert werden.'), 'Fehlendes Monatsmodell zeigt einen neutralen Wortlaut');
         await doc.getElementById('annualCloseBtn').fire('click');
     } finally { globalThis.document = old; }
-}
-
-// Ergebnisveröffentlichung und echter Protokollklick teilen denselben flüchtigen Stand.
-{
-    const { createAnnualHandlers } = await import('../app/balance/balance-binder-annual.js');
-    const { doc } = createDialogFixture(), previousDoc = globalThis.document; globalThis.document = doc;
-    try {
-        const button = doc.createElement('button'); button.id = 'btnJahresUpdateLog'; button.disabled = true; doc.body.append(button);
-        let last = null;
-        const annual = createAnnualHandlers({ dom: { inputs: {}, controls: { btnJahresUpdateLog: button } }, appState: {},
-            update() {}, debouncedUpdate() {}, getLastUpdateResults: () => last, setLastUpdateResults: value => { last = value; }, getModel: () => ({}),
-            navigationLifecycle: { run: async (_, execute) => execute({ commit() {} }) } });
-        button.addEventListener('click', () => annual.handleShowUpdateLog());
-        assertEqual(annual.publishResult({ status: 'cancelled' }), null, 'Abbruch ohne Ergebnis veröffentlicht keinen Abschluss');
-        assert(button.disabled && last === null, 'Abbruch gibt keinen unbestätigten Protokollknopf frei');
-        for (const [status, source] of [['already_committed', 'Erste Erfolgsquelle'], ['incomplete_recovery', 'Aktuelle Fehlerquelle'], ['already_committed', 'Neue Erfolgsquelle']]) {
-            annual.publishResult({ status, results: { startTime: 1, endTime: 2,
-                inflation: { year: 2026, rate: 2.5, source }, errors: status === 'incomplete_recovery' ? [{ step: 'ETF', error: 'Aktueller Abruffehler' }] : [] } });
-            assertEqual(button.disabled, false, status + ': Protokollknopf freigegeben');
-            await button.fire('click');
-            const text = dialogElements(doc.getElementById('annualResults')).map(node => node.textContent).join(' ');
-            assert(text.includes('Protokoll') && text.includes(source), 'Echter Klick zeigt ausschließlich das aktuelle Abschlussprotokoll');
-            assertEqual(last.confirmed, status === 'already_committed', 'Fehlerergebnis bestätigt keinen Jahresabschluss');
-            await doc.getElementById('annualCloseBtn').fire('click');
-        }
-    } finally { globalThis.document = previousDoc; }
-}
-
-// Echte Seitenbindung: Wiederstart ohne Dialog/Fachwrite; Statusgegenproben.
-{
-    const { overviewAnnualFixture, annualUntil } = await import('./overview-annual-close.test.mjs?fixture');
-    const { installAnnualLocks, installBalanceStorageForm, readyAnnualFixture } = await import('./helpers/balance-storage-fixtures.mjs');
-    const { UIBinder, initUIBinder, preserveUIBinderStateForTests } = await import('../app/balance/balance-binder.js');
-    const { UIRenderer } = await import('../app/balance/balance-renderer.js');
-    const { CONFIG } = await import('../app/balance/balance-config.js');
-    const { PersistenceFacade } = await import('../app/shared/persistence-facade.js');
-    const { getAppTestDate, setAppTestDate } = await import('../app/shared/app-clock.js');
-    const { EngineAPI } = await import('../engine/index.mjs');
-    const old = { doc: globalThis.document, win: globalThis.window, toast: UIRenderer.toast, date: getAppTestDate() };
-    const restoreLocks = installAnnualLocks(), restoreBinder = preserveUIBinderStateForTests();
-    let f;
-    try {
-        setAppTestDate('2027-01-02'); f = await overviewAnnualFixture();
-        const closing = f.open(); await prepareCloseFixture(f.doc);
-        await annualUntil(() => f.doc.getElementById('annualConfirmBtn') && !f.doc.getElementById('annualConfirmBtn').disabled);
-        await f.doc.getElementById('annualConfirmBtn').fire('click'); await closing;
-        await f.doc.getElementById('annualCloseBtn').fire('click');
-        const dom = installBalanceStorageForm(JSON.parse(f.storage.getItem(CONFIG.STORAGE.LS_KEY)).inputs, readyAnnualFixture().values);
-        dom.controls = { annualTestOpener: f.doc.createElement('button'), btnJahresUpdate: f.doc.createElement('button'), btnJahresUpdateLog: f.doc.createElement('button') };
-        dom.expenses = { yearSelect: { value: '2026' } }; dom.containers = {}; dom.outputs = {};
-        f.win.EngineAPI = EngineAPI;
-        initUIBinder(dom, {}, () => ({ ok: true }), () => {});
-        const notices = []; UIRenderer.toast = (text, kind) => notices.push({ text, kind });
-        const evidence = async () => JSON.stringify({ records: await f.persistence.readPersistedRecords(), batches: f.batches, snapshots: [...f.snapshots] });
-        const before = await evidence();
-        const result = await UIBinder.handleJahresabschluss();
-        assertEqual(result.status, 'already_committed', 'Balancebinder erreicht echten Wiederstartstatus');
-        assertEqual(JSON.stringify(notices), JSON.stringify([{ text: 'Die Jahresperiode 2026 wurde bereits abgeschlossen.', kind: 'info' }]), 'Balancebinder meldet genau einen Infoinhalt aus periodId');
-        assert(!f.doc.getElementById('balanceAnnualClose')?.open, 'Balance-Wiederstart öffnet keinen Dialog');
-        assertEqual(await evidence(), before, 'Balance-Wiederstart erhält Fachbytes, Batches und Snapshots');
-        const handlers = preserveUIBinderStateForTests().handlers;
-        const close = handlers.snapshots.handleJahresabschluss;
-        try {
-            for (const status of ['cancelled', 'invalid', 'not_applicable', 'incomplete_recovery', 'already_committed']) {
-                notices.length = 0;
-                const results = status === 'already_committed' ? { targetYear: 2026, startTime: 1, endTime: 2, errors: [] } : undefined;
-                handlers.snapshots.handleJahresabschluss = async () => ({ status, periodId: 'calendar-year:2026', results });
-                await UIBinder.handleJahresabschluss();
-                assertEqual(notices.length, 0, status + ': kein zusätzlicher Bereits-abgeschlossen-Toast');
-                const showsDialog = Boolean(results) || status === 'incomplete_recovery';
-                assertEqual(Boolean(f.doc.getElementById('balanceAnnualClose')?.open), showsDialog, status + ': Ergebnis beziehungsweise ruhige Recoverymeldung wird sichtbar');
-                if (showsDialog) await f.doc.getElementById('annualCloseBtn').fire('click');
-                assertEqual(await evidence(), before, status + ': Bindergegenprobe erzeugt keinen Fachwrite');
-            }
-            notices.length = 0;
-            handlers.snapshots.handleJahresabschluss = async () => ({ status: 'already_committed', periodId: 'calendar-year:2025' });
-            await UIBinder.handleJahresabschluss();
-            assertEqual(notices[0].text, 'Die Jahresperiode 2025 wurde bereits abgeschlossen.', 'Balancehinweis folgt periodId unabhängig vom aktuellen Jahr');
-        } finally { handlers.snapshots.handleJahresabschluss = close; handlers.closeCoordinator.dispose(); }
-    } finally {
-        f?.close(); restoreBinder(); restoreLocks(); UIRenderer.toast = old.toast;
-        globalThis.document = old.doc; globalThis.window = old.win; setAppTestDate(old.date); PersistenceFacade.resetPersistenceRuntimeForTests();
-    }
 }

@@ -51,7 +51,7 @@ export function trancheDetailContext(tranche) {
     try { registry = JSON.parse(persistenceStorage.getItem(PROFILE_STORAGE_KEYS.registry) || 'null'); records = [...readReconciliationHistory(registry)]; } catch { records = []; readable = false; }
     let cashStatuses = [], buyStatuses = [];
     try { cashStatuses = [...projectReconciliationCashStatuses(registry, profileId)]; buyStatuses = [...projectBuyCashStatuses(registry, profileId)]; } catch { readable = false; }
-    const ids = Object.keys(registry?.profiles || {}).filter(id => registry.profiles[id]?.meta?.belongsToHousehold !== false);
+    const ids = Object.keys(registry?.profiles || {});
     const years = [...new Set(records.filter(record => record.trancheId === tranche.trancheId).map(record => Number(String(record.executedAt || '').slice(0, 4))))];
     const references = [];
     try {
@@ -335,7 +335,7 @@ export function bindTrancheDetailControls() {
         if (!valid()) return;
         if (!symbol) { showTrancheQuoteCheck(document, { status: 'none' }); return; }
         const result = /** @type {any} */ (await probeSearchQuote(symbol, null).catch(() => ({ status: 'failed' })));
-        if (valid()) showTrancheQuoteCheck(document, { ...result, symbol, exchange: result.exchange || '' });
+        if (valid()) showTrancheQuoteCheck(document, { ...result, symbol });
     };
     byId('trancheQuoteRecheckBtn')?.addEventListener('click', () => void checkQuote());
     byId('trancheTickerCheckBtn')?.addEventListener('click', () => void checkQuote());

@@ -10,6 +10,8 @@ import { AppError, CONFIG } from '../app/balance/balance-config.js';
 import { GERMAN_CPI_RESEARCH_CHAIN } from '../app/simulator/german-cpi-chain.js';
 import { US_SHILLER_CAPE_CHAIN } from '../app/simulator/us-shiller-cape-chain.js';
 import { readBiff8Sheet } from './lib/biff8-numeric-sheet.mjs';
+import { faelligkeiten, faelligkeitenText, registerFehler, registerLesen } from './lib/jahreswerte.mjs';
+import { quellenPruefen, quellenText } from './lib/jahresdaten/quellen.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const ORIGINS = ['http://tauri.localhost', 'https://tauri.localhost'];
@@ -262,6 +264,33 @@ function argumentsForProbe(args) {
     return { year, proxies };
 }
 
+/** Register der amtlichen Jahreswerte (npm run jahreswerte:pruefen); nur Ausgabe, ändert den Exitcode der Liveprobe nicht. */
+export function jahreswerteAusgeben(heute = new Date().toISOString().slice(0, 10), root = fileURLToPath(ROOT)) {
+    let register, fehler;
+    try {
+        register = registerLesen(root);
+        fehler = registerFehler(register, root);
+    } catch (error) {
+        fehler = [`Register nicht lesbar: ${error.message}`];
+    }
+    const zeilen = fehler.length ? ['Amtliche Jahreswerte: Register fehlerhaft', ...fehler.map(text => `  ${text}`)]
+        : faelligkeitenText(faelligkeiten(register, heute), heute);
+    zeilen.forEach(zeile => console.log(zeile));
+    return zeilen;
+}
+
+/** Testmodus `npm run jahresdaten -- --quellen <Jahr>`; nur Ausgabe, ändert den Exitcode der Liveprobe nicht. */
+export async function jahresdatenQuellenAusgeben(year, optionen = {}) {
+    let zeilen;
+    try {
+        zeilen = quellenText(await quellenPruefen({ root: fileURLToPath(ROOT), jahr: year, ...optionen }));
+    } catch (error) {
+        zeilen = [`Quellen der Jahresdaten: Prüfung abgebrochen (${error.message})`];
+    }
+    zeilen.forEach(zeile => console.log(zeile));
+    return zeilen;
+}
+
 export async function main(args = process.argv.slice(2)) {
     const { year, proxies } = argumentsForProbe(args);
     const [config, rust, node] = await Promise.all([
@@ -339,6 +368,8 @@ export async function main(args = process.argv.slice(2)) {
         rows.forEach(printRow);
         console.log('Belege: Reihenfolge der Netzläufe HTTP-Origin, HTTPS-Origin. Antwortauszüge höchstens zwei Zeilen. ROT gilt auch bei lesbaren Werten mit fehlender CORS-/CSP-Freigabe.');
         rows.forEach(row => console.log(JSON.stringify(row)));
+        jahreswerteAusgeben();
+        await jahresdatenQuellenAusgeben(year);
         console.log(`Ergebnis: ${rows.filter(row => row.grade === 'GRÜN').length} GRÜN, ${rows.filter(row => row.grade === 'GELB').length} GELB, ${rows.filter(row => row.grade === 'ROT').length} ROT. Exitcode 1 bei ROT, sonst 0.`);
         if (rows.some(row => row.grade === 'ROT')) process.exitCode = 1;
         return rows;

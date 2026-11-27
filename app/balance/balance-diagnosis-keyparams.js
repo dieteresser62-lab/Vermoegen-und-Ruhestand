@@ -46,7 +46,7 @@ export function buildKeyParams(params = {}) {
     const peakValue = formatCurrencySafe(params.peakRealVermoegen);
     if (peakValue) {
         pushMetric({
-            label: 'Peak (real)',
+            label: 'Höchststand (real)',
             value: peakValue,
             meta: 'Historischer Höchststand'
         });
@@ -63,7 +63,7 @@ export function buildKeyParams(params = {}) {
             const sign = delta >= 0 ? '+' : '−';
             const formattedDelta = UIUtils.formatBalanceCurrency(deltaAbs).replace(/^[-–−]/, '').trim();
             const deltaPercentText = formatDisplayPercentValue(Math.abs(deltaPercent), { fractionDigits: 1, invalid: '0,0\u00a0%' });
-            deltaMeta = `${sign}${formattedDelta} vs. Peak (${deltaPercent >= 0 ? '+' : '−'}${deltaPercentText})`;
+            deltaMeta = `${sign}${formattedDelta} vs. Höchststand (${deltaPercent >= 0 ? '+' : '−'}${deltaPercentText})`;
             trend = delta > 0 ? 'up' : delta < 0 ? 'down' : 'neutral';
         }
         pushMetric({
@@ -106,8 +106,8 @@ export function buildKeyParams(params = {}) {
             'window_high_as_conservative_ath_lower_bound'
             ? (
                 marketDataProvenance.engineReference?.applied === true
-                    ? '; Engine-Referenz konservative ATH-Untergrenze angewendet'
-                    : '; Engine-Referenz nicht angewendet (kein belegter Fensterabstand)'
+                    ? '; Konservative Allzeithoch-Untergrenze angewendet'
+                    : '; Konservative Allzeithoch-Untergrenze nicht angewendet (kein belegter Fensterabstand)'
             )
             : '';
         pushMetric({
@@ -142,12 +142,12 @@ export function buildKeyParams(params = {}) {
             ? params.safetyCapEffectiveFlexRatePct
             : params.safetyCapFlexRatePct;
         const rateLimit = params.safetyCapDeferredByRateLimit === true
-            ? `; Policy-Ziel ${formatDisplayPercentValue(params.safetyCapFlexRatePct, { fractionDigits: 1, invalid: 'n/a' })} wird wegen der bestehenden Änderungsgrenze schrittweise erreicht`
+            ? `; Regelziel ${formatDisplayPercentValue(params.safetyCapFlexRatePct, { fractionDigits: 1, invalid: 'n/a' })} wird wegen der bestehenden Änderungsgrenze schrittweise erreicht`
             : '';
         pushMetric({
-            label: 'Safety-Flex-Obergrenze',
+            label: 'Flex-Obergrenze der Sicherheitsgrenze',
             value: formatDisplayPercentValue(effectiveCap, { fractionDigits: 1, invalid: null }),
-            meta: `${source}${rawCandidate}${rateLimit}; final begrenzende Policy: ${params.finalLimitingPolicy || 'n/a'}`,
+            meta: `${source}${rawCandidate}${rateLimit}; zuletzt begrenzende Regel: ${params.finalLimitingPolicy || 'n/a'}`,
             trend: params.safetyCapApplied === true ? 'down' : 'neutral'
         });
     }
@@ -167,7 +167,7 @@ export function buildKeyParams(params = {}) {
         pushMetric({
             label: 'Schwere Flex-Notlage',
             value: `AKTIV · Flex ${formatDisplayPercentValue(params.aktuelleFlexRate, { fractionDigits: 1, invalid: 'n/a' })}`,
-            meta: `Tiefer Bärenmarkt oder Erholung im Bärenmarkt UND realer Drawdown des aktiven Geldvermögens ${drawdown} > ${threshold} UND geplante tatsächliche Portfolioentnahmequote einschließlich Rundung ${plannedRate} ≥ ${protectedThreshold}. Mindest-Flex bewusst überstimmt; Floor bleibt geschützt.`,
+            meta: `Tiefer Bärenmarkt oder Erholung im Bärenmarkt UND realer Rückgang des aktiven Geldvermögens ${drawdown} > ${threshold} UND geplante tatsächliche Portfolioentnahmequote einschließlich Rundung ${plannedRate} ≥ ${protectedThreshold}. Mindest-Flex bewusst überstimmt; Grundbedarf bleibt geschützt.`,
             trend: 'down'
         });
         if (params.alarmActiveDiagnostic === false) {
@@ -199,7 +199,7 @@ export function buildKeyParams(params = {}) {
         const trend = runwayTargetSmoothing.smoothingFallback ? 'down'
             : (runwayTargetSmoothing.smoothingActive ? 'neutral' : 'neutral');
         pushMetric({
-            label: 'Runway-Ziel',
+            label: 'Zielreichweite',
             value: formatDisplayMonths(runwayTargetSmoothing.targetMonths, { fractionDigits: 1, invalid: 'n/a', suffix: 'Monate' }),
             meta: smoothingInfo.explanation,
             trend
@@ -280,13 +280,13 @@ export function buildKeyParams(params = {}) {
     if (vpw) {
         group = 'Dynamische Berechnung';
         const methodLabel = vpw.horizonMethod === 'mean'
-            ? 'Mean'
-            : (vpw.horizonMethod === 'survival_quantile' ? 'Survival-Quantil' : (vpw.horizonMethod || 'n/a'));
+            ? 'Mittelwert'
+            : (vpw.horizonMethod === 'survival_quantile' ? 'Überlebensquantil' : (vpw.horizonMethod || 'n/a'));
         const statusLabelMap = {
             active: 'Aktiv',
             disabled: 'Inaktiv',
             contract_ready: 'Bereit (noch nicht aktiv)',
-            safety_static_flex: 'Statisch (Safety)'
+            safety_static_flex: 'Statisch (Sicherheitsstufe)'
         };
         const statusLabel = statusLabelMap[vpw.status] || (vpw.enabled ? 'Aktiv' : 'Inaktiv');
         pushMetric({
@@ -389,7 +389,7 @@ export function buildKeyParams(params = {}) {
             pushMetric({
                 label: 'Flex freigegeben',
                 value: UIUtils.formatBalanceCurrency(vpw.dynamicFlex),
-                meta: 'Zusätzlicher Spielraum nach netto Floor und Sicherheitslogik'
+                meta: 'Zusätzlicher Spielraum nach Netto-Grundbedarf und Sicherheitslogik'
             });
         }
         if (typeof params.jahresentnahme === 'number' && isFinite(params.jahresentnahme) && typeof vpw.vpwTotal === 'number' && isFinite(vpw.vpwTotal)) {
@@ -405,13 +405,13 @@ export function buildKeyParams(params = {}) {
     if (healthBucket?.enabled) {
         group = 'Vermögensstand';
         pushMetric({
-            label: 'Pflegebucket',
+            label: 'Pflegereserve',
             value: UIUtils.formatBalanceCurrency(healthBucket.lockedAmount || 0),
             meta: `Operativ frei: ${UIUtils.formatBalanceCurrency(healthBucket.operativeLiquidity || 0)}; keine automatische Freigabe`
         });
         if (typeof healthBucket.targetCoveragePct === 'number' && isFinite(healthBucket.targetCoveragePct)) {
             pushMetric({
-                label: 'Pflegebucket-Zieldeckung',
+                label: 'Zieldeckung der Pflegereserve',
                 value: formatDisplayPercentValue(healthBucket.targetCoveragePct, { fractionDigits: 0, invalid: 'n/a' }),
                 meta: healthBucket.targetGap > 0
                     ? `Kaufkraftlücke: ${UIUtils.formatBalanceCurrency(healthBucket.targetGap)}`

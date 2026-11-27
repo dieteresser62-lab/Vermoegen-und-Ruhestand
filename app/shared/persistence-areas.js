@@ -1,6 +1,6 @@
 import { createLocalStorageAdapter } from './persistence-adapter-localstorage.js';
 import { createIndexedDbAdapter } from './persistence-adapter-indexeddb.js';
-import { createTauriJsonFileAdapter } from './persistence-adapter-tauri.js';
+import { createTauriJsonFileAdapter, saveTauriState } from './persistence-adapter-tauri.js';
 import { detectRuntime } from './runtime-env.js';
 import { AREA_CONTROL_KEY, PLAY_DB_NAME, scopeWebStorage, validateAreaControl } from './persistence-area-storage.js';
 import { FIRST_HOUSEHOLD, HOUSEHOLD_REGISTRY_KEY, defaultHouseholdRegistry, householdStorageArea, newHouseholdId,
@@ -32,7 +32,7 @@ export function createPersistenceAreas(options = {}) {
     const generationArgs = () => ({ expectedGeneration: registry.generation });
     const saveRegistry = async (next, { force = false } = {}) => {
         const raw = JSON.stringify(next);
-        if (tauri) await invoke('save_app_state', { target: 'households', content: raw, ...(force ? {} : generationArgs()) });
+        if (tauri) await saveTauriState(invoke, { target: 'households', content: raw, ...(force ? {} : generationArgs()) });
         else {
             if (!local) throw new Error('Haushaltsverzeichnis ist nicht verfügbar.');
             local.setItem(HOUSEHOLD_REGISTRY_KEY, raw);
@@ -57,7 +57,7 @@ export function createPersistenceAreas(options = {}) {
         : local?.getItem(AREA_CONTROL_KEY) ?? null;
     const saveControl = async control => {
         const raw = JSON.stringify(control);
-        if (tauri) await invoke('save_app_state', { target: 'control', content: raw, ...generationArgs() });
+        if (tauri) await saveTauriState(invoke, { target: 'control', content: raw, ...generationArgs() });
         else {
             if (!local) throw new Error('Speicherbereichssteuerung ist nicht verfügbar.');
             local.setItem(AREA_CONTROL_KEY, raw);
@@ -65,9 +65,9 @@ export function createPersistenceAreas(options = {}) {
         if (await loadControl() !== raw) throw new Error('Speicherbereich konnte nicht bestätigt werden.');
         expectedControl = raw;
     };
-    function makeAdapter(area, skipLegacySnapshotMigration = false) {
-        if (tauri) return createTauriJsonFileAdapter({ invoke, area, skipLegacySnapshotMigration, expectedGeneration: () => registry.generation });
-        if (useIndexedDB) return createIndexedDbAdapter({ indexedDB, area, skipLegacySnapshotMigration });
+    function makeAdapter(area) {
+        if (tauri) return createTauriJsonFileAdapter({ invoke, area, expectedGeneration: () => registry.generation });
+        if (useIndexedDB) return createIndexedDbAdapter({ indexedDB, area });
         return createLocalStorageAdapter(() => local, { area });
     }
     // HV-2: Echt- und Spielorte des geöffneten Haushalts; Haushalt 1 behält die bisherigen Namen.
@@ -177,7 +177,7 @@ export function createPersistenceAreas(options = {}) {
             }
             if (registry.active !== FIRST_HOUSEHOLD) {
                 // Weiterer Haushalt: nie Altmigration; ohne Fertigmarker zurück zu Haushalt 1 mit Warnung und Merker für den Rückweg.
-                const probe = makeAdapter(places().real, true);
+                const probe = makeAdapter(places().real);
                 try {
                     await probe.open();
                     let ready = await probe.readMetadata(HOUSEHOLD_READY_KEY);
@@ -193,7 +193,7 @@ export function createPersistenceAreas(options = {}) {
                 } finally { probe.close?.(); }
             }
             const p = places();
-            let adapter = makeAdapter(control.activeArea === 'spiel' ? p.play : p.real, Boolean(warning) || Boolean(p.id));
+            let adapter = makeAdapter(control.activeArea === 'spiel' ? p.play : p.real);
             if (control.activeArea === 'spiel') {
                 try {
                     await adapter.open();
@@ -205,7 +205,7 @@ export function createPersistenceAreas(options = {}) {
                     warning = { code: 'storage-area-incomplete', message: 'Der unvollständige Spielbereich wurde verworfen. Deine echten Daten bleiben erhalten.' };
                     await saveControl(realControl());
                     control = realControl();
-                    adapter = makeAdapter(p.real, true);
+                    adapter = makeAdapter(p.real);
                 }
             }
             if (control.activeArea === 'echt') await removePlay();
@@ -220,7 +220,7 @@ export function createPersistenceAreas(options = {}) {
                 throw Object.assign(new Error('Speicherbereich geändert. Bitte neu laden; Eingaben werden bis dahin nicht gespeichert.'), { code: 'PERSISTENCE_RELOAD_REQUIRED' });
             }
         },
-        async activate({ records, snapshots = [], source, startedAt = new Date().toISOString() }) {
+        async activate({ records, source, startedAt = new Date().toISOString() }) {
             if (!['copy', 'demo'].includes(source) || !records || typeof records !== 'object' || Array.isArray(records)
                 || Object.values(records).some(value => typeof value !== 'string') || !Number.isFinite(Date.parse(startedAt))) {
                 throw new Error('Ungültige Spielbereichsdaten.');
@@ -234,25 +234,10 @@ export function createPersistenceAreas(options = {}) {
             try {
                 await saveControl(control);
                 await play.open();
+                // SV-1: Der Spielbereich bekommt keine Wiederherstellungspunkte, auch nicht als Kopie.
                 await play.saveBatch({ upserts: Object.entries(records), deletes: [] });
-                // DS-2: Windows-App schreibt und bestätigt alle Punkte mit je einem Dateizugriff statt einem je Punkt.
-                if (play.writeSnapshots) { if (snapshots.length) await play.writeSnapshots(snapshots); }
-                else for (const snapshot of snapshots) {
-                    if (play.writeSnapshot) await play.writeSnapshot(snapshot);
-                    else {
-                        const archive = JSON.stringify({ schemaVersion: 1, snapshots, savedAt: startedAt });
-                        await play.saveBatch({ upserts: [['rs_snapshot_archive_v1', archive]], deletes: [] });
-                        break;
-                    }
-                }
                 const confirmed = await play.loadAll();
                 if (Object.entries(records).some(([key, value]) => confirmed[key] !== value)) throw new Error('Spielbereich konnte nicht bestätigt werden.');
-                const stored = play.readPersistedSnapshots && new Map((await play.readPersistedSnapshots()).map(point => [point.id, point]));
-                for (const snapshot of snapshots) {
-                    const read = play.readPersistedSnapshot || play.readSnapshot;
-                    const point = stored ? stored.get(snapshot.id) : read && await read.call(play, snapshot.id);
-                    if ((stored || read) && JSON.stringify(point) !== JSON.stringify(snapshot)) throw new Error('Spiel-Sicherungspunkt konnte nicht bestätigt werden.');
-                }
                 await play.writeMetadata(READY_KEY, { id });
                 let ready = await play.readMetadata(READY_KEY);
                 if (typeof ready === 'string') ready = JSON.parse(ready);
@@ -265,11 +250,25 @@ export function createPersistenceAreas(options = {}) {
                 throw error;
             } finally { play.close?.(); }
         },
-        async discard(adapter) {
-            await this.assertCurrent();
+        /** @param {any} adapter @param {{beforeSwitch?: () => void}} [options] */
+        async discard(adapter, { beforeSwitch } = {}) {
+            // SV-1b: Ein Lesefehler vor dem Bereichswechsel lässt den Spielbereich aktiv; nur ein fremder Wechsel verlangt Neuladen.
+            try { await this.assertCurrent(); }
+            catch (error) {
+                if (error?.code === 'PERSISTENCE_RELOAD_REQUIRED') throw error;
+                throw Object.assign(error instanceof Error ? error : new Error(String(error)), { areaUnchanged: true });
+            }
             // Ab hier dürfen alte Seiten nicht mehr schreiben. Bei einem Absturz
             // wird ein verbliebener Spielbereich beim nächsten Start entfernt.
-            await saveControl(realControl());
+            const previous = expectedControl;
+            beforeSwitch?.();
+            try { await saveControl(realControl()); }
+            catch (error) {
+                // SV-1: Hat der Wechsel nicht stattgefunden, bleibt der Spielbereich aktiv und die Seite bedienbar.
+                let unchanged = false;
+                try { unchanged = await loadControl() === previous; } catch { /* Unklarer Stand: die Seite bleibt gesperrt. */ }
+                throw Object.assign(error, { areaUnchanged: unchanged });
+            }
             adapter?.close?.();
             await removePlay();
         },
@@ -278,7 +277,7 @@ export function createPersistenceAreas(options = {}) {
         async openRealTransfer() {
             await this.assertCurrent();
             const p = places();
-            const real = makeAdapter(p.real, true);
+            const real = makeAdapter(p.real);
             const raw = tauri ? await invoke('load_app_state', { target: 'live', ...p.scope }) : null;
             const rows = useIndexedDB ? await readRealStore('kv', row => row, p.realDb) : null;
             const before = await this.readRealRecords();
@@ -287,7 +286,9 @@ export function createPersistenceAreas(options = {}) {
                 adapter: real,
                 async rollback() {
                     if (tauri) {
-                        await invoke('save_app_state', { target: 'live', ...p.scope, content: raw, ...generationArgs() });
+                        // NG-1: Gab es vorher keine Hauptdatei, wird sie entfernt. Eine leere Datei würde jedes weitere Speichern sperren.
+                        if (raw === '') await invoke('delete_live_state', { ...p.scope, ...generationArgs() });
+                        else await saveTauriState(invoke, { target: 'live', ...p.scope, content: raw, ...generationArgs() });
                         if (await invoke('load_app_state', { target: 'live', ...p.scope }) !== raw) throw new Error('Rohbestand konnte nicht zurückgeholt werden.');
                     } else if (useIndexedDB) {
                         const request = indexedDB.open(p.realDb);
@@ -303,13 +304,15 @@ export function createPersistenceAreas(options = {}) {
                         const storage = scopeWebStorage(local, p.real);
                         // Das inzwischen angelegte Archiv bleibt als Rückkehrpunkt erhalten.
                         const archive = storage.getItem('rs_snapshot_archive_v1');
-                        // HV-2: Der private Fertigmarker eines weiteren Haushalts ist kein Fachrecord und muss die Rücknahme überleben.
-                        const marker = p.id ? storage.getItem(`metadata.${HOUSEHOLD_READY_KEY}`) : null;
+                        // HV-2/SV-1b: Private Markierungen (Fertigmarker eines weiteren Haushalts, Archivleerung) sind keine
+                        // Fachrecords und müssen die Rücknahme überleben.
+                        const metadata = Array.from({ length: storage.length }, (_, i) => storage.key(i)).filter(key => key?.startsWith('metadata.'))
+                            .map(key => [key, storage.getItem(key)]);
                         storage.clear();
                         Object.entries(before).forEach(([key, value]) => storage.setItem(key, value));
                         if (archive !== null) storage.setItem('rs_snapshot_archive_v1', archive);
-                        if (marker !== null) storage.setItem(`metadata.${HOUSEHOLD_READY_KEY}`, marker);
-                        if (p.id && storage.getItem(`metadata.${HOUSEHOLD_READY_KEY}`) !== marker) throw new Error('Fertigmarker konnte nicht zurückgeholt werden.');
+                        metadata.forEach(([key, value]) => storage.setItem(key, value));
+                        if (metadata.some(([key, value]) => storage.getItem(key) !== value)) throw new Error('Fertigmarker konnte nicht zurückgeholt werden.');
                         const identity = records => JSON.stringify(Object.entries(records).filter(([key]) => key !== 'rs_snapshot_archive_v1').sort());
                         if (identity(await real.loadAll()) !== identity(before)) throw new Error('Rohbestand konnte nicht zurückgeholt werden.');
                     }
@@ -342,11 +345,11 @@ export function createPersistenceAreas(options = {}) {
                 try {
                     if (deleting) {
                         for (const [target, content] of files) if (content) {
-                            await invoke('save_app_state', { target, ...p.scope, content, ...generationArgs() });
+                            await saveTauriState(invoke, { target, ...p.scope, content, ...generationArgs() });
                             if (await invoke('load_app_state', { target, ...p.scope }) !== content) throw new Error('Spieldatei konnte nicht zurückgeholt werden.');
                         }
                         if (useIndexedDB) {
-                            const recovery = makeAdapter(p.play, true);
+                            const recovery = makeAdapter(p.play);
                             await recovery.open(); recovery.close();
                             const request = indexedDB.open(p.playDb);
                             const db = await new Promise((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
@@ -383,7 +386,7 @@ export function createPersistenceAreas(options = {}) {
             if (current && current.activeArea !== 'echt') throw new Error('Erst den Spielbereich beenden.');
             let id;
             do id = newHouseholdId(); while (registry.households.some(entry => entry.id === id));
-            const adapter = makeAdapter(householdStorageArea({ active: id }, 'echt'), true);
+            const adapter = makeAdapter(householdStorageArea({ active: id }, 'echt'));
             try {
                 await adapter.open();
                 if (Object.keys(await adapter.loadAll()).length) throw new Error('Neuer Haushaltsbereich ist nicht leer.');
@@ -452,7 +455,7 @@ export function createPersistenceAreas(options = {}) {
             if (current && current.activeArea !== 'echt') throw new Error('Erst den Spielbereich beenden.');
             const entry = registry.households.find(item => item.id === id);
             if (!entry?.missing) throw new Error('Dieser Haushalt braucht keinen neuen Bereich.');
-            const adapter = makeAdapter(householdStorageArea({ active: id }, 'echt'), true);
+            const adapter = makeAdapter(householdStorageArea({ active: id }, 'echt'));
             try {
                 await adapter.open();
                 await adapter.writeMetadata(HOUSEHOLD_READY_KEY, { id });
@@ -486,14 +489,6 @@ export function createPersistenceAreas(options = {}) {
             }
             if (!useIndexedDB) return makeAdapter(places().real).loadAll();
             return Object.fromEntries(await readRealStore('kv', row => [row.key, row.value]));
-        },
-        async readRealSnapshots() {
-            if (tauri) {
-                const raw = await invoke('load_app_state', { target: 'snapshots', ...places().scope });
-                return raw ? JSON.parse(raw).snapshots || [] : [];
-            }
-            // Im localStorage liegt das Archiv bereits als Record in der Kopie.
-            return useIndexedDB ? readRealStore('snapshots', row => row.snapshot) : [];
         }
     };
 }

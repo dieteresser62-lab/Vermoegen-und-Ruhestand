@@ -41,8 +41,8 @@ const isolated = prepareEngineLastState({ inputs: plan, lastState: history }, pl
 isolated.taxState.lossCarry = 0;
 assertEqual(json({ plan, history }), beforeBytes, 'Vorschau und Steuerkopie verändern keinen gespeicherten Zustand');
 
-// Echte Speicherleser, Indexierung und FR-3-Rechnung für drei Auswahlkontexte.
-for (const kind of ['Einzelprofil', 'Muster-Haushalt', 'aktive Außenperson']) {
+// Echte Speicherleser, Indexierung und FR-3-Rechnung für zwei Haushaltsumfänge.
+for (const kind of ['Einzelprofil', 'Muster-Haushalt']) {
     const sample = readyAnnualFixture(kind), { scope, values } = sample;
     const initial = buildBalanceEngineInputFromStorage({ storage: annualRecordStorage(sample.records), referenceYear: 2026 });
     const lastState = { ...EngineAPI.simulateSingleYear(initial.engineInput, null).newState, marker: 'alte Historie', taxState: { lossCarry: 1234 } };
@@ -59,13 +59,6 @@ for (const kind of ['Einzelprofil', 'Muster-Haushalt', 'aktive Außenperson']) {
     root.balanceStateLifecycle = { planInputEvidence: { [scope.key]: selectGuardrailPlanInputs(values) } };
     root.annualPeriodMetadata.pendingCommit = { periodId: 'calendar-year:2026', snapshotId: 'synthetic-before', phase: 'writes_started' };
     sample.records[key] = json(root);
-    if (kind === 'aktive Außenperson') {
-        const outside = copy(root);
-        delete outside.balanceStateLifecycle;
-        outside.inputs.floorBedarf = 12000;
-        const legacy = buildBalanceEngineInputFromStorage({ storage: annualRecordStorage({ ...sample.records, [key]: json(outside) }), referenceYear: 2026 });
-        assertEqual(legacy.engineLastState.marker, 'alte Historie', 'Außenpersonenplan wird ohne Altbeleg nicht zur Haushaltsresetevidenz');
-    }
     const bytes = json(sample.records), storage = annualRecordStorage(sample.records);
     const marketData = { ...annualTestMarketData, inflation: { ...annualTestMarketData.inflation, rate: 25 } };
     const draft = computeAnnualPlanUpdate({ targetYear: 2026, scope, storage, marketData, now: annualTestNow });

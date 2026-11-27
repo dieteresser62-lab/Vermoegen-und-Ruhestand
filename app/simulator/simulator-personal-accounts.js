@@ -254,6 +254,17 @@ export function applyPersonalInterest(portfolio, rate, { additive = false } = {}
     return { interest: additive ? rows.reduce((sum, row) => sum + row.interest, 0) : portfolio.liquiditaet - before, items: rows };
 }
 
+/** Ergänzt die Steuerposten um die bereits in der Rücklage gebuchten Barzinsen.
+ * @param {ReturnType<typeof applyPersonalInterest>} personalInterest
+ * @param {{profileId: string, cashInterest: number}[]} cashInterestByOwner
+ */
+export function addReserveCashInterest(personalInterest, cashInterestByOwner) {
+    for (const { profileId, cashInterest } of cashInterestByOwner) {
+        const item = personalInterest.items.find(row => row.profileId === profileId);
+        if (item) item.cashInterest += cashInterest;
+    }
+}
+
 /**
  * @param portfolio Veränderlicher Portfoliozustand.
  * @param adjustment

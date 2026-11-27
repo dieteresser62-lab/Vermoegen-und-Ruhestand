@@ -1,5 +1,15 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { fz1References } from './helpers/fz-1-expectations.mjs';
+import { readDM1References } from './helpers/dm-1-expectations.mjs';
+import { readJA1References } from './helpers/ja-1-expectations.mjs';
+import { readHP4References } from './helpers/hp-4-expectations.mjs';
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import { readVB1References } from './helpers/vb-1-expectations.mjs';
+import { readRK1MergeReferences } from './helpers/rk-1-merge-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
 import { readLE1References as readBeforeGN2References } from './helpers/le-1-expectations.mjs';
 import { readGN2References } from './helpers/gn-2-expectations.mjs';
+const readFZ1Reference = fz1References(import.meta.url);
 const readLE1References = value => readGN2References(readBeforeGN2References(value));
 import { readGU1References } from './helpers/gu-1-expectations.mjs';
 import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
@@ -29,7 +39,6 @@ import { readFI1References } from './helpers/fi-1-expectations.mjs';
 const readRNG1Hash = before => readQSCReferences(readAS1Hash(readEP1Hash(readBeforeEP1Hash(before))));
 const baseline = JSON.parse(readFileSync(new URL('./fixtures/up-1b-parity.json', import.meta.url)));
 const current = await unmarriedParityEvidence(fileURLToPath(new URL('../', import.meta.url)));
-assertEqual(current.whole, readFI1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readRNG1Hash(baseline.whole))))))), 'Verheiratet: vollständiger serieller MC mit belegten FR-51-Folgen');
-assertEqual(JSON.stringify(current.workers), readFI1References(readLE1References(readGU1References(readEV1References(JSON.stringify(readQSCReferences(readVF2BReferences(readAS1References(readEP1References(readRNG1References(baseline.workers)))))))))), 'Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks mit FR-51');
-assertEqual(current.sweep, readFI1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readRNG1Hash(baseline.sweep))))))), 'Verheiratet: vollständiger Sweep mit FR-51');
-assertEqual(JSON.stringify(current.historical), readLE1References(readGU1References(readPFA1References(JSON.stringify(readQSCReferences(readVF2BReferences(baseline.historical)))))), 'Nicht verheiratet 0/100: vollständiger Backtest bytegleich zum Kopf vor UP-1b');
+assertEqual(current.whole, readFZ1Reference(readDM1References(readJA1References(readHP4References(readKR1cReferences(readRK1MergeReferences(readVB1References(readFI1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readRNG1Hash(baseline.whole)))))))))))))), 'Verheiratet: vollständiger serieller MC mit belegten FR-51-Folgen');
+assertEqual(JSON.stringify(current.workers), readFZ1Reference(readDM1References(readJA1References(readHP4References(readKR1cReferences(readRK1MergeReferences(readVB1References(readFI1References(readLE1References(readGU1References(readEV1References(JSON.stringify(readQSCReferences(readVF2BReferences(readAS1References(readEP1References(readRNG1References(baseline.workers))))))))))))))))), 'Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks mit FR-51');
+assertEqual(JSON.stringify(current.historical), readFZ1Reference(readDM1References(readKR1cReferences(readRK1MergeReferences(readVB1References(readLE1References(readGU1References(readPFA1References(JSON.stringify(readQSCReferences(readVF2BReferences(baseline.historical))))))))))), 'Nicht verheiratet 0/100: vollständiger Backtest gemäß angepasster UP-1b-Referenz');

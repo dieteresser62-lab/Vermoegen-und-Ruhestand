@@ -1,0 +1,39 @@
+{
+  "hashes": {
+    "c92f48504369fd39a96c7a8bf5e3449d62cf0e1c1699d2027abe18905528a050": {
+      "new": "d41ea6e9f21d33a0b6d734748ed13e92f2ea9e1fb1569705782c93680a383488",
+      "case": "muster-max-erika-parity: Max und Erika, Monte Carlo 2.000 Läufe, Startwert 12345, 23.10.2026",
+      "cause": "Vergleich je Lauf gegen 7ad60d01: 10 von 2.000 Läufen ändern sich. Alle endeten dort als Ruin „Gesamtvermögen < Floor“, weil Pflegekosten das gemeinsame Geld aufzehrten; jetzt zahlt der Staat die fehlende Pflege (Hilfe zur Pflege), kein Ruin. Dazu das Protokollfeld hilfe_zur_pflege_steuer in Jahren mit Steuer aus Pflegeverkäufen. Steuerlücken ohne Pflegebezug wie 7ad60d01: zwei Läufe (381, 1701) enden wie dort mit „Steuer im Haushalt ungedeckt“ im selben Jahr."
+    },
+    "02a73d123cbde06d391533d66468f571637771226064075067e9ddfa7e2f7baa": {
+      "new": "56fa876b2833c1ec66ab364fcfa9e93424ba823b31289a01221b721c6b76ae2a",
+      "case": "he-3-amtlich-ziehung: Paar mit Haus, Pflegegrad 2 heute, 12 Läufe, Startwert 31, ohne Amtlich",
+      "cause": "Vergleich je Lauf gegen 7ad60d01: nur Lauf 4 ändert sich. 7ad60d01 verkaufte das Haus im Jahr 23 notfallmäßig, weil Pflegekosten das Geld aufzehrten; jetzt löst Pflege keinen Notverkauf aus, der Staat zahlt die fehlende Pflege (mit Steuer aus Pflegeverkäufen, Feld hilfe_zur_pflege_steuer), das Haus geht im Jahr 26 regulär beim Heimeintritt."
+    },
+    "4183372ce4896fd0263c9fdbbf98a48f152a60f45da5b7d8cf734bea8eef7a69": {
+      "new": "bcab8b33745d7cd621d255e8dd98cc6e987d03b49bfa79d6a20a1663f98e5fd4",
+      "case": "gu-1-sollfaelle S2: Renate, Monte Carlo 40 Läufe, Fondskosten 0",
+      "cause": "Vergleich je Lauf gegen 7ad60d01: 5 von 40 Läufen enden nicht mehr als Ruin, alle mit Hilfe zur Pflege: 4 × „Gesamtvermögen < Floor“, weil Pflegekosten das Geld aufzehrten, 1 × „Steuer im Haushalt ungedeckt“, deren Steuer ganz aus Pflegeverkäufen stammt. Dazu das Protokollfeld hilfe_zur_pflege_steuer."
+    },
+    "f8aa148d0607875792c1142ce952c6d9ee67a43586f0add57afde838232cc70a": {
+      "new": "74dd9299bc1cf2c54b2dfa4da501d66c3a6885d8978bd0a5e6d0c41cc5bbe6b8",
+      "case": "decision-comparison-pool: Suchschritt nach Ausgangsruin (Max und Erika, 50 Läufe)",
+      "cause": "Der Testfall braucht einen Ausgangsruin; seit NK-1 rechnet er mit Grundbedarf 60.000 € (hoher Flex allein führt nicht mehr zum Ruin). Auf denselben Eingaben gegenüber 7ad60d01: Lauf 30 endet nicht mehr als Ruin (Pflege, Hilfe zur Pflege), Lauf 31 endet im selben Jahr an „Steuer im Haushalt ungedeckt“ statt „Gesamtvermögen < Floor“, weil die Pflege dort der Staat trägt und die Steuer ohne Pflegebezug wie bisher Ruin ist."
+    },
+    "d41ea6e9f21d33a0b6d734748ed13e92f2ea9e1fb1569705782c93680a383488": {
+      "new": "9f6468e955f2ec1f22b050108d3af38ed4d6ddd82d845950fecdeedc47e0df83",
+      "case": "NK-2 · muster-max-erika-parity: Max und Erika, Monte Carlo 2.000 Läufe, Startwert 12345, 23.10.2026",
+      "cause": "Vergleich je Lauf gegen 74c2220c: nur die Läufe 381 und 1701 ändern sich. Beide endeten dort mit „Steuer im Haushalt ungedeckt“ (Jahr 22 bzw. 29). Mit dem Schuldenbuch (FR-84 Punkt 17) bleibt die Steuer als Schuld stehen (Felder steuer_offen, steuer_schuld_vorjahr); Lauf 381 läuft bis Jahr 23, Lauf 1701 bis Jahr 33, beide ohne Ruin, später mit Hilfe zur Pflege."
+    },
+    "74dd9299bc1cf2c54b2dfa4da501d66c3a6885d8978bd0a5e6d0c41cc5bbe6b8": {
+      "new": "436b28cd2bfcb4222abd6d90a834deb09f7f44ea07625bce99232409ea77c61e",
+      "case": "NK-2 · decision-comparison-pool: Suchschritt nach Ausgangsruin (Max und Erika, Grundbedarf 60.000 €, Flex 300.000 €)",
+      "cause": "Vergleich je Lauf gegen 74c2220c: Die Läufe 5 und 19 endeten dort mit „Steuer im Haushalt ungedeckt“ (Jahr 15 bzw. 16). Mit dem Schuldenbuch (FR-84 Punkt 17) läuft die Steuer als Schuld weiter; beide enden ein Jahr später, weil das Geld den Grundbedarf nicht mehr deckt. Gescheiterte Läufe unverändert 3."
+    },
+    "56fa876b2833c1ec66ab364fcfa9e93424ba823b31289a01221b721c6b76ae2a": {
+      "new": "bd3a72f3f69cbd4d675c49d9874d4047a6ec33dbacc1120d2b11b1100846d599",
+      "case": "NK-2 · he-3-amtlich-ziehung: Paar mit Haus, Pflegegrad 2 heute, 12 Läufe, Startwert 31, ohne Amtlich",
+      "cause": "Vergleich je Lauf gegen 74c2220c: nur Lauf 4 ändert sich. Nach dem Tod des Partners lebt niemand mehr im selbst genutzten Haus; nach FR-84 Punkt 20 (Nachtrag 17) wird es vor der Hilfe zur Pflege verkauft, im Jahr 25 statt im Jahr 26 beim regulären Heimverkauf. Hilfe zur Pflege 203.157 € statt 303.907 €, Endvermögen entsprechend niedriger."
+    }
+  }
+}

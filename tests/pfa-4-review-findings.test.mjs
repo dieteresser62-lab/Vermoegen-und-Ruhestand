@@ -103,13 +103,14 @@ function simulatorYearOne(records, referenceYear = 2026) {
     const need = calculateHouseholdWithdrawalNeed(calc.profiles, { floorBedarf: calc.inputData.floorBedarf, flexBedarf: calc.inputData.flexBedarf });
     assertEqual(`${need.grossNeed} ${need.incomeAnnual} ${need.netWithdrawal}`, '73368 36000 37368', 'B3 Bruttobedarf, Einkünfte und Nettoentnahme des Haushalts');
     const split = calculateWithdrawalDistribution(calc.profiles, need, 'proportional');
-    close(split.items.find(item => item.profileId === IDS[0]).withdrawalAmount, 16200, 'B3 Helga trägt 60 % des gemeinsamen Bedarfs', .01);
-    close(split.items.find(item => item.profileId === IDS[1]).withdrawalAmount, 21168, 'B3 Werner: 10.800 + 46.368 − 36.000 eigene Rente', .01);
+    // NK-2 (FR-84 Punkt 18): Helga trägt den Grundbedarf zu Hause allein (vorher 60 % = 16.200 €), Werner nur sein Heim.
+    close(split.items.find(item => item.profileId === IDS[0]).withdrawalAmount, 27000, 'B3 Helga trägt den Grundbedarf zu Hause allein', .01);
+    close(split.items.find(item => item.profileId === IDS[1]).withdrawalAmount, 10368, 'B3 Werner: 46.368 − 36.000 eigene Rente', .01);
     close(split.items.reduce((sum, item) => sum + item.withdrawalAmount, 0), 37368, 'B3 Summe bleibt die Nettoentnahme', .01);
     const surplus = calculateWithdrawalDistribution(calc.profiles, { ...need, netWithdrawal: 73368 - 36000 - 20000 }, 'proportional');
     close(surplus.items.reduce((sum, item) => sum + item.withdrawalAmount, 0), 17368, 'B3 Überschüssige Einkünfte helfen dem Haushalt; Summe bleibt die Nettoentnahme', .01);
     const noIncome = calculateWithdrawalDistribution(calc.profiles.map(entry => ({ ...entry, inputs: { ...entry.inputs, renteAktiv: false } })), { ...need, netWithdrawal: 73368 }, 'proportional');
-    close(noIncome.items.find(item => item.profileId === IDS[1]).withdrawalAmount, 57168, 'B3 ohne Einkünfte unverändert 57.168 € (Sollfall U)', .01);
+    close(noIncome.items.find(item => item.profileId === IDS[1]).withdrawalAmount, 46368, 'B3 ohne Einkünfte nur das Heim (46.368 €, NK-2 FR-84 Punkt 18, Sollfall U)', .01);
 }
 
 // PFA2-B4 / PFA3-B1: Ohne bestätigten Plan rechnet Balance Pflege und Flex-Faktor mit der gespeicherten Bedarfsbasis; der Hinweis nennt den Betrag.
@@ -128,27 +129,6 @@ function simulatorYearOne(records, referenceYear = 2026) {
     close(calc.inputData.flexBedarf, 10500, 'B4 Flex-Faktor 0,875 (gesund + Grad 3) auch ohne Plan');
     assertEqual(JSON.stringify(calc.careHint.persons), JSON.stringify([{ profileId: 'muster_werner', name: 'Werner', grade: 3, residential: false, own: false, monthly: 1500 }]), 'PFA3-B1 Balance-Hinweis nennt Werner mit 1.500 €/Monat ohne Plan');
     assertEqual(counts.setItem + counts.removeItem, 0, 'B4 Lesen schreibt nie');
-}
-
-// PFA2-B5: Außenperson behält ihre eigene Staffel im Simulator-Profilreader, trotz Preisblock des Haushalts.
-{
-    const prices = JSON.stringify(careValuesWithPrices(null, { costs: { 3: 18000 } }, { priceYear: 2026 }));
-    const { records } = pfa2Records({ care: [today(3, 'home-support'), null], careValuesRaw: prices });
-    const registry = JSON.parse(records.rs_profiles_v1);
-    registry.profiles.aussen = { meta: { name: 'Außen', belongsToHousehold: false }, data: { ...registry.profiles[IDS[0]].data, sim_pflegeStufe3Zusatz: '21000' } };
-    records.rs_profiles_v1 = JSON.stringify(registry);
-    const storage = { getItem: key => records[key] ?? null };
-    const outside = buildSimulatorInputsFromProfileData(registry.profiles.aussen.data, { storage, referenceYear: 2026, planValues: null, profileId: 'aussen' });
-    assertEqual(outside.pflegeGradeConfigs[3].zusatz, 21000, 'B5 Außenperson: eigene Staffel 21.000 € (nicht 18.000 aus dem Preisblock)');
-    const member = buildSimulatorInputsFromProfileData(registry.profiles.aussen.data, { storage, referenceYear: 2026, planValues: null, profileId: IDS[0] });
-    assertEqual(member.pflegeGradeConfigs[3].zusatz, 18000, 'B5 Haushaltsmitglied liest den gemeinsamen Preisblock');
-    assertEqual(buildSimulatorInputsFromProfileData(registry.profiles.aussen.data, { storage, referenceYear: 2026, planValues: null }).pflegeGradeConfigs[3].zusatz, 18000,
-        'B5 ohne Profilangabe gilt das geöffnete Profil (hier das Haushaltsmitglied Helga)');
-    records.rs_current_profile = 'aussen'; records.rs_active_profile = 'aussen';
-    assertEqual(buildSimulatorInputsFromProfileData(registry.profiles.aussen.data, { storage, referenceYear: 2026, planValues: null }).pflegeGradeConfigs[3].zusatz, 21000,
-        'B5 geöffnete Außenperson ohne Profilangabe: eigene Staffel wie in Balance (57.000 € Bedarf)');
-    const simulator = buildSimulatorInputsFromProfileData({ ...registry.profiles.aussen.data, sim_startFloorBedarf: '36000' }, { storage, referenceYear: 2026, planValues: null, profileId: 'aussen' });
-    assertEqual(simulator.startFloorBedarf + simulator.pflegeGradeConfigs[3].zusatz, 57000, 'B5 Simulator-Eingangsweg ergibt 36.000 + 21.000 = 57.000 € wie Balance');
 }
 
 // PFA2-B6: Bewusst eingegebene 3,5 % bleiben 3,5 %; unmarkierter Altbestand 3,5 gilt weiter als 5 (Sollfall K).
@@ -225,7 +205,7 @@ function simulatorYearOne(records, referenceYear = 2026) {
     close(realPositive.amount, .4, 'PFA3-B3 der Rohwert bleibt nominal');
     assertEqual(formatProtocolValue(column, realPositive.amount, row(.4, .5), { moneyBasis: 'real' }), '1 €', 'PFA3-B3 der Renderer zeigt die Zeile als 1 €');
     assert(!protocolCashflowBreakdown(row(.4, .5), { moneyBasis: 'nominal' }).expenses.some(item => item.label === 'Grundbedarf zu Hause'), 'PFA3-B3 nominal: 0,40 € bleibt unter der Grenze');
-    assertEqual(protocolMoneyDivisor({ row: row(0, 2), inflationVJ: 10 }, { moneyBasis: 'real', source: 'backtest' }), 2.2, 'PFA3-B3 Backtest teilt einschließlich der Jahresinflation wie die Geldspalten');
+    assertEqual(protocolMoneyDivisor({ row: row(0, 2), inflationVJ: 10 }, { moneyBasis: 'real', source: 'backtest' }), 2, 'PFA3-B3 Backtest teilt wie die Geldspalten durch den Faktor am Jahresanfang (ST7-A)');
     assertEqual(protocolMoneyDivisor(row(0, 2), { moneyBasis: 'nominal' }), 1, 'PFA3-B3 nominal ohne Umrechnung');
 }
 

@@ -1,7 +1,18 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { fz1References } from './helpers/fz-1-expectations.mjs';
+import { readDM1References } from './helpers/dm-1-expectations.mjs';
+import { readJA1References } from './helpers/ja-1-expectations.mjs';
+import { readHP4References } from './helpers/hp-4-expectations.mjs';
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import { readVB1References } from './helpers/vb-1-expectations.mjs';
+import { readRK1MergeReferences } from './helpers/rk-1-merge-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
+import { readVS2References } from './helpers/vs-2-expectations.mjs';
 import { readGU1References } from './helpers/gu-1-expectations.mjs';
 // LE-1 (FR-75) und KO-2 (Ergänzung FR-76) in einem Leser; Paare, die beide ändern, sind für den vereinten Stand gemessen.
 import { readLE1KO2References } from './helpers/le-1-ko-2-expectations.mjs';
 import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
+const readFZ1Reference = fz1References(import.meta.url);
 const readEV1bReferences = value => readPFA1References(beforePFA1References(value));
 import { withoutExampleNeeds } from './helpers/ff-3-expectations.mjs';
 import { installRealClock } from './helpers/fixed-real-clock.mjs';
@@ -40,7 +51,6 @@ import { readPlannedInflows, writePlannedInflows, PLANNED_INFLOWS_KEY, personPla
 import { applyPlannedInflows } from '../app/simulator/planned-inflows.js';
 import { initializePlannedInflows } from '../app/simulator/planned-inflows-ui.js';
 import { loadProfileAssetValues, saveProfileAssetValues } from '../app/profile/profile-asset-values.js';
-import { previewPersonExport, confirmPersonExport, previewPersonImport, importPersonFile } from '../app/profile/profile-person-file.js';
 import { createSelectionDocument, addField } from './designsystem-selection-dom.mjs';
 import { prepareCashRecords } from '../app/profile/profile-cash-update.js';
 import { setAppTestDate } from '../app/shared/app-clock.js';
@@ -52,23 +62,18 @@ import { initSimulatorPlanTrial, getSimulatorPlanTrial } from '../app/simulator/
 import { getCommonInputs, initializePortfolio } from '../app/simulator/simulator-portfolio.js';
 import { simulateOneYear } from '../app/simulator/simulator-engine-direct.js';
 import { runHistoricalBacktest } from '../app/simulator/historical-backtest-runner.js';
-import { createHistoricalBacktestContractProvider } from '../app/simulator/historical-backtest-contract.js';
+import { historischerProvider } from './helpers/grundbestand-stichprobe.mjs';
 import { computeAdjPctForYear } from '../app/simulator/simulator-main-helpers.js';
 import { resolveDynamicFlexRunnerHorizon } from '../app/simulator/dynamic-flex-runner-horizon.js';
 import { portfolioTotal } from '../app/simulator/simulator-results.js';
-import { prepareHistoricalDataOnce, getDataVersion, initMcRunState } from '../app/simulator/simulator-engine-helpers.js';
+import { prepareHistoricalDataOnce, initMcRunState } from '../app/simulator/simulator-engine-helpers.js';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
-import { runSweepChunk } from '../app/simulator/sweep-runner.js';
-import { runMonteCarloAutoOptimize } from '../app/simulator/auto-optimize-worker.js';
-import { evaluateCandidate } from '../app/simulator/auto-optimize-evaluate.js';
-import { createStressReplayCaptureRequest, materializeStressReplayPathV1 } from '../app/simulator/stress-replay-path-materializer.js';
-import { createStressReplayFingerprint } from '../app/simulator/stress-replay-contract.js';
-import { runStressReplayPathV1 } from '../app/simulator/stress-replay-runner.js';
 import { renderProtocolTable } from '../app/simulator/protocol-renderer.js';
 import { playFixture } from './helpers/probelauf-area-fixture.mjs';
 import { simulatorDocument } from './simulator-page-fixture.mjs';
 
 import { readFI1References } from './helpers/fi-1-expectations.mjs';
+import { readKR1bReferences } from './helpers/kr-1b-expectations.mjs';
 const readRNG1Hash = before => readQSCReferences(readAS1Hash(readEP1Hash(readBeforeEP1Hash(before))));
 const incomeEntries = rows => rows.map((row, index) => ({ id: `test-${index + 1}`, monat: `${row.year}-01`, betrag: row.amount, bezeichnung: row.label || '' }));
 const same = (a, b, message) => assertEqual(JSON.stringify(a), JSON.stringify(b), message);
@@ -109,7 +114,7 @@ function page() {
 }
 function backtest(inputs) {
     return runHistoricalBacktest({ inputs, period: { startYear: 2000, endYear: 2025 },
-        historicalDataProvider: createHistoricalBacktestContractProvider(), initializePortfolio,
+        historicalDataProvider: historischerProvider(), initializePortfolio,
         simulateYear: (...args) => simulateOneYear(...args, null, 0, null, 1, EngineAPI),
         computeAdjustmentPct: computeAdjPctForYear, resolveHorizon: resolveDynamicFlexRunnerHorizon,
         totalPortfolio: portfolioTotal, breakOnRuin: true });
@@ -135,14 +140,8 @@ try {
     assertEqual(prepareCashRecords(getProfileData('muster_jan'), '12345', '2032-01-02').profile_tagesgeld, '12345', 'Vergangene Zuflüsse sperren späteren Jahresabschluss nicht');
     } finally { setAppTestDate(null); restoreRealClock(); }
     await P.flush();
-    const personFile = await confirmPersonExport(await previewPersonExport('muster_jan'));
-    same(simulatorOneTimeIncome(personFile.registry.profiles.muster_jan.data), list, 'Personendatei enthält die persönliche Liste');
-    const imported = await importPersonFile(await previewPersonImport(personFile));
-    same(simulatorOneTimeIncome(getProfileData(imported.id)), list, 'Personendatei hin und zurück erhält alle Zuflüsse');
-    assertEqual(getProfileData(imported.id) !== null, true, 'Außenperson behält ihre Zuflüsse');
     page();
-    assertEqual(getCommonInputs().plannedInflows.length, 3, 'Simulator berücksichtigt nur Jan und Lena, Außenperson behält ihre Liste');
-    assert(!getCommonInputs().plannedInflows.some(entry => entry.profileId === imported.id), 'Außenperson fließt nicht in Haushaltsrechnung ein');
+    assertEqual(getCommonInputs().plannedInflows.length, 3, 'Simulator berücksichtigt Jan und Lena');
     const exported = exportProfilesBundle();
     assert(JSON.stringify(exported).includes('Nettozahlung aus vereinbartem Verkauf'), 'Profilexport enthält Lenas Liste');
     assert(JSON.stringify(exported).includes('1234.56'), 'Profilexport enthält bearbeitete Liste');
@@ -252,7 +251,7 @@ try {
     for (const household of ['max-erika', 'renate', 'helga-werner', 'jan-lena']) {
         const records = legacyDemoIncomeRecords(withoutExampleNeeds(createMusterHaushaltRecords('2026-10-16', household)));
         if (household === 'renate') {
-            assertEqual(createHash('sha256').update(JSON.stringify(records)).digest('hex'), readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences('d70f827e3e6290501c7dc596f1a1a750a886893725442d143c231b3f93d6d115')))),
+            assertEqual(createHash('sha256').update(JSON.stringify(records)).digest('hex'), readVS2References(readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences('d70f827e3e6290501c7dc596f1a1a750a886893725442d143c231b3f93d6d115'))))),
                 'Renate: vollständige Musterrecords mit Personenzuordnung im Beleg');
             const receipt = JSON.parse(records.annual_plan_record_v1);
             for (const entry of Object.values(receipt.entries)) for (const outcome of [entry.recommended, entry.adopted])
@@ -260,9 +259,9 @@ try {
             records.annual_plan_record_v1 = JSON.stringify(receipt);
         }
         const payload = household === 'jan-lena' ? { balance: records.ruhestandsmodellValues_v29_guardrails, annual: records.annual_plan_record_v1 } : records;
-        assertEqual(createHash('sha256').update(JSON.stringify(payload)).digest('hex'), readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(household === 'renate'
+        assertEqual(createHash('sha256').update(JSON.stringify(payload)).digest('hex'), readDM1References(readKR1bReferences(readVS2References(readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(household === 'renate'
             ? '0e8bc1e8cfb45b6edac14057d6a6990e850331402a88f0c78896b26529d5ae20'
-            : readMU1Hash(readAN1Hash(readJB2Hash(readBK2Hash(expected.demoHashes[household]))))))))),
+            : readMU1Hash(readAN1Hash(readJB2Hash(readBK2Hash(expected.demoHashes[household])))))))))))),
             household + ': vollständige Musterreferenz; Renate mit 3 Töpfen nach FR-58');
     }
     for (const preset of ['Vorgabe', 'konservativ', 'ausgewogen', 'offensiv']) {
@@ -286,19 +285,19 @@ try {
         const legacyPayload = { rows: backtest(legacy).rows, path0: legacyChunk.runMeta.find(run => run.index === 0).logDataRows };
         assertEqual(carePathReferences.presets[preset].legacyPayload.beforeHistoricalSha256,
             afterCareDeathChange(readQSCReferences(readKG1Hash(reference.after))), `${preset}: historische Referenz mit alten Flex-Werten bleibt erhalten`);
-        assertEqual(createHash('sha256').update(JSON.stringify(legacyPayload)).digest('hex'), readFI1References(readLE1KO2References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readPG1bHash(readAN1Hash(readEK1dHash(carePathReferences.presets[preset].legacyPayload.afterSha256))))))))))), `${preset}: vollständiger PM-1c-Pfad mit alten Flex-Werten`);
+        assertEqual(createHash('sha256').update(JSON.stringify(legacyPayload)).digest('hex'), readFZ1Reference(readDM1References(readJA1References(readHP4References(readKR1cReferences(readRK1MergeReferences(readVB1References(readKR1bReferences(readFI1References(readLE1KO2References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readPG1bHash(readAN1Hash(readEK1dHash(carePathReferences.presets[preset].legacyPayload.afterSha256))))))))))))))))))), `${preset}: vollständiger PM-1c-Pfad mit alten Flex-Werten`);
         assertEqual(JSON.stringify(payload.rows), JSON.stringify(legacyPayload.rows), `${preset}: Backtest-Jahreszeilen ohne Pflege bleiben gleich`);
         assertEqual(carePathReferences.presets[preset].payload.beforeHistoricalSha256,
             afterCareDeathChange(readQSCReferences(readKG1Hash(flexReference.after))), `${preset}: historische FR-39/FR-40-Vollreferenz bleibt erhalten`);
-        assertEqual(hash, readFI1References(readLE1KO2References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readPG1bHash(readAN1Hash(readEK1dHash(carePathReferences.presets[preset].payload.afterSha256))))))))))), `${preset}: vollständiger PM-1c-Backtest und MC-Pfad 0`);
+        assertEqual(hash, readFZ1Reference(readDM1References(readJA1References(readHP4References(readKR1cReferences(readRK1MergeReferences(readVB1References(readKR1bReferences(readFI1References(readLE1KO2References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readPG1bHash(readAN1Hash(readEK1dHash(carePathReferences.presets[preset].payload.afterSha256))))))))))))))))))), `${preset}: vollständiger PM-1c-Backtest und MC-Pfad 0`);
         for (const [kind, actual] of [['payload', payload], ['legacyPayload', legacyPayload]]) {
             const ev1 = ev1Evidence.controls[preset][kind];
             const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
-            assertEqual(digest(actual.rows), readLE1KO2References(readGU1References(ev1.backtest)), `${preset}/${kind}: EV-1 lässt sämtliche Backtestzeilen bytegleich`);
-            assertEqual(digest(actual.path0.slice(0, ev1.deathIndex)), readLE1KO2References(readGU1References(readPFA1References(ev1.beforeDeath))), `${preset}/${kind}: EV-1 lässt alle Zeilen vor dem Erbfall bytegleich`);
+            assertEqual(digest(actual.rows), readFZ1Reference(readKR1cReferences(readKR1bReferences(readLE1KO2References(readGU1References(ev1.backtest))))), `${preset}/${kind}: EV-1 lässt sämtliche Backtestzeilen bytegleich`);
+            assertEqual(digest(actual.path0.slice(0, ev1.deathIndex)), readFZ1Reference(readKR1cReferences(readKR1bReferences(readLE1KO2References(readGU1References(readPFA1References(ev1.beforeDeath)))))), `${preset}/${kind}: EV-1 lässt alle Zeilen vor dem Erbfall bytegleich`);
             const reference = rng1Evidence.carePath[preset][kind];
-            assertEqual(createHash('sha256').update(JSON.stringify(actual.path0.slice(0, reference.prefixLength))).digest('hex'), readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(reference.prefixSha256))))), `${preset}/${kind}: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen`);
-            assertEqual(createHash('sha256').update(JSON.stringify(actual.rows)).digest('hex'), readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(reference.backtestSha256))))),
+            assertEqual(createHash('sha256').update(JSON.stringify(actual.path0.slice(0, reference.prefixLength))).digest('hex'), readKR1cReferences(readKR1bReferences(readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(reference.prefixSha256))))))), `${preset}/${kind}: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen`);
+            assertEqual(createHash('sha256').update(JSON.stringify(actual.rows)).digest('hex'), readFZ1Reference(readKR1cReferences(readKR1bReferences(readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(reference.backtestSha256)))))))),
                 `${preset}/${kind}: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen`);
             const firstCare = actual.path0.find(row => row.CareP1_Active);
             assertEqual(firstCare.jahr, reference.firstCareYear, `${preset}/${kind}: neuer Pflegebeginn`);
@@ -327,7 +326,7 @@ try {
             runRange: { start: 0, count: 4 }, engine: EngineAPI });
         const healthyPayload = { rows: backtest(withoutCare).rows,
             path0: healthyChunk.runMeta.find(run => run.index === 0).logDataRows };
-        assertEqual(createHash('sha256').update(JSON.stringify(healthyPayload)).digest('hex'), readFI1References(readLE1KO2References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readKG1Hash(reference.withoutCare))))))))))),
+        assertEqual(createHash('sha256').update(JSON.stringify(healthyPayload)).digest('hex'), readFZ1Reference(readDM1References(readJA1References(readHP4References(readKR1cReferences(readRK1MergeReferences(readVB1References(readKR1bReferences(readFI1References(readLE1KO2References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readKG1Hash(reference.withoutCare))))))))))))))))))),
             `${preset}: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten`);
         if (preset !== 'Vorgabe') trial.reset();
     }
@@ -337,32 +336,20 @@ try {
     assertEqual(simulatorOneTimeIncome(shifted.profiles.muster_lena.data)[0].year, 2034, 'Lenas Musterjahr verschiebt sich');
     await boot(createMusterHaushaltRecords('2026-10-16', 'jan-lena')); page();
     const janLena = getCommonInputs();
-    assertEqual(janLena.plannedInflows.length, 2, 'Außenperson wird vom Simulator nicht gerechnet');
+    assertEqual(janLena.plannedInflows.length, 2, 'Simulator rechnet die Zuflüsse von Jan und Lena');
     const sourceRequest = { inputs: janLena, widowOptions: janLena.widowOptions, monteCarloParams: { ...parameters, anzahl: 1, maxDauer: 6 }, useCapeSampling: false };
-    const source = await runMonteCarloChunk({ ...sourceRequest, runRange: { start: 0, count: 1 }, logIndices: [0],
-        stressReplayCapture: createStressReplayCaptureRequest([0]), engine: EngineAPI });
+    const source = await runMonteCarloChunk({ ...sourceRequest, runRange: { start: 0, count: 1 }, logIndices: [0], engine: EngineAPI });
     const meta = source.runMeta[0];
-    const path = materializeStressReplayPathV1({ capture: meta.stressReplayCapture, sourceLogRows: meta.logDataRows,
-        sourceRequest, dataFingerprint: createStressReplayFingerprint({ dataVersion: getDataVersion() }),
-        engineFingerprint: createStressReplayFingerprint({ engineVersion: EngineAPI.version }), scenarioKey: 'zf-jan-lena', selectionMetric: 'nominal_terminal_wealth_eur' });
-    const replay = runStressReplayPathV1({ path, baselineInputs: janLena, sourceScenarioLog: meta.logDataRows, engine: EngineAPI });
-    assertEqual(replay.reconciliation.matched, true, 'Stresspfad-Replay mit Zuflüssen stimmt mit dem MC-Pfad überein');
+    assert(meta.logDataRows.some(row => row.zufluss > 0), 'MC-Pfad mit Jan/Lena enthält geplante Zuflüsse');
     for (const logDetailLevel of ['normal', 'detailed']) {
-        const html = renderProtocolTable(replay.scenarioLog.records, { source: 'mc', logDetailLevel });
+        const html = renderProtocolTable(meta.logDataRows, { source: 'mc', logDetailLevel });
         const ids = [...html.matchAll(/data-protocol-column="([^"]+)"/g)].map(match => match[1]);
         const start = ids.indexOf('income-total');
         const expected = ['income-total', 'expense-total', ...(logDetailLevel === 'detailed'
             ? ['withdrawal', 'rentesum', 'rente1', 'rente2', 'other-income', 'zufluss', 'planned-expenses', 'income-saved', 'widow-income-offset'] : [])];
-        assertEqual(ids.slice(start, start + expected.length).join(','), expected.join(','), 'Gerechneter Stresspfad-Replay zeigt Summen und vollständige Details');
-        assertEqual((html.match(/>Einnahmen und Ausgaben<\/th>/g) || []).length, 1, 'Gerechneter Replay hat genau einen Geldblock');
+        assertEqual(ids.slice(start, start + expected.length).join(','), expected.join(','), 'MC-Protokoll mit Zuflüssen zeigt Summen und vollständige Details');
+        assertEqual((html.match(/>Einnahmen und Ausgaben<\/th>/g) || []).length, 1, 'MC-Protokoll mit Zuflüssen hat genau einen Geldblock');
     }
-    const sweep = runSweepChunk({ baseInputs: janLena, paramCombinations: [{ liquidityRunwayYears: 5 }],
-        sweepConfig: { anzahlRuns: 1, maxDauer: 6, blockSize: 3, seed: 3, methode: 'regime_markov', rngMode: 'per-run-seed' }, engine: EngineAPI });
-    assertEqual(sweep.results[0].metrics.comparison.runCount, 1, 'Sweep mit denselben Zuflüssen läuft');
-    let candidateInputs;
-    await evaluateCandidate({ liquidityRunwayYears: 5 }, janLena, 1, 6, [12345], null, null, {
-        runMonteCarlo: async request => { candidateInputs = request.inputs; return runMonteCarloAutoOptimize(request); } });
-    same(candidateInputs.plannedInflows, janLena.plannedInflows, 'Auto-Optimize reicht persönliche Zuflüsse an seine Rechnung weiter');
 } finally {
     setAppTestDate(null); Object.assign(globalThis, previous); P.resetPersistenceRuntimeForTests();
 }

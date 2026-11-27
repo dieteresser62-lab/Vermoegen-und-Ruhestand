@@ -1,4 +1,4 @@
-import { computeHouseholdNeedsStats, computeSpent, hasCategoryNeeds, hasExpenseImport } from '../balance/balance-expenses-metrics.js';
+import { computeHouseholdNeedsStats, expenseConventions, sumCategoryNeeds, sumNeeds, boundAnnualNeeds, hasCategoryNeeds, hasExpenseImport } from '../balance/balance-expenses-metrics.js';
 import { loadExpensesStoreResult } from '../balance/balance-expenses-storage.js';
 import { readAnnualPlanRecord } from '../profile/annual-plan-record.js';
 import { readHouseholdPlan, memberPlanScope } from '../profile/household-plan.js';
@@ -81,7 +81,7 @@ export function projectExpenseNeeds({ yearData, profileIds, forecastMonths = nul
         difference: actual !== null && plan !== null ? actual - plan : null,
         percent: actual !== null && plan > 0 ? (actual - plan) / plan * 100 : null });
     // FR-43 (N2): Feste Ausgaben im Ist-Floor, anteilig für dieselben Monate mit Aufteilung wie die Hochrechnung.
-    const splitMonths = stats.months.filter(month => month.withBreakdown && month.total > 0 && (forecastMonths === null || forecastMonths.includes(month.month)));
+    const splitMonths = stats.months.filter(month => month.withBreakdown && month.total !== 0 && (forecastMonths === null || forecastMonths.includes(month.month)));
     const fixedInActual = Array.isArray(actualFixedMonths) && splitMonths.length
         ? splitMonths.reduce((sum, month) => sum + actualFixedMonths[month.month - 1], 0) / splitMonths.length * 12 : null;
     return { ...stats, plans, invalidBreakdowns, ...(fixedInActual === null ? {} : { fixedInActual }),
@@ -92,24 +92,48 @@ export function projectExpenseNeeds({ yearData, profileIds, forecastMonths = nul
 /**
  * @param yearData Monatsrecords des Anzeigejahrs.
  * @param profileIds Kennungen der ausgewählten Personen.
- * @returns Floor-/Flex-Summen je Kategorie mit unzugeordneten Beträgen.
+ * @returns Signierte Kategoriesummen, Balkenbeträge und Angabe zur vorhandenen Aufteilung.
  */
 export function projectCategoryNeeds(yearData, profileIds) {
     const categories = new Map();
+    const segments = new Map();
+    const directions = expenseConventions(yearData);
+    const personSplits = new Map();
+    const category = name => {
+        if (!categories.has(name)) categories.set(name, { floor: 0, flex: 0, unallocated: 0 });
+        return categories.get(name);
+    };
     for (const month of Object.values(yearData?.months || {})) {
         const entries = Object.entries(month.profiles || {}).filter(([id, entry]) => profileIds.includes(id) && hasExpenseImport(entry));
-        const split = entries.length > 0 && entries.length === profileIds.length && entries.every(([, entry]) => hasCategoryNeeds(entry));
-        for (const [, entry] of entries) {
-            const direction = computeSpent(entry.categories).sum < 0 ? -1 : 1;
-            for (const [name, amount] of Object.entries(entry.categories)) {
-                const row = categories.get(name) || { floor: 0, flex: 0, unallocated: 0 };
-                if (split) { row.floor += entry.categoryNeeds[name].floor * direction; row.flex += entry.categoryNeeds[name].flex * direction; }
-                else row.unallocated += Number(amount) * direction;
-                categories.set(name, row);
-            }
+        for (const [id, entry] of entries) {
+            if (hasCategoryNeeds(entry)) {
+                if (!personSplits.has(id)) personSplits.set(id, []);
+                personSplits.get(id).push(entry);
+            } else for (const [name, amount] of Object.entries(entry.categories)) category(name).unallocated += Number(amount) * directions.get(id);
         }
     }
-    return categories;
+    for (const [id, entries] of personSplits) {
+        const signed = sumCategoryNeeds(entries, directions.get(id));
+        const annual = boundAnnualNeeds(sumNeeds(signed));
+        const positive = { floor: 0, flex: 0 };
+        for (const pair of signed.values()) {
+            positive.floor += Math.max(0, pair.floor);
+            positive.flex += Math.max(0, pair.flex);
+        }
+        // Der Jahressaldo verteilt sich auf die positiven Anteile dieser Person.
+        const floorFactor = positive.floor > 0 ? annual.floor / positive.floor : 0;
+        const flexFactor = positive.flex > 0 ? annual.flex / positive.flex : 0;
+        for (const [name, pair] of signed) {
+            const row = category(name);
+            row.floor += pair.floor;
+            row.flex += pair.flex;
+            const part = segments.get(name) ?? { floor: 0, flex: 0 };
+            part.floor += Math.max(0, pair.floor) * floorFactor;
+            part.flex += Math.max(0, pair.flex) * flexFactor;
+            segments.set(name, part);
+        }
+    }
+    return { categories, segments, hasBreakdown: personSplits.size > 0 };
 }
 
 /** Der Dialog liest dieselben Quellen wie Ausgaben, ohne das Übersichtsmodell zu ändern. */
@@ -122,7 +146,7 @@ export function projectCategoryNeeds(yearData, profileIds) {
  */
 export function readCloseExpenseNeeds(model, year, monthlyBudget, storage = persistenceStorage) {
     if (!model.scope?.ids?.length) return null;
-    const scope = memberPlanScope(model.scope.ids, storage, model.members?.some(person => person.belongs) ?? true);
+    const scope = memberPlanScope(model.scope.ids, storage);
     const plan = readExpenseNeedsPlan({ year, scope, storage });
     const loaded = loadExpensesStoreResult(storage);
     if (loaded.status === 'corrupt') return null;
@@ -155,5 +179,5 @@ export function expenseDeviation(actual, plan, money, reference = 'Plan') {
  * @returns Beschreibung der belegten Monate mit Bedarfssplit.
  */
 export function expenseNeedsCoverage(needs) {
-    return `Floor und Flex aus ${needs.monthsWithBreakdown} von ${needs.monthsWithBreakdown + needs.monthsWithoutBreakdown} Monaten mit Aufteilung.`;
+    return `Grundbedarf und Flex aus ${needs.monthsWithBreakdown} von ${needs.monthsWithBreakdown + needs.monthsWithoutBreakdown} Monaten mit Aufteilung.`;
 }

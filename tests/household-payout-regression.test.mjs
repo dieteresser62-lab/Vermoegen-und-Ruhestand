@@ -1,3 +1,6 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
 import { readRNG1Hash } from './helpers/rng-1-expectations.mjs';
 import { readNR1Hash } from './helpers/nr-1-expectations.mjs';
 import { createHash } from 'node:crypto';
@@ -42,7 +45,7 @@ for (const mode of ['tax_optimized', 'proportional', 'runway_first']) {
     const plan = personalWithdrawalPlan(personalProfiles(portfolio), 50000, mode);
     assertEqual(plan.items[0].profileId, 'b', `${mode}: Reihenfolge aus Haushalt & Plan`);
     assertEqual(plan.items[0].tagesgeldUsed, 10000, `${mode}: Tagesgeld zuerst`);
-    assertEqual(plan.items[0].geldmarktUsed, mode === 'tax_optimized' ? 20000 : mode === 'proportional' ? 14879.23 : 15000, `${mode}: danach eigenes Geldmarktguthaben`);
+    assertEqual(plan.items[0].geldmarktUsed, mode === 'tax_optimized' ? 20000 : mode === 'proportional' ? 14879.23 : 10000, `${mode}: danach eigenes Geldmarktguthaben`);
     assertEqual(plan.items.reduce((sum, item) => sum + item.sellAmount, 0), 0, `${mode}: kein Verkauf bei genug Haushaltsliquidität`);
     beginPersonalTaxYear(portfolio);
     const coverage = coverPersonalPayout(portfolio, plan, {});
@@ -61,7 +64,7 @@ for (const result of unchanged) {
     assert(!result.logData.SurvivorDeathYear && !result.logData.WidowBenefitP1 && !result.logData.WidowBenefitP2, 'Ohne Tod und Hinterbliebenenrente');
 }
 assertEqual(createHash('sha256').update(JSON.stringify(unchanged)).digest('hex'),
-    'f3a6f21d17f4590e7b7ba0c9376c60b3fe88351089445397be1368f1da3179d5', 'Drei vollständige Haushaltsjahre nach BK-2 auf Referenz');
+    readKR1cReferences('f3a6f21d17f4590e7b7ba0c9376c60b3fe88351089445397be1368f1da3179d5'), 'Drei vollständige Haushaltsjahre nach BK-2 auf Referenz');
 for (const grade of [4, 5]) {
     const input = { ...householdInput(200000, 400000), startFloorBedarf: 20000, startFlexBedarf: 60000,
         minimumFlexAnnual: 0, dynamicFlex: true };
@@ -90,7 +93,7 @@ for (const rows of [paths.backtest.rows.map(entry => entry.row), paths.mc]) {
     }
 }
 assertEqual(createHash('sha256').update(JSON.stringify(paths)).digest('hex'),
-    readRNG1Hash(readNR1Hash('518735a217b66489dbfdc7872e71d8c7941662a32b1b024b6986209ea3d0d1f3')),
+    readKR1cReferences(readRNG1Hash(readNR1Hash('518735a217b66489dbfdc7872e71d8c7941662a32b1b024b6986209ea3d0d1f3'))),
     'Vollständige Backtest-/MC-Jahreslogs samt Backtest-Ende nach FR-30 gegen BK-2-Referenz');
 for (const mode of ['tax_optimized', 'proportional', 'runway_first']) {
     const input = householdInput(0, 0);

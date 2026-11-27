@@ -103,7 +103,7 @@ if (selected('care')) {
         if (gender === 'assumed') inputs.simulationPeople[survivorIndex].residenceGenderUnknown = true;
         const result = simulateOneYear(initMcRunState(inputs), inputs, year, 5, null, 0,
             { p1Alive: survivorIndex === 0, p2Alive: survivorIndex === 1 }, 1, EngineAPI);
-        assertClose(result.logData.inheritance.residenceCapital, 24480 * lifetimeUseMultiplier(70, gender), 1e-7,
+        assertClose(result.logData.inheritance.residenceCapital, 24480 * lifetimeUseMultiplier(70, gender, 2031), 1e-7,
             'AR-1 Simulator übergibt Geschlecht und Alter im Todesjahr für beide Personen');
     }
     // Der historische Runner zieht selbst keinen Tod. Sein Jahreseinstieg erhält hier ein festes synthetisches Ereignis.
@@ -157,7 +157,7 @@ if (selected('editor')) {
         assertEqual(JSON.stringify(saved.testament?.a), JSON.stringify(rule), 'AR-1 Häkchen erhält alle gespeicherten Testamentangaben');
         assertEqual(hasTestament(saved, 'a'), !checked, 'AR-1 Häkchen wechselt nur die aktive Regel');
         assertEqual(inheritsHomeAndTax(saved, 'a'), checked, 'AR-1 Immobilien und Steuergeld haben bei Häkchen Vorrang');
-        if (checked) assert(nodes.managerInheritance.innerHTML.includes('data-testament-person="a" disabled'), 'AR-1 gespeicherte Felder gesperrt');
+        if (checked) assert(nodes.managerInheritance.innerHTML.includes('class="pv-testament pv-testament-limits" disabled'), 'AR-1 gespeicherte Felder gesperrt');
         if (checked) {
             const opts = { homeAndTax: true, cash: 600000 };
             assertEqual(JSON.stringify(inheritancePreview(600000, 600000, 33, opts)),
@@ -191,6 +191,6 @@ if (selected('editor')) {
 if (selected('history')) {
     const history = withPropertyHistory({ points: [{ day: 1, total: 100, allocation: { cash: 100 } }, { day: 2, total: 200, allocation: { cash: 200 } }], types: [], events: [], gaps: [] },
         [{ values: { immobilien: [{ wert: 600000, nutzung: 'selbst' }] } }]);
-    assertEqual(history.points[0].totalWithHomes, 600100, 'AR-1 bestätigt heutigen Immobilienwert in allen historischen Punkten');
-    assert(managerHistoryLegend(history).includes('Geldvermögen mit heutigem Immobilienwert'), 'AR-1 Legende nennt die zeitliche Vereinfachung');
+    assertEqual(history.points[0].totalWithHomes, 600100, 'AR-1/IM-1: ohne Wertverlauf gilt der erste bekannte Wert in allen historischen Punkten');
+    assert(managerHistoryLegend(history).includes('Gesamtvermögen') && !managerHistoryLegend(history).includes('heutigem Immobilienwert'), 'IM-1: Legende nennt echtes Gesamtvermögen, die Hilfslinie „mit heutigem Immobilienwert“ entfällt');
 }

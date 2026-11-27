@@ -51,7 +51,7 @@ for (let i = 1; i < lines.length; i++) {
 function getVal(row, col) {
     if (!row) return 0;
     if (['Entn.', 'Floor', 'Rente1', 'Rente2', 'RenteSum', 'FloorDep', 'Flex€', 'Entn_real',
-        'Handl.A', 'Handl.G', 'St.', 'Aktien', 'Gold', 'Liq.', 'Liq@rC-', 'Zins€', 'Liq@rC+',
+        'Handl.A', 'Handl.G', 'St.', 'Aktien', 'Gold', 'Liq.', 'Liq@rC-', 'Zins€', 'LiqEnde',
         'ZielLiq', 'NeedLiq', 'GuardG', 'GuardA', 'Akt_vorR', 'Akt_nachR', 'Akt_nachV', 'Akt_nachK',
         'Gld_vorR', 'Gld_nachR', 'Gld_nachV', 'Gld_nachK'].includes(col)) {
         return parseCurrency(row[col]);

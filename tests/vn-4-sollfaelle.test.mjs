@@ -65,7 +65,8 @@ const source = (profileId, netto) => ({ kind: 'aktien_neu', category: 'equity', 
     const info = protocolActionExplanation(entry, { source: 'backtest', inputs }).replaceAll(' ', ' ');
     assert(info.startsWith('Verkäufe und Käufe je Person'), `LZDS-2: Überschrift (${info})`);
     assert(/Martin verkauft 120\.285\s€ \(trägt die Entnahme\), die andere Person verkauft nichts/.test(info), `LZDS-2: wer verkauft (${info})`);
-    assert(/Steuer im Jahr 9\.821\s€/.test(info), `LZDS-2: Steuer (${info})`);
+    // KR-1c (NG-5): Zins 2000 auf 40.000 € vor der Entscheidung statt auf 131.832 € nach dem Verkauf; Zinssteuer 1.169 → 171 €.
+    assert(/Steuer im Jahr 8\.824\s€/.test(info), `LZDS-2: Steuer (${info})`);
     assert(/Tagesgeld danach: Martin [\d.]+\s€, Petra [\d.]+\s€/.test(info), `LZDS-2: Tagesgeld je Person (${info})`);
 }
 // Abnahme LZDS-7, Nachtrag 1 N2: Kontostand im Gutschrift- und Abbuchungsschritt nach dem Verlassen mit Tausenderpunkt, ganze Euro (Komma bleibt).

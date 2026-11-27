@@ -5,7 +5,6 @@ import { createSelectionDocument } from './designsystem-selection-dom.mjs';
 import { bindManagerProfileControls, syncManagerProfileControls } from '../app/tranches/tranchen-manager-profiles.js';
 import { UIBinder, initUIBinder } from '../app/balance/balance-binder.js';
 import { navigateExpenses } from '../app/shared/expenses-navigation.js';
-import { navigateWealthHistory } from '../app/shared/wealth-history-navigation.js';
 
 const tick = async () => { for (let i = 0; i < 150; i++) await Promise.resolve(); };
 function events(target) {
@@ -103,7 +102,7 @@ try {
     }
     const globals = { document: globalThis.document, window: globalThis.window };
     try {
-        for (const target of ['expenses', 'wealth', 'overview']) for (const input of ['failed', 'pending', 'overview']) for (const accept of [false, true]) {
+        for (const target of ['expenses', 'overview']) for (const input of ['failed', 'pending', 'overview']) for (const accept of [false, true]) {
             const f = await fixture('invalid');
             globalThis.document = f.doc; globalThis.window = f.win;
             const state = { debounceTimer: input === 'failed' ? null : setTimeout(() => {}, 60000),
@@ -124,13 +123,6 @@ try {
                 await UIBinder.initializeExpensesNavigation({ doc: f.doc, win: f.win,
                     navigate: (request, supplied) => (leaving = navigateExpenses(request, { ...options, ...supplied })) });
                 f.win.location.hash = '#ausgaben'; f.win.location.search = '?year=2025'; hashchange();
-            } else if (target === 'wealth') {
-                let hashchange;
-                f.win.addEventListener = (type, fn) => { if (type === 'hashchange') hashchange = fn; };
-                f.win.location.hash = '';
-                await UIBinder.initializeWealthHistoryNavigation({ doc: f.doc, win: f.win,
-                    navigate: supplied => (leaving = navigateWealthHistory({ ...options, ...supplied })) });
-                f.win.location.hash = '#verlauf'; hashchange();
             } else {
                 // Nach Bleiben besteht der Sicherungsgrund schon vor dem nächsten Hashziel.
                 await f.guard.prepare({ decide: async () => false });
@@ -142,7 +134,7 @@ try {
             assert(f.doc.getElementById('navigationGuardDescription').textContent.includes(input === 'overview' ? 'Plananzeige' : 'gültigen Betrag'), 'HS-1c: Hashrückfrage nennt den Sicherungsgrund');
             f.answer(accept);
             assertEqual(await leaving, accept, `HS-1c ${target}: erste Entscheidung gilt`);
-            assertEqual(f.win.location.href, accept ? target === 'wealth' ? 'depot-tranchen-manager.html#verlauf' : 'Ausgaben.html?year=2025#ausgaben' : 'http://localhost/Balance.html', 'HS-1c: Trotzdem wechselt, Bleiben erhält das Dokument');
+            assertEqual(f.win.location.href, accept ? 'Ausgaben.html?year=2025#ausgaben' : 'http://localhost/Balance.html', 'HS-1c: Trotzdem wechselt, Bleiben erhält das Dokument');
             assertEqual(exports, 0, 'HS-1c: Hashwechsel wiederholt die fehlgeschlagene Profilsicherung nicht');
             assertEqual(updates, input === 'failed' ? 0 : 1, 'HS-1c: wartende Eingabe wird einmal vor der Entscheidung geprüft');
             assertEqual(state.debounceTimer, null, 'HS-1c: nach der Prüfung bleibt keine tote Timer-ID');

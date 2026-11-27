@@ -1,0 +1,789 @@
+{
+  "reason": "HP-4 (H-ERBST-ABRUNDUNG-100): Der steuerpflichtige Erwerb wird nach allen Abzügen, auch dem Versorgungsfreibetrag, auf volle 100 € abgerundet (§ 10 Abs. 1 Satz 6 ErbStG), allein in inheritanceTaxable. Todesjahre mit steuerpflichtigem Erwerb tragen zusätzlich inheritance.taxable für die Zeile im Protokoll-ⓘ. Nur synthetische Testdaten.",
+  "gegenprobe": "21.11.2026, Wegwerfkopie direktweg-klone/hp4-wegwerf-gegenprobe (danach entfernt): Endstand ohne Abrundung (inheritanceTaxable gibt den ungerundeten Erwerb zurück) und ohne das Feld inheritance.taxable, Testdateien und scripts/measure-zg2-equalization.mjs vom Ausgangsstand d1bb4d5b. Alle 30 betroffenen Testdateien (zwei Kopien, die zweite für die sechs Dateien aus npm test und decision-comparison-pool) bestehen dort mit den alten Werten (alle Prüfsummen und Zahlen kehren genau zurück). Einzige Abweichungen sind Text: profile-immobilien-partnership (Vorschautext) und jd-1 previewHash, beide durch den Zusatz „auf volle 100 € abgerundet“. measure-ph1 der Kopie ist bytegleich zum Ausgangsstand. demography-care-survivor-runtime-measurement scheitert schon auf dem Ausgangsstand gleich und hat keinen HP-4-Bezug.",
+  "measurePh1": {
+    "before": {
+      "max-erika": {
+        "balance": "9dc6402524b5858e812d34ecac99e289ba67e6e9f89259fde5f3fee28d584eaa",
+        "backtest": "81244afc62542cc4337d7f83dcd5e1a9dd569242df642360a4e5bfe937428921",
+        "monteCarlo": "33efa0cdaceb282a6fc5aad8ff7581036db457d2a6ed62fc39c33e4a7ba043ea",
+        "overview": "5061054bac5c948b3aa4406fd38e6d932e9f2b07bed26443d7f70b077016b300"
+      },
+      "renate": {
+        "balance": "5c150cb7fea0c00527b37cbc6ff2efe257ed006b9660ba8a223127aa7014dc16",
+        "backtest": "eb65f3ed14804ddc057c625014df04ec83a0701bdaf4f5aac3df45640e98987f",
+        "monteCarlo": "54f16fc4b571eb522d76ac08bec484af19b2b3c2579248b1b3a5f79b86eabe7f",
+        "overview": "c9f09e06338ab2c08a5d5f23189960639415adb82e38b2a618f6428138a7338f"
+      }
+    },
+    "after": {
+      "max-erika": {
+        "balance": "9dc6402524b5858e812d34ecac99e289ba67e6e9f89259fde5f3fee28d584eaa",
+        "backtest": "81244afc62542cc4337d7f83dcd5e1a9dd569242df642360a4e5bfe937428921",
+        "monteCarlo": "a6b7682a8329a2cfaeb6a685bb44b32ce8ec88872437b59e7bcdbc05f7cd3e49",
+        "overview": "5061054bac5c948b3aa4406fd38e6d932e9f2b07bed26443d7f70b077016b300"
+      },
+      "renate": {
+        "balance": "5c150cb7fea0c00527b37cbc6ff2efe257ed006b9660ba8a223127aa7014dc16",
+        "backtest": "eb65f3ed14804ddc057c625014df04ec83a0701bdaf4f5aac3df45640e98987f",
+        "monteCarlo": "54f16fc4b571eb522d76ac08bec484af19b2b3c2579248b1b3a5f79b86eabe7f",
+        "overview": "c9f09e06338ab2c08a5d5f23189960639415adb82e38b2a618f6428138a7338f"
+      }
+    },
+    "note": "Balance, Backtest und Übersicht alt = neu. Monte Carlo ändert sich nur bei Max und Erika (Todesjahre mit steuerpflichtigem Erwerb); Renate (allein) bleibt gleich."
+  },
+  "entries": [
+    {
+      "test": "tests/care-today.test.mjs",
+      "field": "usual, Paar true: vollständiges MC-Ergebnis mit belegten PA-1-Folgen (Laufbeleg wie vor LE-1b)",
+      "kind": "hash",
+      "old": "ca71a38e36e39b90290ddf874aee1993f6a29d59490aaa5b0a080bf2d93eea1c",
+      "new": "83e4f5c4ffdd56bc12322009502cd48eec45d284f3575cb6eacf7d7ba36ad2c7",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/care-today.test.mjs",
+      "field": "none, Paar true: vollständiges MC-Ergebnis mit belegten PA-1-Folgen (Laufbeleg wie vor LE-1b)",
+      "kind": "hash",
+      "old": "f5a7b8c007acdf0e9304c1351228ff74ec1faf4115453a1f797f7c33a624949c",
+      "new": "589902fefff467f8b0ea68661a790e6ab366677fb16dc236a0df724e4dcbb430",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/ev-1-inheritance-funding.test.mjs",
+      "field": "Ohne Depot: vollständiger Nachlass, Zahlungsbeleg und Jahressteuer bytegleich",
+      "kind": "hash",
+      "old": "9f4d9e0ebd69fd3d61707d50999e94f3e3d935db9d76dd42ec119483852b68a5",
+      "new": "d95828f50062314c3d448f80b57f270fe7b80cafec78415d6201ea8aa2526763",
+      "reason": "Steuerpflichtiger Erwerb 100.000 € ist schon rund, Steuer gleich; geändert ist nur das neue Nachlassfeld inheritance.taxable."
+    },
+    {
+      "test": "tests/gu-1-sollfaelle.test.mjs",
+      "field": "S2: max-erika Monte Carlo mit k = 0 bytegleich zu b1ef8ff6 (Laufbeleg der Sterbetafel wie vor LE-1b)",
+      "kind": "hash",
+      "old": "8303f79cdd51f573939a5abacf2e256a95c1b68976f7ac39fe4185d75bfb089e",
+      "new": "c9c1a4cdbbe852e6b488e5cda685a29cf1afc3eea7379170ef9acf9a311bb716",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/he-3-amtlich-ziehung.test.mjs",
+      "field": "Ohne Amtlich: vollständiges Monte-Carlo-Ergebnis wie vor HE-3, Pflegekennzahl netto (Laufbeleg wie vor LE-1b)",
+      "kind": "hash",
+      "old": "5743c146092956a867868bef0f951fd4e5c37ff72f0a280d5c042fc627530ee7",
+      "new": "b42449b1b4a29bf1be0022dac1194ad98306dbc66566536d6901286a34807df8",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/immobilien-empty-bytegleich.test.mjs",
+      "field": "Ohne Immobilien: vollständige 24 MC-Pfade mit Seed 12345 und belegter Ehe-Erbschaftsteuer",
+      "kind": "hash",
+      "old": "d336c616581e9567f10344691ba8248f763b764521b8af9a169cfbeedd12edf8",
+      "new": "1fcb36540b4a0c769abb2823df5c224f04152d93aea6c78b832e23d7361f2cfe",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/jd-1-gleichheit.test.mjs",
+      "field": "Steuerbeträge, Sätze und Härteausgleich bleiben",
+      "kind": "hash",
+      "old": "06f838a99261b7be91b1d69ebf74d42924ca4e265c0226d1e6a6ee1738f31884",
+      "new": "735bf85d134f2dbae71ed1aab9f283b228f89ac7e768c18571c6f5eca0b3febd",
+      "reason": "Tariftabelle über inheritanceTax: Steuerbeträge auf den auf volle 100 € abgerundeten Erwerb."
+    },
+    {
+      "test": "tests/jd-1-gleichheit.test.mjs",
+      "field": "Erbvorschau im Vermögensbereich bleibt bytegleich",
+      "kind": "hash",
+      "old": "ef2c67316495d44fa74f96569fb45187382b3e27c56a4cc41610641f5f900443",
+      "new": "f43e122aab5d9b007767202d7af636895d46c95821baa64d76ff5491d1bd7bd3",
+      "reason": "Erbvorschau in Haushalt & Plan: steuerpflichtiger Erwerb und Steuer abgerundet, Text mit Zusatz „auf volle 100 € abgerundet“. In der Gegenprobe bleibt nur der Textzusatz."
+    },
+    {
+      "test": "tests/muster-max-erika-parity.test.mjs",
+      "field": "Max/Erika MC 2.000 Läufe, Seed 12345, 23.10.2026 mit belegten PA-1-Folgen",
+      "kind": "hash",
+      "old": "92a3baf4abf44cd9c90829b18b6778a7379c1aba9ef6adc3955c49ffec52b595",
+      "new": "e9a0907000b5369808a6aac54822cb4b06e9144549e8673b2357d0b8cebcf351",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/nk-1-sollfaelle.test.mjs",
+      "field": "D grund: ohne Pflegelogik Monte Carlo bytegleich",
+      "kind": "hash",
+      "old": "94bc856bcffdc6ae9be556beba4b9ea678c337a7e0e7e0e12a0b686b03d4d4a9",
+      "new": "9f3db96e673c09a6b386b2e038898967fe72e090e1b0b2ccc85db7964e3468d8",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/nk-1-sollfaelle.test.mjs",
+      "field": "D grund: mit Pflegelogik ohne aufgezehrtes Vermögen bytegleich (200 Läufe)",
+      "kind": "hash",
+      "old": "6872f647b8bd0786c17da12d2662765ab066d5ffc4fc560f07b2b263f08748d6",
+      "new": "63c5d73c618a9ec45e667b5bfe44abb466856ec1199eaff2f715ce7a76680419",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/nk-1-sollfaelle.test.mjs",
+      "field": "D immobilien: ohne Pflegelogik Monte Carlo bytegleich",
+      "kind": "hash",
+      "old": "e9d459ac1d812bd65e8f800022fbf09496f914d9976661b2c4e2eb9f67fa6182",
+      "new": "a786778e00feb3cdbef3f2dca71f0719a82118df6b6f214b645a615f2713e06c",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/nk-1-sollfaelle.test.mjs",
+      "field": "D immobilien: mit Pflegelogik ohne aufgezehrtes Vermögen bytegleich (200 Läufe)",
+      "kind": "hash",
+      "old": "f4934403fc94f7456dc0f0d0dd4e26eab6e8895f3bb017c845d7139425d27253",
+      "new": "64c1c370050a71f857a9df9ce52d84ae21fe0cb1521baec4cd9482ca0e5c6eea",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "Vorgabe: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+      "kind": "hash",
+      "old": "be8676842643c3af5b74a4dacb9e9b2e3c1e34253bae76ab1fc1a150e696e1ff",
+      "new": "de86801814ef9c7436218243d37bd9f7ffac7d1d78241779d823d20dcb1f0fa1",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "Vorgabe: vollständiger PM-1c-Backtest und MC-Pfad 0",
+      "kind": "hash",
+      "old": "8429dac781d275162dabd14443cfa198f5eff2de6c7300b3d20d66a560a52ce8",
+      "new": "493fc859c561f21d6d348b239b6a3768465abf364f62128a94c78f061d8b430c",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "Vorgabe: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+      "kind": "hash",
+      "old": "fbe3c64c20d384d87d6b4e232019e9c9f050e4afb7f72f01ee07d13216562220",
+      "new": "a6af8e59870d794455e6ab96a0d57058510fe6fd2db1944a5c0cebc4d78f0056",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "konservativ: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+      "kind": "hash",
+      "old": "8e536a2476bd9b62c9f9644955ddf9044b469e9799cefbad9fb61ea44eeec670",
+      "new": "d81183179c620aeb712794db09e74949465bc3c04fc0a90f34e06a21712af170",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "konservativ: vollständiger PM-1c-Backtest und MC-Pfad 0",
+      "kind": "hash",
+      "old": "f69141a12d775a5b44978233bf9a794c4d6312df797c487163cb14c408c1f986",
+      "new": "be2aed87e25bc543dfa765fb67a8ea59d2b95a8e311d7d334cca6a39bbb463a6",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "konservativ: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+      "kind": "hash",
+      "old": "f70014236f6f5708345430220d0768b885abf5da93321abf69b8796305abc811",
+      "new": "326e0f8dff02cab82f74046d4fe10df5c71bc49b6075ff779dd64459e5c819fb",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "ausgewogen: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+      "kind": "hash",
+      "old": "36651348757afa4a7a4c9cc3519a6b73c37bbc808642feb77e6bb44f6cfc86d6",
+      "new": "550c67c4d8b7746ffb2171183fc339716f45753c8b9ee9a268465efe7f6b0dbc",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "ausgewogen: vollständiger PM-1c-Backtest und MC-Pfad 0",
+      "kind": "hash",
+      "old": "40446cad841d8d904be73f91a54e209da418b2238c98fed0b83bc46791cedffa",
+      "new": "a6fe6c021b42c0ce429debd43a76372ce6b15438c93e3a05b4fb47739af2e451",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "ausgewogen: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+      "kind": "hash",
+      "old": "f13643f4dd635e25ddacbc62183e489fe2e9f73df72b55ad17ec75985a5e889a",
+      "new": "62ca83edf7cb7a4ad25a6e4c1c73a1d404abeda096e993031eedf186975f99ec",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "offensiv: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+      "kind": "hash",
+      "old": "7040ee0dca4288265d6ac3202daa37c3cd138ac2be2f47641977cac4e845686a",
+      "new": "34477946cf1c323dfbd82c28e24d9adfecbcf158d8794106676143cb45df8bfb",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "offensiv: vollständiger PM-1c-Backtest und MC-Pfad 0",
+      "kind": "hash",
+      "old": "50742552689793cefc2560f6ac2d7c35c7267a92532ed36305bb6d7960660c18",
+      "new": "afc0293293aa5676c160c79704071f88ff89142b0b0280dc43b2ed79c7703274",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/planned-inflows.test.mjs",
+      "field": "offensiv: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+      "kind": "hash",
+      "old": "832229d9c3e600596563d7df7790a8348dec73d93e67e273d9f9fb963dea3f3e",
+      "new": "65f365540331e19617c17a0c1d8d3b7e20caf6255f080bebbd01d92a2c082aa1",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/rechenregeln-bytegleich.test.mjs",
+      "field": "off: MC-Pfad 0 mit FR-21–24/27",
+      "kind": "hash",
+      "old": "2c29126e464ca23ad0199fc3747bac7df5699f2b26ddaa4c943e64214a57fd7a",
+      "new": "83b7ad07570f4814679b0ac4ae2eba3ba860eff051c8cf81cf1e22dcf0550087",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/rechenregeln-bytegleich.test.mjs",
+      "field": "konservativ: MC-Pfad 0 mit FR-21–24/27",
+      "kind": "hash",
+      "old": "123072463fff7e0b1bbf80f68641513a1e0f70f25219f292739be7cc04008815",
+      "new": "a54c01ad48cb13b891f11c85fd969be304b660382f2231042984f22ebaac8781",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/rechenregeln-bytegleich.test.mjs",
+      "field": "ausgewogen: MC-Pfad 0 mit FR-21–24/27",
+      "kind": "hash",
+      "old": "80c0f9bd47a1125d66493404ee5f15645acf5d531c05dc49acf3a9f94b4e92d8",
+      "new": "2383f5c48c203c3f5cfa2de71e959461d6fd399fde4128e2087b7a652cab8f0c",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/rechenregeln-bytegleich.test.mjs",
+      "field": "offensiv: MC-Pfad 0 mit FR-21–24/27",
+      "kind": "hash",
+      "old": "86d62ce4b7774af616c401fa786f796f73cc1d1a8c704c79d387bc6648e12f66",
+      "new": "860d422ab5cb4eba98bbf2288dc55fe145e3150e8cec363a983ba959d42cc3c0",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/zg-1-equalization.test.mjs",
+      "field": "married: vollständiges Todesjahr bytegleich zum Ausgangsstand",
+      "kind": "hash",
+      "old": "9d77c07b2f119c56de469b5821c91c313572784a22b25c7f08f228745dfc106f",
+      "new": "36924c3a5ac7885fbc89718436bfdf5da57c9ecb3eaac65b9d5a717c4391eae6",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/zg-1-equalization.test.mjs",
+      "field": "unmarried: vollständiges Todesjahr bytegleich zum Ausgangsstand",
+      "kind": "hash",
+      "old": "f1dea335b12c794c0b1a88b4cb73d3805796fc7ff86199fa66f625094e6c3ca2",
+      "new": "3e977372c576f3c185593673b1eb66a7a1cd921869586b5fe41d951e98b9bd42",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/zg-1-equalization.test.mjs",
+      "field": "ZG-1b separation: vollständiges Todesjahr bytegleich",
+      "kind": "hash",
+      "old": "8fe02339c196ede8b5808931f8bc0a9b6a5e5a8b2eafc7aec812b23d7b8ce1f9",
+      "new": "843d17a4340dd4026bcc9b6a1a018ebdc5dcca73ae8129a152ce975f21e32773",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/zg-1-equalization.test.mjs",
+      "field": "ZG-1b unmarried: vollständiges Todesjahr bytegleich",
+      "kind": "hash",
+      "old": "2e69503617b9f447c7374a564f7b4bf793c45548f199b956b9ac0ec8d25d8145",
+      "new": "43c3a1f045e679c160b4a016d9f863fd6c5c9f35b97735c562ed7de369c32b00",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/decision-comparison-pool.test.mjs",
+      "field": "VS-1 Vergleich: Prüfsumme des Ausgangsplans",
+      "kind": "hash",
+      "old": "5657b1c13328174c02fbd087dfab782ba86a13ac347528fbbb4925a1a8e6291e",
+      "new": "d6e15930398933ad0ab679ab1bb9edf154a206f748c3d05ccb905b664db9d627",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/decision-comparison-pool.test.mjs",
+      "field": "VS-1 Vergleich: Prüfsumme der Variante",
+      "kind": "hash",
+      "old": "402243631005f8b6fd0897a259914d24d60190a1095718975a4974f8d5c99d22",
+      "new": "f798e61e294950f46f7844b3026f14fcd7dfa6f5d1b3fa3bf7a79aab329a6613",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/decision-comparison-pool.test.mjs",
+      "field": "VS-1 Suchschritt nach Ruin",
+      "kind": "hash",
+      "old": "0f4a04c9d1b88dc5842f17e4ba92ba4f10653e23d97e90e6e6eaa95d8e63406c",
+      "new": "91fd9e7a6ae5063b830a63bf7855049c37173398c35aa4effb9a22d10a13f7d6",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/vb-1-versorgungsfreibetrag.test.mjs",
+      "field": "Fall A: steuerpflichtiger Erwerb / Erbschaftsteuer",
+      "kind": "value",
+      "old": "533985.20 / 80097.78",
+      "new": "533900 / 80085",
+      "reason": "Steuerpflichtiger Erwerb auf volle 100 € abgerundet (§ 10 Abs. 1 Satz 6 ErbStG)."
+    },
+    {
+      "test": "tests/vb-1-versorgungsfreibetrag.test.mjs",
+      "field": "Fall A2: steuerpflichtiger Erwerb / Erbschaftsteuer",
+      "kind": "value",
+      "old": "535635.20 / 80345.28",
+      "new": "535600 / 80340",
+      "reason": "Steuerpflichtiger Erwerb auf volle 100 € abgerundet (§ 10 Abs. 1 Satz 6 ErbStG)."
+    },
+    {
+      "test": "tests/vb-1-versorgungsfreibetrag.test.mjs",
+      "field": "Fall C: steuerpflichtiger Erwerb / Erbschaftsteuer",
+      "kind": "value",
+      "old": "293076 / 32238.36",
+      "new": "293000 / 32230",
+      "reason": "Steuerpflichtiger Erwerb auf volle 100 € abgerundet (§ 10 Abs. 1 Satz 6 ErbStG)."
+    },
+    {
+      "test": "tests/vb-1-versorgungsfreibetrag.test.mjs",
+      "field": "Fall D: steuerpflichtiger Erwerb / Erbschaftsteuer",
+      "kind": "value",
+      "old": "610077.50 / 95038.75",
+      "new": "610000 / 95000",
+      "reason": "Steuerpflichtiger Erwerb auf volle 100 € abgerundet (§ 10 Abs. 1 Satz 6 ErbStG). Härteausgleich: 90.000 + 10.000 × 50 %."
+    },
+    {
+      "test": "tests/vb-1-versorgungsfreibetrag.test.mjs",
+      "field": "Simulator Fall A2: Erbschaftsteuer",
+      "kind": "value",
+      "old": "80345.28",
+      "new": "80340",
+      "reason": "Steuerpflichtiger Erwerb auf volle 100 € abgerundet (§ 10 Abs. 1 Satz 6 ErbStG)."
+    },
+    {
+      "test": "tests/simulator-home-sale-inheritance.test.mjs",
+      "field": "Handrechnung Klasse III: Steuergeld X",
+      "kind": "value",
+      "old": "334285.7142857143",
+      "new": "334260",
+      "reason": "Steuerpflichtiger Erwerb auf volle 100 € abgerundet (§ 10 Abs. 1 Satz 6 ErbStG). X = 30 % von 1.114.200 €."
+    },
+    {
+      "test": "tests/simulator-married-inheritance.test.mjs",
+      "field": "Vorschau = Simulator einschließlich Immobilien: Sollwert",
+      "kind": "value",
+      "old": "inheritanceTariff(preview.taxable − Versorgungsfreibetrag)",
+      "new": "inheritanceTax(Erwerb, Familienheim, Versorgungsfreibetrag)",
+      "reason": "Die Abrundung kommt nach dem Versorgungsfreibetrag; preview.taxable ist schon abgerundet, eine Differenz danach wäre doppelt gerundet."
+    },
+    {
+      "test": "tests/tj-1-death-year-cash.test.mjs",
+      "field": "unmarried 50 % Drei-Töpfe: Anleihenbestand / Verkauf",
+      "kind": "value",
+      "old": "435048.11 / 597563.84",
+      "new": "435060 / 597551.95",
+      "reason": "Steuerpflichtiger Erwerb auf volle 100 € abgerundet (§ 10 Abs. 1 Satz 6 ErbStG). Die Steuer sinkt um 11,89 €; entsprechend weniger Verkauf."
+    },
+    {
+      "test": "tests/qs-c-ui.test.mjs",
+      "field": "QS-C W: Sofortvergleich in der Vorschau",
+      "kind": "value",
+      "old": "150.185",
+      "new": "150.180",
+      "reason": "Steuerpflichtiger Erwerb auf volle 100 € abgerundet (§ 10 Abs. 1 Satz 6 ErbStG)."
+    },
+    {
+      "test": "tests/zg-1-equalization.test.mjs",
+      "field": "Satz 6: Vorschau- und Simulatorsteuer Hauptfall",
+      "kind": "value",
+      "old": "273238.09523809527 / 224598.0952380952",
+      "new": "273220 / 224580",
+      "reason": "Steuerpflichtiger Erwerb auf volle 100 € abgerundet (§ 10 Abs. 1 Satz 6 ErbStG)."
+    },
+    {
+      "test": "tests/zg-1-equalization.test.mjs",
+      "field": "Vorschau-Bemessung enthält den gekürzten Zugewinnabzug",
+      "kind": "value",
+      "old": "cash − 500000 − reduced",
+      "new": "⌊(cash − 500000 − reduced) / 100⌋ × 100",
+      "reason": "Steuerpflichtiger Erwerb auf volle 100 € abgerundet (§ 10 Abs. 1 Satz 6 ErbStG)."
+    },
+    {
+      "test": "tests/zg-2-equalization-measurement.test.mjs",
+      "field": "Handrechnung: Steuer mit / ohne Ausgleich / Minderung",
+      "kind": "value",
+      "old": "630059.33 / 637066.80 / 7007.46",
+      "new": "630059 / 637051 / 6992",
+      "reason": "Steuerpflichtiger Erwerb auf volle 100 € abgerundet (§ 10 Abs. 1 Satz 6 ErbStG). Die Handrechnung in scripts/measure-zg2-equalization.mjs rundet ebenso ab."
+    },
+    {
+      "test": "tests/inheritance-net.test.mjs",
+      "field": "Netto-X (Immobilien und Steuergeld): fünf Sollwerte",
+      "kind": "value",
+      "old": "411.881,19 / 365.456,55 / 334.285,71 / 411.416,94 / 411.881,19 (geschlossene Formel ohne Abrundung)",
+      "new": "Genaue Werte ±0,001 € (HP-4b): ohne Tagesgeld 411.853,13174946 (T = 1.191.800 €), mit 200.000 € Tagesgeld 365.437,00503964 (T = 1.145.400 €), ohne Gewinn oder mit Verlustvortrag 334.260 (T = 1.114.200 €), mit 1.000 € Pauschbetrag ohne Verlustvortrag 411.376,52987766 (T = 1.191.300 €), verbrauchter Pauschbetrag 411.853,13174946 (T = 1.191.800 €)",
+      "reason": "Steuerpflichtiger Erwerb T = 800.000 + X − 20.000 auf volle 100 € abgerundet; X ist die kleinste Stufe, deren Nettoerlös 30 % von T deckt: X = (0,3 × T − fester Teil des Nettoerlöses) / (1 − 0,5 × 26,375 %). Mit 1.000 € Pauschbetrag reicht die Stufe darunter."
+    },
+    {
+      "test": "tests/gt-1-presentation.test.mjs",
+      "field": "Freibetragshinweis nur bei Unterschied auf ganze Euro",
+      "kind": "value",
+      "old": "Suche nach „gilt nominal, in Euro von heute“",
+      "new": "Suche nach „Freibetrag … gilt nominal, in Euro von heute“",
+      "reason": "Das Steuer-ⓘ nennt jetzt den steuerpflichtigen Erwerb mit eigenem Zusatz in Euro von heute; geprüft bleibt der Satz zum Freibetrag."
+    },
+    {
+      "test": "tests/profile-immobilien-partnership.test.mjs",
+      "field": "Vorschautext steuerpflichtig",
+      "kind": "value",
+      "old": "(207.000 € − 20.000 € Freibetrag)",
+      "new": "(207.000 € − 20.000 € Freibetrag, auf volle 100 € abgerundet)",
+      "reason": "HP-4 Nachtrag 3: Zusatz in der Erbvorschau. 187.000 € sind schon rund."
+    },
+    {
+      "test": "scripts/docs-bilder.mjs",
+      "field": "Prüftext der Erbvorschau",
+      "kind": "value",
+      "old": "(207.000 € − 20.000 € Freibetrag)",
+      "new": "(207.000 € − 20.000 € Freibetrag, auf volle 100 € abgerundet)",
+      "reason": "Bildskript zieht den neuen Wortlaut mit."
+    },
+    {
+      "test": "tests/hp-4-erbschaftsteuer-abrundung.test.mjs",
+      "field": "§ 23: Hauswert im Sollfall",
+      "kind": "value",
+      "old": "300000",
+      "new": "300050",
+      "reason": "Der Jahreswert 12.000 € war zufällig rund; mit 300.050 € (12.002 €) prüft der Test wirklich, dass er ungerundet bleibt."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "mc: sämtliche Zahlenfelder einschließlich belegter Rentenreste",
+      "kind": "value",
+      "old": 787582,
+      "new": 787638,
+      "reason": "Zahl der Zahlenfelder: neues Nachlassfeld inheritance.taxable in Todesjahren mit steuerpflichtigem Erwerb."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "mc: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder",
+      "kind": "hash",
+      "old": "7f85ccc526b0e3ae95a726f55fd965fc371e340c2f010651b056bc73bad004b5",
+      "new": "89b809d924de07eea9fd821bd4dd1a2d50fce182665890e8733ba5ce61e418ce",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "mc: vollständige Referenz ohne Grund und Anmerkung",
+      "kind": "hash",
+      "old": "fe02e9ec35d785141cbbdf3fd93dd32274bc03a03a05565104e456d3c9d6aa89",
+      "new": "33667ba712668bb32aa998f5d4bab511d458fa3abf0a53c5d39bb3df2b18ad50",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "mc: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen",
+      "kind": "hash",
+      "old": "4abbc16eb4e90db57b603538acef1af909c36b17a19767aac19472976fed0685",
+      "new": "5866f12f70b277347194cf2cbf7aec35b3f4479971b5b8b7f18fbccbb43675d6",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "mc: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste",
+      "kind": "hash",
+      "old": "be170c1a5c5789680bc10fef0f91f3a7a8d6ee6c8c2add94341cb161fb00eb83",
+      "new": "fca8202c68cd6c7d16d0ba215035ea6834f19f6cbda869eb35ddf4964931488f",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "engineResults: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder",
+      "kind": "hash",
+      "old": "38f5447d56fae506c03446af8d55793bb4dc54760eaf4bba6b15d4bd864ee974",
+      "new": "7a768e7fb4c4308743e5fbe93b60e3d96d85c4ed59aedc640806a3e36133a3a6",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "engineResults: vollständige Referenz ohne Grund und Anmerkung",
+      "kind": "hash",
+      "old": "e5417e8bde8730eb09dca400d5a194bd3329c4511d317b12c4085d690981ae16",
+      "new": "e8295566ed1755ae885749700eb42fe25ecbec995cda167da1ac77e65c45acdb",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "engineResults: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste",
+      "kind": "hash",
+      "old": "e4b95adc9e2057430f94154fe3aeb4a3b3089869d49dea3905784ec755175168",
+      "new": "18bd4b2d01257f27a0a16a2e01d6b58ce56fda6e69b3242f28306d2ed63aaafa",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/fixtures/live-sollwerte.json",
+      "field": "monteCarlo-max-erika: gleich dem Sollwert des Live-Stands",
+      "kind": "hash",
+      "old": "33efa0cdaceb282a6fc5aad8ff7581036db457d2a6ed62fc39c33e4a7ba043ea",
+      "new": "a6b7682a8329a2cfaeb6a685bb44b32ce8ec88872437b59e7bcdbc05f7cd3e49",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend. Die Sollwertdatei ist mit npm run jahresdaten:sollwerte neu erzeugt (nur diese zwei Werte geändert), damit die Rückwärtsprobe bytegleich bleibt."
+    },
+    {
+      "test": "tests/fixtures/live-sollwerte.json",
+      "field": "monteCarlo-cape-max-erika: gleich dem Sollwert des Live-Stands",
+      "kind": "hash",
+      "old": "2a64eb60afb227578f22772704bb18dc346c361314f7d243de488baf7613a79c",
+      "new": "0bf34b7c29befd4e3215da6d50559189f7f94a3a67ad72237a3f3b440e56905e",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend. Die Sollwertdatei ist mit npm run jahresdaten:sollwerte neu erzeugt (nur diese zwei Werte geändert), damit die Rückwärtsprobe bytegleich bleibt."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "block/no-home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "e3d61dbfe20da78bc38e5b7e1091d51ff74b93500a53ff0f80b91b40a913aa61",
+      "new": "f41c659b3405dd94738fb130d349d78d42e29b27f7a207f858e0d273279b0121",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "block/no-home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "8d24eecea80ada5df467c689b2c261262ed484eadda3d59d16dab43a19d97b23",
+      "new": "2b2fe7629f15d82e076ed2142da961fc04b3acc8a0d3cadb9d1ea310a028cb20",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "block/no-home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "d2622f14989552f3608e6a27361adf6f79bebf1ed2a67b325beb742681b43d43",
+      "new": "244b0f587e022851062a70bc6be5d4b477d218a570c71e29f5ec3fec3fd219ee",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "regime_markov/no-home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "8f929ca2d1d4a0a8470aa895a2d41dd1b81364dce92f84544cc94e58739a803e",
+      "new": "e08d99fb05291af9e67961ac28e107e18a07e22d598d8a289664ae5d80a6d8a6",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "regime_markov/no-home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "feb24d02cd0fec3b764e0fac3450f4072df220fd9748e71f475b9943b87afdcd",
+      "new": "525e1dacda7cd6703a1fa0eb6f606e96dc6db052b0fce8dcea14abc7f86fcf56",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "regime_markov/no-home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "4d70320c0c14b970ff553fe415a573b2478c711c59a6cbaae81f1da1dc47e8e9",
+      "new": "134293978a99a93d142d691fbd65ddd583e877cf4a52fbea6442d5c08b168b1a",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "regime_iid/no-home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "58c7e8568ac0a11139dc0bc6a63a1a4e3621fbacecba36255711096579d885b3",
+      "new": "51123ea00619f8b0761286c00b0e329729376e19e67308d5ab74ebdff5560857",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "regime_iid/no-home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "537222d49bd8932599c5f87208de1ab939c617723bc098def472e8b4a2ee617d",
+      "new": "0176358f5be633c7831b74802090a3c59aedbf316d1d49548bdff26b9351a577",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "regime_iid/no-home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "6738681674a2a5c374981fd2a2652f60b27b65d2e47053221c1837c1b67a5b38",
+      "new": "55092ea830452a310a9f2b04c17f27b56d0b1431a90c5b124b1ab334db822c16",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "regime_iid/no-home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "43090bacf158e26b969cac1e38c166c56c18ca6b43af6f86e845dba824be166e",
+      "new": "99f0ce1738fa67f5311bbdf6c37998c333d0a34fa4d00281ea4dc7dbc9b8e749",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "stationary/no-home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "1bc4f926888f9bdbd1be9c34c18f8e6f3181bf93d88822da67683ee1628ba21b",
+      "new": "1e146aec572f8d56827291dac0fcb22480feb5fcdf9d1ddd88ed953c7b4dab74",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "stationary/no-home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "4deb4bbf6c7832218e8020dc9cc27702180d0531cc33aa52bb19654909aa822b",
+      "new": "a56e450cdaaf8061acb16d6a5ed957e25f4b04ac77bddcb42f3c446769844301",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "stationary/no-home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "c0c34c74d6e1b708482aed353d33ac3a331734a2ff03ce1ac0dbaca7a02c07a4",
+      "new": "a61d2ac5aaa7c2efdb35c81c1cb5452c50ad48bb3f740fb56528a66a55c357a3",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "block/home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "3e9cb490b0c2980747c2773b19cfcfdfb58165f4503c193f262e0c0f51f1d59d",
+      "new": "c74e93b13837991697c194c8ecf6b73236d8803dfb41420f63513335cf62342e",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "block/home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "c7c69c3b9d8fbba84c1a11a9eb506771bb83d0be03d3f00de62562f499f51f06",
+      "new": "31fe320ac02485db7b3633cb352a636c00afee8a7fb6545928bc1e0c3990b0ce",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "block/home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "a368823ca76e1935f4dca564688832ad6bfd366d3dab93f895367bbedb1e1494",
+      "new": "41198e1913fbdb12c08cd1bb2a0ae88d20022c3573e7025b632c44f8a9d6116e",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "block/home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "cbcb485ed468e9ca5a0d757b6cfcda5785dc15e510c10e47faa4669fe675edf4",
+      "new": "d0201d67218fd54eab92b93357834ae9660dae37d072c8655a5f801b3583c368",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "regime_markov/home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "450427bb476440287d4c4ac4c3b324018fdd90bd91c79195d857c25a6c99aec0",
+      "new": "3bbe977fce19817ea2c1516f9102cfb8d1287e48ee9d743fd2dfbc46d58da069",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "regime_markov/home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "5cadf22390447a7d38bf88906142eb8964e4094020c7db92bc639e1023873a95",
+      "new": "6ba0901e241bcee6aa6ca1d061a370143d43060bbf3acf3d79aa490327c4a8d1",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "regime_markov/home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "8e07f1441337829453e0220bf650e1c51e6f2f17c4983b4c079b0313784b878c",
+      "new": "2bea0239d5a01aaae6eb58f5f00018c78c02350851b10d1f33567670dcf20cea",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "regime_iid/home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "643d996669aacaae08264d9a36cabaf4f5ab11d95407a58ad253267330470f25",
+      "new": "6a16f6f57b77518020ed78805f9f588bf2e3dfc0a9b8d3a666496fc95ae3d1ef",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "regime_iid/home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "218492250ffb9f3e00aa1ca382af14a5063aaca9deded43c04db56c0e6b4e46e",
+      "new": "97e617cc69eebe1a7bba2223a81048caf2f3ddbacda93e11294500c0ecb54def",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "regime_iid/home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "5ddcab0a9d918b4f71b56c2e24761137f376876345981f2ddb15140921071264",
+      "new": "821f888c84dc0931110ae7c000c18ab1e88a3e5c98907b484df8d77dc3b46a5b",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/md-2-scenarios.test.mjs",
+      "field": "regime_iid/home: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung",
+      "kind": "hash",
+      "old": "05fd09539bb2ae1fa54b3c215da95eb118575329c1b00029951a9e63de52969b",
+      "new": "f54d523594ffa2293dbf8a88e7bf9934273256dbaf815311e2260d8d6155a377",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/pfa-1-invariance.test.mjs",
+      "field": "Ohne heutigen Grad und Pflegeeintritt vollständige MC-Bytes gleich",
+      "kind": "hash",
+      "old": "bdab4d0ccc99935d00790e0f78288500d044fbd78107f24822d0551f4a5ad875",
+      "new": "2a8319a8c2b2bc3d613f9e70d6c55c30b54c045bd9134155a601b1b8bba1419a",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/plan-view-income.test.mjs",
+      "field": "Vollständiger MC-Chunk mit festem Seed und belegten NR-1-Anzeigeänderungen",
+      "kind": "hash",
+      "old": "67c593a9028760165c4b35638862ffefadcc8538e5f108ed51488be48c787c3f",
+      "new": "a358c55bb1f2f3abb1bb10ba6be5f2b4802527df571236bf840d7927c2f946b5",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/simulator-unmarried-parity.test.mjs",
+      "field": "Verheiratet: vollständiger serieller MC mit belegten FR-51-Folgen",
+      "kind": "hash",
+      "old": "40cfcd884fa0f1054fd6bbc2cea77715b8f498f50055d6cbe43f15038e2d97e6",
+      "new": "5346f8720af3c0146f655b1f980a2a3f3d52b3b18f17b2aa9008eb4cc95994c1",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/simulator-unmarried-parity.test.mjs",
+      "field": "Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks mit FR-51",
+      "kind": "hash",
+      "old": "051adc8bf3d17adf7b2669da3f3f2b865780d68505f429a1a250eeaff9004e56",
+      "new": "ddbae42e2ea1b22c7ea6d8bc3a795b39733adc743713275f5b5533601b25eba9",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/simulator-unmarried-parity.test.mjs",
+      "field": "Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks mit FR-51",
+      "kind": "hash",
+      "old": "91c3f6e931133f16a935863c32b1d57cf53b7b36ad6125faa994eeeaa10e4aec",
+      "new": "002c0fc998f9a490c17bdbddab2120d1e20440aaf14ba7fb8a71cbc8451dd4f5",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/simulator-unmarried-parity.test.mjs",
+      "field": "Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks mit FR-51",
+      "kind": "hash",
+      "old": "28d0dfa3de412acccae20124d0493d6ae23ebeffe43bd8c5b1c7b9b29dd60758",
+      "new": "1b21a51f8db317977209552495541f34ae82244a3a060ef29e3683850216e902",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    },
+    {
+      "test": "tests/gn-2-renate-mc.test.mjs",
+      "field": "GN-2 max-erika: ohne Pflegelogik Monte-Carlo bytegleich",
+      "kind": "hash",
+      "old": "3dac1307b9246263cf5ed4c9f7ba6a1ac3af84cd2792ea0b70dafec202bb74fa",
+      "new": "96857c8fff11f469c82b67c752492e7172ec9ec7a3b3c6c3e4daf5c97ada013b",
+      "reason": "Todesjahre mit steuerpflichtigem Erwerb: Erbschaftsteuer auf den auf volle 100 € abgerundeten Erwerb (§ 10 Abs. 1 Satz 6 ErbStG) und neues Nachlassfeld inheritance.taxable; Folgewerte des Pfads (Verkäufe, Steuern, Vermögen) entsprechend."
+    }
+  ]
+}

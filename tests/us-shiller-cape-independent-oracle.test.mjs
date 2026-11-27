@@ -253,10 +253,13 @@ for (let returnYear = 1925; returnYear <= 2025; returnYear += 1) {
         `${returnYear} CAPE should match the independently parsed December t-1 source value`
     );
 }
+// JD-2a: Das Original deckt den Grundbestand 1925–2025 ab; angehängte Jahre kommen mit ihrem Wert aus der Jahreslieferung
+// (Fortschreibungsblock). Zusammen müssen sie den Hash der ganzen Reihe ergeben.
+const appendedSignals = Object.fromEntries((US_SHILLER_CAPE_CHAIN.fortschreibung?.lieferungen ?? []).map(entry => [entry.jahr, entry.werte.cape]));
 assertEqual(
-    sha256(canonicalizeHistoricalContractValue(independentlyReconstructed)),
+    sha256(canonicalizeHistoricalContractValue({ ...independentlyReconstructed, ...appendedSignals })),
     US_SHILLER_CAPE_CHAIN.hashes.annualDecisionSignalHash,
-    'independent full-series hash should match the generated decision-signal hash'
+    'independent full-series hash plus delivered appended years should match the generated decision-signal hash'
 );
 console.log('✓ all 101 independently reconstructed CAPE values match');
 

@@ -12,6 +12,7 @@ import { getPageNavigationGuard } from '../shared/navigation-guard-dialog.js';
 import { createNavigationOperationLifecycle } from '../shared/navigation-guard.js';
 import { runTargetBudgetSearch } from './target-budget-search.js';
 import { showSimulatorInputError } from './simulator-input-feedback.js';
+import { monteCarloMethodLabel } from './simulator-assumption-lines.js';
 
 const number = value => Number.isFinite(value) ? new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 }).format(value) : '—';
 const monthLabel = value => `${value.slice(5)}/${value.slice(0, 4)}`;
@@ -29,7 +30,7 @@ const runSetting = params => params.standardRuns > params.anzahl
         : ` ÷ 10${params.standardRuns / 10 === params.anzahl ? '' : ', auf volle Hundert aufgerundet'}`})` : '';
 const runLabel = (params, unit = 'Plan') => `${unit === 'Schritt'
     ? `Suche mit ${number(params.anzahl)} Läufen je Schritt${runSetting(params)} · Endprobe mit ${number(params.standardRuns)} Läufen`
-    : `${number(params.anzahl)} Läufe je Plan${runSetting(params)}`} · Seed ${params.seed} · Lauf für Lauf gepaart`;
+    : `${number(params.anzahl)} Läufe je Plan${runSetting(params)}`} · Zufallsstartwert ${params.seed} · Lauf für Lauf gepaart`;
 const reducedRunNote = params => params.standardRuns > params.anzahl
     ? '<p class="ds-note"><small>Die Werte des Ausgangsplans können leicht von der normalen Monte-Carlo-Rechnung abweichen.</small></p>' : '';
 const tone = (value, betterHigher = true) => !value ? '' : value > 0 === betterHigher ? 'decision-better' : 'decision-worse';
@@ -101,7 +102,7 @@ export function renderDecisionResult(result, { targetSearch = null } = {}) {
     return `<div class="decision-heading"><h3>Ergebnis: ${targetSearch ? targetSearch.finalVerification?.status === 'unconfirmed' ? 'Untergrenze ohne bestätigte Endprobe' : 'höchstes Wunschbudget für dein Ziel' : escape(title)}</h3><span class="ds-note">${runLabel(targetSearch?.params ?? params, targetSearch ? 'Schritt' : 'Plan')}</span></div>${targetSearch ? '' : reducedRunNote(params)}
         ${targetSearch ? targetBudgetHighlights(targetSearch) : `<div class="decision-highlights"><div><span>Wo die Änderung schadet</span><strong>${targetPct(result.worsePct)}</strong><p class="ds-note">der Läufe geraten in eine Lage, die dein Plan vermeidet: Grundbedarf nicht gedeckt oder zusätzliche Jahre unter Mindest-Flex.</p></div><div><span>Was sie bringt</span><strong>${change.kind === 'budget' || displayDelta('budgetP50') > 0 ? signed(displayDelta('budgetP50'), ' €') : '—'}</strong><p class="ds-note">${change.kind === 'budget' || displayDelta('budgetP50') > 0 ? `Budgetunterschied pro Jahr im typischen Lauf (P50), in schwachen Läufen (P10) ${signed(displayDelta('budgetP10'), ' €')}.` : escape(gain)}</p></div></div>`}
         <div class="ds-table-box"><table class="ds-table decision-table"><thead><tr><th>Kennzahl</th><th>Ausgangsplan</th><th>${targetSearch ? `mit ${money(targetSearch.floorMonthly + targetSearch.monthly)} Wunschbudget` : 'mit Änderung'}</th><th>Unterschied</th></tr></thead><tbody>
-        ${row('Grundbedarf gedeckt', 'Läufe ohne Ruin', ['coveragePct'], coveragePct, ' Pp')}
+        ${row('Grundbedarf gedeckt', 'Läufe, in denen das Vermögen reicht', ['coveragePct'], coveragePct, ' Pp')}
         ${row('Läufe mit Jahren unter Mindest-Flex', 'mindestens ein Jahr · auswertbare Entnahmejahre', ['affectedPct'], targetPct, ' Pp', false)}
         ${row('Jahre unter Mindest-Flex', 'Median der betroffenen Läufe', ['affectedYears'], number, ' Jahre', false)}
         ${row('Verfügbares Budget P10 / P50', 'Grundbedarf + gezahlter Flex · Median je Lauf', ['budgetP10', 'budgetP50'], money, ' €')}
@@ -144,7 +145,7 @@ export function initDecisionComparison(doc = globalThis.document) {
                 field('decisionIncomeHint').textContent = `neuer Beginn ${monthLabel(date.toISOString().slice(0, 7))} · Höhe wie geplant`;
             } else field('decisionIncomeHint').textContent = selected ? 'Höhe wie geplant' : 'Keine Einkunft zum Verschieben im Plan';
             const params = data.monteCarloParams;
-            field('decisionBaseline').textContent = `Wunschbudget ${money((data.inputs.startFloorBedarf + data.inputs.startFlexBedarf) / 12)}/Monat${kind === 'target' ? `, davon Wunsch-Flex ${money(data.inputs.startFlexBedarf / 12)}/Monat` : ''} · Grundbedarf ${money(data.inputs.startFloorBedarf / 12)}/Monat · ${runLabel({ ...params, standardRuns: params.anzahl, anzahl: decisionComparisonRunCount(params.anzahl) }, kind === 'target' ? 'Schritt' : 'Plan')}, ${field('mcMethode').selectedOptions?.[0]?.textContent || params.methode}. Pflege, Stress und Tail-Risk wie eingestellt.`;
+            field('decisionBaseline').textContent = `Wunschbudget ${money((data.inputs.startFloorBedarf + data.inputs.startFlexBedarf) / 12)}/Monat${kind === 'target' ? `, davon Wunsch-Flex ${money(data.inputs.startFlexBedarf / 12)}/Monat` : ''} · Grundbedarf ${money(data.inputs.startFloorBedarf / 12)}/Monat · ${runLabel({ ...params, standardRuns: params.anzahl, anzahl: decisionComparisonRunCount(params.anzahl) }, kind === 'target' ? 'Schritt' : 'Plan')}, ${monteCarloMethodLabel(params.methode, params.blockSize)}. Pflege, Stress und Tail-Risk wie eingestellt.`;
             if (!field('decisionExpenseMonth').value) field('decisionExpenseMonth').value = `${data.referenceYear + 4}-06`;
             field('decisionRun').disabled = kind === 'income' && !choices.length;
             field('decisionRun').textContent = kind === 'target' ? 'Suchen' : 'Vergleich rechnen';

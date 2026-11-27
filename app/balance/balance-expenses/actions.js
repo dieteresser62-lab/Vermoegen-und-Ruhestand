@@ -27,7 +27,7 @@ export function createExpensesActions({ refreshTableValues, openDetails }, { ren
         };
     }
 
-    async function handleCsvImport(file, month, profileId, year, options, afterImport, isCurrent, source) {
+    async function handleCsvImport(file, month, profileId, year, options, isCurrent, source) {
         if (state.corruption) { renderCorruptExpensesState(); return; }
         messages().clearActionError('expenses-import');
         const result = await importExpenses({
@@ -40,15 +40,9 @@ export function createExpensesActions({ refreshTableValues, openDetails }, { ren
             onProgress: message => message ? messages().handleActionError(createBalanceValidationHint(message), 'expenses-import') : messages().clearActionError('expenses-import'),
             onSuccess: async () => {
                 try { messages().toast(source === EXAMPLE_SOURCE ? 'Beispielausgaben importiert.' : 'CSV importiert.'); } catch { /* Anzeige bleibt optional. */ }
-                // Vermögensaufnahme startet an der bestätigten Grenze, vor UI-Rückrufen.
-                let capture, error;
-                try { capture = source === EXAMPLE_SOURCE ? null : afterImport?.(); } catch (caught) { error = caught; }
                 try { refreshTableValues(); } catch { /* Speicherung bleibt bestätigt. */ }
                 notifyExpensesChange();
-                if (error) throw error;
-                await capture;
-            },
-            onFollowupError: error => messages().handleActionError(new Error(`Ausgaben importiert; Vermögensstand nicht bestätigt: ${error.message || error}`), 'expenses-wealth')
+            }
         });
         if (result.status === 'cancelled') showImportError({ code: 'EXPENSES_ABORTED', message: 'Import abgebrochen.' });
         const failed = result.results.find(item => !item.ok);
@@ -103,7 +97,7 @@ export function createExpensesActions({ refreshTableValues, openDetails }, { ren
                     basis: resolveExampleExpensesBasis({ year, ids }), floorMonthly: resolveExampleExpensesFloor({ ids }) });
                 const isCurrent = captureImportContext(year, profileId);
                 button.disabled = true;
-                return reportImportOperation(handleCsvImport({ text: async () => text() }, month, profileId, year, context.recoveryOptions, context.onImportSuccess, isCurrent, EXAMPLE_SOURCE)
+                return reportImportOperation(handleCsvImport({ text: async () => text() }, month, profileId, year, context.recoveryOptions, isCurrent, EXAMPLE_SOURCE)
                     .catch(error => showImportError(error))
                     .finally(() => { button.disabled = false; button.focus?.(); }));
             } catch (error) { showImportError(error); return; }
@@ -157,8 +151,7 @@ export function createExpensesActions({ refreshTableValues, openDetails }, { ren
         context.pendingImport = null;
 
         if (!isCurrent()) { e.target.value = ''; return; }
-        const options = context.recoveryOptions, afterImport = context.onImportSuccess;
-        const operation = handleCsvImport(file, month, profileId, year, options, afterImport, isCurrent);
+        const operation = handleCsvImport(file, month, profileId, year, context.recoveryOptions, isCurrent);
         const completed = operation.catch(err => {
             showImportError(err);
         }).finally(() => {

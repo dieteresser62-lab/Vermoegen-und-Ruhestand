@@ -5,13 +5,13 @@ import { shouldUseStressBootstrap } from './post-ruin.js';
 import { sampleMonteCarloYearV1, recordMonteCarloSampledYearV1 } from '../mc-year-sampling.js';
 import { annualData } from '../simulator-data.js';
 import { sampleNextYearData, updateCareMeta, computeCareMortalityMultiplier, endCareForDeceased, calcCareCost, computeHouseholdFlexFactor } from '../simulator-engine-wrapper.js';
-import { cloneReplayValue, createReplayStressEvents, createReplayHouseholdEvent } from './replay-records.js';
 import { applyStressOverride } from '../simulator-portfolio.js';
 import { applyTailRiskOverlay } from '../tail-risk-overlay.js';
-import { computeMarriageYearsCompleted } from '../simulator-sweep-utils.js';
+import { computeMarriageYearsCompleted } from '../simulator-run-utils.js';
 import { priceMonteCarloCareForYear } from '../mc-life-events.js';
 import { applyCareTodayMortalityFloor, resolveBaseMortalityProbability } from '../target-mortality.js';
 import { resolveSurvivorFlexFactors } from '../simulator-survivor.js';
+import { recordPersonCareStarts } from '../mc-person-outcomes.js';
 /** @param {import('./path-state.js').YearContext} context */
 export function prepareAnnualLife(context) {
     const { rand } = context;
@@ -37,12 +37,7 @@ export function prepareAnnualLife(context) {
         source: samplingStep.source,
         stationaryRestartReason: samplingStep.stationaryRestartReason
     });
-    // PE-1/MP-1: Die Tiefkopie wird nur bei einer Replay-Aufzeichnung gelesen.
-    const yearDataBeforeStress = context.replayCapture ? cloneReplayValue(context.yearData) : null;
     context.yearData = applyStressOverride(context.yearData, context.stressCtx, rand);
-    context.replayStressEvents = context.replayCapture
-        ? createReplayStressEvents(/** @type {NonNullable<typeof yearDataBeforeStress>} */ (yearDataBeforeStress), context.yearData, context.stressCtx, context.inputs?.stressPreset)
-        : null;
     context.tailRiskOverlay = /** @type {import('../../../typcheck/rechenkern-integration').ApplyTailRiskOverlay} */ (/** @type {unknown} */ (applyTailRiskOverlay))(context.yearData, context.tailRiskSchedule[context.simulationsJahr] ?? null, {
         runIdx: context.runIdx,
         simulationsJahr: context.simulationsJahr,
@@ -79,6 +74,10 @@ export function prepareAnnualLife(context) {
         if (context.careMetaP2 && context.careMetaP2.active) context.careEverActive = true;
     }
 
+    if (context.personEventYears) {
+        recordPersonCareStarts(context.personEventYears, context.simulationsJahr, context.careMetaP1?.grade, context.careMetaP2?.grade);
+    }
+
     if (context.inputs.accumulationPhase?.enabled && context.simulationsJahr < context.effectiveTransitionYear) {
         if ((context.p1Alive && context.careMetaP1?.active) || (context.p2Alive && context.careMetaP2?.active)) {
             context.effectiveTransitionYear = context.simulationsJahr;
@@ -100,6 +99,7 @@ export function prepareAnnualLife(context) {
         qx1 = applyCareTodayMortalityFloor(qx1, context.careMetaP1, context.inputs, 0, context.inputs.geschlecht, context.ageP1);
         if (rand() < qx1) {
             context.p1Alive = false;
+            if (context.personEventYears) context.personEventYears.deathP1 = context.simulationsJahr;
         }
     }
 
@@ -113,6 +113,7 @@ export function prepareAnnualLife(context) {
         qx2 = applyCareTodayMortalityFloor(qx2, context.careMetaP2, context.inputs, 1, p2Gender, context.ageP2);
         if (rand() < qx2) {
             context.p2Alive = false;
+            if (context.personEventYears) context.personEventYears.deathP2 = context.simulationsJahr;
         }
     }
 
@@ -171,19 +172,4 @@ export function prepareAnnualLife(context) {
         p1: context.yearCareP1,
         p2: context.yearCareP2
     };
-
-    context.replayHouseholdEvent = context.replayCapture ? createReplayHouseholdEvent({
-        p1Alive: context.p1Alive,
-        p2Alive: context.p2Alive,
-        hasPartner: context.hasPartner,
-        careMetaP1: context.yearCareP1,
-        careMetaP2: context.yearCareP2,
-        p1ActiveThisYear: context.p1ActiveThisYear,
-        p2ActiveThisYear: context.p2ActiveThisYear,
-        effectiveFlexFactor: context.effectiveFlexFactor,
-        totalCareFloor: context.totalCareFloor,
-        widowBenefitActiveForP1: context.widowBenefitActiveForP1,
-        widowBenefitActiveForP2: context.widowBenefitActiveForP2,
-        effectiveTransitionYear: context.effectiveTransitionYear
-    }) : null;
 }

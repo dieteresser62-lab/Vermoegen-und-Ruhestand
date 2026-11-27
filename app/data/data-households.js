@@ -3,8 +3,10 @@ import { FIRST_HOUSEHOLD, HOUSEHOLD_NAME_MAX } from '../shared/household-registr
 import { changeWithGuard, householdLabel, householdTitle, openNewHouseholdDialog } from '../shared/household-switcher.js';
 import { buildHouseholdTransfer, householdTransferFilename } from '../shared/household-transfer.js';
 import { downloadJsonFile } from '../shared/persistence-backup.js';
+import { SAVE_CANCELLED_TEXT } from '../shared/save-file.js';
 import { overviewBackupAge } from '../overview/overview-model.js';
 import { OVERVIEW_BACKUP_KEY } from '../overview/overview-storage.js';
+import { readLastFullBackupStatus } from './data-backup-summary.js';
 import { appNow } from '../shared/app-clock.js';
 
 // HV-2: Abschnitt „Haushalte“ auf Daten & Sicherung (Entwurf H5/H7): öffnen, umbenennen, endgültig löschen,
@@ -87,18 +89,27 @@ function confirmTransfer(doc, name) {
 /** @param {Document} doc @param {unknown} error */
 function report(doc, error) {
     const host = doc.getElementById('dataHouseholdsStatus');
-    if (host) { host.textContent = /** @type {Error} */ (error)?.message || String(error); host.hidden = false; }
+    if (host) { if (host.dataset) delete host.dataset.kind; host.textContent = /** @type {Error} */ (error)?.message || String(error); host.hidden = false; }
+}
+/** SD-1: Ergebnis der Weitergabe aus dem Dialog „Speichern unter“; `ok` nach dem Speichern, `info` nach Abbruch.
+ * @param {Document} doc @param {string} text @param {'ok'|'info'} kind */
+function notice(doc, text, kind) {
+    const host = doc.getElementById('dataHouseholdsStatus');
+    if (host) { host.dataset.kind = kind; host.textContent = text; host.hidden = false; }
 }
 
-/** Text und Warnung für die Spalte „Letzte Vollsicherung“. @param {unknown} lastBackup @param {Date} [now] */
-export function householdBackupState(lastBackup, now = appNow()) {
+/** Text und Warnung für die Spalte „Letzte Vollsicherung“; eine nur angestoßene Sicherung trägt den Zusatz „(angestoßen)“.
+ * @param {unknown} lastBackup @param {Date} [now] @param {string|null} [delivery] */
+export function householdBackupState(lastBackup, now = appNow(), delivery = null) {
     const { days, warning } = overviewBackupAge(now, /** @type {string} */ (lastBackup));
     const whole = days === null ? null : Math.floor(days);
-    return { text: whole === null ? 'noch nie' : whole === 0 ? 'heute' : whole === 1 ? 'vor 1 Tag' : `vor ${whole} Tagen`, warning };
+    const text = whole === null ? 'noch nie' : whole === 0 ? 'heute' : whole === 1 ? 'gestern' : `vor ${whole} Tagen`;
+    return { text: whole !== null && delivery === 'angestossen' ? `${text} (angestoßen)` : text, warning };
 }
-/** @param {HTMLElement} cell @param {unknown} lastBackup */
-function showBackupAge(cell, lastBackup) {
-    const { text, warning } = householdBackupState(lastBackup);
+/** @param {HTMLElement} cell @param {Record<string, string>|null|undefined} records */
+function showBackupAge(cell, records) {
+    const status = readLastFullBackupStatus({ getItem: key => records?.[key] ?? null });
+    const { text, warning } = householdBackupState(records?.[OVERVIEW_BACKUP_KEY], appNow(), status.delivery);
     cell.textContent = text; cell.dataset.warning = String(warning);
 }
 
@@ -112,7 +123,7 @@ export function renderDataHouseholds(doc = globalThis.document) {
     const stay = () => win?.location.reload();
     const table = node(doc, 'table', '', 'ds-table data-households-table');
     const head = node(doc, 'thead'), headRow = node(doc, 'tr');
-    for (const title of ['Haushalt', 'Angelegt', 'Letzte Vollsicherung', 'Aktionen']) headRow.append(node(doc, 'th', title));
+    for (const title of ['Haushalt', 'Angelegt', playing ? 'Letzte Vollsicherung (echte Daten)' : 'Letzte Vollsicherung', 'Aktionen']) headRow.append(node(doc, 'th', title));
     head.append(headRow);
     const body = node(doc, 'tbody');
     for (const entry of registry.households) {
@@ -153,11 +164,16 @@ export function renderDataHouseholds(doc = globalThis.document) {
             const transfer = button(doc, 'Als Datei weitergeben …'); transfer.dataset.householdTransfer = entry.id;
             transfer.addEventListener('click', async () => {
                 if (!await confirmTransfer(doc, householdLabel(entry))) return;
+                // SD-1: Gesperrt, solange „Speichern unter“ offen ist; ein Doppelklick öffnet keinen zweiten Dialog.
+                transfer.disabled = true;
                 try {
                     const records = await P.readHouseholdRecords(entry.id);
                     const file = buildHouseholdTransfer({ id: entry.id, name: householdLabel(entry), records });
-                    downloadJsonFile(file, householdTransferFilename(householdLabel(entry)), doc);
+                    const saved = await downloadJsonFile(file, householdTransferFilename(householdLabel(entry)), doc);
+                    if (!saved.saved) notice(doc, SAVE_CANCELLED_TEXT, 'info');
+                    else if (saved.path) notice(doc, `${householdLabel(entry)} gespeichert unter ${saved.path}.`, 'ok');
                 } catch (error) { report(doc, error); }
+                finally { transfer.disabled = false; }
             });
             group.append(transfer);
         }
@@ -177,7 +193,7 @@ export function renderDataHouseholds(doc = globalThis.document) {
         actions.append(group);
         // HV-6 (Gutachten 05.11.): Sicherungsstand jedes Haushalts, nicht nur des geöffneten.
         const backup = node(doc, 'td', entry.missing ? '—' : 'wird gelesen …'); backup.dataset.householdBackup = entry.id;
-        if (!entry.missing) void P.readHouseholdRecords(entry.id).then(records => showBackupAge(backup, records?.[OVERVIEW_BACKUP_KEY]))
+        if (!entry.missing) void P.readHouseholdRecords(entry.id).then(records => showBackupAge(backup, records))
             .catch(() => { backup.textContent = 'nicht lesbar'; });
         row.append(name, node(doc, 'td', dateText(entry.createdAt)), backup, actions);
         body.append(row);

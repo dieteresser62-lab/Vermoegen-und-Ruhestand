@@ -8,6 +8,7 @@ import { computeRentAdjRate } from './simulator-portfolio-pension.js';
 import { EngineAPI } from '../../engine/index.mjs';
 import { STRATEGY_OPTIONS } from '../../types/strategy-options.js';
 import { getProtocolColumns } from './protocol-columns.js';
+import { saveTextFile, SAVE_CANCELLED_TEXT } from '../shared/save-file.js';
 
 const BACKTEST_TRADE_CELL_CLASSES = Object.freeze({
     sale: 'backtest-trade-sale',
@@ -163,33 +164,31 @@ export function showToast(message, options = {}) {
 }
 
 /**
- * Triggers a browser download for the provided content.
+ * Speichert einen Export (SD-1): Desktop-App mit Dialog „Speichern unter“, Browser als Download, der noch im Aufruf startet.
+ * Die Meldung nennt den gewählten Pfad bzw. den Dateinamen; ein Abbruch ist kein Fehler.
  * @param {string} filename - Suggested file name for the download.
  * @param {string} content - File content to persist.
  * @param {string} mimeType - MIME type (e.g., text/csv).
  *
- * @returns {void}
+ * @returns {Promise<import('../shared/save-file.js').SaveResult>}
  */
 export function triggerDownload(filename, content, mimeType) {
     if (!filename || typeof filename !== 'string') {
         console.warn('triggerDownload: missing filename');
-        return;
+        return Promise.resolve({ saved: false });
     }
     if (typeof content !== 'string') {
         console.warn('triggerDownload: content must be a string');
-        return;
+        return Promise.resolve({ saved: false });
     }
-
-    const blob = new Blob([content], { type: mimeType || 'application/octet-stream' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = filename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    URL.revokeObjectURL(url);
-    showToast(`Export gespeichert: ${filename}`);
+    const announce = (message, options) => { try { showToast(message, options); } catch { /* Meldung ist Zusatz; der Export ist erledigt. */ } };
+    return saveTextFile({ filename, content, mime: mimeType || 'application/octet-stream' }).then(result => {
+        announce(result.saved ? `Export gespeichert: ${result.path || filename}` : SAVE_CANCELLED_TEXT);
+        return result;
+    }, error => {
+        announce(`Export nicht gespeichert: ${error?.message || 'unbekannter Fehler'}`, { duration: 5000 });
+        return { saved: false };
+    });
 }
 
 /**
@@ -481,7 +480,7 @@ export function buildBacktestColumnDefinitions(detailLevel = 'normal', options =
             { header: 'HBWarn', width: 18, key: 'row.health_bucket_warning', valueFormatter: v => (v || '').substring(0, 18), align: 'left' },
             { header: 'Liq@rC-', width: 9, key: 'row.liqStart', valueFormatter: v => formatCurrencyShortLog(v), align: 'right' },
             { header: 'Zins€', width: 7, key: 'row.cashInterestEarned', valueFormatter: v => formatCurrencyShortLog(v), align: 'right' },
-            { header: 'Liq@rC+', width: 9, key: 'row.liqEnd', valueFormatter: v => formatCurrencyShortLog(v), align: 'right' },
+            { header: 'LiqEnde', width: 9, key: 'row.liqEnd', valueFormatter: v => formatCurrencyShortLog(v), align: 'right' },
             { header: 'ZielLiq', width: 8, key: 'row.zielLiquiditaet', valueFormatter: v => formatCurrencyShortLog(v), align: 'right' },
             { header: 'RunRaw', width: 7, key: 'row.RunwayTargetRawMonths', valueFormatter: v => (Number.isFinite(v) ? `${Number(v).toFixed(0)}M` : ''), align: 'right' },
             { header: 'RunMin', width: 7, key: 'row.RunwayTargetHardMinMonths', valueFormatter: v => (Number.isFinite(v) ? `${Number(v).toFixed(0)}M` : ''), align: 'right' },

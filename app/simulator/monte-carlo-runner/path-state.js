@@ -1,5 +1,5 @@
 // @ts-check
-/** @import {SimulationLog,HistoricalYear,CareMeta,LifeLogContext,DeathLogContext,TailRiskOverlay,ReplayHouseholdEvent,YearOutcome} from '../../../typcheck/rechenkern' */
+/** @import {SimulationLog,HistoricalYear,CareMeta,LifeLogContext,DeathLogContext,TailRiskOverlay,YearOutcome} from '../../../typcheck/rechenkern' */
 import { createMinimumFlexTracker } from '../minimum-flex-metrics.js';
 import { createMonteCarloCareNeedTracker } from '../mc-run-metrics.js';
 import { createEuroPathTracker } from '../mc-euro-metrics.js';
@@ -9,13 +9,11 @@ import { comparisonRandomSource } from '../decision-comparison-random.js';
 import { createTailRiskSchedule } from '../tail-risk-overlay.js';
 import { pickMonteCarloStartYearIndex, recordMonteCarloSamplingStartV1, initializeMonteCarloSamplingStateV1 } from '../mc-year-sampling.js';
 import { initMcRunState } from '../simulator-engine-wrapper.js';
-import { STRESS_REPLAY_CAPTURE_VERSION, STRESS_REPLAY_POST_RUIN_POLICY_VERSION, STRESS_REPLAY_SHADOW_DOMAIN } from '../stress-replay-path-materializer.js';
-import { cloneReplayValue, createReplayStressEvents } from './replay-records.js';
 import { portfolioTotal } from '../simulator-results.js';
 import { createWealthFanPath } from '../wealth-fan-aggregation.js';
 import { sumDepot } from '../simulator-portfolio.js';
 import { createMonteCarloLifeState } from '../mc-life-events.js';
-import { cloneStressContext } from '../simulator-sweep-utils.js';
+import { cloneStressContext } from '../simulator-run-utils.js';
 import { createMonteCarloStressTracker } from '../mc-stress-tracker.js';
 import { buildHealthBucketDiagnostics } from '../simulator-health-bucket.js';
 import { prepareAnnualLife } from './annual-life.js';
@@ -23,11 +21,11 @@ import { decideAnnualYear } from './annual-decision.js';
 import { recordAnnualResult } from './annual-result.js';
 import { continuePostRuin, advancePostRuinCarePricing } from './post-ruin.js';
 import { completePath } from './path-completion.js';
+import { createPersonEventYears } from '../mc-person-outcomes.js';
 /** @typedef {ReturnType<typeof createPathContext>} PathContext
  * @typedef {PathContext & {
  *   simulationsJahr:number;
  *   yearData:HistoricalYear;
- *   replayStressEvents:ReturnType<typeof createReplayStressEvents>|null;
  *   tailRiskOverlay:TailRiskOverlay & {yearData:HistoricalYear};
  *   ageP1:number;
  *   ageP2:number;
@@ -36,7 +34,6 @@ import { completePath } from './path-completion.js';
  *   yearCareP2:CareMeta|null;
  *   totalCareFloor:number;
  *   effectiveFlexFactor:number;
- *   replayHouseholdEvent:ReplayHouseholdEvent|null;
  *   resolvedCapeRatio:number;
  *   result:YearOutcome;
  *   lifeLogContext:LifeLogContext|null;
@@ -47,7 +44,6 @@ import { completePath } from './path-completion.js';
  * @param {number} i */
 export function createPathContext(context, i) {
     const runIdx = context.runStart + i;
-    const shouldCaptureReplay = context.replayCaptureIndexSet?.has(runIdx) === true;
     let failed = false, totalTaxesThisRun = 0, totalTaxSavedByLossCarryThisRun = 0, kpiJahreMitKuerzungDieserLauf = 0, kpiMaxKuerzungDieserLauf = 0;
     let cutYearsNumeratorThisRun = 0;
     let cutDecisionYearsThisRun = 0;
@@ -90,28 +86,6 @@ export function createPathContext(context, i) {
         samplingResolution: context.samplingResolution,
         annualData
     });
-    const replayCapture = /** @type {import('../../../typcheck/rechenkern').ReplayCapture|null} */ (shouldCaptureReplay ? {
-        schemaVersion: STRESS_REPLAY_CAPTURE_VERSION,
-        seed: context.seed >>> 0,
-        runSeed,
-        rngMode: context.resolvedRngMode,
-        absoluteRunIndex: runIdx,
-        horizonYears: context.maxDauer,
-        startYearIndex,
-        breakOnRuin: BREAK_ON_RUIN,
-        initialMarketDataHist: cloneReplayValue(simState.marketDataHist),
-        years: [],
-        sourcePrefixLength: 0,
-        terminalStatus: null,
-        continuation: {
-            schemaVersion: STRESS_REPLAY_POST_RUIN_POLICY_VERSION,
-            active: false,
-            domain: STRESS_REPLAY_SHADOW_DOMAIN,
-            shadowSeed: null,
-            startsAtYearIndex: null,
-            careInflationPolicy: 'captured-effective-year-data-v1'
-        }
-    } : null);
 
     const initialPortfolioTotal = portfolioTotal(simState.portfolio);
     const wealthFanPath = context.wealthFan ? createWealthFanPath(context.maxDauer, initialPortfolioTotal) : null;
@@ -170,13 +144,14 @@ export function createPathContext(context, i) {
 
     let postRuinCarePricing = null;
     return {
-        ...context, i, runIdx, shouldCaptureReplay, failed, totalTaxesThisRun, totalTaxSavedByLossCarryThisRun,
+        ...context, i, runIdx, failed, totalTaxesThisRun, totalTaxSavedByLossCarryThisRun,
+        personEventYears: context.personOutcomeCounts ? createPersonEventYears() : null,
         kpiJahreMitKuerzungDieserLauf, kpiMaxKuerzungDieserLauf, cutYearsNumeratorThisRun, cutDecisionYearsThisRun,
         minimumFlexTracker, lebensdauer, jahreOhneFlex, triggeredAge: /** @type {number|null} */ (triggeredAge),
         careEverActive, careNeedTracker,
         technicalPathError: /** @type {import('../../../typcheck/rechenkern').TechnicalPathError|null} */ (technicalPathError),
         realWithdrawalsThisRun, euroTracker, withdrawalRateSumThisRun, withdrawalRateObservationCountThisRun,
-        equityLogReturnSum, equityReturnYears, runSeed, rand, tailRiskSchedule, startYearIndex, simState, replayCapture,
+        equityLogReturnSum, equityReturnYears, runSeed, rand, tailRiskSchedule, startYearIndex, simState,
         initialPortfolioTotal, wealthFanPath, displayHomeValuePath, depotWertHistorie, depotWertHistorieReal,
         realDrawdownInflationComplete, shouldLogRun, currentRunLog, tailRiskEntriesThisRun, depotNurHistorie,
         depotErschoepfungAlterGesetzt, effectiveTransitionYear, lifeState, careMetaP1, careMetaP2, hasPartner, rngCareP1,
@@ -189,7 +164,8 @@ export function createPathContext(context, i) {
         longevityTransitionAnchorHorizon: /** @type {number|null} */ (longevityTransitionAnchorHorizon), stressCtx,
         stressTracker, retirementYearCounter, runSafetyStage1Ever, runSafetyStage2Ever, initialBucket,
         healthBucketEnabledThisRun, healthBucketUsedThisRun, healthBucketEndThisRun, healthBucketCoveragePctThisRun,
-        healthBucketTargetGapThisRun, healthBucketInterestThisRun,
+        healthBucketTargetGapThisRun, healthBucketInterestThisRun, careAidSumThisRun: 0, careAidFirstYearThisRun: 0,
+        droppedExpenseSumThisRun: 0, droppedExpenseFirstYearThisRun: 0,
         postRuinCarePricing: /** @type {ReturnType<typeof advancePostRuinCarePricing>|null} */ (postRuinCarePricing)
     };
 }

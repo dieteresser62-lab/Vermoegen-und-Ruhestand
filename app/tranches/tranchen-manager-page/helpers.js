@@ -2,7 +2,6 @@
 import { state, PROFILE_ERROR_DOM_IDS } from './state.js';
 import { persistenceStorage, PersistenceFacade } from '../../shared/persistence-facade.js';
 import { showEditorErrors } from '../tranchen-manager-income-fields.js';
-import { appNow } from '../../shared/app-clock.js';
 import { canonicalDecimalInput } from '../tranchen-manager-decimal-input.js';
 import { isManagerModalSubmissionCurrent, captureManagerModalSubmission, finishManagerModalSubmission } from '../tranchen-manager-modal.js';
 
@@ -69,22 +68,6 @@ export function showProfileValidationStatus(error) {
     const field = first ? byId(PROFILE_ERROR_DOM_IDS[first.field] || first.field) : null;
     field?.setAttribute?.('aria-invalid', 'true');
     return message;
-}
-
-export function formatReconciliationNumber(value, options = {}) {
-    if (value === null || value === undefined || !Number.isFinite(Number(value))) return '-';
-    const { currency = false, maximumFractionDigits = currency ? 2 : 6 } = options;
-    return new Intl.NumberFormat('de-DE', {
-        ...(currency ? { style: 'currency', currency: 'EUR' } : {}),
-        maximumFractionDigits
-    }).format(Number(value));
-}
-
-export function localIsoDate(date = appNow()) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
 }
 
 export function managerDecimalSignatureValue(id, value) {

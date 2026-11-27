@@ -3,6 +3,7 @@ import { resolveSimulatorCumulativeInflationFactor } from './simulator-engine-he
 import { calculateHouseholdPensionForYear } from './simulator-household-pension.js';
 import { calculateFixedIncomeForYear } from './simulator-fixed-income.js';
 import { homeRentForYear } from './simulator-home-sale.js';
+import { rentBequestForYear } from './simulator-rent-bequest.js';
 import { simulatorPlannedExpenseYear } from '../profile/household-planned-expenses.js';
 
 /** Volles Folgejahr ohne Todesjahrmischung oder neue Ereignisse. Originalzustände bleiben erhalten. */
@@ -17,6 +18,7 @@ export function projectCareLiquidityYear({ inputs, state, portfolio, household, 
         referenceDate: inputs.careReferenceDate, priced: true }).next;
     // FR-43: Feste geplante Ausgaben des Folgejahrs gehören zu dessen Grundbedarf.
     const floor = needs.total + homeRentForYear({ ...portfolio }, inputs, nextHousehold, inflationFactor)
+        + (rentBequestForYear(portfolio, inputs, nextHousehold, inflationFactor)?.rent ?? 0)
         + simulatorPlannedExpenseYear(inputs, yearIndex + 1, inflationFactor).fixed;
     const flex = state.baseFlex * needs.flexFactor * inflationFactor / currentFactor;
     const nextPension = calculateHouseholdPensionForYear({ inputs, yearIndex: yearIndex + 1, ...nextHousehold,

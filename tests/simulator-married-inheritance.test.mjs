@@ -1,6 +1,6 @@
 import { readQSCReferences } from './helpers/qs-c-expectations.mjs';
 import { readVF2BReferences } from './helpers/vf-2b-expectations.mjs';
-import { inheritanceTax, inheritancePreview, inheritancePercent, readPartnership } from '../app/profile/household-partnership.js';
+import { inheritanceTax, inheritancePreview, inheritancePercent, readPartnership, inheritanceTariff } from '../app/profile/household-partnership.js';
 import { EngineAPI } from '../engine/index.mjs';
 import { inputs as fixture } from './extended/parity-replay-fixture.mjs';
 import { initMcRunState, simulateOneYear } from '../app/simulator/simulator-engine-wrapper.js';
@@ -54,7 +54,11 @@ for(const percent of [0,50,100]) {
     assertEqual(result.kind,'success',`Ehequote ${percent}: Todesjahr berechenbar`);
     const log=result.logData,estate=log.inheritance;
     assertClose(estate.leaves,estate.assets*(1-percent/100),.001,'Abgang nur aus dem persönlichen Nachlass');
-    assertEqual(log.erbschaftsteuer,inheritancePreview(estate.assets,1000000,percent,{status:'married',exemptHome:800000}).tax,'Vorschau = Simulator einschließlich Immobilien');
+    // VB-1: Der Simulator zieht zusätzlich den Versorgungsfreibetrag ab, die Vorschau nicht (vorher: Steuer gleich der Vorschausteuer).
+    const relief=estate.pensionAllowance?.amount??0;
+    // HP-4: Die Abrundung auf volle 100 € kommt nach dem Versorgungsfreibetrag; deshalb über inheritanceTax mit allen Abzügen statt preview.taxable − relief.
+    assertClose(log.erbschaftsteuer,inheritanceTax((estate.assets+1000000)*percent/100,{status:'married',exemptHome:800000*percent/100,pensionAllowance:relief}),1e-7,'Vorschau = Simulator einschließlich Immobilien');
+    if(percent===100) assert(estate.pensionAllowance?.capital>0&&relief<256000,'VB-1: Hinterbliebenenrente kürzt den Versorgungsfreibetrag im echten Todesjahr');
     assertClose(log.portfolio_flow_delta,0,.05,'Abgang und Steuer vollständig bilanziert');
     assert(log.liqEnd<=log.portfolio_total_end,'Liquidität nach Steuer höchstens Gesamtvermögen');
     assertEqual(log.liqEnd,result.newState.portfolio.liquiditaet,'Jahresendliquidität nach Nachlass');

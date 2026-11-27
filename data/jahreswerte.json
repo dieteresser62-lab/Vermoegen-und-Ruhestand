@@ -1,0 +1,165 @@
+{
+  "schema": "Jahreswerte-1",
+  "zweck": "Register der amtlichen Jahreswerte im Code: Stand, Gültigkeitsbeginn, Quelle, Rhythmus und Ort. npm run jahreswerte:pruefen listet, was nach Rhythmus und Datum fällig ist. Die App zeigt das Register nicht an; die Werte selbst ändert nur eine eigene Arbeit mit Quelle.",
+  "regel": "faellig = gueltigAb + rhythmusMonate; ab faellig minus vorlaufTage gilt ein Wert als demnächst fällig. Datumsangaben JJJJ-MM gelten ab dem Ersten des Monats. Jeder Ort nennt einen Suchtext, der den Stand im Code belegt.",
+  "gruppen": [
+    {
+      "id": "pflegegeld-kassenleistungen",
+      "name": "Pflegegeld und Kassenleistungen",
+      "stand": "2026",
+      "gueltigAb": "2026-01-01",
+      "quelle": {
+        "name": "Bundesgesundheitsministerium, Übersicht der Leistungsbeträge 2026 vom 11.12.2025",
+        "url": "https://www.bundesgesundheitsministerium.de/fileadmin/Dateien/3_Downloads/P/Pflegeversicherung_Leistungsbeitraege/Uebersicht_Leistungsbetraege_2026_VA.pdf"
+      },
+      "rhythmus": "jährlich zum 1. Januar, Übersicht meist im Dezember",
+      "rhythmusMonate": 12,
+      "vorlaufTage": 45,
+      "orte": [
+        {
+          "datei": "app/shared/care-benefits.js",
+          "suchtext": "CARE_BENEFITS_2026"
+        },
+        {
+          "datei": "app/shared/household-care-values.js",
+          "suchtext": "allowance: Object.freeze({ values: CARE_ALLOWANCE_MONTHLY, asOf: '2026-01'"
+        },
+        {
+          "datei": "depot-tranchen-manager.html",
+          "suchtext": "Was die Pflegekasse zahlt · Stand 2026"
+        }
+      ],
+      "hinweis": "Pflegereform (PNOG) 2027 offen; nach der Verkündung ist zu klären, ob sich eine Fachregel ändert."
+    },
+    {
+      "id": "heim-eigenanteile-pflegepreise",
+      "name": "Heim-Eigenanteile (vdek) und Pflegepreise",
+      "stand": "07/2026",
+      "gueltigAb": "2026-07",
+      "quelle": {
+        "name": "vdek, Eigenanteile in der stationären Pflege, Stand 1. Juli 2026",
+        "url": "https://www.vdek.com/presse/pressemitteilungen/2026/stationaere-pflege-eigenanteile-juli-2026.html"
+      },
+      "rhythmus": "halbjährlich zum 1. Januar und 1. Juli",
+      "rhythmusMonate": 6,
+      "vorlaufTage": 45,
+      "orte": [
+        {
+          "datei": "app/shared/household-care-values.js",
+          "suchtext": "residential: Object.freeze({ monthly: 3364, components: DEFAULT_RESIDENTIAL_COMPONENTS, asOf: '2026-07'"
+        },
+        {
+          "datei": "app/shared/care-cost-resolver.js",
+          "suchtext": "export const CARE_COST_DEFAULTS"
+        },
+        {
+          "datei": "app/shared/care-prices.js",
+          "suchtext": "export const CARE_PRICE_DEFAULTS"
+        }
+      ],
+      "hinweis": "Die Pflegepreise (CARE_COST_DEFAULTS, CARE_PRICE_DEFAULTS) tragen kein eigenes Datum; sie werden mit den Eigenanteilen geprüft."
+    },
+    {
+      "id": "rentenwert",
+      "name": "Aktueller Rentenwert (Anrechnung auf die Witwenrente)",
+      "stand": "42,52 € ab 01.07.2026",
+      "gueltigAb": "2026-07-01",
+      "quelle": {
+        "name": "Deutsche Rentenversicherung, aktuelle Werte, Stand 29.04.2026",
+        "url": "https://rvrecht.deutsche-rentenversicherung.de/SharedDocs/rvRecht/07_AktuelleWerte/A-C/awert_aktrtwt.html"
+      },
+      "rhythmus": "jährlich zum 1. Juli, Bekanntgabe im Frühjahr",
+      "rhythmusMonate": 12,
+      "vorlaufTage": 75,
+      "orte": [
+        {
+          "datei": "app/simulator/simulator-household-pension.js",
+          "suchtext": "export const CURRENT_PENSION_VALUE_DATE = '2026-07-01';"
+        }
+      ]
+    },
+    {
+      "id": "bmf-vervielfaeltiger-wohnrecht",
+      "name": "BMF-Vervielfältiger für Wohnrecht und Nießbrauch (§ 14 BewG)",
+      "stand": "2027",
+      "gueltigAb": "2027-01-01",
+      "quelle": {
+        "name": "BMF-Schreiben vom 22.10.2026, IV D 4 - S 3104/00002/016/003, Anlage (BMF-Themenseite)",
+        "url": "https://www.bundesfinanzministerium.de/Web/DE/Themen/Steuern/Steuerarten/Erbschaft_und_Schenkungsteuer/erbschaft_schenkungsteuer.html"
+      },
+      "rhythmus": "jährlich, Schreiben im Herbst, gilt ab 1. Januar",
+      "rhythmusMonate": 12,
+      "vorlaufTage": 75,
+      "orte": [
+        {
+          "datei": "app/shared/bmf-lifetime-use-2027.js",
+          "suchtext": "export const BMF_LIFETIME_USE_2027"
+        },
+        {
+          "datei": "app/shared/life-expectancy.js",
+          "suchtext": "BMF_LIFETIME_USE_2027"
+        }
+      ],
+      "hinweis": "Prüfskript für eine neue Anlage: node scripts/check-bmf-lifetime-use.mjs <PDF>."
+    },
+    {
+      "id": "periodensterbetafel",
+      "name": "Periodensterbetafel",
+      "stand": "2023/2025",
+      "gueltigAb": "2026-08",
+      "quelle": {
+        "name": "Destatis, Statistischer Bericht Sterbetafeln 2023/2025",
+        "url": "https://www.destatis.de/DE/Themen/Gesellschaft-Umwelt/Bevoelkerung/Sterbefaelle-Lebenserwartung/Publikationen/Downloads-Sterbefaelle/statistischer-bericht-sterbetafeln-5126207257005.xlsx?__blob=publicationFile&v=2"
+      },
+      "rhythmus": "jährlich im Sommer (neue Dreijahrestafel)",
+      "rhythmusMonate": 12,
+      "vorlaufTage": 30,
+      "orte": [
+        {
+          "datei": "app/simulator/german-demography-care-survivor-contract.js",
+          "suchtext": "destatis-period-life-table-2023-2025.xlsx"
+        }
+      ],
+      "hinweis": "Gültigkeitsbeginn ist der Abruf am 01.08.2026; Destatis veröffentlicht die neue Tafel im Sommer."
+    },
+    {
+      "id": "pflegestatistik",
+      "name": "Pflegestatistik",
+      "stand": "2023",
+      "gueltigAb": "2024-12",
+      "quelle": {
+        "name": "Destatis, Pflegestatistik 2023, Deutschlandergebnisse",
+        "url": "https://www.destatis.de/DE/Themen/Gesellschaft-Umwelt/Gesundheit/Pflege/Publikationen/Downloads-Pflege/statistischer-bericht-pflege-deutschlandergebnisse-5224001239005.xlsx?__blob=publicationFile&v=2"
+      },
+      "rhythmus": "alle zwei Jahre, Bericht meist im Dezember",
+      "rhythmusMonate": 24,
+      "vorlaufTage": 30,
+      "orte": [
+        {
+          "datei": "app/simulator/german-demography-care-survivor-contract.js",
+          "suchtext": "destatis-care-statistics-2023.xlsx"
+        }
+      ],
+      "hinweis": "Gültigkeitsbeginn ist der Bericht vom Dezember 2024; die Pflegestatistik 2025 erscheint voraussichtlich um den Jahreswechsel 2026/2027."
+    },
+    {
+      "id": "kohortentafel",
+      "name": "Kohortensterbetafel",
+      "stand": "1926–2026",
+      "gueltigAb": "2026-09-16",
+      "quelle": {
+        "name": "Destatis, Statistischer Bericht Kohortensterbetafeln für Deutschland 1926–2026",
+        "url": "https://www.destatis.de/DE/Themen/Gesellschaft-Umwelt/Bevoelkerung/Sterbefaelle-Lebenserwartung/Publikationen/Downloads-Sterbefaelle/statistischer-bericht-kohortensterbetafeln-5126101269005.xlsx?__blob=publicationFile&v=3"
+      },
+      "rhythmus": "selten, mit neuer Bevölkerungsvorausberechnung",
+      "rhythmusMonate": null,
+      "vorlaufTage": 0,
+      "orte": [
+        {
+          "datei": "app/simulator/german-cohort-life-table.js",
+          "suchtext": "destatis-cohort-life-tables-1926-2026.xlsx"
+        }
+      ]
+    }
+  ]
+}

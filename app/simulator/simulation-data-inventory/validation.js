@@ -4,6 +4,7 @@
 
 import { RESOLUTION_STATUSES, EVIDENCE_CLASSES, REQUIRED_RESOLUTION_FIELDS, EXTERNAL_VALIDATION_STATUSES, EXTERNAL_GATE_FIELDS, SIMULATION_DATA_INVENTORY_SCHEMA_VERSION, REQUIRED_HISTORICAL_SERIES, REQUIRED_STATIC_CATEGORIES } from './schema.js';
 import { SIMULATION_DATA_INVENTORY } from './inventory.js';
+import HISTORICAL_DATENSTAND from '../historical-datenstand.js';
 
 export class SimulationDataInventoryError extends Error {
     constructor(code, message, details = {}) {
@@ -90,11 +91,11 @@ function validateEntry(entry, path) {
     }
 }
 
-function validateQualitySegments(series, path) {
+function validateQualitySegments(series, path, period) {
     if (!Array.isArray(series.qualitySegments) || series.qualitySegments.length === 0) {
         inventoryError('SIMULATION_DATA_QUALITY_SEGMENTS_MISSING', `${path}.qualitySegments must not be empty`, { path });
     }
-    let expectedStartYear = 1925;
+    let expectedStartYear = period.startYear;
     for (let index = 0; index < series.qualitySegments.length; index++) {
         const segment = series.qualitySegments[index];
         const segmentPath = `${path}.qualitySegments[${index}]`;
@@ -115,25 +116,25 @@ function validateQualitySegments(series, path) {
         requireNonEmptyString(segment.note, `${segmentPath}.note`);
         expectedStartYear = segment.endYear + 1;
     }
-    if (expectedStartYear !== 2026) {
-        inventoryError('SIMULATION_DATA_QUALITY_SEGMENTS_INVALID', `${path}.qualitySegments must cover through 2025`, {
+    if (expectedStartYear !== period.endYear + 1) {
+        inventoryError('SIMULATION_DATA_QUALITY_SEGMENTS_INVALID', `${path}.qualitySegments must cover through ${period.endYear}`, {
             path,
             lastCoveredYear: expectedStartYear - 1
         });
     }
 }
 
-function validateDiscontinuities(series, path) {
+function validateDiscontinuities(series, path, period) {
     if (!Array.isArray(series.discontinuities)) {
         inventoryError('SIMULATION_DATA_DISCONTINUITIES_INVALID', `${path}.discontinuities must be an array`, { path });
     }
-    let previousYear = 1924;
+    let previousYear = period.startYear - 1;
     for (let index = 0; index < series.discontinuities.length; index++) {
         const discontinuity = series.discontinuities[index];
         const discontinuityPath = `${path}.discontinuities[${index}]`;
         if (!Number.isInteger(discontinuity?.year)
-            || discontinuity.year < 1925
-            || discontinuity.year > 2025
+            || discontinuity.year < period.startYear
+            || discontinuity.year > period.endYear
             || discontinuity.year <= previousYear) {
             inventoryError('SIMULATION_DATA_DISCONTINUITIES_INVALID', `${discontinuityPath}.year must be unique and ascending within the historical period`, {
                 discontinuityPath,
@@ -149,9 +150,10 @@ function validateDiscontinuities(series, path) {
 
 /**
  * @param [inventory] - Kontext für inventory.
+ * @param {{startYear: number, endYear: number}} [period] Zeitraum der historischen Reihen; ohne Angabe der des Datenstands.
  * @returns Geprüfter Vertrag; ungültige Werte werden gemeldet.
  */
-export function validateSimulationDataInventory(inventory = SIMULATION_DATA_INVENTORY) {
+export function validateSimulationDataInventory(inventory = SIMULATION_DATA_INVENTORY, period = HISTORICAL_DATENSTAND) {
     if (!inventory || typeof inventory !== 'object'
         || inventory.schemaVersion !== SIMULATION_DATA_INVENTORY_SCHEMA_VERSION) {
         inventoryError('SIMULATION_DATA_INVENTORY_INVALID', 'Unsupported or missing simulation data inventory schema', {
@@ -172,8 +174,8 @@ export function validateSimulationDataInventory(inventory = SIMULATION_DATA_INVE
                 category: series.category
             });
         }
-        validateQualitySegments(series, `inventory.historicalSeries.${seriesId}`);
-        validateDiscontinuities(series, `inventory.historicalSeries.${seriesId}`);
+        validateQualitySegments(series, `inventory.historicalSeries.${seriesId}`, period);
+        validateDiscontinuities(series, `inventory.historicalSeries.${seriesId}`, period);
     }
 
     const staticEntries = Object.values(inventory.staticData || {});

@@ -1,10 +1,8 @@
-import { createManualAnnualValue, validateAnnualPreparationValue } from '../app/shared/annual-marketdata.js';
+import { createManualAnnualValue, validateAnnualPreparationValue, createAnnualMarketDataReaders } from '../app/shared/annual-marketdata.js';
 import { getAppTestDate, setAppTestDate } from '../app/shared/app-clock.js';
 import {
     ANNUAL_MARKET_DATA_META_KEY,
-    ANNUAL_MARKET_DATA_SCHEMA_VERSION,
     createAnnualMarketDataRequest,
-    createMarketdataHandlers,
     selectAnnualCloseQuote
 } from '../app/balance/balance-annual-marketdata.js';
 import { CONFIG } from '../app/balance/balance-config.js';
@@ -65,29 +63,12 @@ function createDom() {
             ath: { value: '150' },
             jahreSeitAth: { value: '2' }
         },
-        controls: {
-            btnNachrueckenMitETF: null
-        }
+        controls: {}
     };
 }
 
-function createHandlers(dom, appState = {}, options = {}) {
-    const calls = { inflation: 0, update: 0 };
-    return {
-        calls,
-        handlers: createMarketdataHandlers({
-            dom,
-            appState,
-            debouncedUpdate: () => {
-                calls.update += 1;
-                return options.debouncedUpdate?.();
-            },
-            applyAnnualInflation: () => {
-                calls.inflation += 1;
-                return options.applyAnnualInflation?.();
-            }
-        })
-    };
+function createHandlers() {
+    return { calls: { update: 0 }, handlers: createAnnualMarketDataReaders() };
 }
 
 function okJsonResponse(data) {
@@ -120,8 +101,6 @@ try {
         assertEqual(request.targetYear, 2025, 'Zieljahr stammt aus der Perioden-ID');
         assertEqual(request.windowStart, '2025-12-27', 'Abruffenster beginnt am 27.12.');
         assertEqual(request.windowEnd, '2025-12-31', 'Abruffenster endet fachlich am 31.12.');
-        assertEqual(new Date(request.period1 * 1000).toISOString(), '2025-12-27T00:00:00.000Z', 'period1 ist UTC-stabil');
-        assertEqual(new Date(request.period2 * 1000).toISOString(), '2026-01-01T00:00:00.000Z', 'period2 ist der exklusive Folgejahresbeginn');
     }
 
     console.log('Test 2: malformed or unsupported period ids are rejected');
@@ -181,6 +160,23 @@ try {
         assertEqual(quote.price, 97, 'Der Preis des letzten Handelstags wird verwendet');
     }
 
+    {
+        const stamps = ['2025-12-30T22:59:00Z', '2025-12-30T23:00:00Z', '2025-12-31T23:00:00Z'].map(unix);
+        const options = { targetYear: 2025 };
+        assertEqual(selectAnnualCloseQuote(yahooChart(stamps.slice(0, 1), [130]), options).asOf, '2025-12-30',
+            '23:59 Uhr in Berlin zählt zum 30. Dezember');
+        const quote = selectAnnualCloseQuote(yahooChart(stamps, [130, 131, 999]), options);
+        assertEqual(quote.price, 131, 'Der Berliner 31. Dezember zählt, der Berliner 1. Januar entfällt');
+        assertEqual(quote.asOf, '2025-12-31', 'Mitternacht in Berlin zählt zum 31. Dezember');
+        assertEqual(quote.date.toISOString().slice(0, 10), quote.asOf, 'Date und asOf tragen denselben Handelstag');
+        assertEqual(quote.timestamp, stamps[1], 'Der originale Yahoo-Zeitstempel bleibt erhalten');
+        assertEqual(selectAnnualCloseQuote(yahooChart([unix('2025-12-26T23:00:00Z')], [125]), options).asOf,
+            '2025-12-27', 'Auch Mitternacht in Berlin am 27. Dezember liegt im Fenster');
+        const request = createAnnualMarketDataRequest('calendar-year:2025');
+        assertEqual(new Date(request.period1 * 1000).toISOString(), '2025-12-26T23:00:00.000Z', 'Abruf beginnt am Berliner 27. Dezember');
+        assertEqual(new Date(request.period2 * 1000).toISOString(), '2025-12-31T23:00:00.000Z', 'Abruf endet am Berliner Folgejahresbeginn');
+    }
+
     console.log('Test 6: stale, wrong-year, empty and implausible quotes fail closed');
     {
         assertEqual(
@@ -234,217 +230,66 @@ try {
         assertEqual(selectAnnualCloseQuote({ chart: { result: [] } }, { targetYear: 2025 }), null, 'Fehlende Quote-Struktur wird abgelehnt');
     }
 
-    console.log('Test 7: handler persists complete as-of metadata and consistent ATH evaluation');
+    // ATH-1b (Gutachten P3-2): Das frühere „Nachrücken mit ETF“ ist entfernt. Jahresendstände und Allzeithoch schreibt nur der
+    // Jahresabschluss (balance-annual-storage-Tests); hier bleibt der lesende Abruf des Jahresendkurses.
+    console.log('Test 7: prepared year-end quote uses the chart window and writes nothing');
     {
         global.localStorage = createLocalStorageMock();
-        const previousMeta = {
-            schemaVersion: 1,
-            periodId: 'calendar-year:2024',
-            targetYear: 2024,
-            price: 120,
-            asOf: '2024-12-30',
-            ticker: 'VWCE.DE',
-            source: 'Vorjahr',
-            ath: { value: 150, yearsSince: 2, evaluatedAsOf: '2024-12-30', lastHighAsOf: '2022-12-30' }
-        };
-        seedAnnualState('calendar-year:2025', previousMeta);
-        const dom = createDom();
-        const appState = {};
-        dom.controls.btnNachrueckenMitETF = { innerHTML: 'ETF', disabled: false };
-        const { handlers, calls } = createHandlers(dom, appState);
-        let requestedUrl = null;
+        seedAnnualState('calendar-year:2025');
+        const dom = createDom(), beforeDom = JSON.stringify(dom.inputs), bytes = localStorage.getItem(CONFIG.STORAGE.LS_KEY);
+        const { handlers, calls } = createHandlers();
+        const requestedUrls = [];
         global.fetch = async url => {
-            requestedUrl = String(url);
+            requestedUrls.push(String(url));
             return okJsonResponse(yahooChart([unix('2025-12-30T16:30:00Z')], [140.4]));
         };
-
-        toasts.length = 0;
-        const result = await handlers.handleNachrueckenMitETF({ nested: true });
-        assertEqual(toasts[0].text, 'Rufe VWCE.DE Jahresendkurs fuer 2025 ab...', 'Interner Abrufstart bleibt wortgleich');
-        assertEqual(toasts[0].type, 'info', 'Interner ETF-Abrufstart ist Hinweis');
-        assertEqual(toasts[1].type, true, 'Bestätigtes Nachrücken bleibt Erfolg');
-        assert(toasts[1].text.startsWith('✅ Nachrücken mit ETF abgeschlossen!\n'), 'Erfolg behält Wortlaut und Originalsymbol');
-        assertEqual(actionResets.length, 0, 'Verschachtelter Jahresschritt löscht keine Annualfehler');
+        const result = await handlers.prepareETF({ targetYear: 2025 });
         const request = createAnnualMarketDataRequest('calendar-year:2025');
-        const requested = new URL(requestedUrl);
-        const stored = JSON.parse(localStorage.getItem(CONFIG.STORAGE.LS_KEY));
-        const meta = stored[ANNUAL_MARKET_DATA_META_KEY];
-
+        assertEqual(requestedUrls.length, 1, 'Der Jahresabschluss fragt nur den Jahresendkurs ab');
+        const requested = new URL(requestedUrls[0]);
+        assertEqual(requested.pathname, '/chart', 'Jahresendkurs nutzt die historische Reihe');
+        assertEqual(requested.searchParams.get('symbol'), 'VWCE.DE', 'Jahresendkurs bleibt bei Xetra ohne Zusatzbörsen');
         assertEqual(requested.searchParams.get('period1'), String(request.period1), 'Fetch verwendet period1 aus der Perioden-ID');
         assertEqual(requested.searchParams.get('period2'), String(request.period2), 'Fetch verwendet exklusives period2');
-        assertEqual(dom.inputs.endeVJ.value, '140', 'Gerundeter Jahresendkurs wird in endeVJ gespeichert');
-        assertEqual(dom.inputs.endeVJ_1.value, '120', 'Vorjahreskurs wird genau einmal nachgerueckt');
-        assertEqual(dom.inputs.jahreSeitAth.value, '3', 'ATH-Jahre werden am selben Jahresendstichtag fortgeschrieben');
+        assertEqual(result.price, 140.4, 'Vorbereiteter Kurs bleibt ungerundet');
         assertEqual(result.asOf, '2025-12-30', 'Resultat enthaelt maschinenlesbaren Stichtag');
-        assertEqual(result.targetYear, 2025, 'Resultat enthaelt Zieljahr');
-        assertEqual(result.periodId, 'calendar-year:2025', 'Resultat enthaelt Perioden-ID');
-        assertEqual(meta.schemaVersion, ANNUAL_MARKET_DATA_SCHEMA_VERSION, 'Persistenz enthaelt Schema-Version');
-        assertEqual(meta.price, 140, 'Persistierter Preis entspricht endeVJ');
-        assertEqual(meta.asOf, '2025-12-30', 'Persistenz enthaelt ISO-Stichtag');
-        assertEqual(meta.ticker, 'VWCE.DE', 'Persistenz enthaelt Ticker');
-        assertEqual(meta.source, 'Yahoo Finance (lokaler Proxy)', 'Persistenz enthaelt Quelle');
-        assertEqual(meta.targetYear, 2025, 'Persistenz enthaelt Zieljahr');
-        assertEqual(stored.inputs.endeVJ, meta.price, 'Persistierter Input und Metadatenpreis werden gemeinsam geschrieben');
-        assertEqual(stored.inputs.jahreSeitAth, meta.ath.yearsSince, 'Persistierter ATH-Zaehler stimmt mit Metadaten ueberein');
-        assertEqual(meta.ath.evaluatedAsOf, meta.asOf, 'ATH-Auswertung nutzt denselben Stichtag');
-        assertEqual(meta.ath.lastHighAsOf, '2022-12-30', 'Bekannter letzter ATH-Stichtag bleibt erhalten');
-        assertEqual(calls.inflation, 1, 'Inflationsfortschreibung folgt genau einmal auf gueltige Marktdaten');
-        assertEqual(calls.update, 1, 'Gueltige Marktdaten triggern genau ein Update');
-
+        assertEqual(result.ticker, 'VWCE.DE', 'Resultat enthaelt Ticker');
+        assertEqual(result.source, 'Yahoo Finance (lokaler Proxy)', 'Resultat enthaelt Quelle');
+        assertEqual(JSON.stringify(dom.inputs), beforeDom, 'Abruf rotiert keine Marktdatenfelder');
+        assertEqual(localStorage.getItem(CONFIG.STORAGE.LS_KEY), bytes, 'Abruf schreibt keine Metadaten');
+        assertEqual(calls.update, 0, 'Abruf triggert kein Update');
+        assert(!('handleNachrueckenMitETF' in handlers), 'Kein schreibender ETF-Handler mehr (Gutachten P3-2)');
     }
 
-    console.log('Test 8: equal ATH resets years without claiming a new high');
+    console.log('Test 8: invalid annual coverage rejects the prepared quote');
     {
         global.localStorage = createLocalStorageMock();
         seedAnnualState();
-        const dom = createDom();
-        const { handlers } = createHandlers(dom);
-        global.fetch = async () => okJsonResponse(
-            yahooChart([unix('2025-12-31T16:30:00Z')], [150])
-        );
-
-        actionResets.length = 0;
-        const result = await handlers.handleNachrueckenMitETF();
-        assertEqual(actionResets.join(','), 'annual', 'Direkter Jahresschritt bereinigt genau seinen Annualbereich');
-        const meta = JSON.parse(localStorage.getItem(CONFIG.STORAGE.LS_KEY))[ANNUAL_MARKET_DATA_META_KEY];
-        assertEqual(result.ath.isNew, false, 'ATH-Gleichstand ist kein neues Hoch');
-        assertEqual(result.ath.yearsSince, 0, 'ATH-Gleichstand setzt Jahre seit ATH auf null');
-        assertEqual(meta.ath.lastHighAsOf, '2025-12-31', 'ATH-Gleichstand dokumentiert den aktuellen Stichtag');
-    }
-
-    console.log('Test 9: invalid annual coverage rejects before DOM and metadata mutation');
-    {
-        global.localStorage = createLocalStorageMock();
-        seedAnnualState();
-        const dom = createDom();
-        const { handlers, calls } = createHandlers(dom);
-        const beforeDom = JSON.stringify(dom.inputs);
+        const { handlers } = createHandlers();
         global.fetch = async () => okJsonResponse(
             yahooChart(
                 [unix('2025-12-26T16:30:00Z'), unix('2026-01-02T16:30:00Z')],
                 [140, 141]
             )
         );
-
         let thrown = null;
         try {
-            await handlers.handleNachrueckenMitETF();
+            await handlers.prepareETF({ targetYear: 2025 });
         } catch (err) {
             thrown = err;
         }
-        const stored = JSON.parse(localStorage.getItem(CONFIG.STORAGE.LS_KEY));
         assert(thrown instanceof Error, 'Ungueltige Jahresendversorgung wirft einen Fehler');
-        assertEqual(JSON.stringify(dom.inputs), beforeDom, 'Ungueltige Quotes mutieren keine Marktdatenfelder');
-        assertEqual(stored[ANNUAL_MARKET_DATA_META_KEY], undefined, 'Ungueltige Quotes persistieren keine Metadaten');
-        assertEqual(calls.inflation, 0, 'Ungueltige Quotes starten keine Inflationsmutation');
-        assertEqual(calls.update, 0, 'Ungueltige Quotes triggern kein Update');
-    }
-
-    console.log('Test 10: missing active period rejects before fetch');
-    {
-        global.localStorage = createLocalStorageMock();
-        localStorage.setItem(CONFIG.STORAGE.LS_KEY, JSON.stringify({}));
-        const dom = createDom();
-        const { handlers } = createHandlers(dom);
-        let fetchCalls = 0;
-        global.fetch = async () => { fetchCalls += 1; return okJsonResponse(yahooChart([], [])); };
-        let thrown = null;
-        try {
-            await handlers.handleNachrueckenMitETF();
-        } catch (err) {
-            thrown = err;
-        }
-        assert(thrown instanceof Error, 'Fehlende Perioden-ID blockiert den Handler');
-        assertEqual(fetchCalls, 0, 'Ohne Perioden-ID beginnt kein Online-Abruf');
-        assertEqual(dom.inputs.endeVJ.value, '120', 'Ohne Perioden-ID bleibt endeVJ unveraendert');
-    }
-
-    console.log('Test 11: malformed or future pending commits reject before fetch');
-    {
-        global.localStorage = createLocalStorageMock();
-        seedAnnualState();
-        let state = JSON.parse(localStorage.getItem(CONFIG.STORAGE.LS_KEY));
-        state.annualPeriodMetadata.pendingCommit.phase = 'snapshot_confirmed';
-        localStorage.setItem(CONFIG.STORAGE.LS_KEY, JSON.stringify(state));
-        const dom = createDom();
-        const { handlers } = createHandlers(dom);
-        let fetchCalls = 0;
-        global.fetch = async () => { fetchCalls += 1; return okJsonResponse(yahooChart([], [])); };
-        let invalidPhaseError = null;
-        try {
-            await handlers.handleNachrueckenMitETF();
-        } catch (err) {
-            invalidPhaseError = err;
-        }
-        assert(invalidPhaseError instanceof Error, 'Falsche Commit-Phase wird abgelehnt');
-
-        seedAnnualState('calendar-year:9999');
-        let futureError = null;
-        try {
-            await handlers.handleNachrueckenMitETF();
-        } catch (err) {
-            futureError = err;
-        }
-        assert(futureError instanceof Error, 'Noch nicht abgeschlossenes Zieljahr wird abgelehnt');
-        assertEqual(fetchCalls, 0, 'Strukturell ungueltige oder zukuenftige Commits starten keinen Fetch');
-        assertEqual(dom.inputs.endeVJ.value, '120', 'Commit-Contract-Fehler mutieren keine Marktdatenfelder');
-    }
-
-    console.log('Test 12: post-mutation failure rolls DOM and persistent marketdata back');
-    {
-        global.localStorage = createLocalStorageMock();
-        const previousMeta = {
-            schemaVersion: 1,
-            periodId: 'calendar-year:2024',
-            targetYear: 2024,
-            price: 120,
-            asOf: '2024-12-30',
-            ticker: 'VWCE.DE',
-            source: 'Vorjahr',
-            ath: { value: 150, yearsSince: 2, evaluatedAsOf: '2024-12-30', lastHighAsOf: '2022-12-30' }
-        };
-        seedAnnualState('calendar-year:2025', previousMeta);
-        const dom = createDom();
-        const beforeDom = JSON.stringify(dom.inputs);
-        const { handlers, calls } = createHandlers(dom, {}, {
-            applyAnnualInflation: () => { throw new Error('inflation write failed'); }
-        });
-        global.fetch = async () => okJsonResponse(
-            yahooChart([unix('2025-12-30T16:30:00Z')], [140])
-        );
-        let thrown = null;
-        try {
-            await handlers.handleNachrueckenMitETF();
-        } catch (err) {
-            thrown = err;
-        }
-        const stored = JSON.parse(localStorage.getItem(CONFIG.STORAGE.LS_KEY));
-        assert(thrown instanceof Error, 'Fehler nach DOM-Mutation wird weitergereicht');
-        assertEqual(JSON.stringify(dom.inputs), beforeDom, 'Fehler nach DOM-Mutation stellt alle Marktdatenfelder wieder her');
-        assertEqual(stored[ANNUAL_MARKET_DATA_META_KEY].periodId, 'calendar-year:2024', 'Fehler stellt vorherige Stichtagsmetadaten wieder her');
-        assertEqual(stored.inputs, undefined, 'Fehler persistiert keine neuen Marktdateninputs');
-        assertEqual(calls.update, 0, 'Fehler vor erfolgreicher Mutation triggert kein nachgelagertes Update');
     }
 
     {
         setAppTestDate('2027-01-02');
         let net = 0;
         global.fetch = () => { net++; throw new Error('Kein Netz'); };
-        for (const year of [2026, 2025]) {
-            const inflation = { year, rate: 2.5, source: 'Spielbereich · synthetisch', dataAsOf: `${year}-12-31`, fetchStatus: 'ok_synthetic' };
-            seedAnnualState('calendar-year:2026', { inflation });
-            const dom = createDom();
-            const { handlers } = createHandlers(dom);
-            const result = await handlers.handleNachrueckenMitETF();
-            const meta = JSON.parse(localStorage.getItem(CONFIG.STORAGE.LS_KEY)).annualMarketDataMeta;
-            assertEqual(result.source, 'Spielbereich · synthetisch', 'ETF-Ergebnis nennt synthetische Herkunft');
-            assertEqual(meta.source, result.source, 'ETF-Meta trägt Herkunft');
-            assertEqual(meta.targetYear, 2026, 'ETF-Meta trägt Abschlussjahr');
-            assertEqual(JSON.stringify(meta.inflation), year === 2026 ? JSON.stringify(inflation) : undefined, 'Nur aktuelle Inflationsmeta überlebt ETF-Neuaufbau');
-        }
-        seedAnnualState('calendar-year:2027');
+        const { handlers } = createHandlers();
+        const result = await handlers.prepareETF({ targetYear: 2026 });
+        assertEqual(result.source, 'Spielbereich · synthetisch', 'ETF-Ergebnis nennt synthetische Herkunft');
         let rejected = false;
-        try { await createHandlers(createDom()).handlers.handleNachrueckenMitETF(); } catch { rejected = true; }
+        try { await handlers.prepareETF({ targetYear: 2027 }); } catch { rejected = true; }
         assert(rejected, 'Künftige Jahresperiode scheitert vor Anbieteraufruf');
         assertEqual(net, 0, 'ETF erreicht keinen Fetchpfad, auch bei ungültiger Periode');
         setAppTestDate(null);
@@ -453,21 +298,17 @@ try {
         setAppTestDate(null); global.localStorage = createLocalStorageMock();
         localStorage.setItem(CONFIG.STORAGE.LS_KEY, JSON.stringify({ marker: 'ohne-pendingCommit' }));
         const dom = createDom(), before = JSON.stringify(dom.inputs), bytes = localStorage.getItem(CONFIG.STORAGE.LS_KEY);
-        const { handlers } = createHandlers(dom); let requests = 0;
+        const { handlers } = createHandlers(); let requests = 0;
         global.fetch = async () => { requests++; return okJsonResponse(yahooChart([unix('2025-12-30T00:00:00Z')], [140.4])); };
         const prepared = await handlers.prepareETF({ targetYear: 2025 });
         assertEqual(JSON.stringify(dom.inputs), before, 'ETF-Vorababruf rotiert keine Formularwerte');
         assertEqual(localStorage.getItem(CONFIG.STORAGE.LS_KEY), bytes, 'ETF-Vorababruf benötigt keinen Commit und erhält Bytes');
-        seedAnnualState('calendar-year:2025');
-        const applied = await handlers.handleNachrueckenMitETF({ preparedResult: prepared });
-        assertEqual(requests, 1, 'ETF-Anwendung verwendet denselben Abruf');
-        assertEqual(applied.price, Math.round(prepared.price), 'ETF-Anwendung erhält genau den vorbereiteten Kurs mit bestehender Rundung');
-        const errorBytes = localStorage.getItem(CONFIG.STORAGE.LS_KEY), errorDom = JSON.stringify(dom.inputs);
+        assertEqual(requests, 1, 'ETF-Vorababruf fragt genau einmal');
         global.fetch = async () => { throw new Error('offline'); };
         let error; try { await handlers.prepareETF({ targetYear: 2025 }); } catch (caught) { error = caught; }
         assert(error, 'Fehlender ETF-Vorabkurs bleibt Abruffehler');
-        assertEqual(localStorage.getItem(CONFIG.STORAGE.LS_KEY), errorBytes, 'ETF-Abruffehler schreibt keine Metadaten');
-        assertEqual(JSON.stringify(dom.inputs), errorDom, 'ETF-Abruffehler erhält Formular');
+        assertEqual(localStorage.getItem(CONFIG.STORAGE.LS_KEY), bytes, 'ETF-Abruffehler schreibt keine Metadaten');
+        assertEqual(JSON.stringify(dom.inputs), before, 'ETF-Abruffehler erhält Formular');
     }
     console.log('Balance annual marketdata tests passed');
 } finally {
@@ -490,4 +331,114 @@ for (const [type, raw, field, value] of [['inflation', '0', 'rate', 0], ['inflat
 for (const [type, raw] of [['inflation', '51'], ['inflation', '-11'], ['inflation', ''], ['cape', '4'], ['cape', '81'], ['cape', 'NaN'], ['etf', '-1'], ['etf', '100001']]) {
     let rejected = false; try { createManualAnnualValue(type, raw, 2026); } catch { rejected = true; }
     assert(rejected, 'Unplausible Handergänzung ergibt keinen vorbereiteten Pflichtwert');
+}
+
+// Live-CAPE (Shiller): Parser, Jahresstichtag und lesender Abruf. Ehemals balance-annual-cape.test.mjs, jetzt am gemeinsamen Leser.
+{
+    const { parseShillerCapeTable, isCapeCurrentForYear } = await import('../app/shared/shiller-cape.js');
+    const { createMusterHaushaltRecords } = await import('../app/demo/muster-haushalt.js');
+    const { HOUSEHOLD_PLAN_KEY, buildPlanRecord } = await import('../app/profile/household-plan.js');
+    const fs = await import('node:fs');
+    const fixture = name => fs.readFileSync(new URL(`fixtures/annual-marketdata/${name}`, import.meta.url), 'utf8');
+    const page = fixture('shiller-download-2026-10.html'), table = fixture('shiller-data-2026-10.html');
+    const saved = { storage: global.localStorage, fetch: global.fetch, date: getAppTestDate() };
+    const records = new Map();
+    const storage = { getItem: key => records.get(key) ?? null, setItem: (key, value) => records.set(key, String(value)) };
+    const now = () => new Date('2026-10-22T10:00:00Z');
+    const calls = [];
+    const response = html => ({ ok: true, text: async () => html });
+    const mockSource = (html = table) => async (url, options) => {
+        calls.push(url);
+        assertEqual(options.headers['X-Return-Format'], 'html', 'HTML erhält leere Zellen und die CAPE-Spalte');
+        return response(url.includes('img1.wsimg.com') ? html : page);
+    };
+    const seed = (capeAsOf = '2024-12-01') => storage.setItem(CONFIG.STORAGE.LS_KEY, JSON.stringify({
+        capeMeta: { capeRatio: 37.7111916964346, capeAsOf, capeSource: 'stored_last_value' }, marker: 'erhalten'
+    }));
+    try {
+        setAppTestDate(null); global.localStorage = storage;
+        const readers = createAnnualMarketDataReaders({ storage, now });
+        global.fetch = mockSource();
+        let current;
+        for (const [year, expected] of [[2024, 37.7111916964346], [2025, 39.5816409932426]]) {
+            seed(); calls.length = 0;
+            const before = storage.getItem(CONFIG.STORAGE.LS_KEY);
+            const result = await readers.prepareCape({ targetYear: year });
+            current = result;
+            assertClose(result.capeRatio, expected, 1e-12, 'Original-CAPE statt TR CAPE oder letzter Zahl');
+            assertEqual(result.capeAsOf, `${year}-12-01`, 'Neuster Monat im Zieljahr statt späterer Jahre');
+            assertEqual(result.capeFetchStatus, 'ok_primary', 'Aktueller Download liefert Jahreswert');
+            assertEqual(calls.length, 2, 'Seite und verlinkte XLS einmal abgerufen');
+            assert(calls.every(url => url.startsWith('https://r.jina.ai/') && !url.includes('yale.edu')), 'Nur erlaubter Readerhost, kein Yale');
+            assertEqual(storage.getItem(CONFIG.STORAGE.LS_KEY), before, 'Vorbereitung ist schreibfrei');
+        }
+        storage.setItem(CONFIG.STORAGE.LS_KEY, '{kaputt'); calls.length = 0;
+        const corrupt = await readers.prepareCape({ targetYear: 2025 });
+        assertEqual(corrupt.capeFetchStatus, 'ok_primary', 'Beschädigter Balance-Stand blockiert den CAPE-Abruf nicht');
+        assertEqual(calls.length, 2, 'Auch mit beschädigtem Stand werden Seite und Tabelle abgerufen');
+        assert(corrupt.storedCapeWarning.includes('Balance-Stand'), 'CAPE-Vorbereitung nennt den beschädigten Stand');
+        assertEqual(storage.getItem(CONFIG.STORAGE.LS_KEY), '{kaputt', 'Der Abruf ändert den beschädigten Stand nicht');
+        global.fetch = async () => { throw new Error('Offline'); };
+        const corruptOffline = await readers.prepareCape({ targetYear: 2025 });
+        assertEqual(corruptOffline.capeFetchStatus, 'error_no_source_no_stored', 'Beschädigter Stand und Abruffehler erfordern Handeingabe');
+        assertEqual(corruptOffline.lastStoredCape, null, 'Beschädigter Stand liefert keinen Altwert');
+        assertEqual(corruptOffline.storedCapeWarning, corrupt.storedCapeWarning, 'Die Warnung bleibt auch beim Abruffehler erhalten');
+        assertEqual(corruptOffline.errors[0], 'Offline', 'Der ursprüngliche Abruffehler bleibt erhalten');
+        assert(corruptOffline.manualHint.includes('kein Wert') && corruptOffline.manualHint.includes('Trage den aktuellen Wert'), 'Der Hinweis erklärt die Handeingabe ohne Altwert');
+        seed();
+        const small = (date, header = 'CAPE') => `<table><tr><td>Date</td><td>TR CAPE</td><td>${header}</td><td>Returns</td></tr><tr><td>${date}</td><td>42.35</td><td sdval="39.5816409932426">39.58</td><td>40.83</td></tr></table>`;
+        assertClose(parseShillerCapeTable(small('2025.1'), 2025).capeRatio, current.capeRatio, 1e-12, 'Kopf bestimmt auch verschobene CAPE-Spalte');
+        assertEqual(parseShillerCapeTable(small('2025.1'), 2025).capeAsOf, '2025-10-01', 'Shiller .1 bezeichnet Oktober');
+        assertEqual(parseShillerCapeTable(small('2025.01'), 2025).capeAsOf, '2025-01-01', 'Shiller .01 bezeichnet Januar');
+        assertEqual(parseShillerCapeTable(small('2025.12', 'unbekannt'), 2025), null, 'Fehlender CAPE-Kopf erlaubt kein Raten');
+        assertEqual(parseShillerCapeTable('2025.12 foo bar 39.58', 2025), null, 'Text ohne Zellen wird nicht geraten');
+        assert(isCapeCurrentForYear('2025-10-01', 2025), 'Ab Oktober zulässig');
+        assert(!isCapeCurrentForYear('2025-09-30', 2025) && !isCapeCurrentForYear('2026-10-01', 2025), 'September und anderes Jahr nicht zulässig');
+        assert(!isCapeCurrentForYear('2025-11-31', 2025), 'Ungültiges Kalenderdatum abweisen');
+        for (const failure of ['old', 'missing', 'no-header']) {
+            seed(); calls.length = 0;
+            global.fetch = failure === 'missing' ? async () => { throw new Error('Keine Antwort'); }
+                : mockSource(small('2025.09', failure === 'no-header' ? 'Kennzahl' : 'CAPE'));
+            const before = storage.getItem(CONFIG.STORAGE.LS_KEY);
+            const result = await readers.prepareCape({ targetYear: 2025 });
+            assertEqual(result.capeRatio, null, `${failure}: kein automatischer Altwert`);
+            assertEqual(result.capeFetchStatus, 'error_no_source_no_stored', `${failure}: Handeingabe erforderlich`);
+            assert(result.manualHint.includes('CAPE nicht automatisch ermittelt') && result.manualHint.includes('37,71') && result.manualHint.includes('Dezember 2024'), `${failure}: letzter Wert und Monatsstand im Hinweis`);
+            assert(result.manualHint.includes('shillerdata.com') && result.manualHint.includes('Spalte CAPE'), 'Handquelle genannt');
+            assertEqual(storage.getItem(CONFIG.STORAGE.LS_KEY), before, 'Fehlabruf verändert keinen gespeicherten Stand');
+            let rejected = false;
+            try { validateAnnualPreparationValue('cape', result, 2025); } catch (error) { rejected = error.message.includes('Zuletzt gespeichert:'); }
+            assert(rejected, 'Jahresvorbereitung erhält den Handeingabe-Hinweis');
+        }
+        seed('2025-12-01');
+        const failed = await readers.prepareCape({ targetYear: 2025 });
+        assertEqual(failed.capeRatio, null, 'Gespeicherter Wert bleibt Hinweis, auch mit passendem Stand');
+        const planned = createMusterHaushaltRecords('2026-10-22', 'max-erika');
+        const entry = Object.values(JSON.parse(planned[HOUSEHOLD_PLAN_KEY]).entries)[0];
+        planned[HOUSEHOLD_PLAN_KEY] = buildPlanRecord(planned[HOUSEHOLD_PLAN_KEY], [{ scope: entry.scope,
+            values: { ...entry.values, cape: { value: 27.4, asOf: '2025-12-01', source: 'manuell' } } }]).raw;
+        for (const [key, value] of Object.entries(planned)) records.set(key, value);
+        seed('2025-12-01');
+        global.fetch = async () => { throw new Error('Offline'); };
+        const beforePlan = JSON.stringify([...records]);
+        const planFallback = await readers.prepareCape({ targetYear: 2025 });
+        assertEqual(planFallback.lastStoredCape.capeRatio, 27.4, 'HS-1c manueller Plan-CAPE ist der letzte gespeicherte Stand');
+        assertEqual(planFallback.lastStoredCape.capeSource, 'manuell', 'HS-1c Herkunft stammt aus dem Plan');
+        assertEqual(planFallback.capeRatio, null, 'HS-1c gespeicherter Planwert braucht weiterhin Handbestätigung');
+        assertEqual(JSON.stringify([...records]), beforePlan, 'HS-1c Vorbereitung schreibt keine Altdaten um');
+        records.clear();
+        const empty = await readers.prepareCape({ targetYear: 2025 });
+        assert(empty.manualHint.includes('kein Wert') && empty.manualHint.includes('Stand unbekannt'), 'Ohne Speicherstand bleibt Herkunft ehrlich');
+        setAppTestDate('2027-01-02');
+        let network = 0; global.fetch = () => { network++; throw new Error('Unerwartetes Netz'); };
+        const synthetic = await createAnnualMarketDataReaders().prepareCape({ targetYear: 2026 });
+        assertEqual(synthetic.capeRatio, 28.5, 'Spielbereich erhält synthetischen CAPE');
+        assertEqual(synthetic.capeAsOf, '2026-12-31', 'Synthetischer Stand gehört zum Abschlussjahr');
+        assertEqual(synthetic.capeSource, 'Spielbereich · synthetisch', 'Synthetische Herkunft bleibt sichtbar');
+        assertEqual(network, 0, 'Spielbereich benötigt keinen Netzabruf');
+    } finally {
+        setAppTestDate(saved.date);
+        if (saved.storage === undefined) delete global.localStorage; else global.localStorage = saved.storage;
+        if (saved.fetch === undefined) delete global.fetch; else global.fetch = saved.fetch;
+    }
 }

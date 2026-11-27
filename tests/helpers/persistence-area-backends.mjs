@@ -106,11 +106,19 @@ export function fakeAreaTauri() {
         calls.push({ command, target });
         if (command === 'load_app_state') return files.get(target) || '';
         // HV-4: wie Rust – verändernde Befehle mit erwarteter Generation nur, wenn das Verzeichnis sie noch trägt.
-        if (['save_app_state', 'delete_play_state', 'delete_household_state', 'quarantine_app_state'].includes(command) && args.expectedGeneration !== undefined) {
+        if (['save_app_state', 'delete_play_state', 'delete_household_state', 'quarantine_app_state', 'delete_live_state'].includes(command) && args.expectedGeneration !== undefined) {
             const current = files.get('households') ? JSON.parse(files.get('households')).generation : 0;
             if (current !== args.expectedGeneration) throw new Error('HOUSEHOLD_CONTEXT_CHANGED: Der Haushalt wurde inzwischen gewechselt.');
         }
-        if (command === 'save_app_state') { files.set(target, args.content); return; }
+        if (command === 'save_app_state') {
+            // NG-1: wie Rust – nur ein JSON-Objekt wird geschrieben, auch kein leerer Inhalt.
+            let value = null;
+            try { value = JSON.parse(args.content); } catch { /* bleibt null */ }
+            if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Inhalt ist kein JSON-Objekt und wird nicht gespeichert. Die Datei bleibt unverändert.');
+            files.set(target, args.content); return;
+        }
+        // NG-1: fest auf die Hauptdatei des Haushalts (in Rust samt .json.tmp); eine fehlende Datei gilt als Erfolg.
+        if (command === 'delete_live_state') { files.delete(args.household ? `hh/${args.household}/live` : 'live'); return; }
         if (command === 'read_household_state') return files.get(args.household ? `hh/${args.household}/live` : 'live') || '';
         if (command === 'quarantine_app_state') {
             if (!files.has(target)) return '';

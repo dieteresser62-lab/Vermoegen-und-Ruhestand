@@ -1,6 +1,13 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { fz1References } from './helpers/fz-1-expectations.mjs';
+import { readJA1References } from './helpers/ja-1-expectations.mjs';
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import { readVB1References } from './helpers/vb-1-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
 import { readLE1References } from './helpers/le-1-expectations.mjs';
 import { readGU1References } from './helpers/gu-1-expectations.mjs';
 import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
+const readFZ1Reference = fz1References(import.meta.url);
 const readEV1bReferences = value => readPFA1References(beforePFA1References(value));
 import { readEV1bReferences as beforePFA1References } from './helpers/ev-1b-expectations.mjs';
 const readMD2References = value => readEV1bReferences(readBeforeEV1bReferences(value));
@@ -30,11 +37,8 @@ import {
 import { PFLEGE_GRADE_PROBABILITIES } from '../app/simulator/simulator-data.js';
 import { createMonteCarloLifeState, updateMonteCarloLifeEventsForYear } from '../app/simulator/mc-life-events.js';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
-import { runSweepChunk } from '../app/simulator/sweep-runner.js';
 import { rng } from '../app/simulator/simulator-utils.js';
-import { normalizeWidowOptions } from '../app/simulator/simulator-sweep-utils.js';
-import { createStressReplayCaptureRequest } from '../app/simulator/stress-replay-path-materializer.js';
-import { DEFAULT_RESIDENTIAL_COMPONENTS, residentialMonthly } from '../app/shared/household-care-values.js';
+import { normalizeWidowOptions } from '../app/simulator/simulator-run-utils.js';
 
 import { readFI1References } from './helpers/fi-1-expectations.mjs';
 const readRNG1Hash = before => readQSCReferences(readAS1Hash(readEP1Hash(readBeforeEP1Hash(before))));
@@ -117,7 +121,7 @@ for (const drift of [0, .035]) {
     assertEqual(care.active, false, 'Akute Pflege endet weiterhin nach der gezogenen Dauer');
 }
 
-// Gemeinsamer Lebensereignispfad von Sweep/Auto-Optimize: beide Personen
+// Gemeinsamer Lebensereignispfad: beide Personen
 // erhalten denselben Haushalts-Preisstand, unabhängig von ihrem Startalter.
 {
     const inputs = careInputs();
@@ -134,19 +138,14 @@ for (const drift of [0, .035]) {
     }
 }
 
-const combo = { liquidityRunwayYears: 3, goldRebalancingBand: 20, maxSkimPct: 10, maxBearRefillPct: 5, goldTargetPct: 0 };
-const sweepConfig = { anzahlRuns: 4, maxDauer: 12, blockSize: 1, baseSeed: 91827,
-    methode: 'block', rngMode: 'per-run-seed', startYearMode: 'UNIFORM' };
-
-// Echte MC- und Sweep-Aufrufe prüfen, dass ihre Pflegeaufrufe den Preisstand erhalten.
+// Echte MC-Aufrufe prüfen, dass ihre Pflegeaufrufe den Preisstand erhalten.
 {
     const inputs = { ...careInputs(), startAlter: 80, partner: { aktiv: false }, pflegeRampUp: 1,
         pflegeGradeConfigs: Object.fromEntries([1, 2, 3, 4, 5].map(grade => [grade,
             { zusatz: 4000, flexCut: 1, mortalityFactor: 0 }])) };
     const chunk = await runMonteCarloChunk({ inputs, monteCarloParams: {
         anzahl: 4, maxDauer: 12, methode: 'block', blockSize: 1, seed: 91827 },
-        logIndices: [0, 1, 2, 3], useCapeSampling: false, widowOptions: inputs.widowOptions,
-        stressReplayCapture: createStressReplayCaptureRequest([0, 1, 2, 3]), engine: EngineAPI });
+        logIndices: [0, 1, 2, 3], useCapeSampling: false, widowOptions: inputs.widowOptions, engine: EngineAPI });
     assertEqual(chunk.financialMetricsValid, true, 'Monte Carlo mit Pflege bleibt auswertbar');
     let observedCareYears = 0;
     for (const meta of chunk.runMeta) {
@@ -157,52 +156,6 @@ const sweepConfig = { anzahlRuns: 4, maxDauer: 12, blockSize: 1, baseSeed: 91827
         }
     }
     assert(observedCareYears > 0, 'Fester Seed liefert beobachtbare MC-Pflegejahre');
-    let sweepCareYears = 0;
-    const engine = { ...EngineAPI, simulateSingleYear(input, lastState, ...rest) {
-        const factor = lastState?.cumulativeInflationFactor ?? 1;
-        const careAddition = input.floorBedarf - inputs.startFloorBedarf * factor;
-        if (careAddition > 1) {
-            sweepCareYears++;
-            assertClose(careAddition, 4000 * factor * 1.035 ** (input.aktuellesAlter - inputs.startAlter) * 1.1,
-                1e-7, 'Sweep führt Pflegekosten ab Simulationsstart fort');
-        }
-        return EngineAPI.simulateSingleYear(input, lastState, ...rest);
-    } };
-    const sweep = runSweepChunk({ baseInputs: inputs, paramCombinations: [combo], sweepConfig, engine });
-    assertEqual(sweep.results[0].metrics.invalidCombination, undefined, 'Sweep mit Pflege bleibt auswertbar');
-    assert(sweepCareYears > 0, 'Fester Seed liefert beobachtbare Sweep-Pflegejahre');
-
-    // Nach Ruin werden für Replay weiter effektive Marktjahre gezogen.
-    const ruinInputs = { ...inputs, startVermoegen: 150000, depotwertAlt: 150000, einstandAlt: 150000,
-        tagesgeld: 0, geldmarktEtf: 0, detailledTranches: [], simulationPeople: undefined,
-        goldStrategyDiagnostics: undefined, startFloorBedarf: 100000, startFlexBedarf: 0,
-        minimumFlexAnnual: 0, renteMonatlich: 0 };
-    const ruined = await runMonteCarloChunk({ inputs: ruinInputs, widowOptions: ruinInputs.widowOptions,
-        monteCarloParams: { anzahl: 4, maxDauer: 12, methode: 'block', blockSize: 1, seed: 91827 },
-        logIndices: [0, 1, 2, 3], stressReplayCapture: createStressReplayCaptureRequest([0, 1, 2, 3]), engine: EngineAPI });
-    let shadowCareYears = 0;
-    for (const meta of ruined.runMeta) {
-        const capture = meta.stressReplayCapture;
-        assertEqual(capture.continuation.active, true, 'Ruin aktiviert den Replay-Schattenpfad');
-        let factor = 1;
-        for (const record of capture.years) {
-            const care = record.householdEvents[0].careMetaP1;
-            if (record.continuation && care?.active) {
-                shadowCareYears++;
-                // FR-72 (HE-2): im Heim Heimkosten statt Staffelzusatz, mit derselben Preisfortschreibung.
-                if (care.heimJahr >= 1) {
-                    assertEqual(care.zusatzFloorZiel, 0, 'Pflege nach Ruin: im Heim kein Staffelzusatz');
-                    assertClose(care.heimKosten, residentialMonthly(DEFAULT_RESIDENTIAL_COMPONENTS, care.heimJahr, { grade: care.grade })
-                        * 12 * factor * 1.035 ** record.yearIndex * 1.1, 1e-7, 'Heimkosten nach Ruin verwenden alle tatsächlich gezogenen Inflationsjahre');
-                } else assertClose(care.zusatzFloorZiel, 4000 * factor * 1.035 ** record.yearIndex * 1.1,
-                    1e-7, 'Pflege nach Ruin verwendet alle tatsächlich gezogenen Inflationsjahre');
-                assertClose(care.log_floor_anchor, ruinInputs.startFloorBedarf * factor, 1e-7,
-                    'Grundbedarfsanker bleibt auch nach Ruin auf derselben Jahresbasis');
-            }
-            factor *= 1 + record.inflationPct / 100;
-        }
-    }
-    assert(shadowCareYears > 0, 'Fester Seed liefert Pflegejahre im Replay-Schattenpfad');
 }
 
 // Vollständige JSON-Ergebnisbytes auf Basis cd34b374, vor der Quelländerung
@@ -210,10 +163,8 @@ const sweepConfig = { anzahlRuns: 4, maxDauer: 12, blockSize: 1, baseSeed: 91827
 const noCareHashes = {
     'single-backtest': 'ef9c701841aef6a9928b873c97d9a5ebf598a11869b94d036c4e82e72ba8cf16',
     'single-mc': '7da4803bebf64a461a08b816f9452747a61eaf4debc05496ae248fa000c13df9',
-    'single-sweep': '39d7805c286cea27130234ebc8433b4cb7f6a82d29167e3b9c3e46da3393af46',
     'couple-backtest': '543dd1abccdaa2b06b6834b3368d35e8199fd33ec5e3a27dadcefae586527f06',
-    'couple-mc': '110a70f8957a357870305dcac8b8f0d1f51f565c14e8a27746d3e8041527f313',
-    'couple-sweep': '67c44adf6f004031bda97ba8186d149c8bbfdc37231f277d9c7146a7ebe73641'
+    'couple-mc': '110a70f8957a357870305dcac8b8f0d1f51f565c14e8a27746d3e8041527f313'
 };
 for (const couple of [false, true]) {
     const inputs = { ...structuredClone(fixtureInputs), pflegefallLogikAktivieren: false };
@@ -225,12 +176,11 @@ for (const couple of [false, true]) {
         backtest: runFixture({ input: inputs, selectedPeriod: { startYear: 2000, endYear: 2011 } }),
         mc: await runMonteCarloChunk({ inputs: historicalSurvivorNeeds(inputs), monteCarloParams: { anzahl: 4, maxDauer: 12, blockSize: 1,
             seed: 91827, methode: 'block', rngMode: 'per-run-seed', startYearMode: 'UNIFORM' },
-            widowOptions: inputs.widowOptions, useCapeSampling: false, logIndices: new Set([0, 1, 2, 3]), engine: EngineAPI }),
-        sweep: runSweepChunk({ baseInputs: historicalSurvivorNeeds(inputs), paramCombinations: [combo], sweepConfig, engine: EngineAPI })
+            widowOptions: inputs.widowOptions, useCapeSampling: false, logIndices: new Set([0, 1, 2, 3]), engine: EngineAPI })
     };
     for (const [mode, result] of Object.entries(outputs)) {
         const key = `${couple ? 'couple' : 'single'}-${mode}`;
-        assertEqual(createHash('sha256').update(JSON.stringify(withLegacyCareProvenance(result))).digest('hex'), readFI1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readKG1Hash(noCareHashes[key]))))))))))),
+        assertEqual(createHash('sha256').update(JSON.stringify(withLegacyCareProvenance(result))).digest('hex'), readFZ1Reference(readJA1References(readKR1cReferences(readVB1References(readFI1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readKG1Hash(noCareHashes[key]))))))))))))))),
             `${key}: vollständige Ausgabe ohne Pflege, nur vier FR-41-Herkunftsfelder zurückgeführt, samt KG-1-Texten`);
     }
 }

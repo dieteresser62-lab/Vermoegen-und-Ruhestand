@@ -13,7 +13,7 @@ function assert(condition, message) {
     if (!condition) throw new Error(message || "Assertion failed");
 }
 function assertClose(actual, expected, tolerance, message) {
-    if (Math.abs(actual - expected) > tolerance) {
+    if (!Number.isFinite(actual) || !Number.isFinite(expected) || Math.abs(actual - expected) > tolerance) {
         throw new Error(`${message}: Actual ${actual} != Expected ${expected}`);
     }
 }
@@ -163,8 +163,10 @@ try {
     assert(endStocks >= 200000, 'Should retain significant stock value after crash (>= 200k)');
 
     // STRICT ASSERTION: Verify correct crisis reaction
-    const isEmergencyOrRebal = actionTitle.includes("Not-VK") || actionTitle.includes("Notfall") || actionTitle.includes("Rebalancing") || actionTitle.includes("Liquidität");
-    assert(isEmergencyOrRebal, 'Crash should trigger emergency sale or rebalancing action');
+    // KR-1c (NG-5): Der Zins des Jahres (0,01 % auf 10.000 € = 1 €) steht vor der Entscheidung; die Liquidität liegt damit 1 € über dem
+    // Puffer von 10.000 €, und die Engine füllt im Bär die Runway auf („Runway-Notfüllung (Bär)“ statt „Notfall-Verkauf (Puffer-Sicherung)“).
+    // KR-1c-b: Die Eingabe ist fest, erwartet wird genau dieser Titel.
+    assertEqual(actionTitle, 'Runway-Notfüllung (Bär) (Cap aktiv)', 'Crash should trigger the runway emergency refill');
     assert(vk.vkGes > 0, 'Should sell *some* assets to cover liquidity gap');
 
     assert(!result.isRuin, 'Crash should not cause ruin immediately');

@@ -39,13 +39,11 @@ export function projectCareHint({ storage = persistenceStorage, status = readHou
 /** Heutige Pflegekosten des Haushalts wie in der Balance: Bedarfsbasis aus dem bestätigten Plan, sonst die gespeicherte
  * Bedarfsbasis; der Betrag hängt nicht am Planstatus. Liest nur; auch Personen & Vermögen › Pflege zeigt diese Projektion.
  *
- * @param {{storage: import("../../typcheck/datenvertraege.js").RecordReader, status: object, now?: Date, profileId?: string|null}} options
+ * @param {{storage: import("../../typcheck/datenvertraege.js").RecordReader, status: object, now?: Date}} options
  * @returns {ReturnType<typeof projectBalanceCareNeeds>} Projektion oder null ohne Pflegegrad heute.
  */
-export function projectHouseholdCareNeeds({ storage, status, now = appNow(), profileId = null }) {
-    // UR-1d: Mit profileId gilt der Plan aus dem Bereich dieser Person (Außenperson: ihr Einzelplan); ohne bestätigten Plan keine Projektion.
-    const plan = readBalanceHouseholdPlan({ storage, ...(profileId ? { profileId } : {}) });
-    if (profileId && plan.status !== 'valid') return null;
+export function projectHouseholdCareNeeds({ storage, status, now = appNow() }) {
+    const plan = readBalanceHouseholdPlan({ storage });
     const values = plan.status === 'valid' ? plan.entry.values : readStoredBalanceCareBase(storage);
     return projectBalanceCareNeeds({ status, storage, values, referenceYear: status.referenceYear, now });
 }

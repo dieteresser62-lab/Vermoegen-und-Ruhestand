@@ -2,7 +2,7 @@
 /** @import * as I from "../../../typcheck/speicher-integration.js" */
 import { PROFILE_LOAD_STATUS } from '../profile-state.js';
 import { persistenceStorage } from '../../shared/persistence-facade.js';
-import { createProfile as createProfileInRegistry, ensureDefaultProfile, getCurrentProfileId as getCurrentProfileIdFromRegistry, getProfileData as getProfileDataFromRegistry, getProfileMeta as getProfileMetaFromRegistry, loadProfileRegistry, listProfiles as listProfilesFromRegistry, renameProfile as renameProfileInRegistry, setCurrentProfileId as setCurrentProfileIdInRegistry, setProfileVerbundMembership as setProfileVerbundMembershipInRegistry, updateProfileData as updateProfileDataInRegistry } from '../profile-registry.js';
+import { createProfile as createProfileInRegistry, ensureDefaultProfile, getCurrentProfileId as getCurrentProfileIdFromRegistry, getProfileData as getProfileDataFromRegistry, getProfileMeta as getProfileMetaFromRegistry, loadProfileRegistry, listProfiles as listProfilesFromRegistry, renameProfile as renameProfileInRegistry, setCurrentProfileId as setCurrentProfileIdInRegistry, updateProfileData as updateProfileDataInRegistry } from '../profile-registry.js';
 import { captureProfileData } from './balance-ownership.js';
 import { ACTIVE_PROFILE_KEY, ProfileRecoveryError, readStorageValue } from './storage-access.js';
 import { assertProfileDataLoadable } from './load-guards.js';
@@ -111,14 +111,6 @@ export function createProfile(name) {
  */
 export function renameProfile(id, name) {
     return renameProfileInRegistry(id, name, { captureProfileData });
-}
-
-/**
- * @param {string} profileId
- * @param {boolean} belongs
- */
-export function setProfileVerbundMembership(profileId, belongs) {
-    return setProfileVerbundMembershipInRegistry(profileId, belongs, { captureProfileData });
 }
 
 /**

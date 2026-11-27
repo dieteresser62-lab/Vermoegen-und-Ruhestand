@@ -1,6 +1,8 @@
 /** @import * as O from "../../typcheck/overview-ui.js" */
 import { HOUSEHOLD_PLAN_KEY, PLAN_FIELDS, assertHouseholdPlanRecord, projectPlanToBalance, memberPlanScope, SIMULATOR_LEGACY_PLAN_FIELDS, planEquityCostPct } from '../profile/household-plan.js';
 import { readHouseholdSimulatorNeedsState } from '../simulator/simulator-household-needs-persistence.js';
+import { readHouseholdWidowSettings } from '../simulator/simulator-household-widow-persistence.js';
+import { readHouseholdEquityPurchases } from '../simulator/simulator-household-purchases-persistence.js';
 import { canonicalizeHistoricalContractValue as canonical, sha256Hex } from '../simulator/historical-backtest-contract.js';
 import { CONFIG } from '../balance/balance-config.js';
 import { PROFILE_VALUE_KEYS } from '../profile/profile-state.js';
@@ -12,15 +14,17 @@ import { GERMAN_DEMOGRAPHY_CARE_SURVIVOR_CONTRACT } from '../simulator/german-de
 
 export const OVERVIEW_SIMULATION_KEY = 'overview_simulation_summary_v1';
 export const FINGERPRINT_VERSION = 2;
-export const SIMULATION_KINDS = ['backtest', 'montecarlo', 'workshop'];
+export const SIMULATION_KINDS = ['backtest', 'montecarlo'];
+// WS-1: Zusammenfassungen der entfernten Werkstatt bleiben in alten Ständen lesbar; die App überspringt sie und schreibt keine neuen.
+const LEGACY_SIMULATION_KINDS = ['workshop'];
 export const simulationEntryKey = (scope, kind) => JSON.stringify([scope.key, kind]);
 export const fingerprint = value => sha256Hex(canonical(value));
-/** Modellstand von Sterbetafel und Pflege (LE-1b nach FR-75). Er zählt für Monte Carlo und Werkstatt und für
+/** Modellstand von Sterbetafel und Pflege (LE-1b nach FR-75). Er zählt für Monte Carlo und für
  * Backtests mit Dynamic Flex, deren Horizont aus der Zieltafel kommt. Ändert sich die Revision des Demografievertrags,
  * gelten gespeicherte Ergebnisse als veraltet; Ergebnisse von vor LE-1 haben keinen Modellstand und sind damit einmal
  * veraltet. Ein Backtest ohne Dynamic Flex kennt keinen Tod und bleibt gültig. Es wird nichts geschrieben. */
 export const LIFE_MODEL_STATE = Object.freeze({ demographyCareSurvivor: GERMAN_DEMOGRAPHY_CARE_SURVIVOR_CONTRACT.revision });
-const LIFE_MODEL_KINDS = new Set(['montecarlo', 'workshop']);
+const LIFE_MODEL_KINDS = new Set(['montecarlo']);
 const plain = value => value && typeof value === 'object' && !Array.isArray(value);
 const finite = value => value === null || (typeof value === 'number' && Number.isFinite(value));
 const text = value => typeof value === 'string' && value.trim().length > 0 && value.length <= 180 && !/[\x00-\x1f]/.test(value);
@@ -50,7 +54,7 @@ export function assertSimulationRecord(raw) {
     if (!plain(record) || record.version !== 1 || !plain(record.entries)
         || Object.keys(record).some(key => !['version', 'entries'].includes(key))) throw new Error('Ungültige Simulationszusammenfassung.');
     for (const [key, item] of Object.entries(record.entries)) {
-        if (!plain(item) || !validScope(item.scope) || !SIMULATION_KINDS.includes(item.kind)
+        if (!plain(item) || !validScope(item.scope) || ![...SIMULATION_KINDS, ...LEGACY_SIMULATION_KINDS].includes(item.kind)
             || key !== simulationEntryKey(item.scope, item.kind) || !Number.isFinite(Date.parse(item.completedAt))
             || typeof item.completedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(item.completedAt)
             || new Date(item.completedAt).toISOString().slice(0, 19) !== item.completedAt.slice(0, 19) || !text(item.statement) || !text(item.priceBasis)
@@ -98,9 +102,9 @@ const simFields = new Set(('startFloorBedarf startFlexBedarf minimumFlexAnnual f
     + 'marketCapeRatio dynamicFlex horizonMethod horizonYears survivalQuantile goGoActive goGoMultiplier '
     + 'longevityMode longevityQuantileShift longevityRelativePct longevityBufferYears pflegefallLogikAktivieren pflegeModellTyp '
     + 'pflegeMaxFloor pflegeRampUp pflegeMinDauer pflegeMaxDauer pflegeKostenDrift pflegeKostenDriftBis pflegeKostenDriftDanach pflegeRegionalZuschlag pflegeHeimEigeneAusgaben '
-    + 'entnahmeStrategie bondTargetFactor drawdownTrigger bondRefillThreshold mcAnzahl mcDauer mcBlockSize mcSeed mcMethode rngMode '
+    + 'entnahmeStrategie bondTargetFactor drawdownTrigger bondRefillThreshold mcAnzahl mcDauer mcBlockSize mcSeed mcMethode mcMethodeQuelle rngMode '
     + 'useCapeSampling mcStartYearMode mcStartYearFilter mcStartYearHalfLife mcExcludeEstimatedHistory '
-    + 'widowPensionMode widowPensionPct widowMarriageOffsetYears widowMinMarriageYears survivorFloorPercent survivorFlexPercent survivorMinimumFlexPercent stressPreset tailRiskMode tailRiskProbability tailRiskSeverity tailRiskHorizonYears goldAllokationAktiv goldAllokationProzent goldFloorProzent goldSteuerfrei rebalancingBand tagesgeld simStartVermoegen depotwertAlt geldmarktEtf einstandAlt liquidityRunwayYears runwayTargetMonths runwayMinMonths maxSkimPctOfEq maxBearRefillPctOfEq risikoprofil rentAdjPct').split(' '));
+    + 'survivorFloorPercent survivorFlexPercent survivorMinimumFlexPercent stressPreset tailRiskMode tailRiskProbability tailRiskSeverity tailRiskHorizonYears goldAllokationAktiv goldAllokationProzent goldFloorProzent goldSteuerfrei rebalancingBand tagesgeld simStartVermoegen depotwertAlt geldmarktEtf einstandAlt liquidityRunwayYears maxSkimPctOfEq maxBearRefillPctOfEq risikoprofil rentAdjPct').split(' '));
 const boolFields = /(?:Aktiv|Aktivieren|Active|enabled|dynamicFlex|steuerfrei|Sampling|EstimatedHistory|rente_aktiv|gold_aktiv)$/i;
 function normalize(value, key = '') {
     if (Array.isArray(value)) return value.map(item => normalize(item));
@@ -147,8 +151,8 @@ export function sourceFingerprint({ registry, activeId, liveData = {}, scope, ki
             : key === 'rs_current_profile' ? activeId : liveData[key] ?? null };
         const balanceContext = kind === 'balance' ? readBalancePlanContext({ storage, referenceYear }) : null;
         // Einpersonenpläne können aus älteren Haushaltsbereichen stammen.
-        const membersScope = balanceContext?.scope || (scope.kind === 'single' && registry.profiles[scope.ids[0]]?.meta.belongsToHousehold !== false
-            ? memberPlanScope(Object.keys(registry.profiles).filter(id => registry.profiles[id].meta.belongsToHousehold !== false), { getItem: key => liveData[key] ?? null })
+        const membersScope = balanceContext?.scope || (scope.kind === 'single'
+            ? memberPlanScope(Object.keys(registry.profiles), { getItem: key => liveData[key] ?? null })
             : scope);
         const plan = planRecord?.entries[membersScope.key]?.values;
         const members = scope.ids.map(id => {
@@ -175,7 +179,8 @@ export function sourceFingerprint({ registry, activeId, liveData = {}, scope, ki
             // KO-2 (FR-76): Fondskosten sind ein Planwert, fehlend gilt die Vorgabe; der frühere Simulator-Schlüssel zählt nicht.
             // Ohne Plan rechnet der Simulator mit der Vorgabe. Gleiche Stelle wie in GU-1b, damit Ergebnisse mit 0,5 % gültig bleiben.
             assumptions.equityCostPct = planEquityCostPct(plan);
-            return { id, belongs: profile.meta.belongsToHousehold !== false, person, inputs: effective(inputs, kind), assumptions: kind === 'balance' ? {} : effective(assumptions, kind),
+            // AP-1: `belongs` bleibt fest im Fingerabdruck, damit gespeicherte Ergebnisse früherer Stände gültig bleiben.
+            return { id, belongs: true, person, inputs: effective(inputs, kind), assumptions: kind === 'balance' ? {} : effective(assumptions, kind),
                 health: health?.enabled === false ? { enabled: false } : health,
                 tranches: tranches.map(lot => normalize(lot)).sort((a, b) => canonical(a).localeCompare(canonical(b))) };
         });
@@ -190,14 +195,23 @@ export function sourceFingerprint({ registry, activeId, liveData = {}, scope, ki
             ? readBalancePlannedPosts({ storage, scope: membersScope, year: balanceContext.referenceYear, people: [] }) : null;
         const care = readCareValues({ getItem: key => liveData[key] ?? null });
         const careChanged = Object.hasOwn(careValuesInputPatch(care), 'careValues');
+        const widowSettings = kind === 'balance' ? {} : readHouseholdWidowSettings(storage);
+        const separatePurchases = kind !== 'balance' && readHouseholdEquityPurchases(storage) === 'separate';
         return fingerprint({ version: FINGERPRINT_VERSION, kind, scope, members, plan: projectedPlan ? effective(projectedPlan, 'balance') : null,
             ...(LIFE_MODEL_KINDS.has(kind) || (kind === 'backtest' && usesDynamicFlex) ? { lifeModel: LIFE_MODEL_STATE } : {}),
             needs: normalize(needs?.values || null), mode: plan ? null : liveData.household_withdrawal_mode ?? null,
+            ...(Object.keys(widowSettings).length ? { widowSettings: normalize(widowSettings) } : {}),
+            ...(separatePurchases ? { simulatedEquityPurchases: 'separate' } : {}),
             ...(careChanged ? { careValues: { allowance: care.allowance.values, residentialMonthly: care.residential.monthly,
                 ...(care.residential.components ? { residentialComponents: care.residential.components } : {}) } } : {}),
             ...(plannedExpenses.length ? { plannedExpenses: normalize(plannedExpenses) } : {}),
             ...(balancePosts ? { plannedPayments: normalize(balancePosts) } : {}) });
     } catch { return null; }
+}
+
+/** @param {O.FingerprintOptions} context */
+export function isSimulationSummaryStale(entry, context) {
+    return Boolean(entry && (entry.fingerprintVersion !== FINGERPRINT_VERSION || sourceFingerprint(context) !== entry.sourceFingerprint));
 }
 
 /**
@@ -210,7 +224,6 @@ export function projectSimulationSummaries(context) {
         const items = scope?.ids.map(id => readSimulationRecord(id === activeId ? liveData[OVERVIEW_SIMULATION_KEY]
             : registry.profiles[id]?.data[OVERVIEW_SIMULATION_KEY]).entries[simulationEntryKey(scope, kind)]) || [];
         const entry = items.length && items.every(item => item && canonical(item) === canonical(items[0])) ? items[0] : null;
-        const current = sourceFingerprint({ ...context, kind });
-        return [kind, { entry, stale: Boolean(entry && (entry.fingerprintVersion !== FINGERPRINT_VERSION || !current || current !== entry.sourceFingerprint)) }];
+        return [kind, { entry, stale: isSimulationSummaryStale(entry, { ...context, kind }) }];
     }));
 }

@@ -46,7 +46,8 @@ function renderCoverageBody(hostId, answer, index) {
     return `<div class="sim-card-heading"><h2>${escape(answer.question)}</h2>${info(`${hostId}Info${index + 1}`, 'Erläuterung: Grundbedarf gedeckt', available ? answer.tooltip : `${answer.text} ${answer.tooltip}`)}</div>
         ${available ? `<p class="sim-answer-metric-label">${escape(answer.label)}</p>
         <div class="sim-coverage-figure"><p class="sim-hero-amount">${escape(answer.value)}</p>${answer.countText ? `<p class="sim-answer-count">${escape(answer.countText)}</p>` : ''}</div>
-        <div class="sim-coverage-bar" role="img" aria-label="${escape(`${answer.value} der Läufe gedeckt`)}"><span style="width:${width}%"></span></div>`
+        <div class="sim-coverage-bar" role="img" aria-label="${escape(`${answer.value} der Läufe gedeckt`)}"><span style="width:${width}%"></span></div>
+        ${answer.careAid ? `<p class="ds-help sim-care-aid-share">${escape(answer.careAid.label)}: <strong>${escape(answer.careAid.value)}</strong> ${info(`${hostId}CareAid${index + 1}`, 'Erläuterung: Hilfe zur Pflege', answer.careAid.tooltip)}</p>` : ''}`
         : `<p class="sim-hero-amount">${escape(answer.value)}</p><p>${escape(answer.text)}</p>${answer.technicalRuns ? `<p>Finanziell nicht auswertbar · technische Läufe: ${escape(answer.technicalRuns)}</p>` : ''}`}
         ${line ? `<p class="ds-help">${escape(line)}</p>` : ''}
         ${answer.assumptions ? [answer.assumptions.line, answer.assumptions.careShare, answer.assumptions.wageHint].filter(Boolean)
@@ -254,38 +255,23 @@ export function renderRiskDetails(container, dashboard, { stressMetrics = null }
     const stressState = stressMetrics ? 'aktiv' : 'aus', stressChanged = container.dataset?.riskStress !== stressState;
     const section = title => dashboard.detailSections.find(item => item.title === title);
     const cards = item => `<div class="kpi-grid">${item.kpis.map(renderKpiCard).join('')}</div>`;
-    const operative = section('Operative Details'), risk = section('Risiko-Details'), tail = section('Tail-Risk-Overlay');
+    const operative = section('Operative Details'), risk = section('Risiko-Details'), tail = section('Zusätzliche Extremereignisse');
     const reference = dashboard.reportingReferenceNotice
         ? `<p class="reporting-reference-note ds-note"><span>Entnahmequote: Berichtsreferenz</span>${metricInfo('Entnahmequote: Berichtsreferenz', dashboard.reportingReferenceNotice)}<span class="kpi-description">${dashboard.reportingReferenceNotice}</span></p>` : '';
-    const known = new Set(['Operative Details', 'Risiko-Details', 'Tail-Risk-Overlay']);
+    const known = new Set(['Operative Details', 'Risiko-Details', 'Zusätzliche Extremereignisse']);
     const rows = [
         operative ? riskRow('operativ', operative.title, kpiSentence(operative.kpis), cards(operative), wasOpen('operativ')) : '',
         risk ? riskRow('risiko', risk.title, kpiSentence(risk.kpis), cards(risk) + reference, wasOpen('risiko'))
             : reference ? riskRow('risiko', 'Risiko-Details', 'Entnahmequote: Berichtsreferenz', reference, wasOpen('risiko')) : '',
         tail ? riskRow('tail', tail.title, kpiSentence(tail.kpis), cards(tail), wasOpen('tail'))
-            : riskRow('tail', 'Tail-Risk-Overlay', 'Aus · keine zusätzlichen Krisenjahre eingespielt', '<p class="ds-help">Das Tail-Risk-Overlay ist für diesen Lauf ausgeschaltet. Einschalten in den Monte-Carlo-Einstellungen.</p>', wasOpen('tail')),
+            : riskRow('tail', 'Zusätzliche Extremereignisse', 'Aus · keine zusätzlichen Krisenjahre eingespielt', '<p class="ds-help">Zusätzliche Extremereignisse sind für diesen Lauf ausgeschaltet. Einschalten in den Monte-Carlo-Einstellungen.</p>', wasOpen('tail')),
         ...dashboard.detailSections.filter(item => !known.has(item.title)).map((item, index) => riskRow(`extra${index}`, item.title, kpiSentence(item.kpis), cards(item), wasOpen(`extra${index}`))),
         riskRow('stress', 'Stress-Szenario', stressMetrics ? `${stressMetrics.presetLabel} · betrifft die ersten ${stressMetrics.years} Jahre` : 'Kein Stress-Szenario gewählt · in den Monte-Carlo-Einstellungen',
             stressMetrics ? '<div class="sim-risk-stress-anchor" hidden></div>' : '<p class="ds-help">Für diesen Lauf ist kein Stress-Szenario gewählt.</p>', stressChanged ? Boolean(stressMetrics) : wasOpen('stress', Boolean(stressMetrics)))
     ].join('');
     if (container.dataset) container.dataset.riskStress = stressState;
-    container.innerHTML = `<div class="sim-card-heading"><h2>Weitere Kennzahlen</h2><button type="button" class="ds-text-link" data-risk-all aria-expanded="false">▸ Alle Details zeigen</button></div><div class="sim-risk-rows">${rows}</div>`;
+    container.innerHTML = `<div class="sim-card-heading"><h2>Weitere Kennzahlen</h2></div><div class="sim-risk-rows">${rows}</div>`;
     container.style.display = 'block';
-    const all = /** @type {HTMLButtonElement | null} */ (container.querySelector?.('[data-risk-all]'));
-    const details = () => /** @type {HTMLDetailsElement[]} */ ([...(container.querySelectorAll?.('[data-risk-row]') || [])]);
-    const sync = () => {
-        if (!all) return;
-        const open = details().length > 0 && details().every(row => row.open);
-        all.textContent = open ? '▾ Alle Details ausblenden' : '▸ Alle Details zeigen';
-        all.setAttribute('aria-expanded', String(open));
-    };
-    all?.addEventListener('click', () => {
-        const open = !details().every(row => row.open);
-        for (const row of details()) row.open = open;
-        sync();
-    });
-    for (const row of details()) row.addEventListener?.('toggle', sync);
-    sync();
     bindResultInfoPopups();
 }
 
@@ -301,8 +287,8 @@ export function renderRiskKeyFigures(host, distribution, dashboard) {
     const euro = value => Number.isFinite(value) ? formatChartEuro(value) : '—';
     const exact = value => Number.isFinite(value) ? formatCurrencySafe(value) : '';
     const available = distribution?.available === true;
-    const drawdownReal = dashboard?.drawdownKpis?.find(kpi => kpi.title === 'Max. Drawdown real (Median)');
-    const drawdownNominal = dashboard?.drawdownKpis?.find(kpi => kpi.title === 'Max. Drawdown nominal (Median)');
+    const drawdownReal = dashboard?.drawdownKpis?.find(kpi => kpi.title === 'Max. Rückgang real (Median)');
+    const drawdownNominal = dashboard?.drawdownKpis?.find(kpi => kpi.title === 'Max. Rückgang nominal (Median)');
     const share = dashboard?.detailSections?.flatMap(item => item.kpis).find(kpi => kpi.title.startsWith('Zeitanteil realisierte Entnahmequote'));
     const basis = distribution?.mode === 'nominal' ? 'nominale Euro' : 'heutige Euro';
     const figure = (label, value, help, title = '') => `<div class="sim-risk-figure"><span class="sim-risk-figure-label">${escape(label)}</span><strong class="sim-risk-figure-value"${title ? ` title="${escape(title)}"` : ''}>${escape(value)}</strong><span class="ds-help">${escape(help)}</span></div>`;
@@ -336,18 +322,12 @@ export function renderStressSection(referenceContainer, stressMetrics) {
     newContainer.className = 'ds-card';
 
     const { presetLabel, years, kpis } = stressMetrics;
-    let html = `
+    newContainer.innerHTML = `
         <h3 class="unified-kpi-header">Ergebnisse des Stress-Szenarios</h3>
         <div class="ds-note">
             <strong>${presetLabel}</strong> (betrifft die ersten ${years} Jahre)
         </div>
-        <div class="kpi-grid">`;
-    html += kpis.slice(0, 3).map(renderKpiCard).join('');
-    html += '</div><div class="kpi-grid" style="margin-top:15px;">';
-    html += kpis.slice(3).map(renderKpiCard).join('');
-    html += '</div>';
-
-    newContainer.innerHTML = html;
+        <div class="kpi-grid">${kpis.map(renderKpiCard).join('')}</div>`;
     referenceContainer.parentNode.insertBefore(newContainer, referenceContainer.nextSibling);
     bindResultInfoPopups();
 }

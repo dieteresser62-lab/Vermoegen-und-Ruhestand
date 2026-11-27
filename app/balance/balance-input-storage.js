@@ -21,7 +21,7 @@ import { LIQUIDITY_RUNWAY_CONTRACT_V1 } from '../../types/liquidity-runway-contr
 import { LONGEVITY_DEFAULTS, normalizeLongevityMode } from '../simulator/dynamic-flex-longevity-contract.js';
 import { cloneBalanceState, validateBalanceInputs, prepareEngineLastState, projectBalancePlanHistory,
     createBalanceCommitBaseFingerprint, createBalanceFingerprint } from './balance-update-pipeline.js';
-import { projectBalanceCareNeeds, applyBalanceCareNeeds, personalCareCosts, careHintPersons } from './balance-care.js';
+import { projectBalanceCareNeeds, applyBalanceCareNeeds, personalCareCosts, careHintPersons, estimateBalanceCareAid, homeAloneCarrier, saleableHome } from './balance-care.js';
 import { resolvePlanOverviewRates } from '../simulator/simulator-plan-overview.js';
 import { careHintDone } from '../shared/household-care-hint.js';
 
@@ -410,8 +410,9 @@ export function buildBalanceEngineInputFromStorage({ scope, storage, referenceYe
     // FR-73 Punkt 10: Hinweis bei Pflegegrad heute mit den Beträgen derselben Projektion; „Erledigt“ liegt im Haushaltsrecord.
     const careHint = { done: careHintDone(storage), persons: careHintPersons(careNeeds) };
     if (careNeeds && readPartnership(storage.getItem(PARTNERSHIP_KEY)).status === 'unmarried') {
-        const personal = personalCareCosts(careNeeds);
-        for (const entry of profiles) Object.assign(entry, { personalCareNeed: personal[entry.profileId] || 0 });
+        const personal = personalCareCosts(careNeeds), atHome = homeAloneCarrier(careNeeds);
+        // NK-2 (FR-84 Punkt 18): Die Person zu Hause trägt den Grundbedarf zu Hause allein, wenn die andere im Heim lebt.
+        for (const entry of profiles) Object.assign(entry, { personalCareNeed: personal[entry.profileId] || 0, ...(atHome ? { homeAloneCarrier: atHome } : {}) });
     }
     const plannedPosts = readBalancePlannedPosts({ storage, scope: plan.scope, year: status.referenceYear, people: status.entries });
     if (plannedPosts) {
@@ -420,6 +421,35 @@ export function buildBalanceEngineInputFromStorage({ scope, storage, referenceYe
         // FR-43 (11.11.2026): Feste geplante Ausgaben des Planungsjahres wirken wie ein höherer Grundbedarf.
         const fixedExpenses = fixedPlannedTotal(plannedPosts);
         if (fixedExpenses > 0) inputData.floorBedarf = (Number(inputData.floorBedarf) || 0) + fixedExpenses;
+    }
+    // FR-84 Punkt 11: Pflegekosten, die Einkünfte und Geldvermögen nach dem Grundbedarf nicht mehr tragen, zahlt voraussichtlich der
+    // Staat. Sie gehören nicht zum Bedarf des Haushalts; so erzeugen sie beim Partner weder Verkäufe noch höhere Auszahlungen.
+    const careAidOptions = { careNeeds, profiles, inputData, unmarried: readPartnership(storage.getItem(PARTNERSHIP_KEY)).status === 'unmarried',
+        mode: plan.status === 'valid' ? plan.entry.values.householdWithdrawalMode : '', lossCarry: persistentState.lastState?.taxState?.lossCarry || 0 };
+    const careAid = careNeeds ? estimateBalanceCareAid(careAidOptions) : null;
+    // NK-2 (FR-84 Punkt 20): Hat die Person eine vermietete oder leer stehende eigene Immobilie, nennt der Hinweis, dass sie zuerst verkauft wird.
+    if (careAid) for (const row of careAid.persons) if (saleableHome(status.entries, careNeeds, row.profileId)) Object.assign(row, { homeFirst: true });
+    if (careAid) {
+        inputData.floorBedarf = Math.max(0, (Number(inputData.floorBedarf) || 0) - careAid.total);
+        inputData.careAid = careAid;
+        for (const row of careAid.persons) {
+            const entry = /** @type {any} */ (profiles.find(item => item.profileId === row.profileId));
+            if (entry?.personalCareNeed > 0) entry.personalCareNeed = Math.max(0, entry.personalCareNeed - row.amount);
+        }
+    }
+    // NK-2 (Codex 4): Auch im Folgejahr gehört die voraussichtliche Hilfe zur Pflege nicht zum Bedarf; sonst stiegen Liquiditätsziel und
+    // Verkäufe für Pflege, die der Staat trägt.
+    const nextCareAid = careNeeds && inputData.careLiquidityProjection ? estimateBalanceCareAid({ ...careAidOptions, nextYear: { currentAid: careAid } }) : null;
+    if (nextCareAid) {
+        inputData.careLiquidityProjection = { ...inputData.careLiquidityProjection, floor: Math.max(0, inputData.careLiquidityProjection.floor - nextCareAid.total) };
+        inputData.careAidNext = nextCareAid;
+    }
+    // NK-2d (Abnahme J1): Trägt die Hilfe die Pflege beider Jahre ganz und ändert die Pflege weder den Grundbedarf zu Hause noch den Flex,
+    // bleibt das Liquiditätsziel wie ohne Pflege (sonst hob allein die Folgejahresvorschau mit Folgejahrespreisen das Ziel).
+    const carePart = (/** @type {any} */ need) => (Number(need?.total) || 0) - (Number(need?.homeFloor) || 0);
+    if (careAid && nextCareAid && careAid.total >= carePart(careNeeds.current) - 0.005 && nextCareAid.total >= carePart(careNeeds.next) - 0.005
+        && careNeeds.current.homeFloorFactor === 1 && careNeeds.next.homeFloorFactor === 1 && careNeeds.current.flexFactor === careNeeds.next.flexFactor) {
+        delete inputData.careLiquidityProjection;
     }
     // FR-43: Die Pflegeprojektion des Folgejahrs enthält dessen feste Ausgaben wie der Simulator.
     const projection = inputData.careLiquidityProjection;

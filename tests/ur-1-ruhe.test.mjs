@@ -1,5 +1,5 @@
 // UR-1: Pflege-Reiter mit Aufklappzeilen, Pflegeband und übernommene Rentenanpassung auf der Personenkarte,
-// erfasste Vermögensstände als Aufklappzeile. Nur Anzeige: Lesen und Aufklappen schreiben nie. Testdatum 23.10.2026.
+// Nur Anzeige: Lesen und Aufklappen schreiben nie. Testdatum 23.10.2026. Die Aufklappzeile „Erfasste Vermögensstände“ entfiel mit VS-2.
 import { pfa2Records, countingStorage, IDS } from './helpers/pfa-2-balance.mjs';
 import { setAppTestDate } from '../app/shared/app-clock.js';
 import { readCareFieldValues } from '../app/shared/care-price-fields.js';
@@ -7,8 +7,8 @@ import { readCareValues, officialCareCosts } from '../app/shared/household-care-
 import { careRowSummaries, setCareRows, revealCareRowFor, CARE_ROWS } from '../app/tranches/tranchen-manager-care-rows.js';
 import { pensionAdoption, renderManagerHouseholdAdoption, careReserveHouseholdText, genitive } from '../app/tranches/tranchen-manager-household-adoption.js';
 import { projectManagerProfiles } from '../app/tranches/tranchen-manager-profiles.js';
-import { wealthRecordsSummary, renderWealthRecords } from '../app/tranches/tranchen-history-records.js';
 import { CARE_HINT_TEXT, renderCareHint, refreshCareHints } from '../app/shared/care-hint.js';
+import { syncManagerCareToday } from '../app/tranches/tranchen-manager-care.js';
 setAppTestDate('2026-10-23');
 
 const plain = text => String(text).replace(/ /g, ' ');
@@ -50,14 +50,13 @@ function rowsDocument() {
         node(`managerCareRow${key}Toggle`); node(`managerCareRow${key}Action`);
         node(`managerCareRow${key}Body`, { hidden: true });
     }
-    node('managerCareToggleAll');
     nodes.get('managerCareRowFlexBody').children.push(node('managerCareFlex3'));
     nodes.get('managerCareRowRiseBody').children.push(node('managerCareRegional'));
     node('pflege');
     return { getElementById: id => nodes.get(id) ?? null, nodes };
 }
 
-// 2. Aufklappen ohne Schreiben; „Alle Details“ und Einzelzeilen bleiben konsistent.
+// 2. Aufklappen ohne Schreiben; Einzelzeilen bleiben konsistent (OP-3: kein „Alle Details“ mehr).
 {
     const { storage, counts } = countingStorage(pfa2Records({}).records);
     readCareFieldValues(storage);
@@ -65,9 +64,8 @@ function rowsDocument() {
     setCareRows(doc, { Home: true });
     assert(!doc.nodes.get('managerCareRowHomeBody').hidden && doc.nodes.get('managerCareRowHomeAction').textContent === '▾ ausblenden'
         && doc.nodes.get('managerCareRowHomeToggle').attributes['aria-expanded'] === 'true', 'Einzelne Zeile öffnet mit Text und ARIA');
-    assertEqual(doc.nodes.get('managerCareToggleAll').textContent, '▸ Alle Details zeigen', 'Gemischter Zustand bietet „Alle Details zeigen“');
     setCareRows(doc, Object.fromEntries(CARE_ROWS.map(key => [key, true])));
-    assertEqual(doc.nodes.get('managerCareToggleAll').textContent, '▾ Alle Details ausblenden', 'Alle offen: Gesamtknopf schließt');
+    assert(CARE_ROWS.every(key => doc.nodes.get(`managerCareRow${key}Action`).textContent === '▾ ausblenden'), 'Alle offen: jede Zeile bietet Ausblenden');
     setCareRows(doc, Object.fromEntries(CARE_ROWS.map(key => [key, false])));
     assert(CARE_ROWS.every(key => doc.nodes.get(`managerCareRow${key}Body`).hidden), 'Alle wieder zugeklappt');
     assertEqual(counts.setItem + counts.removeItem, 0, 'Auf- und Zuklappen schreibt nie');
@@ -96,9 +94,9 @@ function rowsDocument() {
     assertEqual(`${adopted.value} ${adopted.unit}`, '2,0 % fest', 'Zweite Person sieht die Anpassung des Hauptprofils');
     assertEqual(adopted.reason, `Übernommen: Im Haushalt gilt die Rentenanpassung von ${helga} für beide Renten. Ändern auf ${genitive(helga)} Personenkarte.`, 'Grund nennt das Hauptprofil');
     assertEqual(pensionAdoption(projectManagerProfiles(registry, IDS[0]), IDS[0]), null, 'Hauptprofil bearbeitet seine eigene Anpassung');
-    const outside = structuredClone(registry);
-    outside.profiles[IDS[1]].meta.belongsToHousehold = false;
-    assertEqual(pensionAdoption(projectManagerProfiles(outside, IDS[1]), IDS[1]), null, 'Person außerhalb des Haushalts: wie bisher');
+    const alone = structuredClone(registry);
+    delete alone.profiles[IDS[0]];
+    assertEqual(pensionAdoption(projectManagerProfiles(alone, IDS[1]), IDS[1]), null, 'Einpersonenhaushalt bearbeitet seine eigene Anpassung');
     const nodes = Object.fromEntries(['profilePensionAdjustment', 'profilePensionAdopted', 'profilePensionAdoptedValue', 'profilePensionAdoptedUnit',
         'profilePensionAdoptedReason', 'managerIncomeAdoptedNote', 'managerHouseholdCareSettings'].map(id => [id, { hidden: false, value: '', textContent: '' }]));
     nodes.profileRentenanpassungArt = { value: 'wage' }; nodes.profileRentenanpassungPct = { value: '0' };
@@ -110,24 +108,9 @@ function rowsDocument() {
     assertEqual(genitive('Klaus'), 'Klaus’', 'Genitiv bei Namen auf s');
     // B3: Satz zur Pflegereserve stimmt mit der Haushaltsrechnung (Beträge addiert, Einstellungen der ersten aktiven Person).
     assert(careReserveHouseholdText(projection, IDS[1]).startsWith('Im Haushalt werden die Zielbeträge aktiver Pflegereserven addiert.'), 'Pflegereserve: Satz im Haushalt');
-    assertEqual(careReserveHouseholdText(projectManagerProfiles(outside, IDS[1]), IDS[1]), '', 'Ohne zweite Person im Haushalt kein Satz');
+    assertEqual(careReserveHouseholdText(projectManagerProfiles(alone, IDS[1]), IDS[1]), '', 'Ohne zweite Person im Haushalt kein Satz');
 }
 
-// 5. Erfasste Vermögensstände: Kopfzeile aus Anzahl und letztem Datum; ohne Stände entfällt die Zeile; Klappzustand bleibt.
-{
-    assertEqual(wealthRecordsSummary([{ asOf: '2026-03-31' }, { asOf: '2026-11-09' }, { asOf: '2026-06-30' }]), '3 Einträge · zuletzt 09.11.2026 · nominale Euro', 'Mehrere Stände');
-    assertEqual(wealthRecordsSummary([{ asOf: '2026-01-02' }]), '1 Eintrag · zuletzt 02.01.2026 · nominale Euro', 'Ein Stand');
-    const nodes = Object.fromEntries(['managerWealthRecords', 'managerWealthRecordsSummary', 'managerWealthRecordsAction'].map(id => [id, { hidden: false, textContent: '' }]));
-    nodes.managerWealthRecordsBody = { hidden: true };
-    const doc = { getElementById: id => nodes[id] ?? null };
-    renderWealthRecords(doc, []);
-    assert(nodes.managerWealthRecords.hidden, 'Ohne Stände keine Zeile');
-    renderWealthRecords(doc, [{ asOf: '2026-01-02' }]);
-    assert(!nodes.managerWealthRecords.hidden && nodes.managerWealthRecordsBody.hidden && nodes.managerWealthRecordsAction.textContent === '▸ zeigen', 'Beim Öffnen der Seite zugeklappt');
-    nodes.managerWealthRecordsBody.hidden = false;
-    renderWealthRecords(doc, [{ asOf: '2026-01-02' }, { asOf: '2026-02-02' }]);
-    assert(!nodes.managerWealthRecordsBody.hidden && nodes.managerWealthRecordsAction.textContent === '▾ ausblenden', 'Neu zeichnen behält den Klappzustand');
-}
 // 6. UR-1b: Der einmalige Pflegehinweis auf der Personenkarte wiederholt den Betrag des Pflegebands nicht; Haushalt & Plan behält ihn.
 {
     const host = () => ({ hidden: true, html: '', set innerHTML(value) { this.html = value; }, get innerHTML() { return this.html; }, replaceChildren() { this.html = ''; } });
@@ -149,5 +132,55 @@ function rowsDocument() {
     assert(!plain(hosts.profileCareHint.html).includes(`Pflege ${werner}:`) && plain(hosts.managerPlanCareHint.html).includes(`Pflege ${werner}: 1.500 €/Monat`),
         'Personenkarte ohne doppelte Zeile, Haushalt & Plan mit Betrag');
     assertEqual(counts.setItem + counts.removeItem, 0, 'Hinweise lesen ohne Schreiben');
+}
+
+// 7.–9. Aus dem entfallenen UR-1c-Test die Fälle ohne Außenperson.
+const spaces = text => String(text).replace(/[  ]/g, ' ');
+/** Pflegeband der geöffneten Person Werner (Grad 3 zu Hause) mit dem eigenen Wert `own` im Formular; liest ohne Schreiben. */
+function wernerCareLine(own) {
+    const records = pfa2Records({ care: [null, { grade: 3, form: 'home-support' }], sim: { sim_pflegeRegionalZuschlag: '20' } }).records;
+    const registry = JSON.parse(records.rs_profiles_v1);
+    Object.assign(records, registry.profiles[IDS[1]].data, { rs_current_profile: IDS[1], rs_active_profile: IDS[1] });
+    const { storage, counts } = countingStorage(records);
+    const nodes = { profileCareGradeToday: { value: '3' }, profileCareFormToday: { value: 'home-support' }, profileCareHomeCostsMonthly: { value: own },
+        profileCareAllowanceSummary: {} };
+    syncManagerCareToday({ getElementById: id => nodes[id] ?? null }, storage);
+    assertEqual(counts.setItem + counts.removeItem, 0, 'Pflegeband liest ohne Schreiben');
+    return spaces(nodes.profileCareAllowanceSummary.textContent);
+}
+
+// 7. Haushaltsmitglied Grad 3 zu Hause, Staffel 1.500 €, Regionalzuschlag 20 % → 1.800 €/Monat.
+{
+    const line = wernerCareLine('');
+    assert(line.startsWith('Angesetzt: 1.800 €/Monat Staffel für Grad 3'), `Haushaltsmitglied mit Zuschlag: ${line}`);
+}
+
+// 8. UR-1d: Zwei namensgleiche Profile im Pflegehinweis; nur die geöffnete Person (Profil-ID) entfällt.
+{
+    const host = () => ({ hidden: true, html: '', set innerHTML(value) { this.html = value; }, get innerHTML() { return this.html; }, replaceChildren() { this.html = ''; } });
+    const persons = [{ profileId: 'alex_1', name: 'Alex', grade: 3, residential: false, own: false, monthly: 1500 },
+        { profileId: 'alex_2', name: 'Alex', grade: 2, residential: false, own: false, monthly: 500 }];
+    const card = host();
+    renderCareHint(card, { done: false, persons }, { except: 'alex_1' });
+    const text = spaces(card.html);
+    assert(!text.includes('1.500 €/Monat') && text.includes('Pflege Alex: 500 €/Monat'), `Namensgleiche andere Person bleibt im Hinweis (${text})`);
+    const records = pfa2Records({ care: [{ grade: 2, form: 'family' }, { grade: 3, form: 'home-support' }] }).records;
+    const registry = JSON.parse(records.rs_profiles_v1);
+    for (const id of IDS) registry.profiles[id].meta.name = 'Alex';
+    records.rs_profiles_v1 = JSON.stringify(registry);
+    Object.assign(records, registry.profiles[IDS[1]].data, { rs_current_profile: IDS[1], rs_active_profile: IDS[1] });
+    const hosts = { profileCareHint: Object.assign(host(), { id: 'profileCareHint' }), managerPlanCareHint: Object.assign(host(), { id: 'managerPlanCareHint' }) };
+    const { storage, counts } = countingStorage(records);
+    refreshCareHints({ getElementById: id => hosts[id] || null }, { storage });
+    const onCard = spaces(hosts.profileCareHint.html), onPlan = spaces(hosts.managerPlanCareHint.html);
+    assert(!onCard.includes('Pflege Alex: 1.500 €/Monat') && onCard.includes('Pflege Alex: 500 €/Monat') && onPlan.includes('Pflege Alex: 1.500 €/Monat'),
+        `Personenkarte: nur die geöffnete Alex entfällt (${onCard})`);
+    assertEqual(counts.setItem + counts.removeItem, 0, 'Hinweise lesen ohne Schreiben');
+}
+
+// 9. Ungespeicherter eigener Wert (Formular 250 €, gespeichert leer) ist nicht verlässlich berechenbar: keine Betragszeile statt einer falschen.
+{
+    const line = wernerCareLine('250');
+    assert(line.startsWith('Angesetzt: eigener Wert') && !/\d €\/Monat eigener Wert/.test(line), `Ungespeicherter eigener Wert: ohne Betrag (${line})`);
 }
 setAppTestDate(null);

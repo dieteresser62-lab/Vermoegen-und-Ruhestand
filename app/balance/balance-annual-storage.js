@@ -14,7 +14,16 @@ import { stripBalancePersonInputs } from '../profile/profile-person-data.js';
 import { createProfileOwnedBalanceState } from '../profile/profile-storage.js';
 import { captureProfileData } from '../profile/profile-live-storage.js';
 import { PROFILE_SCOPED_FIXED_KEYS } from '../profile/profile-state.js';
-import { deriveYearEndMarketInputs } from './balance-market-preview.js';
+import { deriveMarketHigh } from './balance-market-preview.js';
+import { highCorrectionsOf, readAthCorrections } from './balance-ath-corrections.js';
+import { readDailyPrices } from '../tranches/tranchen-history-store.js';
+
+/** Splits mit Datum im Abschlussjahr für das Jahresprotokoll (ATH-1b). @param {unknown} state @param {number} targetYear */
+const yearSplits = (state, targetYear) => {
+    const splits = readAthCorrections(/** @type {any} */ (state)).splits.filter(split => split.asOf.startsWith(`${targetYear}-`))
+        .map(({ asOf, ratio, before, after }) => ({ asOf, ratio, athBefore: before.ath, athAfter: after.ath }));
+    return splits.length ? { splits } : {};
+};
 
 /** Der Adapter bleibt privat; keine Weiterleitung von Writes an den Quellspeicher. */
 /**
@@ -75,7 +84,7 @@ export function applyAdoptedPlanPatch(values, patch) {
  * @returns Ergebnis der bestehenden Operation.
  */
 /** @param {import('../../typcheck/balance-ui.js').ComputeAnnualOptions} [options] @returns Jahresentwurf mit eingefrorenen Quellen. */
-export function computeAnnualPlanUpdate({ targetYear, marketData, yearHigh, scope, storage, now } = {}) {
+export function computeAnnualPlanUpdate({ targetYear, marketData, scope, storage, now } = {}) {
     if (!Number.isInteger(targetYear) || targetYear < 1900 || targetYear >= 9999) throw new Error('Ungültiges Abschlussjahr.');
     const periodId = `calendar-year:${targetYear}`, planningYear = targetYear + 1;
     const baseRecords = captureAnnualRecords(storage), adapter = annualRecordStorage(baseRecords);
@@ -139,16 +148,13 @@ export function computeAnnualPlanUpdate({ targetYear, marketData, yearHigh, scop
     assertPlanValues(values);
     adapter.setItem(HOUSEHOLD_PLAN_KEY, buildPlanRecord(adapter.getItem(HOUSEHOLD_PLAN_KEY), [{ scope: before.scope, values }], { now: () => timestamp }).raw);
     const old = before.readerInputData, price = quote.price, oldATH = old.ath;
-    const marketInputs = deriveYearEndMarketInputs(/** @type {import('./balance-market-preview.js').AnnualMarketInputs} */ (old), price);
-    if (yearHigh) {
-        const highDay = Date.parse(`${yearHigh.asOf}T00:00:00Z`);
-        if (!Number.isFinite(yearHigh.value) || yearHigh.value <= marketInputs.ath || !/^\d{4}-\d{2}-\d{2}$/.test(yearHigh.asOf)
-            || !Number.isFinite(highDay) || new Date(highDay).toISOString().slice(0, 10) !== yearHigh.asOf
-            || yearHigh.asOf < `${targetYear - 1}-12-31` || yearHigh.asOf > quote.asOf)
-            throw new Error('Das gewählte Jahreshoch ist ungültig. Bitte die Marktdaten erneut prüfen.');
-        marketInputs.ath = yearHigh.value;
-        marketInputs.jahreSeitAth = (Date.parse(`${targetYear}-12-31T00:00:00Z`) - highDay) / 86400000 / 365.2425;
-    }
+    // FR-89: dasselbe Allzeithoch wie Vorschau und Abschlussdialog, Alter eines Tageshochs bis zum 31.12. des Abschlussjahrs.
+    const highMeta = (before.profiles.find(profile => profile.balanceState?.annualPeriodMetadata?.lastCommittedPeriod)?.balanceState
+        || before.persistentState).annualMarketDataMeta?.ath;
+    const market = deriveMarketHigh({ inputs: /** @type {import('./balance-market-preview.js').AnnualMarketInputs} */ (old), quote,
+        yearEndDate: `${targetYear - 1}-12-31`, storedHighAsOf: highMeta?.value === oldATH ? highMeta.lastHighAsOf ?? null : null,
+        series: readDailyPrices(storage).value?.symbols['VWCE.DE'] ?? null, ageUntil: `${targetYear}-12-31`, corrections: highCorrectionsOf(before.persistentState) });
+    const marketInputs = market.inputs;
     state.inputs = { ...state.inputs, inflation: inflation.rate, ...marketInputs };
     for (const [id, value] of Object.entries({ ...marketInputs, inflation: state.inputs.inflation })) {
         (state.balanceInputFields ||= {})[id] = { value: String(value), checked: false };
@@ -178,12 +184,12 @@ export function computeAnnualPlanUpdate({ targetYear, marketData, yearHigh, scop
     if (state.lastState || householdState) state.lastInflationAppliedAtYear = planningYear;
     if (householdState) state.profilverbundHouseholdLastState = structuredClone(householdState);
     adapter.setItem('rs_profiles_v1', JSON.stringify(updatedRegistry));
-    const lastHighAsOf = yearHigh?.asOf || (price >= oldATH ? quote.asOf : state.annualMarketDataMeta?.ath?.lastHighAsOf || null);
+    const lastHighAsOf = market.high.origin === 'daily_close' ? market.high.asOf
+        : price >= oldATH ? quote.asOf : state.annualMarketDataMeta?.ath?.lastHighAsOf || null;
     state.annualMarketDataMeta = { schemaVersion: 1, periodId, targetYear, price, asOf: quote.asOf,
         ticker: quote.ticker, source: quote.source, ...(inflation.fetchStatus === 'ok_synthetic' ? { inflation } : {}),
-        ath: { value: marketInputs.ath, yearsSince: marketInputs.jahreSeitAth, evaluatedAsOf: quote.asOf, lastHighAsOf,
-            ...(yearHigh ? { reading: 'year_high' } : {}) } };
-    const { sourceLabel, errors, ...capeMeta } = cape;
+        ath: { value: marketInputs.ath, yearsSince: marketInputs.jahreSeitAth, evaluatedAsOf: quote.asOf, lastHighAsOf } };
+    const { sourceLabel, errors, storedCapeWarning, ...capeMeta } = cape;
     state.capeMeta = { ...state.capeMeta, ...capeMeta };
     state = stripBalancePersonInputs(state);
     adapter.setItem(CONFIG.STORAGE.LS_KEY, JSON.stringify(state));
@@ -198,12 +204,13 @@ export function computeAnnualPlanUpdate({ targetYear, marketData, yearHigh, scop
     if (!people.ready) throw people.error || new Error(people.message);
     const ageByPerson = Object.fromEntries(people.persons.map(person => [person.profileId, person.age]));
     return { status: 'prepared', periodId, targetYear, planningYear, scope: before.scope, profileId: before.profileId,
-        ...(yearHigh ? { yearHigh: { ...yearHigh } } : {}),
         baseRecords, records: adapter.records, values, ageByPerson, inflation, marketData: { inflation, etf: quote, cape },
         before, snapshot: { plan: structuredClone(values), inflation: state.inputs.inflation, ageByPerson },
         results: { inflation, cape, age: { old: before.inputData.aktuellesAlter, new: people.persons.find(p => p.profileId === people.calculationProfileId)?.age },
             etf: { price, date: quote.date.toLocaleDateString('de-DE', { timeZone: 'UTC' }), asOf: quote.asOf,
                 ticker: quote.ticker, source: quote.source, targetYear, periodId,
-                ath: { old: oldATH, new: marketInputs.ath, isNew: yearHigh ? true : price > oldATH, yearsSince: marketInputs.jahreSeitAth, evaluatedAsOf: quote.asOf, lastHighAsOf,
-                    ...(yearHigh ? { reading: 'year_high' } : {}) } }, errors: [] } };
+                ath: { old: oldATH, new: marketInputs.ath, isNew: marketInputs.ath > oldATH, yearsSince: marketInputs.jahreSeitAth, evaluatedAsOf: quote.asOf, lastHighAsOf,
+                    // ATH-1b: Splits des Abschlussjahrs stehen im Protokoll.
+                    ...yearSplits(before.persistentState, targetYear) } },
+            errors: [] } };
 }

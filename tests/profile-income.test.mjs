@@ -46,7 +46,7 @@ try {
     assertEqual(projectPersonPension({ profile_rente_monatlich: '1100.75', profile_rentenbeginn: '2026-07-01', [INCOME_KEY]: writeIncome([fixed]) }, 2026).sonstigeEinkuenfte, 3000, 'Balance erhält den Monatsdurchschnitt der festen Zeilen');
     for (const patch of [{ betragMonat: 0 }, { betragMonat: -1 }, { betragMonat: Infinity }, { ab: '2026-13' }, { bis: '2026-03' }, { anpassung: 'fremd' }]) assert(incomeErrors([{ ...fixed, ...patch }]).length > 0, 'Ungültige feste Einkünfte werden abgewiesen');
     for (const key of [INCOME_KEY, INCOME_MIGRATION_KEY, 'profile_rente_bezeichnung']) assert(isProfileScopedKey(key) && isAllowedPersistenceImportKey(key) && isAllowedSnapshotCaptureKey(key), 'Neue Schlüssel werden kopiert, importiert und gesichert');
-    const outside = { meta: { id: 'outside', name: 'Synthetische Außenperson', belongsToHousehold: false, updatedAt: '2026-01-01' },
+    const outside = { meta: { id: 'outside', name: 'Synthetische dritte Person', updatedAt: '2026-01-01' },
         data: { profile_rente_monatlich: '2222', profile_tagesgeld: '34567.89', depot_tranchen: ' [ ] ',
             profile_sonstige_einkuenfte: '300', profile_planned_inflows_v1: oldList,
             'sim.stressReplay.active.v1': '{ "historisch": true }' } };
@@ -63,7 +63,7 @@ try {
             { id: 'legacy-sonstige', art: 'sonstige', bezeichnung: 'Sonstige Einkünfte', betragMonat: 300, ab: null, bis: null, anpassung: 'keine' },
             { id: 'legacy-einmalig-1', monat: '2028-01', betrag: 12345.67, bezeichnung: 'Rückzahlung' },
             { id: 'legacy-einmalig-2', monat: '2028-01', betrag: 12345.67, bezeichnung: 'Rückzahlung' }
-        ] }), [INCOME_MIGRATION_KEY]: '1' } }, 'EK-1a ergänzt auch außerhalb des Haushalts ausschließlich Liste und Marker aus eigenen Altwerten; alle Altbytes und Metadaten bleiben gleich');
+        ] }), [INCOME_MIGRATION_KEY]: '1' } }, 'EK-1a ergänzt auch bei einem weiteren gespeicherten Profil ausschließlich Liste und Marker aus eigenen Altwerten; alle Altbytes und Metadaten bleiben gleich');
     const broken = storage({ rs_profiles_v1: JSON.stringify({ ...registry, profiles: { ...registry.profiles, erika: { ...registry.profiles.erika, data: { profile_planned_inflows_v1: '{' } } } }), rs_current_profile: 'max', ...old });
     const before = JSON.stringify(broken.records); let error;
     try { migrateStoredIncome(broken); } catch (caught) { error = caught; }

@@ -48,7 +48,8 @@ export function suggestedSecurity(registry, people, assetClass) {
             if (annualActionAssetClass(tranche) !== assetClass || !(tranche.shares > 0)) continue;
             const key = tranche.isin || tranche.ticker || tranche.name;
             const group = groups.get(key) || { name: tranche.name || 'Wertpapier', isin: tranche.isin || '', ticker: tranche.ticker || '', price: tranche.currentPrice,
-                asOf: tranche.asOf ?? null, tqf: tranche.tqf ?? (assetClass === 'equity' ? 0.3 : 0), taxExempt: tranche.taxExempt === true, assetClass, value: 0, holders: [] };
+                asOf: tranche.asOf ?? null, quoteExchange: tranche.quoteExchange,
+                tqf: tranche.tqf ?? (assetClass === 'equity' ? 0.3 : 0), taxExempt: tranche.taxExempt === true, assetClass, value: 0, holders: [] };
             group.value += tranche.shares * (tranche.currentPrice || 0);
             const holder = group.holders.find((/** @type {any} */ row) => row.id === person.id);
             if (holder) holder.shares += tranche.shares; else group.holders.push({ id: person.id, name: person.name, shares: tranche.shares });
@@ -67,7 +68,7 @@ export function securityFromHit(hit, { fixed = null, fallback = 'equity', isin =
     const assetClass = fixed || hit?.assetClass || fallback || null;
     const base = { assetClass, tqf: assetClass && assetClass !== 'equity' ? 0 : null, taxExempt: false, type: assetClass ? BUY_TYPES[assetClass] : undefined };
     return hit ? { ...base, symbol: hit.symbol, name: hit.name, isin: hit.isin || isin, ticker: hit.symbol, exchange: hit.exchange, price: hit.price ?? NaN, asOf: hit.asOf,
-        available: hit.status === 'ok', check: hit.status }
+        quoteExchange: hit.quoteExchange, available: hit.status === 'ok', check: hit.status }
         : { ...base, symbol: null, name: '', isin, ticker: '', exchange: '', price: NaN, asOf: null, available: false, check: 'failed' };
 }
 
@@ -81,7 +82,8 @@ export function buildBuyTranche(chosen, line, values, { trancheId, executedAt })
     return { schemaVersion: 2, trancheId, name: String(chosen.name || '').trim(), type: assetClass === 'equity' ? stockFromPurchaseDate(executedAt, BUY_TYPES[assetClass]) : BUY_TYPES[assetClass],
         category: assetClass, ticker: String(chosen.ticker || ''), isin: chosen.isin || '', shares: values.shares,
         purchasePrice: values.pricePerShare, currentPrice: chosen.price > 0 ? chosen.price : values.gross / values.shares,
-        ...(priced && Number.isInteger(chosen.asOf) ? { asOf: chosen.asOf } : {}), purchaseDate: executedAt,
+        ...(priced && Number.isInteger(chosen.asOf) ? { asOf: chosen.asOf,
+            ...(chosen.quoteExchange ? { quoteExchange: chosen.quoteExchange } : {}) } : {}), purchaseDate: executedAt,
         tqf: assetClass === 'equity' ? chosen.tqf ?? 0.3 : 0, taxExempt: false,
         notes: String(chosen.ticker || '').trim() ? '' : 'Ohne Kursabruf – Kurs von Hand pflegen.' };
 }
@@ -229,13 +231,18 @@ export function openBuyFlow({ doc = document, plan = null, profileId = null, pre
     };
     /** Kursprüfung des Vorschlags über den vorhandenen Kursabruf („✓ Kurs abrufbar“ erst mit Kurs). @param {string} assetClass @param {any} security */
     const verify = async (assetClass, security) => {
+        let result;
         // VK-2b P3-5: Ohne Kürzel löst erst die Suche die ISIN auf (der Kursabruf kennt keine ISIN).
         if (!security.ticker && security.isin) {
             const hit = /** @type {any} */ (await searchSecurities(security.isin).catch(() => null))?.hits?.find((/** @type {any} */ item) => item.status === 'ok' || item.status === 'stale');
-            if (hit) Object.assign(security, { ticker: hit.symbol, symbol: hit.symbol, exchange: hit.exchange || exchangeOf(hit.symbol) });
+            if (hit) {
+                Object.assign(security, { ticker: hit.symbol, symbol: hit.symbol, exchange: hit.exchange || exchangeOf(hit.symbol) });
+                result = hit;
+            }
         }
-        const result = /** @type {any} */ (security.ticker ? await probeSearchQuote(security.ticker, null).catch(() => ({ status: 'failed' })) : { status: 'failed' });
-        Object.assign(security, { check: result.status, available: result.status === 'ok', ...(result.price > 0 ? { price: result.price, asOf: result.asOf } : {}) });
+        result ||= /** @type {any} */ (security.ticker ? await probeSearchQuote(security.ticker, null).catch(() => ({ status: 'failed' })) : { status: 'failed' });
+        Object.assign(security, { check: result.status, available: result.status === 'ok',
+            ...(result.price > 0 ? { price: result.price, asOf: result.asOf, quoteExchange: result.quoteExchange } : {}) });
         // VN-2 (Codex F02): Eine späte Kursantwort aktualisiert den aktiven Schritt an Ort und Stelle; Eingabefelder, Text und Cursor bleiben.
         if (state.selection[assetClass]?.security === security || state.selection[assetClass]?.suggestion === security) refresh(true);
     };

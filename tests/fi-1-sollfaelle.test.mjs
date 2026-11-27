@@ -1,6 +1,8 @@
 // FI-1 (FR-82): Innerhalb derselben Person und ISIN verkauft die App wie die Bank die ältesten Stücke zuerst.
 import { calculateSaleAndTax } from '../engine/transactions/sale-engine.mjs';
 import { applyIsinFifo, bankOrderDateMissing } from '../types/sale-fifo.js';
+import { buildDetailedTranchesFromPortfolio } from '../app/simulator/simulator-engine-direct-utils.js';
+import { applySaleToPortfolio, buyStocksNeu, initializePortfolioDetailed } from '../app/simulator/simulator-portfolio.js';
 
 const ISIN = 'IE00BK5BQT80';
 const built = (tqf, patch = {}) => [['tranche_alt_40', 40, '2016-06-15'], ['tranche_mittel_80', 80, '2020-05-18'], ['tranche_neu_110', 110, '2025-02-14']]
@@ -9,6 +11,41 @@ const built = (tqf, patch = {}) => [['tranche_alt_40', 40, '2016-06-15'], ['tran
         marketValue: 30000, costBasis: 300 * price, tqf, taxExempt: false, ...(patch[trancheId] || {}) }));
 const sell = (net, tranches) => calculateSaleAndTax(net, { detailledTranches: tranches, sparerPauschbetrag: 1000, kirchensteuerSatz: 0, goldAktiv: false },
     {}, { sKey: 'bull' }, false);
+
+// FZ-1: Für 5.000 € netto verkauft der Simulator zuerst die älteren Stücke mit Gewinn.
+{
+    const [old] = built(0.3);
+    const portfolio = { depotTranchesAktien: [old], simulationSourceProfileId: old.sourceProfileId, simulationDate: '2026-12-31' };
+    const purchase = buyStocksNeu(portfolio, 10000);
+    const sale = sell(5000, buildDetailedTranchesFromPortfolio(portfolio));
+    assertEqual(sale.breakdown[0].trancheId, old.trancheId, 'FZ-1: Alttranche wird vor Zukauf verkauft');
+    assertClose(sale.steuerGesamt, 326.27, 0.01, 'FZ-1: 326,27 € Steuer auf den Gewinn der Alttranche');
+    assertEqual(purchase.isin, old.isin, 'FZ-1: Zukauf übernimmt die Vorlagen-ISIN');
+    assertEqual(purchase.tqf, old.tqf, 'FZ-1: Zukauf übernimmt weiter die Teilfreistellung');
+    applySaleToPortfolio(portfolio, sale);
+    assertEqual(purchase.marketValue, 10000, 'FZ-1: Verkauf lässt den Zukauf im Depot');
+
+    // Ein späterer Simulationsschritt darf ein früheres historisches Marktjahr ziehen.
+    portfolio.simulationDate = '2009-12-31';
+    const later = buyStocksNeu(portfolio, 10000);
+    assertEqual(sell(5000, buildDetailedTranchesFromPortfolio(portfolio)).breakdown[0].trancheId,
+        old.trancheId, 'FZ-1: Historisches Marktjahr verdrängt die Alttranche nicht');
+    applySaleToPortfolio(portfolio, { breakdown: [{ kind: old.type, trancheId: old.trancheId, brutto: old.marketValue }] });
+    assertEqual(sell(5000, buildDetailedTranchesFromPortfolio(portfolio)).breakdown[0].trancheId,
+        purchase.trancheId, 'FZ-1: Von zwei Zukäufen kommt der zuerst simulierte zuerst');
+    assertEqual(later.isin, old.isin, 'FZ-1: Auch der spätere Zukauf übernimmt die ISIN');
+    assertEqual(buyStocksNeu(portfolio, 10000, 'andere-person').isin, '', 'FZ-1: Ohne eigene Vorlage bleibt die ISIN leer');
+}
+
+{
+    const [a, b] = built(0.3);
+    Object.assign(b, { sourceProfileId: 'andere-person', isin: 'IE00B3RBWM25', tqf: 0 });
+    const portfolio = initializePortfolioDetailed({ detailledTranches: [a, b],
+        simulationPeople: [{ profileId: a.sourceProfileId }, { profileId: b.sourceProfileId }] });
+    const purchase = buyStocksNeu(portfolio, 10000, b.sourceProfileId);
+    assertEqual(purchase.isin, b.isin, 'FZ-1: Auch in der Personenmap gilt die eigene Vorlage');
+    assertEqual(purchase.tqf, 0, 'FZ-1: Die Personenmap erhält eine Teilfreistellung von null');
+}
 
 // Gebauter Fall aus auftrag/mess-fifo-vorher.json: „vorher“ = Wahl nach Steuerlast je Euro, Soll = FIFO-Spalte plus Zusatzverkauf.
 const cases = [

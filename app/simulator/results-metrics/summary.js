@@ -33,6 +33,11 @@ export function buildMonteCarloAnswers({ results, totalRuns, failCount, moneyBas
     const reason = technical ? 'Wegen technischer Fehler ist diese Antwort nicht auswertbar.' : 'Die Deckungsquote fehlt.';
     const interval = coverageAvailable && current ? inventory.floorCoverageEstimate?.confidenceInterval95 : null;
     const coveredRuns = current ? inventory.all_dead + inventory.horizon_exhausted : null;
+    // PZ-1: Anteil der Läufe mit Hilfe zur Pflege, derselbe Wert wie die Kachel in „Weitere Kennzahlen“. Mit Zufalls-Pflegelogik
+    // immer (ohne careAid 0 %), mit Pflegegrad heute ohne Pflegelogik nur, wenn die Kennzahl Läufe meldet.
+    const careAid = results?.careAid;
+    const careAidShare = coverageAvailable && (/** @type {{pflegefallLogikAktivieren?: boolean}} */ (inputs)?.pflegefallLogikAktivieren === true || careAid?.runCount > 0)
+        ? formatPercentage(Number.isFinite(careAid?.runSharePct) ? careAid.runSharePct : 0) : null;
     return [
         // SE-1: Deckung und Endvermögen bilden eine Antwort; Werte stammen aus denselben Summary-Karten.
         { question: 'Reicht das Vermögen?', kind: 'coverage', value: coverage,
@@ -41,6 +46,8 @@ export function buildMonteCarloAnswers({ results, totalRuns, failCount, moneyBas
             coveragePct: coverageAvailable ? floor.coveragePct : null,
             interval: !coverageAvailable ? '' : interval
                 ? `95-%-Intervall ${wilsonPercent(interval.lowerPct)}–${wilsonPercent(interval.upperPct)}` : '95-%-Intervall nicht verfügbar',
+            careAid: careAidShare === null ? null : { label: 'davon mit Hilfe zur Pflege', value: careAidShare,
+                tooltip: 'Diese Läufe gelten als gedeckt, weil der Grundbedarf ohne Pflegekosten bezahlt ist. Die Pflege zahlt dort am Ende die Sozialhilfe, weil das eigene Geldvermögen und verwertbare Immobilien für die Pflegekosten aufgebraucht sind.' },
             uncoveredHint: coverageAvailable && current && coveredRuns < inventory.requestedRuns && floor.coveragePct > 99 ? 'mindestens ein Lauf ungedeckt' : '',
             technicalRuns: current && !coverageAvailable ? inventory.technical_error ?? null : null,
             text: coverageAvailable ? `Dein Grundbedarf ist in diesen Läufen ${completeLife ? 'bis zum simulierten Lebensende' : 'bis zum jeweiligen Laufende'} gedeckt.` : reason,
@@ -143,7 +150,7 @@ export function buildSummaryData({ results, totalRuns, failCount, moneyBasis = D
 
     return /** @type {KpiDescriptor[]} */ ([
         {
-            title: 'Floor-Deckung im gewählten Horizont',
+            title: 'Grundbedarf gedeckt im gewählten Horizont',
             value: floorValue,
             displayRole: 'floor',
             displayValue: floorDisplay,
@@ -162,10 +169,10 @@ export function buildSummaryData({ results, totalRuns, failCount, moneyBasis = D
             outcomes: [
                 { label: 'Tod', count: allDeadRuns, kind: 'death' },
                 { label: 'Horizont', count: horizonRuns, kind: 'horizon' },
-                { label: 'Ruin', count: ruinRuns, kind: 'ruin' },
+                { label: 'Vermögen aufgebraucht', count: ruinRuns, kind: 'ruin' },
                 { label: 'Technik', count: technicalRuns, kind: 'technical' }
             ],
-            value: `Ruin ${ruinRuns} · Tod ${allDeadRuns} · Horizont ${horizonRuns} · Technik ${technicalRuns}`,
+            value: `Vermögen aufgebraucht ${ruinRuns} · Tod ${allDeadRuns} · Horizont ${horizonRuns} · Technik ${technicalRuns}`,
             description: `Disjunkte Endzustände für ${requestedRuns} angeforderte Läufe; ihre Summe entspricht der Anzahl Läufe.`,
             tone: 'default'
         },

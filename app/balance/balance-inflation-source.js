@@ -1,6 +1,7 @@
 import { CONFIG } from './balance-config.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import { assertAnnualPlanRecord } from '../profile/annual-plan-record.js';
+import { APP_INTRODUCTION_YEAR } from '../../types/wealth-history-contract.js';
 
 /** Ausschließlich gespeicherte Jahreswerte; die Formularbelegung ist keine Quelle. */
 /** @param {import('../../typcheck/balance-ui.js').PlanSourceOptions} [options] @returns {{value: number, year: number|null, source: string, periodId: string|null}} */
@@ -30,7 +31,7 @@ export function readBalanceInflationSource({ storage = persistenceStorage, scope
         : Number.isFinite(parsed) ? 'Gespeicherter Altstand · Jahr und Herkunft nicht belegt' : 'Kein gespeicherter Jahreswert', periodId: null };
 }
 
-/** Preisbasis je Eingabe; Altposten stammen aus dem Einführungsjahr 2026.
+/** Preisbasis je Eingabe; Altposten stammen aus dem Einführungsjahr (APP_INTRODUCTION_YEAR).
  * Bestätigte Jahresraten haben Vorrang, sonst gilt der gespeicherte Jahreswert.
  * Der Simulator friert diese Faktoren ein und verkettet danach seinen Marktpfad.
  */
@@ -38,7 +39,7 @@ export function readBalanceInflationSource({ storage = persistenceStorage, scope
 export function withPlannedExpensePrices(items, { storage = persistenceStorage, scope, referenceYear }) {
     const rates = new Map();
     return items.map(item => {
-        const baseYear = item.priceYear ?? 2026;
+        const baseYear = item.priceYear ?? APP_INTRODUCTION_YEAR;
         let factor = 1;
         for (let year = Math.min(baseYear, referenceYear); year < Math.max(baseYear, referenceYear); year++) {
             if (!rates.has(year)) rates.set(year, readBalanceInflationSource({ storage, scope, referenceYear: year + 1 }).value);

@@ -1,7 +1,7 @@
 import { resolveCareSetting } from '../shared/care-cost-resolver.js';
 import { resolveCarePrices } from '../shared/care-prices.js';
 import { careDriftInputPatch, resolveCareDriftSchedule } from '../shared/care-cost-drift.js';
-import { careSettingsStorage, sharesHouseholdCareValues } from '../shared/care-profile-settings.js';
+import { careSettingsStorage } from '../shared/care-profile-settings.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import { readCareValues, officialCareCosts, careValuesInputPatch } from '../shared/household-care-values.js';
 import { defaultCareForm, normalizeCareForm } from '../shared/care-benefits.js';
@@ -46,7 +46,7 @@ export function readCareInputs({ gender = 'w', doc = globalThis.document, storag
     const careValues = readCareValues(storage), official = officialCareCosts(careValues);
     const isOfficial = readValue('pflegeKostenStaffelPreset', 'custom', doc) === 'amtlich';
     // FR-73 P8/B3: Trägt der Pflegewerte-Record Preise, sind die Felder bewusste Eingaben und werden nie umgedeutet.
-    const prices = resolveCarePrices(careValues, careSettingsStorage(storage), { shared: sharesHouseholdCareValues(storage) });
+    const prices = resolveCarePrices(careValues, careSettingsStorage(storage));
     const price = (key, raw, fallback) => prices.stored ? numberOr(raw, fallback) : resolveCareSetting(key, raw);
     const pflegeGradeConfigs = {};
     SUPPORTED_PFLEGE_GRADES.forEach(grade => {

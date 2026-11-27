@@ -1,8 +1,10 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import './helpers/grundbestand-sicht-aktiv.mjs';
 import { EngineAPI } from '../engine/index.mjs';
 import { deriveMinimumFlexPath, buildMinimumFlexRestriction, summarizeMinimumFlexPaths } from '../app/simulator/minimum-flex-metrics.js';
 import { deriveHistoricalBacktestMetrics, HISTORICAL_BACKTEST_METRIC_DESCRIPTOR_BY_ID } from '../app/simulator/historical-backtest-metrics.js';
 import { runHistoricalBacktest } from '../app/simulator/historical-backtest-runner.js';
-import { createHistoricalBacktestContractProvider } from '../app/simulator/historical-backtest-contract.js';
+import { historischerProvider } from './helpers/grundbestand-stichprobe.mjs';
 import { simulateOneYear, initMcRunState as initializePortfolio } from '../app/simulator/simulator-engine-direct.js';
 import { initMcRunState, prepareHistoricalDataOnce, getDataVersion, compileScenario } from '../app/simulator/simulator-engine-helpers.js';
 import { portfolioTotal } from '../app/simulator/simulator-results.js';
@@ -78,7 +80,7 @@ const inputs = {
     depotwertAlt: 900000, einstandAlt: 720000, depotwertNeu: 0, einstandNeu: 0, tagesgeld: 400000,
     zielLiquiditaet: 50000, startFloorBedarf: 24000, startFlexBedarf: 45000, minimumFlexAnnual: 30000,
     flexBudgetAnnual: 0, flexBudgetRecharge: 0, targetEq: 60, rebalBand: 5,
-    maxSkimPctOfEq: 10, maxBearRefillPctOfEq: 5, runwayMinMonths: 24, runwayTargetMonths: 36,
+    maxSkimPctOfEq: 10, maxBearRefillPctOfEq: 5, liquidityRunwayYears: 3, // seit AL-S in Jahren; früher Ziel 36 Monate (vor Mindestwert 24) = 3 Jahre
     goldAktiv: false, goldZielProzent: 0, goldFloorProzent: 0, goldSteuerfrei: true,
     startSPB: 1000, kirchensteuerSatz: 0, rentAdjMode: 'fix', rentAdjPct: 0,
     renteAktiv: false, renteMonatlich: 0, renteStartOffsetJahre: 0, dynamicFlex: false,
@@ -126,20 +128,24 @@ for (const minimum of [0, 45000]) {
 }
 
 const historical = runHistoricalBacktest({ inputs, period: { startYear: 2000, endYear: 2002 },
-    historicalDataProvider: createHistoricalBacktestContractProvider(), initializePortfolio,
+    historicalDataProvider: historischerProvider(), initializePortfolio,
     computeAdjustmentPct: () => 0, resolveHorizon: () => ({ horizonYears: 30 }), totalPortfolio: portfolioTotal,
     simulateYear: (s, i, y, n) => simulateOneYear(s, i, y, n, null, 0, null, 1, EngineAPI) });
 assertEqual(historical.outcome.kind, 'completed', 'Echter historischer Dreijahrespfad ist erfolgreich');
-assertClose(historical.portfolioEnd, 764048.3349818271, 1e-8, 'FR-20: Backtest-Endvermögen mit tragfähigem Teil-Flex');
-assertClose(historical.summary.totalTaxes, 1495.985880253814, 1e-8, 'FR-20: Steuerfolge des zusätzlichen Teil-Flex');
+// KR-1c (NG-5): Der Zins 2000 gilt auf 400.000 € Tagesgeld vor dem Zukauf (16.480 € statt 6.056 € auf den Rest); Belege in
+// fixtures/kr-1c-expectation-deltas.json (vorher 764048.3349818271 und 1495.985880253814).
+assertClose(historical.portfolioEnd, 767086.1154852512, 1e-8, 'FR-20: Backtest-Endvermögen mit tragfähigem Teil-Flex');
+assertClose(historical.summary.totalTaxes, 4411.4129992975, 1e-8, 'FR-20: Steuerfolge des zusätzlichen Teil-Flex');
 assertEqual(JSON.stringify(historical.minimumFlexRestriction.path), JSON.stringify(deriveMinimumFlexPath(historical.rows)),
     'Echter Backtest reicht den identischen Jahresvertrag durch');
 
 const monteCarloParams = { anzahl: 6, maxDauer: 5, blockSize: 5, seed: 87654, methode: 'block', rngMode: 'per-run-seed' };
 const widowOptions = { enabled: false };
 const chunk = await runMonteCarloChunk({ inputs, monteCarloParams, widowOptions, useCapeSampling: false, engine: EngineAPI });
-const referenceWealth = [1525914.100601777, 1647999.9447154864, 1524698.5725882747, 1608042.2581631488, 843249.3053947198, 1457695.1058325004];
-const referenceTaxes = [4571.558099152942, 30738.90707984913, 20584.99899772434, 13757.442927657914, 1495.985880253814, 17623.240557466386];
+// MS-1 (NG-9): feste Blöcke ziehen zirkulär aus allen Fensterjahren; Referenzwerte neu festgehalten. KR-1c (NG-5): Zins vor der
+// Entscheidung; alte Werte in fixtures/kr-1c-expectation-deltas.json.
+const referenceWealth = [1515848.824996649, 2500036.895364137, 1634116.8085204163, 1550403.3291441225, 1635119.5383570706, 1284787.0757561643];
+const referenceTaxes = [4952.8600957504905, 54257.60156502131, 34917.3395580759, 21650.502494183642, 16982.39593346304, 22826.939882891325];
 for (let index = 0; index < 6; index++) {
     assertClose(chunk.buffers.finalOutcomes[index], referenceWealth[index], 1e-8, 'FR-60: kurzer MC-Pfad mit begrenzter Kaufkraft-Anhebung');
     assertClose(chunk.buffers.taxOutcomes[index], referenceTaxes[index], 1e-8, 'FR-60: zugehörige Steuerfolge im kurzen MC-Pfad');

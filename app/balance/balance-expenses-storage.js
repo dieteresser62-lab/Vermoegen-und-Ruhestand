@@ -67,8 +67,8 @@ function isRecord(value) {
  */
 function validateExpensesRecords(store, previous = null) {
     const assigned = new Set();
-    for (const [year, yearData] of Object.entries(store.years || {})) for (const [month, data] of Object.entries(yearData.months || {})) {
-        for (const [profileId, entry] of Object.entries(data.profiles || {})) {
+    for (const [year, yearData] of Object.entries(store.years || {})) for (const [month, data] of Object.entries(yearData?.months || {})) {
+        for (const [profileId, entry] of Object.entries(data?.profiles || {})) {
             const old = previous?.years?.[year]?.months?.[month]?.profiles?.[profileId];
             if (!previous || JSON.stringify(entry) !== JSON.stringify(old)) {
                 if (entry && Object.hasOwn(entry, 'categories') && !hasExpenseImport(entry)) {

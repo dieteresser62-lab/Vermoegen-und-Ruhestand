@@ -1,5 +1,8 @@
 import { historyDay as day, historyDate, DAILY_PRICES_KEY, WEALTH_HISTORY_START_KEY, emptyHistorySymbol } from '../app/tranches/tranchen-history-store.js';
-import { collectHistoryQueue, runHistoryFetch } from '../app/tranches/tranchen-history-fetch.js';
+import { collectHistoryQueue as collectQueue, runHistoryFetch as runFetch } from '../app/tranches/tranchen-history-fetch.js';
+// ATH-1b Punkt 7: Diese Prüfungen betreffen die Tranchen; die stets geladene VWCE-Referenz prüft ath-1b-korrekturen.test.mjs.
+const collectHistoryQueue = (registry, start, today, prices) => collectQueue(registry, start, today, prices, { referenceSymbol: null });
+const runHistoryFetch = (options = {}) => runFetch({ referenceSymbol: null, ...options });
 
 // TD-6: Abgefragte Börsentage ohne Schluss bleiben 10 Tage offen; Altbestände werden einmal nachgeholt.
 const lot = { schemaVersion: 1, trancheId: 'lot-a', name: 'Synthetisch', isin: '', ticker: 'TEST.DE',

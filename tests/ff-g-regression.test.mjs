@@ -1,5 +1,10 @@
+// JD-2a: Eingefrorene Belege dieser Datei gelten dem Grundbestand 1925–2025 (Stichprobe und Provider, jahresrobust).
+import { fz1References } from './helpers/fz-1-expectations.mjs';
+import { readKR1cReferences } from './helpers/kr-1c-expectations.mjs';
+import './helpers/grundbestand-sicht-aktiv.mjs';
 import { readLE1References } from './helpers/le-1-expectations.mjs';
 import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
+const readFZ1Reference = fz1References(import.meta.url);
 const readQSCReferences = value => readPFA1References(beforePFA1References(value));
 import { readQSCReferences as beforePFA1References } from './helpers/qs-c-expectations.mjs';
 import { readQSBReferences } from './helpers/qs-b-expectations.mjs';
@@ -9,6 +14,7 @@ import { readGL1References } from './helpers/gl-1-expectations.mjs';
 import { readAN1Hash } from './helpers/an-1-expectations.mjs';
 import { readJB2Hash } from './helpers/jb-2-expectations.mjs';
 import { readBK2Hash } from './helpers/bk-2-expectations.mjs';
+import { readRK1MergeReferences } from './helpers/rk-1-merge-expectations.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { EngineAPI } from '../engine/index.mjs';
@@ -77,17 +83,24 @@ const evidence = JSON.parse(readFileSync(new URL('./fixtures/ff-g-expectation-de
 for (const [key, value] of Object.entries(unchangedFFG(EngineAPI))) {
     const expected = evidence.unchanged[key];
     assertEqual(expected.before, expected.after, `${key}: vollständige Ergebnisse vor/nach FF-G bytegleich`);
-    assertEqual(hash(value), readQSCReferences(readVF2BReferences(readGL1References(readAN1Hash(readJB2Hash(readBK2Hash(expected.before)))))), `${key}: ungefilterte JSON-Bytes gegen BK-2`);
+    assertEqual(hash(value), readRK1MergeReferences(readQSCReferences(readVF2BReferences(readGL1References(readAN1Hash(readJB2Hash(readBK2Hash(expected.before))))))), `${key}: ungefilterte JSON-Bytes gegen BK-2`);
 }
 const backtest = helgaWernerBacktest();
 const qsh = JSON.parse(readFileSync(new URL('./fixtures/qs-h-measurement.json', import.meta.url))).specialBacktest;
+const zr1 = JSON.parse(readFileSync(new URL('./fixtures/zr-1-expectation-deltas.json', import.meta.url))).changes
+    .find(change => change.test === 'tests/ff-g-regression.test.mjs');
 assertEqual(readQSCReferences(readGL1References(readAN1Hash(readJB2Hash('d4ef2924a53684d00a6f7d4ea0ed66e297c6f8aac1bd9bedaff2d5c3911359cb')))),
     'b50168a6d6597d7a0f4efbadcefce1e8dabf713626df7ba50d1fd5a4a8ccb93d', 'Alter Drei-Töpfe-Beleg bleibt erhalten');
 assertEqual(qsh.beforeHash, readQSCReferences(readQSBReferences(readVF2DReferences(readVF2BReferences('be6787b97faa328e26b26d940f12860ee349ff5c0baf3ce19f813e3758e8d3c4')))),
     'QS-H 4: bisheriger vollständiger Backtestbeleg bleibt erhalten');
 assertEqual(qsh.rowsBeforeHash, qsh.rowsAfterHash, 'QS-H 4: Jahresrechnungen bleiben bytegleich');
-assertEqual(hash(backtest.rows), qsh.rowsBeforeHash, 'QS-H 4: keine geänderten Entnahmen, Steuern oder Folgejahre');
-assertEqual(hash(backtest), readLE1References(readPFA1References(qsh.afterHash)),
-    'Helga/Werner: vollständiger Backtest nach FR-63, Tagesgeld zuerst in Anleihen und keine Auffüllung im Bärenmarkt');
+assertEqual(readKR1cReferences(qsh.rowsBeforeHash), zr1.old.rows, 'QS-H 4: Jahreszeilen vor ZR-1');
+assertEqual(readKR1cReferences(readLE1References(readPFA1References(qsh.afterHash))), zr1.old.backtest,
+    'QS-H 4: vollständiger Backtest vor ZR-1');
+const pr1b = JSON.parse(readFileSync(new URL('./fixtures/pr-1b-expectation-deltas.json', import.meta.url))).changes[0];
+assertEqual(pr1b.old.rows, zr1.new.rows, 'PR-1b: bisheriger ZR-1-Beleg der vollständigen Jahreszeilen');
+assertEqual(pr1b.old.backtest, zr1.new.backtest, 'PR-1b: bisheriger ZR-1-Beleg des vollständigen Backtests');
+assertEqual(hash(backtest.rows), readFZ1Reference(pr1b.new.rows), 'PR-1b: vollständige Jahreszeilen mit persönlichem Barzins der Rücklage');
+assertEqual(hash(backtest), readFZ1Reference(pr1b.new.backtest), 'PR-1b: vollständiger Backtest mit persönlichen Reserveanteilen');
 assertEqual(backtest.rows.filter(r => r.entscheidung.kuerzungProzent >= 10).map(r => r.jahr).join(),
     '2002,2003,2004,2005,2008,2009', 'Helga/Werner: FR-36: sechs stärkere Kürzungsjahre');

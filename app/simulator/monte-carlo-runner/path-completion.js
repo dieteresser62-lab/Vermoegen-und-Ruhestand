@@ -7,15 +7,15 @@ import { MAX_TECHNICAL_ERROR_SAMPLES } from './batch.js';
 import { recordMonteCarloPathSummaryV1 } from '../monte-carlo-chunk-result.js';
 import { finalizeMinimumFlexPath } from '../minimum-flex-metrics.js';
 import { resolveMonteCarloTerminalOutcomeV1 } from '../monte-carlo-chunk-result.js';
-import { resolveStressReplayTerminalStatus } from './replay-records.js';
 import { buildMonteCarloDeathLogRow } from '../mc-log-builder.js';
 import { computeRunStatsFromSeries, resolveSimulatorCumulativeInflationFactor } from '../simulator-engine-wrapper.js';
-import { writeMonteCarloStressMetrics } from '../mc-stress-tracker.js';
+import { writeMonteCarloStressMetrics, RUIN_DRAWDOWN_PCT } from '../mc-stress-tracker.js';
 import { portfolioTotal } from '../simulator-results.js';
 import { recordMonteCarloRunOutcome } from '../mc-run-metrics.js';
 import { homeValueAtYearEnd } from '../simulator-home-sale.js';
 import { finalizeEuroPath } from '../mc-euro-metrics.js';
 import { quantile } from '../simulator-utils.js';
+import { recordPersonOutcomes } from '../mc-person-outcomes.js';
 /** @param {import('./path-state.js').YearContext} context */
 export function completePath(context) {
 
@@ -72,12 +72,10 @@ export function completePath(context) {
         return;
     }
 
-    if (context.replayCapture) {
-        context.replayCapture.terminalStatus = resolveStressReplayTerminalStatus(terminalResolution.outcomeCode);
-        context.replayCapturesByIndex.set(context.runIdx, context.replayCapture);
-    }
-
     context.technicalInventory.financiallyEvaluable++;
+    if (context.personOutcomeCounts && context.personEventYears) {
+        recordPersonOutcomes(context.personOutcomeCounts, context.personEventYears, context.maxDauer);
+    }
     commitWealthFanPath(context.wealthFan, context.wealthFanPath);
     commitHomeWealthFan(context.displayHomeValueFan, context.wealthFanPath, context.displayHomeValuePath);
     if (terminalResolution.outcomeCode === MONTE_CARLO_OUTCOME_CODE.RUIN) context.outcomeCounts.ruin++;
@@ -104,13 +102,15 @@ export function completePath(context) {
         }));
     }
 
+    // NG-W (W3): Ein Ruin leert das Geldvermögen, auch wenn er im ersten Jahr kommt. Ein Ruinpfad zählt im Rückgang deshalb mit 100 %.
+    // Die Volatilität bleibt bei den gerechneten Jahren.
     const { volPct, maxDDpct } = computeRunStatsFromSeries(context.depotWertHistorie);
     context.volatilities[context.i] = volPct;
-    context.maxDrawdowns[context.i] = maxDDpct;
+    context.maxDrawdowns[context.i] = context.failed ? RUIN_DRAWDOWN_PCT : maxDDpct;
     context.realMaxDrawdownObservationCount[context.i] = context.depotWertHistorieReal.length;
     if (context.realDrawdownInflationComplete) {
         const { maxDDpct: realMaxDDpct } = computeRunStatsFromSeries(context.depotWertHistorieReal);
-        context.realMaxDrawdowns[context.i] = realMaxDDpct;
+        context.realMaxDrawdowns[context.i] = context.failed ? RUIN_DRAWDOWN_PCT : realMaxDDpct;
         context.realMaxDrawdownMissingness[context.i] = MONTE_CARLO_MISSINGNESS_CODE.OBSERVED;
     } else {
         context.realMaxDrawdowns[context.i] = 0;
@@ -140,6 +140,16 @@ export function completePath(context) {
     const ruinOrDepleted = context.failed || depotOnlyEnd <= context.DEPOT_DEPLETION_THRESHOLD;
     const finalValueNominalEur = context.failed ? 0 : portfolioTotal(context.simState.portfolio);
     const finalValueRealEur = finalValueNominalEur / resolveSimulatorCumulativeInflationFactor(context.simState);
+    if (context.careAidSumThisRun > 0) {
+        context.careAidRuns.runIndices.push(context.runIdx);
+        context.careAidRuns.firstYears.push(context.careAidFirstYearThisRun);
+        context.careAidRuns.sumsNominal.push(context.careAidSumThisRun);
+    }
+    if (context.droppedExpenseSumThisRun > 0) {
+        context.droppedExpenseRuns.runIndices.push(context.runIdx);
+        context.droppedExpenseRuns.firstYears.push(context.droppedExpenseFirstYearThisRun);
+        context.droppedExpenseRuns.sumsNominal.push(context.droppedExpenseSumThisRun);
+    }
     recordMonteCarloRunOutcome(context.runMetrics, {
         i: context.i,
         runIdx: context.runIdx,

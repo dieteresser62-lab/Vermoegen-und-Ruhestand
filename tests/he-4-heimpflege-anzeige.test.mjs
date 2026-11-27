@@ -114,11 +114,11 @@ try {
     const html = plain(renderProtocolTable(rows, { source: 'mc', inputs }));
     for (const label of ['Grundbedarf zu Hause', 'Heimkosten', 'Eigene Ausgaben im Heim']) assert(html.includes(`<span>${label}</span>`), `Ausgaben-ⓘ: ${label} getrennt`);
     assert(html.includes('Werner: Grad 4, im Heim, Heimjahr 2, Zuschuss der Kasse 30 % auf den Pflegeanteil,'), 'Ausgaben-ⓘ: Form, Heimjahr und Zuschussstufe je Person');
-    assert(html.includes('kein Pflegegeld: im Heim, die Kasse zahlt an das Heim'), 'Einnahmen-ⓘ: Heimgrund aus dem Jahreszustand');
-    assert(html.includes('Heimjahr 2, Zuschuss der Kasse 30 % auf den Pflegeanteil, Heimkosten -3.756 € gegenüber dem Vorjahr.'), 'Kostenänderung darf negativ sein (Zuschuss im zweiten Heimjahr)');
+    assert(html.includes('bekommt kein Pflegegeld, weil die Pflegekasse direkt an das Heim zahlt.'), 'Einnahmen-ⓘ: Heimgrund aus dem Jahreszustand');
+    assert(html.includes('Heimjahr 2, Zuschuss der Kasse 30 % auf den Pflegeanteil, Heimkosten −3.756 € gegenüber dem Vorjahr.'), 'Kostenänderung darf negativ sein (Zuschuss im zweiten Heimjahr)');
     assert(!html.includes('Heimjahr 1, Zuschuss der Kasse 15 % auf den Pflegeanteil, Heimkosten'), 'Erstes Heimjahr ohne Vorjahresvergleich');
     const real = plain(renderProtocolTable(rows.map((row, index) => ({ ...row, inflation_factor_cum: index ? 1.1 : 1 })), { source: 'mc', inputs, moneyBasis: 'real' }));
-    assert(real.includes('Heimkosten -7.084 € gegenüber dem Vorjahr'), 'Änderung in heutiger Kaufkraft: 36.612 / 1,1 − 40.368');
+    assert(real.includes('Heimkosten −7.084 € gegenüber dem Vorjahr'), 'Änderung in heutiger Kaufkraft: 36.612 / 1,1 − 40.368');
     const column = id => PROTOCOL_COLUMNS.find(item => item.id === id);
     assert(column('pflege-zusatz-floor-delta').explanation.includes('nie negativ') && column('pflege').explanation.includes('eingesparte Grundbedarf')
         && column('floor-brutto').explanation.includes('Heimkosten') && column('carep1-cost').explanation.includes('im Todesjahr die Hälfte'), 'Summenspalten erklären ihre Bedeutung');
@@ -131,10 +131,10 @@ try {
     const official = { ...inputs, pflegeKostenStaffelPreset: 'amtlich' };
     const atHome = { jahr: 1, floor_brutto: 36000, Person1Alive: 1, Person2Alive: 1, CareP1_Active: 1, CareP1_Grade: 4, CareP1_Cost: 0, CareP1_Form: 'home-support', CareP2_Active: 0 };
     const homeHtml = plain(renderProtocolTable([atHome], { source: 'mc', inputs: official }));
-    assert(homeHtml.includes('Werner: Grad 4, zu Hause mit externer Unterstützung.') && !homeHtml.includes('Werner: Grad 4, im Heim') && !homeHtml.includes('kein Pflegegeld: im Heim'), 'Amtlich: gezogene Form zu Hause aus dem Jahreszustand, nicht aus Grad und Vorgabe');
+    assert(homeHtml.includes('Werner: Grad 4, zu Hause mit externer Unterstützung.') && !homeHtml.includes('Werner: Grad 4, im Heim') && !homeHtml.includes('Pflegekasse direkt an das Heim zahlt.'), 'Amtlich: gezogene Form zu Hause aus dem Jahreszustand, nicht aus Grad und Vorgabe');
     assert(homeHtml.includes('im amtlichen Durchschnitt bereits verrechnet'), 'Amtlich zu Hause: Pflegegeldgrund wie bisher');
     const drawnHeim = plain(renderProtocolTable([{ ...heim(1, 40368, .15) }], { source: 'mc', inputs: official }));
-    assert(drawnHeim.includes('kein Pflegegeld: im Heim'), 'Amtlich im Heim: Heimgrund statt Durchschnitt');
+    assert(drawnHeim.includes('Pflegekasse direkt an das Heim zahlt.'), 'Amtlich im Heim: Heimgrund statt Durchschnitt');
     const older = plain(renderProtocolTable([{ ...atHome, CareP1_Form: undefined }], { source: 'mc', inputs: official }));
     assert(older.includes('Werner: Grad 4, Form im amtlichen Durchschnitt enthalten.'), 'Ältere Amtlich-Läufe ohne gezogene Form erfinden keine Form');
 }

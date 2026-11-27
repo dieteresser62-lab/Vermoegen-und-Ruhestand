@@ -63,7 +63,7 @@ for (const source of ['mc', 'backtest']) {
         assert(html.indexOf('protocol-cashflow-saved') > html.indexOf('protocol-cashflow-sum'), 'davon angelegt steht getrennt unter der Summe');
         assert(html.indexOf('protocol-cashflow-withdrawal') > html.lastIndexOf('protocol-cashflow-sum'), 'Vermögensentnahme steht getrennt nach der Ausgabensumme');
         const expenseColumn = columns.find(column => column.id === 'expense-total');
-        assert(html.includes(`<span>davon aus dem Vermögen bezahlt</span><span>${expenseColumn.valueFormatter(3000, entry)}</span>`),
+        assert(html.includes(`<span>Aus dem Vermögen bezahlt</span><span>${expenseColumn.valueFormatter(3000, entry)}</span>`),
             'Einmalige geplante Ausgaben zählen auch ohne laufende Entnahme zum Vermögensanteil und folgen der Euro-Basis');
     }
 }
@@ -99,7 +99,7 @@ for (const [pension, income, saved, annualWithdrawal, planned] of [
         assertEqual(breakdown.withdrawal, annualWithdrawal + planned, 'Vermögensanteil enthält die laufende Entnahme und die geplante Ausgabe');
         assertEqual(breakdown.totals.ausgaben_gesamt, pension + income - saved + breakdown.withdrawal,
             'Kontrollidentität gilt für ausgeglichene Einnahmen, Überschuss und laufende Entnahme');
-        assert(renderProtocolTable([entry], { source }).includes(`<span>davon aus dem Vermögen bezahlt</span><span>${planned ? '25.000' : '12.000'}\u00a0€</span>`),
+        assert(renderProtocolTable([entry], { source }).includes(`<span>Aus dem Vermögen bezahlt</span><span>${planned ? '25.000' : '12.000'}\u00a0€</span>`),
             'Ausgaben-Info zeigt den bezahlten Vermögensanteil');
         if (!planned) assertEqual(JSON.stringify(breakdown.withdrawal), JSON.stringify(annualWithdrawal),
             'Ohne geplante Ausgabe bleibt der Zahlenwert bytegleich');

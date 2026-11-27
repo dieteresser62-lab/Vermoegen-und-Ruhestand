@@ -27,8 +27,9 @@ for (const [card, toggle] of [['Assets', 'profileGoldAktivToggle'], ['Care', 'pr
 }
 for (const id of ['profileGeburtsdatum', 'profileGeschlecht', 'profileKirchensteuerPct', 'profileSparerPauschbetrag', 'profileGoldZiel', 'profileGoldFloor', 'profileGoldBand', 'profileHealthBucketInitialAmount'])
     assert(!visible(node(id)) && elements.filter(el => el.attrs.id === id).length === 1, id + ': bisheriges Detailfeld bleibt eindeutig erhalten');
-assert(visible(node('managerCardsToggleAll')), 'Gesamtknopf bleibt außerhalb der Klappen');
-assert(inside(node('managerPersonProfileName'), node('personendaten')) && inside(node('managerCardsToggleAll'), node('personendaten')), 'Name und Kartenaktionen gehören zum gemeinsamen offenen Kopf');
+// OP-3 Punkt 4: „Alle Details zeigen“ entfällt; jede Karte klappt einzeln.
+assert(!node('managerCardsToggleAll') && !elements.some(el => el.attrs.id === 'managerCareToggleAll'), 'OP-3: kein Gesamtknopf „Alle Details“ bei Personen und Pflege');
+assert(inside(node('managerPersonProfileName'), node('personendaten')), 'Name gehört zum gemeinsamen offenen Kopf');
 assert(node('managePeopleBtn').parent === node('managerSectionNav').parent && !inside(node('managePeopleBtn'), node('managerSectionNav')), 'Personen verwalten steht in der Reiterzeile als eigener sekundärer Knopf');
 assert(node('managePeopleBtn').attrs.class.includes('ds-button-secondary'), 'Personen verwalten erhält die sekundäre Knopfrolle');
 assert(inside(node('managerQuoteDetails'), node('managerQuoteInfo')) && node('managerQuoteInfo').attrs.role === 'tooltip', 'Lange Kursdetails verwenden das vorhandene Infomuster');

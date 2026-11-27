@@ -1,7 +1,7 @@
 /** @import * as D from "../../../typcheck/datenvertraege.js" */
 /** @import * as I from "../../../typcheck/speicher-integration.js" */
 
-import { storeState, PROBELAUF_STATE_KEY, LOCAL_SNAPSHOT_ARCHIVE_KEY, DEFAULT_DEBOUNCE_MS } from './state.js';
+import { storeState, PROBELAUF_STATE_KEY, DEFAULT_DEBOUNCE_MS, assertDocumentWritable } from './state.js';
 import { keysSync } from './cache.js';
 import { init, assertAreaWritable } from './initialization.js';
 import { scopeWebStorage, areaSessionStorage, setStorageArea } from '../persistence-area-storage.js';
@@ -9,6 +9,7 @@ import { isLocalStorageFallbackAdapter } from './record-format.js';
 import { createLocalStorageAdapter } from '../persistence-adapter-localstorage.js';
 import { clearScheduledFlush } from './batch-flush.js';
 import { unbindLifecycleFlush } from './lifecycle.js';
+import { persistentWrite } from './writes.js';
 
 export function getDirtyState() {
     return {
@@ -44,42 +45,47 @@ export async function getMetadata(key) {
     return storeState.adapter.readMetadata?.(key) ?? null;
 }
 
-/** Gerätepräferenzen liegen bisher direkt im Web Storage. */
-export async function captureNewBeginningPreferences(win = storeState.persistenceWindow) {
+/** Technische Markierung des geöffneten Bereichs außerhalb der Fachrecords (nicht in Vollsicherung oder Spielkopie).
+ * SV-1c: Lesen und Schreiben laufen in der gemeinsamen Schreibreihenfolge der Fachrecords, nicht daneben.
+ * @param {string} key @param {(current: unknown) => unknown} update liefert den neuen Wert oder `undefined` für „unverändert“
+ * @param {I.ReplaceOptions} [options] @returns {Promise<boolean>} `false`, wenn der Speicher keine Markierungen kennt. */
+export async function updateMetadata(key, update, options = {}) {
     if (!storeState.initialized && !storeState.adapterExplicitlyConfigured) await init();
     assertAreaWritable();
-    if (storeState.areaManager) await storeState.areaManager.assertCurrent();
-    const { isSnapshotTechnicalKey } = await import("../persistence-key-policy.js");
-    const storage = scopeWebStorage(win?.localStorage, storeState.storageArea), result = Object.create(null);
-    for (let i = 0; i < (storage?.length || 0); i++) {
-        const key = /** @type {Storage} */ (storage).key(i);
-        if (isSnapshotTechnicalKey(key)) result[/** @type {string} */ (key)] = /** @type {Storage} */ (storage).getItem(/** @type {string} */ (key));
-    }
-    return result;
+    assertDocumentWritable();
+    if (typeof storeState.adapter.writeMetadata !== 'function') return false;
+    return persistentWrite(async () => {
+        // Der Adapter zum Zeitpunkt des Schreibens; die Schreibreihenfolge hat inzwischen den Bereich geprüft.
+        const adapter = storeState.adapter, write = adapter.writeMetadata?.bind(adapter);
+        if (!write) return false;
+        const next = update(await adapter.readMetadata?.(key) ?? null);
+        if (next !== undefined) await write(key, next);
+        return true;
+    }, options);
+}
+
+/** @param {string} key @param {unknown} value @param {I.ReplaceOptions} [options] @returns {Promise<boolean>} */
+export function setMetadata(key, value, options = {}) {
+    return updateMetadata(key, () => value, options);
 }
 
 /** Alte Migrationskopien dürfen nach dem Leerstart nicht wieder lebendig werden.
  * Fachrecords werden ausschließlich durch den Adapter ersetzt.
- * @param {{window?: Window & typeof globalThis, deleteSnapshots?: boolean, records?: Record<string, string>, navigationOperation?: import('../../../typcheck/runtime-contracts.js').NavigationOperation}} [options] */
-export async function resetNewBeginningBrowserStorage({ window: win = storeState.persistenceWindow, deleteSnapshots = false,
-    records = {}, navigationOperation } = {}) {
+ * @param {{window?: Window & typeof globalThis, navigationOperation?: import('../../../typcheck/runtime-contracts.js').NavigationOperation}} [options] */
+export async function resetNewBeginningBrowserStorage({ window: win = storeState.persistenceWindow, navigationOperation } = {}) {
     if (!storeState.initialized && !storeState.adapterExplicitlyConfigured) await init();
     assertAreaWritable();
     if (storeState.areaManager) await storeState.areaManager.assertCurrent();
     const { isAllowedPersistenceImportKey, isSnapshotTechnicalKey } = await import("../persistence-key-policy.js");
     navigationOperation?.check();
     /** @param {string | null} key */
-    const owned = key => isAllowedPersistenceImportKey(key) || isSnapshotTechnicalKey(key)
-        || key === PROBELAUF_STATE_KEY || deleteSnapshots && key === LOCAL_SNAPSHOT_ARCHIVE_KEY;
+    const owned = key => isAllowedPersistenceImportKey(key) || isSnapshotTechnicalKey(key) || key === PROBELAUF_STATE_KEY;
     const local = scopeWebStorage(win?.localStorage, storeState.storageArea);
     // Der Fallback-Hauptspeicher wurde bereits transaktional geschrieben.
     if (local && !isLocalStorageFallbackAdapter()) {
         const keys = Array.from({ length: local.length }, (_, i) => local.key(i)).filter(owned);
         keys.forEach(key => local.removeItem(key));
-        for (const [key, value] of Object.entries(records)) if (isSnapshotTechnicalKey(key)) local.setItem(key, value);
-        for (const key of keys) {
-            if (local.getItem(key) !== (isSnapshotTechnicalKey(key) ? records[key] ?? null : null)) throw new Error('Browser-Einstellungen konnten nicht bestätigt werden.');
-        }
+        if (keys.some(key => local.getItem(key) !== null)) throw new Error('Browser-Einstellungen konnten nicht bestätigt werden.');
     }
     const session = areaSessionStorage(win?.sessionStorage);
     if (session) {

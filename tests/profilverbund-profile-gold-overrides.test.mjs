@@ -97,49 +97,24 @@ const registry = {
                 profile_gold_steuerfrei: 'true',
                 profile_gold_rebal_band: '18'
             }
-        },
-        lone: {
-            meta: {
-                id: 'lone',
-                name: 'Lone',
-                createdAt: '2024-01-01T00:00:00.000Z',
-                updatedAt: '2024-01-01T00:00:00.000Z',
-                belongsToHousehold: false
-            },
-            data: {
-                [CONFIG.STORAGE.LS_KEY]: JSON.stringify({
-                    inputs: {
-                        goldAktiv: true,
-                        goldZielProzent: 9,
-                        goldFloorProzent: 2,
-                        goldSteuerfrei: true,
-                        rebalancingBand: 11
-                    }
-                })
-            }
         }
     }
 };
 
 for (const profile of Object.values(registry.profiles)) Object.assign(profile.data, { profile_person_schema_version: '1', profile_aktuelles_alter: '67' });
 
-// Registry in localStorage injizieren, damit loadProfilverbundProfiles darauf zugreift.
-localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(registry));
-
-registry.profiles.petra.meta.belongsToHousehold = false;
-localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(registry));
+// Registry in localStorage injizieren, damit loadProfilverbundProfiles darauf zugreift; ein Haushalt hat höchstens zwei Personen.
+const household = ids => ({ version: 1, profiles: Object.fromEntries(ids.map(id => [id, registry.profiles[id]])) });
+localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(household(['musterA', 'musterB'])));
 const profiles = loadProfilverbundProfiles();
 const musterA = profiles.find(entry => entry.profileId === 'musterA');
 const musterB = profiles.find(entry => entry.profileId === 'musterB');
-registry.profiles.musterB.meta.belongsToHousehold = false; registry.profiles.petra.meta.belongsToHousehold = true;
-localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(registry));
+localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(household(['musterA', 'petra'])));
 const petra = loadProfilverbundProfiles().find(entry => entry.profileId === 'petra');
-const lone = profiles.find(entry => entry.profileId === 'lone');
 
 assert(!!musterA, 'Muster A profile should be loaded');
 assert(!!musterB, 'Muster B profile should be loaded');
 assert(!!petra, 'Petra profile should be loaded');
-assertEqual(lone, undefined, 'Profiles excluded from profilverbund should not be loaded');
 
 assertEqual(musterA.inputs.goldAktiv, false, 'Muster A should use profile gold aktiv override');
 assertEqual(musterA.inputs.goldZielProzent, 5, 'Muster A gold target should use profile override');

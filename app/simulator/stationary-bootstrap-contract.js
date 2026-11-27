@@ -66,9 +66,13 @@ export function resolveStationaryBootstrapStartPolicy(options = {}) {
     const normalizedStartYearMode = ['UNIFORM', 'FILTER', 'RECENCY'].includes(startYearMode)
         ? startYearMode
         : 'UNIFORM';
-    const blockStartSelector = useCapeSampling ? 'CAPE' : normalizedStartYearMode;
+    // MS-1 (NG-8): CAPE wählt nur den ersten Block. Spätere Blockstarts ziehen aus dem wirksamen
+    // Fenster; mit CAPE gelten Filter und Halbwertszeit nicht, das Fenster ist dann gleich gewichtet.
+    const initialBlockSelector = useCapeSampling ? 'CAPE' : normalizedStartYearMode;
+    const blockStartSelector = useCapeSampling ? 'UNIFORM' : normalizedStartYearMode;
 
     return {
+        initialBlockSelector,
         blockStartSelector,
         capeHasPriority: useCapeSampling === true,
         weightedSelectionScope: STATIONARY_BOOTSTRAP_SAMPLING_SCOPE.NEW_BLOCK_STARTS_ONLY,

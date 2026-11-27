@@ -35,7 +35,7 @@ Diese Themen sind als lokale HTML-Leseseiten in Browser und EXE verfügbar. „R
 
 ### Technik
 
-[TECHNICAL](reference/TECHNICAL.md) beschreibt Architektur, Modulbesitz und Dokuwerkzeuge; [Datenverträge](reference/DATENVERTRAEGE.md) die gespeicherten Formen, [Datenquellen](reference/DATA_SOURCES.md) Herkunft und Validierung. Das [Fachkonzept](reference/FACHKONZEPT.md) führt als Regelverzeichnis zu den Fachthemen. Das [Engine-README](../engine/README.md) und [Test-README](../tests/README.md) ergänzen API und Prüfwege.
+[TECHNICAL](reference/TECHNICAL.md) beschreibt Architektur, Modulbesitz und Dokuwerkzeuge; [Datenverträge](reference/DATENVERTRAEGE.md) die gespeicherten Formen, [Datenquellen](reference/DATA_SOURCES.md) Herkunft und Validierung. Das [Fachkonzept](reference/FACHKONZEPT.md) führt als Regelverzeichnis zu den Fachthemen. Das [Engine-README](../engine/README.md) und [Test-README](../tests/README.md) ergänzen API und Prüfwege. [Jahresdaten pflegen](reference/JAHRESDATEN.md) beschreibt, wie ein neues Datenjahr und neue amtliche Werte dazukommen.
 
 ### Regeln
 
